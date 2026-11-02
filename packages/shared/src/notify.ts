@@ -31,6 +31,9 @@ export interface NotifySettingsView {
     readonly name: string | null;
     /** Link to add the bot to one's own Discord account (no server needed). */
     readonly installUrl: string | null;
+    readonly serverInstallUrl: string | null;
+    /** The last message to this person that did not go through. */
+    readonly lastDmError: DmError | null;
   };
   readonly emailSet: boolean;
 }
@@ -51,6 +54,18 @@ export interface DiscordSettingsView {
   /** The bot is online (connected to Discord) and can receive button clicks. */
   readonly online: boolean;
   readonly error: string | null;
+  /** Link to put the bot on one of your servers: then Discord lets it write to you privately. */
+  readonly serverInstallUrl: string | null;
+  /** The last private message that did not go through, if any. */
+  readonly lastDmError: DmError | null;
+}
+
+export interface DmError {
+  readonly at: string;
+  /** Discord's own words. */
+  readonly message: string;
+  /** Discord refused because there is no shared server or DMs from apps are off. */
+  readonly blocked: boolean;
 }
 
 export const SERVER_REQUEST_STATUSES = ['pending', 'approved', 'rejected'] as const;

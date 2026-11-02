@@ -132,8 +132,8 @@ footer { color: var(--muted); font-size: 13px; }
 <script type="application/json" id="data">
 {
   "goal": "Ein selbst gehostetes Panel für Minecraft-Server: so viel wie Crafty Controller 4, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-11-02T11:26:55+00:00",
-  "now": "Veröffentlicht (PR #28 in main). Update im Panel verfügbar. Offen: Satisfactory, ETS2, Hytale echt testen.",
+  "updated": "2026-11-02T11:50:08+00:00",
+  "now": "Discord: Grund für fehlende DMs sichtbar + Lösung per Knopf – wartet auf Philips Go.",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -399,9 +399,19 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "Discord-Chat öffnet sich – veröffentlicht",
       "status": "fertig",
       "detail": "Nach Philips Go nach main gemergt (PR #28), CI grün."
+    },
+    {
+      "title": "Discord: Warum keine DM? + Lösung",
+      "status": "fertig",
+      "detail": "Discord lässt Bots nur privat schreiben, wenn man einen gemeinsamen Server hat (Fehler 50007). Fehler werden nicht mehr verschluckt: /verbinden-Antwort sagt direkt, ob der Bot schreiben darf; Panel zeigt den letzten Discord-Fehler. Neuer Knopf „Bot auf meinen Server holen“ (dort schreibt er nichts, DMs gehen danach). 266 Tests."
     }
   ],
   "shots": [
+    {
+      "img": "progress/discord-keine-dm.webp",
+      "caption": "Keine DM? Grund + Knopf „Bot auf meinen Server holen“ (Handy)",
+      "time": "2026-11-02T11:50:08+00:00"
+    },
     {
       "img": "progress/discord-test-ok.webp",
       "caption": "Discord: Test-Nachricht gesendet",
@@ -456,11 +466,6 @@ footer { color: var(--muted); font-size: 13px; }
       "img": "progress/server-anfragen.webp",
       "caption": "Sicht eines Mitglieds: „Server anfragen“",
       "time": "2026-11-02T09:30:01+00:00"
-    },
-    {
-      "img": "progress/smtp-desktop-wechsel.webp",
-      "caption": "Test-Mail: 587 antwortet nicht, 465/TLS gefunden und gespeichert",
-      "time": "2026-10-30T22:21:52+00:00"
     }
   ],
   "files": [

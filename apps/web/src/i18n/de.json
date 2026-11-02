@@ -560,7 +560,7 @@
     "request_not_found": "Diese Anfrage gibt es nicht mehr.",
     "request_user_gone": "Die Person, die angefragt hat, gibt es nicht mehr oder sie ist gesperrt.",
     "discord_not_linked": "Verbinde zuerst dein Discord (Mein Konto → Benachrichtigungen), dann kann der Bot dir schreiben.",
-    "discord_dm_blocked": "Discord lässt die Nachricht nicht durch. Prüfe in Discord unter Einstellungen → Privatsphäre & Sicherheit, ob Direktnachrichten von Apps erlaubt sind, und ob die MorniHosting-App noch bei deinen Apps ist.",
+    "discord_dm_blocked": "Discord lässt die Nachricht nicht durch, weil du mit dem Bot keinen gemeinsamen Server hast (oder Direktnachrichten von Apps aus sind). Hol den Bot mit dem Knopf unten auf einen deiner Server, dann klappt es.",
     "discord_dm_failed": "Die Test-Nachricht ging nicht raus: {{message}}"
   },
   "update": {
@@ -2427,7 +2427,7 @@
     "install": "App zu meinem Discord hinzufügen",
     "remove": "Bot entfernen",
     "step1": "Öffne das Discord Developer Portal und klicke „New Application“. Name z. B. „MorniHosting“.",
-    "step2": "Links „Installation“: bei „Installation Contexts“ nur „User Install“ anhaken, Install Link „Discord Provided Link“, speichern.",
+    "step2": "Links „Installation“: bei „Installation Contexts“ „User Install“ und „Guild Install“ anhaken (bei Guild Install als Scopes „bot“ und „applications.commands“), Install Link „Discord Provided Link“, speichern.",
     "step3": "Links „Bot“: „Reset Token“ klicken und den Token kopieren.",
     "step4": "Token unten einfügen und „Verbinden“ klicken. Fertig.",
     "portal": "Discord Developer Portal öffnen",
@@ -2468,6 +2468,10 @@
     "step3": "Fertig – hier steht gleich „Verbunden“. Der Code gilt 10 Minuten.",
     "test": "Test-Nachricht senden",
     "testSending": "Wird gesendet …",
-    "testSent": "Test-Nachricht ist raus – schau in deine Discord-DMs."
+    "testSent": "Test-Nachricht ist raus – schau in deine Discord-DMs.",
+    "noDmTitle": "Keine Nachricht angekommen?",
+    "noDmText": "Discord lässt einen Bot nur privat schreiben, wenn ihr einen gemeinsamen Server habt. Hol den Bot auf einen deiner Server (irgendeinen, auch einen leeren) – dort schreibt er nichts, aber danach kommen die Nachrichten privat bei dir an. Dann „Test-Nachricht senden“.",
+    "addToServer": "Bot auf meinen Server holen",
+    "lastError": "Letzter Fehler von Discord: {{message}}"
   }
 }

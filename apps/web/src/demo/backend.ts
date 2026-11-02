@@ -189,7 +189,14 @@ const state = {
   } as DiscordSettingsView,
   notify: {
     prefs: { approvals: true, crashes: true, decisions: true, email: true, discord: true },
-    discord: { available: false, linked: false, name: null, installUrl: null },
+    discord: {
+      available: false,
+      linked: false,
+      name: null,
+      installUrl: null,
+      serverInstallUrl: null,
+      lastDmError: null,
+    },
     emailSet: true,
   } as NotifySettingsView,
   mail: {
@@ -1004,6 +1011,9 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
           'https://discord.com/oauth2/authorize?client_id=1300000000000000000&integration_type=1&scope=applications.commands',
         online: true,
         error: null,
+        serverInstallUrl:
+          'https://discord.com/oauth2/authorize?client_id=1300000000000000000&integration_type=0&scope=bot%20applications.commands&permissions=0',
+        lastDmError: null,
       };
       return ok(state.discord);
     },

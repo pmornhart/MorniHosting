@@ -274,5 +274,14 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
     expect((await as(lena, 'POST', '/api/account/discord/test')).json()).toMatchObject({
       error: 'discord_dm_blocked',
     });
+    // The /verbinden answer already said so, with the link that fixes it, and the panel shows the reason.
+    expect(
+      discord.replies.some((r) => r.message?.title.includes('aber ich darf dir nicht privat schreiben')),
+    ).toBe(true);
+    expect(discord.replies.some((r) => r.message?.text.includes('integration_type=0'))).toBe(true);
+    const view = (await as(lena, 'GET', '/api/account/notifications')).json<{
+      discord: { lastDmError: { blocked: boolean } | null };
+    }>();
+    expect(view.discord.lastDmError?.blocked).toBe(true);
   });
 });
