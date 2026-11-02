@@ -1,3 +1,4 @@
+import { DiscordBotCard } from './DiscordBotCard';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
@@ -384,6 +385,8 @@ export function NotificationsPage(): ReactElement {
           </Button>
         }
       />
+      <DiscordBotCard />
+      <h2 className="text-lg font-semibold">{t('webhooks.channelsTitle')}</h2>
       {list()}
       <WebhookDialog
         open={dialog !== null}

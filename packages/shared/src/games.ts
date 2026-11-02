@@ -322,7 +322,8 @@ export const GAMES: Readonly<Record<GameId, GameInfo>> = Object.freeze({
     rconPort: 'main',
     rconArg: '+rcon_password',
     argsEnv: 'ARGS',
-    env: { PUID: RUN_UID, PGID: RUN_UID },
+    // PRODUCTION=1: without it the image starts the server under a debugger (-gdb -debug).
+    env: { PUID: RUN_UID, PGID: RUN_UID, PRODUCTION: '1' },
     fields: [
       { key: 'serverName', env: 'NAME', kind: 'text', onOrder: true },
       { key: 'gamemode', env: 'GAMEMODE', kind: 'text', fallback: 'sandbox', onOrder: true },

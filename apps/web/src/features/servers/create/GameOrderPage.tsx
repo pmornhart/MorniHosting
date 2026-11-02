@@ -3,7 +3,7 @@ import { Archive, ArrowLeft, Check, Cpu, Dices, Gauge, Globe, KeyRound, Rocket, 
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
-import { GAMES, type CreateServerInput, type GameId, type ServerSummary } from '@mornihosting/shared';
+import { GAMES, type CreateServerInput, type GameId } from '@mornihosting/shared';
 import { Badge } from '@/components/art';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { Field } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/misc';
 import { api } from '@/lib/api';
 import { errorText } from '@/lib/query';
+import { placeOrder, RequestSent } from './order-submit';
+import { useSession } from '@/features/auth/session';
 import { cn } from '@/lib/utils';
 import { hostQuery } from '@/features/dashboard/HostStrip';
 import { toNetbirdName, useAddressAutomation } from '@/features/netbird/netbird';
@@ -54,6 +56,8 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
   const playersFor = (size: number): number =>
     Math.min(game.maxPlayers, Math.round(size * game.playersPerGb));
 
+  const { me } = useSession();
+  const [requestSent, setRequestSent] = useState(false);
   const create = useMutation({
     mutationFn: async () => {
       if (gb === null || version === null) throw new Error('incomplete order');
@@ -70,7 +74,8 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
         gameSettings: settings,
         ...(address && addressName ? { netbirdName: addressName } : {}),
       };
-      const server = await api<ServerSummary>('/api/servers', { method: 'POST', body });
+      const server = await placeOrder(body, me.user.canCreateServers);
+      if (!server) return null;
       if (backups) {
         await api(`/api/servers/${server.id}/schedules`, {
           method: 'POST',
@@ -85,6 +90,10 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
       return server;
     },
     onSuccess: (server) => {
+      if (!server) {
+        setRequestSent(true);
+        return;
+      }
       void queryClient.invalidateQueries({ queryKey: serversQuery.queryKey });
       void queryClient.invalidateQueries({ queryKey: ['me'] });
       navigate(`/servers/${server.id}`);
@@ -95,6 +104,8 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
   const ready =
     gb !== null && version !== null && Boolean(name) && terms && (!address || Boolean(addressName));
   const joinAt = hostname ? `${hostname}:${port}` : `Port ${port}`;
+
+  if (requestSent) return <RequestSent />;
 
   return (
     <div className="grid gap-5">
@@ -359,7 +370,11 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
           ) : null}
           <Button size="lg" disabled={!ready || create.isPending} onClick={() => create.mutate()}>
             <Rocket />
-            {create.isPending ? t('create.creating') : t('create.submit')}
+            {create.isPending
+              ? t('create.creating')
+              : me.user.canCreateServers
+                ? t('create.submit')
+                : t('requests.submit')}
           </Button>
           <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
             <Check className="size-3.5" />

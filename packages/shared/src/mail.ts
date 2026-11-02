@@ -33,6 +33,8 @@ export const mailSettingsSchema = z.object({
   registration: z.boolean().default(false),
   /** Self-registered people may order servers right away (otherwise an admin must allow it). */
   registrationOrders: z.boolean().default(false),
+  /** New accounts wait until an admin lets them in (by mail link, in the panel or in Discord). */
+  registrationApproval: z.boolean().default(true),
   crashMails: z.boolean().default(false),
 });
 export type MailSettingsInput = z.infer<typeof mailSettingsSchema>;
@@ -95,6 +97,30 @@ export interface MailTestResult {
   readonly switchedTo: MailEndpoint | null;
 }
 
+/** Quick start: address, password and (for a mail server at home) its IP; the panel finds the rest. */
+export const mailQuickSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1).max(CREDENTIAL_MAX),
+  internalHost: z.string().trim().max(HOST_MAX).default(''),
+});
+export type MailQuickInput = z.infer<typeof mailQuickSchema>;
+
+export interface MailQuickTry extends MailEndpoint {
+  readonly host: string;
+  readonly problem: MailProblem | null;
+}
+
+export interface MailQuickResult {
+  /** The mail server that accepted the login; it is saved. Null when none did. */
+  readonly found: (MailEndpoint & { readonly host: string }) | null;
+  readonly tried: readonly MailQuickTry[];
+  /** The test mail sent with what was found. */
+  readonly test: MailTestResult | null;
+  /** When nothing worked: the attempt that came furthest, step by step. */
+  readonly closest:
+    (MailQuickTry & { readonly steps: readonly MailStepResult[]; readonly message: string }) | null;
+}
+
 export const registerSchema = z.object({
   username: usernameSchema,
   email: emailSchema,
@@ -104,7 +130,7 @@ export const registerSchema = z.object({
 export const forgotSchema = z.object({ email: emailSchema });
 export const resetSchema = z.object({ token: z.string().min(1).max(TOKEN_MAX), password: passwordSchema });
 export const confirmSchema = z.object({ token: z.string().min(1).max(TOKEN_MAX) });
-export type ConfirmKind = 'register' | 'email_change';
+export type ConfirmKind = 'register' | 'register_pending' | 'email_change';
 export interface ConfirmResult {
   readonly kind: ConfirmKind;
 }

@@ -4,10 +4,12 @@ import {
   emailChangeSchema,
   forgotSchema,
   mailSettingsSchema,
+  mailQuickSchema,
   mailTestSchema,
   registerSchema,
   resetSchema,
   type ConfirmResult,
+  type MailQuickResult,
   type MailSettingsView,
   type MailTestResult,
 } from '@mornihosting/shared';
@@ -66,6 +68,23 @@ export function registerMailRoutes(app: Api, ctx: AppContext, mail: MailService)
         ctx.audit.record(actorOf(request), 'mail.settings', null, {
           host: mail.view().host,
           port: result.switchedTo.port,
+        });
+      return result;
+    },
+  );
+
+  app.post(
+    '/api/mail/quick',
+    { schema: { body: mailQuickSchema }, config: anonymousRateLimit },
+    async (request): Promise<MailQuickResult> => {
+      const auth = requireAdmin(request);
+      const result = await mail.quick(request.body, auth.user.email ?? request.body.email, auth.user.locale, {
+        name: auth.user.displayName || auth.user.username,
+      });
+      if (result.found)
+        ctx.audit.record(actorOf(request), 'mail.settings', null, {
+          host: result.found.host,
+          registration: mail.view().registration,
         });
       return result;
     },

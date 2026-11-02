@@ -75,6 +75,10 @@ import { registerDdosRoutes } from './ddos/routes.js';
 import type { MailNetwork } from './mail/check.js';
 import { createMailService, type MailService, type TransportFactory } from './mail/service.js';
 import { registerMailRoutes } from './mail/routes.js';
+import { createApprovalService } from './notify/approvals.js';
+import type { DiscordApi } from './notify/discord.js';
+import { registerNotifyRoutes } from './notify/routes.js';
+import { createNotifyService } from './notify/service.js';
 
 export interface BuildOptions {
   readonly config: Config;
@@ -87,6 +91,8 @@ export interface BuildOptions {
   readonly mailTransport?: TransportFactory;
   /** Tests answer DNS and TCP for the mail check here. */
   readonly mailNetwork?: MailNetwork;
+  /** Tests answer Discord here. */
+  readonly discord?: DiscordApi;
 }
 
 export interface BuiltApp {
@@ -173,6 +179,9 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const ddos = createDdosService(ctx, servers);
   const mail = createMailService(ctx, options.mailTransport, options.mailNetwork);
   mail.init(servers);
+  const notify = createNotifyService(ctx, mail, options.discord);
+  const approvals = createApprovalService(ctx, mail, notify, servers);
+  notify.start();
 
   await app.register(helmet, {
     contentSecurityPolicy: {
@@ -261,6 +270,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerScheduleRoutes(app, ctx, servers, schedules);
   registerWebhookRoutes(app, webhooks);
   registerMailRoutes(app, ctx, mail);
+  registerNotifyRoutes(app, ctx, notify, approvals);
   registerUserRoutes(app, ctx, mail);
   registerTokenRoutes(app, ctx);
   registerAuditRoutes(app, ctx);
@@ -306,6 +316,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     stop: async () => {
       intervals.forEach(clearInterval);
       schedules.shutdown();
+      notify.stop();
       dns.shutdown();
       servers.shutdown();
       ctx.docker.close();

@@ -121,7 +121,7 @@ function resolveApiToken(ctx: AppContext, request: FastifyRequest, raw: string):
       ),
     )
     .get();
-  if (!row || row.user.disabled) return false;
+  if (!row || row.user.disabled || row.user.approvalPending) return false;
   if (!row.token.lastUsedAt || Date.now() - Date.parse(row.token.lastUsedAt) > TOKEN_TOUCH_MS) {
     ctx.db.update(apiTokens).set({ lastUsedAt: now }).where(eq(apiTokens.id, row.token.id)).run();
   }

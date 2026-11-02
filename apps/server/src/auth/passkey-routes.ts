@@ -181,7 +181,7 @@ export function registerPasskeyRoutes(app: Api, ctx: AppContext): void {
         }
       })();
       const actor = { userId: user.id, username: user.username, ip: request.ip };
-      if (!result?.verified || user.disabled) {
+      if (!result?.verified || user.disabled || user.signupPending || user.approvalPending) {
         ctx.audit.record(actor, 'auth.login_failed', null, { method: 'passkey' });
         throw unauthorized('passkey_failed');
       }

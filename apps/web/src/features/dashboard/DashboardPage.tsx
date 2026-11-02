@@ -1,3 +1,4 @@
+import { MyRequests } from './MyRequests';
 import { Plus, Server, Upload } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +35,14 @@ export function DashboardPage(): ReactElement {
         </Link>
       </Button>
     </>
-  ) : null;
+  ) : (
+    <Button asChild>
+      <Link to="/servers/new">
+        <Plus />
+        {t('nav.requestServer')}
+      </Link>
+    </Button>
+  );
 
   return (
     <>
@@ -52,6 +60,7 @@ export function DashboardPage(): ReactElement {
         actions={createButtons}
       />
       {me.user.isAdmin ? <HostStrip /> : null}
+      {canCreate ? null : <MyRequests />}
       {isPending ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: SKELETON_CARDS }, (_, i) => (

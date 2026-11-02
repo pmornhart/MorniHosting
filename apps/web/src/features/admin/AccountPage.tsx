@@ -1,3 +1,4 @@
+import { NotifyCard } from './NotifyCard';
 import { useMutation } from '@tanstack/react-query';
 import { ShieldCheck, ShieldOff } from 'lucide-react';
 import { useState, type FormEvent, type ReactElement } from 'react';
@@ -279,6 +280,7 @@ export function AccountPage(): ReactElement {
       <PageHeader title={t('nav.account')} subtitle={t('account.subtitle')} />
       <ProfileCard />
       <EmailCard />
+      <NotifyCard />
       <MinecraftAccountCard />
       <PasswordCard />
       <PasskeysCard />

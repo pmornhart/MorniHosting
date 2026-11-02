@@ -2,14 +2,17 @@ import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import type {
   BackupSettings,
+  CreateServerInput,
   CrashInfo,
   Edition,
   JavaTag,
   Locale,
   NetbirdPurpose,
+  NotifyPrefs,
   ScheduleAction,
   ScheduleSpec,
   ServerPermission,
+  ServerRequestStatus,
   SoftwareId,
   Theme,
   WebhookEvent,
@@ -55,11 +58,22 @@ export const users = sqliteTable(
     email: text('email'),
     /** Registered on the start page and the mail link was not opened yet: cannot log in. */
     signupPending: integer('signup_pending', { mode: 'boolean' }).notNull().default(false),
+    /** Registered and confirmed, but an admin still has to let them in: cannot log in. */
+    approvalPending: integer('approval_pending', { mode: 'boolean' }).notNull().default(false),
+    /** Linked Discord account: the bot writes to this person by private message. */
+    discordId: text('discord_id'),
+    discordName: text('discord_name'),
+    /** Which notifications this person wants, and how (see NotifyPrefs). */
+    notify: text('notify', { mode: 'json' })
+      .$type<NotifyPrefs>()
+      .notNull()
+      .default(sql`'{}'`),
   },
   (t) => [
     uniqueIndex('users_username_nocase').on(sql`lower(${t.username})`),
     uniqueIndex('users_email_nocase').on(sql`lower(${t.email})`),
     uniqueIndex('users_minecraft_uuid').on(t.minecraftUuid),
+    uniqueIndex('users_discord_id').on(t.discordId),
   ],
 );
 
@@ -338,4 +352,23 @@ export const mailTokens = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [index('mail_tokens_user').on(t.userId)],
+);
+
+/** Someone without the right to order asked for a server; an admin approves (it is created then) or declines. */
+export const serverRequests = sqliteTable(
+  'server_requests',
+  {
+    id: text('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    input: text('input', { mode: 'json' }).$type<CreateServerInput>().notNull(),
+    status: text('status').$type<ServerRequestStatus>().notNull().default('pending'),
+    note: text('note').notNull().default(''),
+    serverId: text('server_id'),
+    decidedBy: text('decided_by'),
+    decidedAt: text('decided_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('server_requests_status').on(t.status)],
 );

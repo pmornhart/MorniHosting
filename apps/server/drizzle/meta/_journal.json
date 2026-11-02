@@ -57,6 +57,13 @@
       "when": 1793397400950,
       "tag": "0007_games",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793610840558,
+      "tag": "0008_approvals_discord",
+      "breakpoints": true
     }
   ]
 }

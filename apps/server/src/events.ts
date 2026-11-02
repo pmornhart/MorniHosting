@@ -14,6 +14,10 @@ export interface PanelEvents {
   'player.left': { serverId: string; player: string };
   'backup.done': { serverId: string; backupId: number; sizeBytes: number };
   'backup.failed': { serverId: string; backupId: number; error: string };
+  /** Someone confirmed their sign-up and waits for an admin to let them in. */
+  'user.awaiting_approval': { userId: number };
+  /** Someone without the right to order asked for a server. */
+  'server.requested': { requestId: string };
 }
 
 export type PanelEventName = keyof PanelEvents;

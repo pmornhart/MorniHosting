@@ -6,6 +6,9 @@ import {
   type Locale,
   type MailAttempt,
   type MailEndpoint,
+  type MailQuickInput,
+  type MailQuickResult,
+  type MailQuickTry,
   type MailSecurity,
   type MailSettingsInput,
   type MailSettingsView,
@@ -25,6 +28,7 @@ import { connectionInfo } from '../servers/connectivity.js';
 import type { ServerService } from '../servers/service.js';
 import { CRASH_REASONS } from '../webhooks/messages.js';
 import { realNetwork, runMailCheck, SMTP_CONNECT_TIMEOUT_MS, type MailNetwork } from './check.js';
+import { candidateHosts, closeness } from './quick.js';
 import { formatWhen, oneLine, renderMail, type MailKind, type MailVars } from './templates.js';
 
 /** Sending mail: the SMTP settings, one-time links, and the flows built on them (sign-up, password reset, orders). */
@@ -67,6 +71,8 @@ interface StoredMail {
   from: string;
   registration: boolean;
   registrationOrders: boolean;
+  /** Missing in settings saved before it existed: then approval is required. */
+  registrationApproval?: boolean;
   crashMails: boolean;
 }
 
@@ -79,6 +85,15 @@ export interface MailService {
   readonly panelUrl: () => string | null;
   /** Sends and reports a failure to the caller (admin test). */
   readonly send: (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>) => Promise<void>;
+  /** Sends without waiting; a failure is only logged (notifications). */
+  readonly deliver: (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>) => void;
+  /** Quick start: finds server, port and encryption from address + password, saves them and sends a test mail. */
+  readonly quick: (
+    input: MailQuickInput,
+    to: string,
+    locale: Locale,
+    vars: Partial<MailVars>,
+  ) => Promise<MailQuickResult>;
   /** Test mail, step by step; tries 465/TLS and 587/STARTTLS when the saved port does not answer and keeps what works. */
   readonly test: (to: string, locale: Locale, vars: Partial<MailVars>) => Promise<MailTestResult>;
   readonly welcome: (user: UserRow) => void;
@@ -168,6 +183,7 @@ export function createMailService(
       from: s?.from ?? defaultSender(settings.get().panelDomain),
       registration: s?.registration ?? false,
       registrationOrders: s?.registrationOrders ?? false,
+      registrationApproval: s?.registrationApproval ?? true,
       crashMails: s?.crashMails ?? false,
     };
   };
@@ -252,6 +268,70 @@ export function createMailService(
       settings.setValue(MAIL_KEY, { ...s, port: found.port, security: found.security } satisfies StoredMail);
     log.info({ port: found.port, security: found.security }, 'mail: switched to a port that answers');
     return result(await check({ ...saved, ...found }, true), found);
+  };
+
+  const quick: MailService['quick'] = async (input, to, locale, vars) => {
+    const hosts = await candidateHosts(input.email, input.internalHost, network);
+    const configs: SmtpConfig[] = hosts.flatMap((host) =>
+      FALLBACKS.map((endpoint) => ({
+        host,
+        internalHost: input.internalHost,
+        ...endpoint,
+        user: input.email,
+        password: input.password,
+        from: `MorniHosting <${input.email}>`,
+      })),
+    );
+    const outcomes = await Promise.all(
+      configs.map((config) => {
+        const transport = factory(config);
+        return runMailCheck(
+          config,
+          network,
+          {
+            verify: () => transport.verify?.() ?? Promise.resolve(true),
+            send: () => Promise.resolve(true),
+          },
+          false,
+        );
+      }),
+    );
+    const tried: MailQuickTry[] = configs.map((c, i) => ({
+      host: c.host,
+      port: c.port,
+      security: c.security,
+      problem: outcomes[i]?.problem ?? null,
+    }));
+    const winner = configs.find((_, i) => outcomes[i]?.problem === null);
+    if (!winner) {
+      const best = outcomes
+        .map((outcome, i) => ({ outcome, i }))
+        .toSorted((a, b) => closeness(a.outcome.problem) - closeness(b.outcome.problem))[0];
+      const at = best ? tried[best.i] : undefined;
+      return {
+        found: null,
+        tried,
+        test: null,
+        closest: best && at ? { ...at, steps: best.outcome.steps, message: best.outcome.message } : null,
+      };
+    }
+    const previous = view();
+    settings.setValue(MAIL_KEY, {
+      host: winner.host,
+      internalHost: winner.internalHost,
+      port: winner.port,
+      security: winner.security,
+      user: winner.user,
+      passwordSealed: secrets.encrypt(input.password),
+      from: previous.configured ? previous.from : winner.from,
+      registration: previous.registration,
+      registrationOrders: previous.registrationOrders,
+      registrationApproval: previous.registrationApproval,
+      crashMails: previous.crashMails,
+    } satisfies StoredMail);
+    log.info({ host: winner.host, port: winner.port }, 'mail: quick start found a server');
+    const found = { host: winner.host, port: winner.port, security: winner.security };
+    return { found, tried, test: await test(to, locale, vars), closest: null };
   };
 
   /** Mails nobody waits for: a failure is logged, never shown to (or timed for) the visitor. */
@@ -367,6 +447,7 @@ export function createMailService(
         passwordHash: await hashPassword(input.password),
         locale: input.locale,
         signupPending: true,
+        approvalPending: stored()?.registrationApproval ?? true,
         canCreateServers: stored()?.registrationOrders ?? false,
       })
       .returning()
@@ -386,7 +467,9 @@ export function createMailService(
     if (row.purpose === 'register') {
       db.update(users).set({ signupPending: false }).where(eq(users.id, user.id)).run();
       ctx.audit.record({ userId: user.id, username: user.username, ip: null }, 'auth.email_confirmed');
-      return { kind: 'register' };
+      if (!user.approvalPending) return { kind: 'register' };
+      ctx.events.emit('user.awaiting_approval', { userId: user.id });
+      return { kind: 'register_pending' };
     }
     const other = row.email ? userByEmail(row.email) : undefined;
     if (!row.email || (other && other.id !== user.id)) throw conflict('email_taken');
@@ -505,6 +588,7 @@ export function createMailService(
         from: input.from,
         registration: input.registration,
         registrationOrders: input.registrationOrders,
+        registrationApproval: input.registrationApproval,
         crashMails: input.crashMails,
       } satisfies StoredMail);
       return view();
@@ -514,6 +598,8 @@ export function createMailService(
     configured,
     panelUrl,
     send,
+    deliver: sendQuietly,
+    quick,
     test,
     welcome,
     register,

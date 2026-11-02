@@ -1,3 +1,4 @@
+import { ApprovalsPage } from '@/features/approvals/ApprovalsPage';
 import { Suspense, type ReactElement } from 'react';
 import { Navigate, type RouteObject } from 'react-router';
 import { Skeleton } from '@/components/ui/misc';
@@ -32,6 +33,7 @@ export const appRoutes: RouteObject[] = [
   { path: 'servers/new', element: <CreateServerPage /> },
   { path: 'notifications', element: <NotificationsPage /> },
   { path: 'users', element: <UsersPage /> },
+  { path: 'approvals', element: <ApprovalsPage /> },
   { path: 'api-access', element: <ApiAccessPage /> },
   { path: 'settings', element: <PanelSettingsPage /> },
   { path: 'admin', element: <Navigate to="/settings" replace /> },

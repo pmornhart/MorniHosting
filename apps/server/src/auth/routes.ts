@@ -109,6 +109,7 @@ export function registerAuthRoutes(app: Api, ctx: AppContext, mail: MailService)
       }
       // Only after the right password, so the message does not tell strangers which names exist.
       if (user.signupPending) throw new AppError(HTTP_FORBIDDEN, 'email_unconfirmed');
+      if (user.approvalPending) throw new AppError(HTTP_FORBIDDEN, 'account_pending_approval');
       const pending = user.totpEnabled;
       const { token, session } = ctx.sessions.create(user.id, {
         ip: request.ip,

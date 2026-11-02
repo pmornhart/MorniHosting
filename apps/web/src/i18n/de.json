@@ -79,7 +79,9 @@
     "menu": "Menü öffnen",
     "administrator": "Administrator",
     "member": "Mitglied",
-    "theme": "Design"
+    "theme": "Design",
+    "approvals": "Freigaben",
+    "requestServer": "Server anfragen"
   },
   "states": {
     "installing": "Wird eingerichtet",
@@ -425,7 +427,7 @@
     "csrf": "Die Sitzung ist abgelaufen. Lade die Seite neu.",
     "bad_origin": "Anfrage von einer fremden Seite abgelehnt. Läuft das Panel hinter NetBird oder einem anderen Proxy, schalte dort „Pass Host Header“ ein.",
     "forbidden": "Dafür fehlen dir die Rechte.",
-    "admin_only": "Das darf nur ein Administrator.",
+    "admin_only": "Das dürfen nur Admins.",
     "owner_only": "Das darf nur der Besitzer des Servers.",
     "no_server_access": "Du hast keinen Zugriff auf diesen Server.",
     "cannot_create_servers": "Du darfst keine Server erstellen.",
@@ -549,7 +551,14 @@
     "email_taken": "Diese E-Mail-Adresse gehört schon zu einem anderen Konto.",
     "mail_failed": "Die Mail konnte nicht verschickt werden: {{message}}",
     "mail_not_configured": "E-Mail ist noch nicht eingerichtet (Admin-Bereich → E-Mail, dazu die Domain des Panels).",
-    "mail_no_recipient": "Bitte gib eine Empfänger-Adresse an oder trage zuerst deine eigene E-Mail-Adresse ein."
+    "mail_no_recipient": "Bitte gib eine Empfänger-Adresse an oder trage zuerst deine eigene E-Mail-Adresse ein.",
+    "account_pending_approval": "Dein Konto wartet noch auf die Freigabe durch einen Admin. Du bekommst eine Mail, sobald es freigeschaltet ist.",
+    "discord_token_invalid": "Discord kennt diesen Bot-Token nicht. Kopiere ihn im Developer Portal unter „Bot“ → „Reset Token“ noch einmal.",
+    "discord_unreachable": "Discord ist gerade nicht erreichbar. Versuch es gleich noch einmal.",
+    "discord_not_configured": "Discord ist noch nicht eingerichtet.",
+    "request_not_needed": "Du darfst Server direkt erstellen – keine Anfrage nötig.",
+    "request_not_found": "Diese Anfrage gibt es nicht mehr.",
+    "request_user_gone": "Die Person, die angefragt hat, gibt es nicht mehr oder sie ist gesperrt."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1268,7 +1277,8 @@
     "emptyTitle": "Noch keine Benachrichtigungen",
     "emptyText": "Verbinde Discord, Slack oder Teams und erfahre sofort, wenn ein Server abstürzt.",
     "deleteTitle": "„{{name}}“ löschen?",
-    "deleteText": "Es werden keine Nachrichten mehr dorthin geschickt."
+    "deleteText": "Es werden keine Nachrichten mehr dorthin geschickt.",
+    "channelsTitle": "Webhooks für Discord-Server, Slack & Co."
   },
   "users": {
     "subtitle": "Wer darf ins Panel, und was darf jede Person auf welchem Server?",
@@ -1503,7 +1513,15 @@
       "account_email_removed": "E-Mail-Adresse entfernt",
       "auth_password_forgotten": "Passwort per Mail zurückgesetzt",
       "mail_settings": "Mail-Einstellungen gespeichert",
-      "mail_removed": "Mail-Einstellungen entfernt"
+      "mail_removed": "Mail-Einstellungen entfernt",
+      "user_approved": "Registrierung freigegeben",
+      "user_rejected": "Registrierung abgelehnt",
+      "server_requested": "Server angefragt",
+      "server_request_approved": "Server-Anfrage angenommen",
+      "server_request_rejected": "Server-Anfrage abgelehnt",
+      "account_discord_linked": "Discord verbunden",
+      "discord_settings": "Discord-Bot eingerichtet",
+      "discord_removed": "Discord-Bot entfernt"
     }
   },
   "ddos": {
@@ -2123,7 +2141,25 @@
         "title": "Unerwarteter Fehler",
         "tip": "Das passt in keine bekannte Ursache. Die Antwort unten hilft beim Suchen."
       }
-    }
+    },
+    "quick": {
+      "title": "Schnellstart: in einer Minute fertig",
+      "text": "Nur drei Angaben. Den Mailserver, den Port und die Verschlüsselung sucht das Panel selbst heraus, speichert alles und schickt dir eine Test-Mail.",
+      "email": "E-Mail-Adresse, von der das Panel schreibt",
+      "emailHint": "Das Postfach, das du dafür angelegt hast, z. B. noreply@mornihosting.de.",
+      "password": "Passwort dieses Postfachs",
+      "passwordHint": "Wird verschlüsselt gespeichert und nie angezeigt.",
+      "atHome": "Mein Mailserver steht bei mir zu Hause",
+      "atHomeHint": "Zum Beispiel ein eigener Stalwart im Heimnetz. Dann braucht das Panel noch seine IP.",
+      "ipHint": "Die Adresse des Mail-Rechners im Heimnetz. Du findest sie in der Fritzbox unter Heimnetz → Netzwerk.",
+      "go": "Einrichten und Test-Mail senden",
+      "running": "Suche den Mailserver … (bis zu 30 Sekunden)",
+      "found": "Gefunden und gespeichert: {{host}}, Port {{port}} mit {{security}}.",
+      "tried": "Ausprobiert: {{list}}",
+      "allSettings": "Alle Einstellungen selbst festlegen (Server, Absender, Registrierung, Absturz-Mails)"
+    },
+    "registrationApproval": "Neue Konten muss ich erst freigeben",
+    "registrationApprovalHint": "Nach der Bestätigung der E-Mail bekommst du Bescheid (Mail und Discord) und entscheidest unter „Freigaben“. Vorher kann sich niemand anmelden."
   },
   "mailPages": {
     "backToLogin": "Zurück zur Anmeldung",
@@ -2157,6 +2193,10 @@
       "email_change": {
         "title": "Adresse bestätigt",
         "text": "Deine neue E-Mail-Adresse ist gespeichert."
+      },
+      "register_pending": {
+        "title": "E-Mail bestätigt – fast geschafft",
+        "text": "Ein Admin muss dein Konto noch freigeben. Du bekommst eine Mail, sobald es so weit ist."
       }
     }
   },
@@ -2336,5 +2376,86 @@
         "autoUpdateHint": "Lädt vor jedem Start die neueste Server-Version herunter. Aus = nur beim ersten Start."
       }
     }
+  },
+  "requests": {
+    "sentTitle": "Anfrage ist raus 🚀",
+    "sentText": "Ein Admin schaut sich deine Anfrage an. Sobald sie freigegeben ist, wird dein Server angelegt und du bekommst Bescheid – per E-Mail und, wenn verbunden, per Discord.",
+    "toOverview": "Zur Übersicht",
+    "submit": "Server anfragen",
+    "mine": "Meine Anfragen"
+  },
+  "approvals": {
+    "title": "Freigaben",
+    "subtitle": "Wer mitmachen möchte und wer einen Server haben will. Du kannst auch direkt in der Mail oder in Discord entscheiden.",
+    "signups": "Neue Registrierungen",
+    "noSignups": "Gerade wartet niemand auf Freigabe.",
+    "requests": "Server-Anfragen",
+    "noRequests": "Keine offenen Server-Anfragen.",
+    "history": "Erledigte Anfragen ({{count}})",
+    "approve": "Freigeben",
+    "reject": "Ablehnen",
+    "reason": "Begründung",
+    "reasonPlaceholder": "Begründung (optional, steht in der Mail)",
+    "by": "von {{name}}",
+    "game": "Spiel",
+    "plan": "Arbeitsspeicher",
+    "port": "Port",
+    "decided": "Entschieden von {{name}}",
+    "status": {
+      "pending": "Wartet",
+      "approved": "Angenommen",
+      "rejected": "Abgelehnt"
+    },
+    "hint": "Neue Registrierungen und Anfragen kommen per E-Mail und Discord-DM zu allen Admins, die das unter „Mein Konto → Benachrichtigungen“ eingeschaltet haben."
+  },
+  "discordBot": {
+    "title": "Discord-Bot (private Nachrichten)",
+    "text": "Der Bot schreibt jeder Person privat per DM: Freigaben mit Knöpfen für Admins, Abstürze, Antworten auf Server-Anfragen. Kein Discord-Server nötig.",
+    "off": "Nicht eingerichtet",
+    "online": "Online",
+    "connecting": "Verbindet …",
+    "connectedAs": "Verbunden als",
+    "nextStep": "Jetzt fügt jede Person die App zu ihrem eigenen Discord-Konto hinzu und verbindet sich unter „Mein Konto → Benachrichtigungen“ – du auch.",
+    "install": "App zu meinem Discord hinzufügen",
+    "remove": "Bot entfernen",
+    "step1": "Öffne das Discord Developer Portal und klicke „New Application“. Name z. B. „MorniHosting“.",
+    "step2": "Links „Installation“: bei „Installation Contexts“ nur „User Install“ anhaken, Install Link „Discord Provided Link“, speichern.",
+    "step3": "Links „Bot“: „Reset Token“ klicken und den Token kopieren.",
+    "step4": "Token unten einfügen und „Verbinden“ klicken. Fertig.",
+    "portal": "Discord Developer Portal öffnen",
+    "token": "Bot-Token",
+    "connect": "Verbinden",
+    "saved": "Bot {{name}} ist verbunden."
+  },
+  "notifyCard": {
+    "title": "Benachrichtigungen",
+    "text": "Wähle, worüber und wie du Bescheid bekommst.",
+    "how": "Wie?",
+    "what": "Worüber?",
+    "channels": {
+      "email": "Per E-Mail",
+      "discord": "Per Discord (private Nachricht)"
+    },
+    "noEmail": "keine E-Mail-Adresse hinterlegt",
+    "notLinked": "noch nicht verbunden",
+    "topics": {
+      "approvals": "Freigaben",
+      "crashes": "Abstürze",
+      "decisions": "Antworten auf meine Anfragen"
+    },
+    "topicHints": {
+      "approvals": "Neue Registrierungen und Server-Anfragen – mit Knöpfen zum Freigeben.",
+      "crashes": "Wenn einer deiner Server abstürzt.",
+      "decisions": "Wenn deine Server-Anfrage angenommen oder abgelehnt wurde."
+    },
+    "discordTitle": "Discord verbinden",
+    "discordUnavailable": "Discord ist auf diesem Panel noch nicht eingerichtet (Admin: Benachrichtigungen → Discord-Bot).",
+    "linkedAs": "Verbunden mit {{name}} ✅",
+    "unlink": "Trennen",
+    "step1": "Füge die MorniHosting-App zu deinem Discord-Konto hinzu („Zu meinen Apps hinzufügen“). Kein Server nötig.",
+    "addApp": "App hinzufügen",
+    "step2": "Öffne in Discord die Direktnachricht mit der App und schick diesen Befehl:",
+    "getCode": "Code anzeigen",
+    "step3": "Fertig – hier steht gleich „Verbunden“. Der Code gilt 10 Minuten."
   }
 }

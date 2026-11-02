@@ -1,5 +1,6 @@
 import { promises as dnsPromises } from 'node:dns';
 import net from 'node:net';
+import tls from 'node:tls';
 import type { MailProblem, MailSecurity, MailStep, MailStepResult } from '@mornihosting/shared';
 import { errorMessage } from '../lib/errors.js';
 import { MS_PER_SECOND } from '../lib/units.js';
@@ -22,10 +23,14 @@ export interface CheckConfig {
   readonly user: string;
 }
 
-/** The two network calls before SMTP itself; tests replace them. */
+/** The network calls around SMTP itself; tests replace them. */
 export interface MailNetwork {
   readonly lookup: (host: string) => Promise<string>;
   readonly connect: (address: string, port: number, timeoutMs: number) => Promise<void>;
+  /** Mail servers of a domain (MX), best first; empty when there are none. */
+  readonly mx?: (domain: string) => Promise<readonly string[]>;
+  /** Names in the certificate a TLS port presents. Only used to guess the name; it is verified again later. */
+  readonly certificateNames?: (address: string, port: number) => Promise<readonly string[]>;
 }
 
 /** What the check needs from nodemailer: log in without sending, and send. */
@@ -55,9 +60,41 @@ const withTimeout = async <T>(work: Promise<T>, ms: number, code: string): Promi
   }
 };
 
+const DNS_NAME_PREFIX = 'DNS:';
+
 export const realNetwork: MailNetwork = {
   lookup: async (host) =>
     (await withTimeout(dnsPromises.lookup(host), SMTP_CONNECT_TIMEOUT_MS, 'EAI_AGAIN')).address,
+  mx: async (domain) =>
+    (await withTimeout(dnsPromises.resolveMx(domain), SMTP_CONNECT_TIMEOUT_MS, 'EAI_AGAIN'))
+      .toSorted((a, b) => a.priority - b.priority)
+      .map((record) => record.exchange.toLowerCase()),
+  certificateNames: (address, port) =>
+    new Promise((resolve, reject) => {
+      // Reading only: nothing is sent over this connection, and the name is checked properly before logging in.
+      const socket = tls.connect({
+        host: address,
+        port,
+        rejectUnauthorized: false,
+        timeout: SMTP_CONNECT_TIMEOUT_MS,
+      });
+      socket.once('secureConnect', () => {
+        const names = (socket.getPeerCertificate().subjectaltname ?? '')
+          .split(', ')
+          .filter((entry) => entry.startsWith(DNS_NAME_PREFIX))
+          .map((entry) => entry.slice(DNS_NAME_PREFIX.length).toLowerCase());
+        socket.destroy();
+        resolve(names);
+      });
+      socket.once('timeout', () => {
+        socket.destroy();
+        reject(failure('ETIMEDOUT'));
+      });
+      socket.once('error', (err) => {
+        socket.destroy();
+        reject(err);
+      });
+    }),
   connect: (address, port, timeoutMs) =>
     new Promise<void>((resolve, reject) => {
       const socket = net.createConnection({ host: address, port });

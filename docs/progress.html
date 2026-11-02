@@ -132,8 +132,8 @@ footer { color: var(--muted); font-size: 13px; }
 <script type="application/json" id="data">
 {
   "goal": "Ein selbst gehostetes Panel für Minecraft-Server: so viel wie Crafty Controller 4, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-10-30T22:21:52+00:00",
-  "now": "E-Mail-Versand robust gemacht – wartet auf Philips Go zum Veröffentlichen.",
+  "updated": "2026-11-02T09:30:01+00:00",
+  "now": "Freigaben, Server-Anfragen und Discord-Bot sind fertig gebaut und getestet. Danach: restliche Spiele (Satisfactory, ETS2, Hytale).",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -334,9 +334,64 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "E-Mail-Versand robust (SMTP)",
       "status": "fertig",
       "detail": "Test-Mail zeigt jeden Schritt (DNS → Verbindung → TLS → Anmeldung → Versand) mit Ursache und Tipp; antwortet der Port nicht, werden 465/TLS und 587/STARTTLS probiert und gespeichert. Neues Feld „Server-Adresse intern (IP)“: Verbindung zur IP, Zertifikat gegen den Namen. 10 s Timeout. Echt geprüft mit nodemailer gegen einen lokalen TLS-Mailserver; mail.pmornhart.de selbst ist aus der Cloud nicht erreichbar. 256 Tests."
+    },
+    {
+      "title": "Hytale-Bild",
+      "status": "fertig",
+      "detail": "Hytale-Karte zeigt jetzt das offizielle Trailer-Bild (wie auf hytale.com). Wird zur Laufzeit geladen, nicht im Repo."
+    },
+    {
+      "title": "Alle Server echt mit Docker testen",
+      "status": "läuft",
+      "detail": "Panel echt mit Docker gestartet (wie bei dir zu Hause). Echt gestartet, Befehl beantwortet, gestoppt, gelöscht: Vanilla, Paper, Purpur, Fabric, Forge, NeoForge, Velocity, Bedrock, Factorio, Garry's Mod. 2 Fehler gefunden und behoben: Garry's Mod blieb im Panel ewig auf „startet“ (jetzt: antwortet die Fernsteuerung, gilt er als bereit) und lief im Entwickler-Modus mit Debugger (jetzt Produktion). Satisfactory: Steam-Fehler „Missing configuration“ beim ersten Download, wird gerade untersucht. Offen: CS2 (60 GB, passt nicht in die Sandbox), ETS2, Hytale (braucht Hytale-Konto)."
+    },
+    {
+      "title": "E-Mail-Schnellstart",
+      "status": "fertig",
+      "detail": "Nur noch E-Mail-Adresse, Passwort und (bei Mailserver zu Hause) die IP eintragen – das Panel findet Server, Port und Verschlüsselung selbst (MX-Eintrag, Zertifikat der Heim-IP, bekannte Anbieter), speichert und schickt eine Test-Mail. Ein fremdes Zertifikat bekommt nie das Passwort. Schritt-für-Schritt-Anleitung docs/email-schnellstart.md. Tests grün (259). Screenshots folgen."
+    },
+    {
+      "title": "Registrierung mit Freigabe",
+      "status": "fertig",
+      "detail": "Server fertig: Wer sich registriert und die Mail bestätigt, wartet auf dich. Du bekommst eine Mail und eine Discord-DM mit Knöpfen „Freigeben“/„Ablehnen“; anmelden geht erst danach (auch nicht per Passkey oder API-Schlüssel). Abgelehnte Konten werden gelöscht, die Person bekommt eine Mail. Oberfläche folgt."
+    },
+    {
+      "title": "Server-Anfragen",
+      "status": "fertig",
+      "detail": "Server fertig: Wer keine Server bestellen darf, schickt eine Anfrage. Du gibst sie im Panel oder per Discord-Knopf frei, dann wird der Server für die Person angelegt (belegter Port → nächster freier). Wer zuerst entscheidet, zählt; der andere Weg meldet „Schon erledigt“. Nur Admins dürfen freigeben. Wer nicht bestellen darf, sieht „Server anfragen“; nach dem Absenden „Anfrage ist raus“, auf der Übersicht „Meine Anfragen“ mit Status."
+    },
+    {
+      "title": "Discord-Bot (nur private DMs)",
+      "status": "fertig",
+      "detail": "Server fertig: Bot-Token im Panel eintragen, App zum eigenen Discord-Konto hinzufügen (kein Server nötig), per DM /verbinden <Code> schicken. Danach kommen Freigaben, Abstürze und Antworten auf Anfragen privat per DM. Verbindung über das Discord-Gateway, also ohne offenen Port. Pro Person wählbar: per Mail, per Discord, welche Themen. 5 neue Tests (264 gesamt) mit nachgebautem Discord. Oberfläche fertig: Karte „Discord-Bot“ unter Benachrichtigungen (Anleitung in 4 Schritten), „Mein Konto → Benachrichtigungen“ (Wie/Worüber, Discord verbinden mit Code), Seite „Freigaben“ mit Zähler im Menü. Anleitung docs/discord.md. 264 Tests grün."
     }
   ],
   "shots": [
+    {
+      "img": "progress/freigaben.webp",
+      "caption": "Neue Seite „Freigaben“: Registrierungen und Server-Anfragen",
+      "time": "2026-11-02T09:30:01+00:00"
+    },
+    {
+      "img": "progress/freigaben-handy.webp",
+      "caption": "Freigaben auf dem Handy",
+      "time": "2026-11-02T09:30:01+00:00"
+    },
+    {
+      "img": "progress/discord-bot.webp",
+      "caption": "Discord-Bot einrichten (nur private DMs)",
+      "time": "2026-11-02T09:30:01+00:00"
+    },
+    {
+      "img": "progress/benachrichtigungen-konto.webp",
+      "caption": "Mein Konto: Benachrichtigungen per Mail und Discord",
+      "time": "2026-11-02T09:30:01+00:00"
+    },
+    {
+      "img": "progress/server-anfragen.webp",
+      "caption": "Sicht eines Mitglieds: „Server anfragen“",
+      "time": "2026-11-02T09:30:01+00:00"
+    },
     {
       "img": "progress/smtp-desktop-wechsel.webp",
       "caption": "Test-Mail: 587 antwortet nicht, 465/TLS gefunden und gespeichert",
@@ -371,41 +426,16 @@ footer { color: var(--muted); font-size: 13px; }
       "img": "progress/spiele-cs2.webp",
       "caption": "Counter-Strike 2",
       "time": "2026-10-30T21:59:33+00:00"
-    },
-    {
-      "img": "progress/spiele-gmod.webp",
-      "caption": "Garry's Mod",
-      "time": "2026-10-30T21:59:33+00:00"
-    },
-    {
-      "img": "progress/spiele-satisfactory.webp",
-      "caption": "Satisfactory",
-      "time": "2026-10-30T21:59:33+00:00"
-    },
-    {
-      "img": "progress/spiele-ets2.webp",
-      "caption": "Euro Truck Simulator 2 mit Upload-Assistent",
-      "time": "2026-10-30T21:59:33+00:00"
-    },
-    {
-      "img": "progress/spiele-hytale.webp",
-      "caption": "Hytale mit Konto-Anmeldung",
-      "time": "2026-10-30T21:59:33+00:00"
-    },
-    {
-      "img": "progress/p24-email-bestellung.webp",
-      "caption": "Neu gestaltete Bestellmail",
-      "time": "2026-10-30T21:10:11+00:00"
     }
   ],
   "files": [
     {
       "tag": "neu",
-      "path": "apps/server/src/mail/check.ts (Schritt-Prüfung, Fehler-Einordnung), test/mail-check.test.ts"
+      "path": "apps/server/src/notify/ (Discord-Bot, Benachrichtigungen, Freigaben), Migration 0008, features/approvals/ApprovalsPage.tsx, DiscordBotCard.tsx, NotifyCard.tsx, MyRequests.tsx, docs/discord.md"
     },
     {
       "tag": "geändert",
-      "path": "mail/service.ts (interne IP, 10 s, Port-Erkennung), MailCard.tsx (Schritte, Tipps), packages/shared/src/mail.ts, README (Stalwart im Heimnetz), docs/email.md"
+      "path": "Bestellseiten (Anfrage statt Bestellung), Menü (Freigaben mit Zähler), Mail-Einstellungen (Freigabe-Schalter), README"
     }
   ],
   "eta": null,
