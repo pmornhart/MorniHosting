@@ -359,4 +359,20 @@ describe('INWX', () => {
       type: 'A',
     });
   });
+
+  test('an odd INWX answer is shown as it is, and a code sent as text still counts', async () => {
+    vi.stubGlobal('fetch', async (_input: string | URL | Request, init?: RequestInit) => {
+      const { method } = JSON.parse(String(init?.body)) as { method: string };
+      if (method === 'account.login')
+        return new Response(JSON.stringify({ code: '1000', msg: 'ok', resData: { tfa: '0' } }), {
+          headers: { 'content-type': 'text/json; charset=utf-8', 'set-cookie': 'domrobot=x; Path=/' },
+        });
+      return new Response('<html>Wartungsarbeiten</html>', { headers: { 'content-type': 'text/html' } });
+    });
+    const client = createDnsClient('inwx', JSON.stringify({ user: 'philip', pass: 'geheim' }));
+    await expect(client.zones()).rejects.toMatchObject({
+      code: 'dns_rejected',
+      params: { message: expect.stringContaining('Wartungsarbeiten') },
+    });
+  });
 });
