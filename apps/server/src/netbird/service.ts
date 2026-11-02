@@ -30,6 +30,7 @@ const RESOURCES_KEY = 'netbird_resources';
 /** Name of the NetBird network, its group and the resources the panel makes. */
 const NETWORK_NAME = 'MorniHosting';
 const PANEL_KEY = 'panel';
+const NETWORK_LOCK = 'network';
 /** Machines whose name contains this are offered first: the Proxmox script calls its container so. */
 const MACHINE_HINT = 'mornihosting';
 const SUFFIX: Readonly<Record<NetbirdPurpose, string>> = {
@@ -116,7 +117,13 @@ export function createNetbirdAutomation(
   const lanAddress = (): string | null => ctx.settings.get().lanIp.trim() || null;
 
   /** The network "MorniHosting" with this machine as routing peer, and the group for its resources. */
-  const ensureNetwork = async (
+  // One at a time: after an update all servers move at once and would otherwise each create the network.
+  const ensureNetwork = (
+    client: NetbirdClient,
+    cfg: StoredConfig,
+  ): Promise<{ networkId: string; groupId: string }> =>
+    lock(NETWORK_LOCK, () => ensureNetworkNow(client, config() ?? cfg));
+  const ensureNetworkNow = async (
     client: NetbirdClient,
     cfg: StoredConfig,
   ): Promise<{ networkId: string; groupId: string }> => {
@@ -143,11 +150,11 @@ export function createNetbirdAutomation(
     cfg: StoredConfig,
     key: string,
     name: string,
-  ): Promise<StoredResource | null> => {
+  ): Promise<{ resource: StoredResource; changed: boolean } | null> => {
     const address = lanAddress();
     if (!address) return null;
     const known = storedResources()[key];
-    if (known && known.address === address && known.name === name) return known;
+    if (known && known.address === address && known.name === name) return { resource: known, changed: false };
     const { networkId, groupId } = await ensureNetwork(client, cfg);
     const request = { name, address, groupId };
     const existing = known ? (await client.resources(networkId)).find((r) => r.id === known.id) : undefined;
@@ -156,7 +163,8 @@ export function createNetbirdAutomation(
       : await client.createResource(networkId, request);
     const saved: StoredResource = { id: result.id, name, address };
     saveResource(key, saved);
-    return saved;
+    // A new or moved resource: the services must point at it, even if nothing else changed.
+    return { resource: saved, changed: true };
   };
   const dropResource = async (client: NetbirdClient, cfg: StoredConfig, key: string): Promise<void> => {
     const known = storedResources()[key];
@@ -293,10 +301,11 @@ export function createNetbirdAutomation(
     const row = serverRow(serverId);
     const wants = row ? wanted(row, cfg) : [];
     const client = clientFor(cfg);
-    const resource =
+    const ensured =
       row?.netbirdName && wants.length
         ? await ensureResource(client, cfg, serverId, `${NETWORK_NAME} ${row.netbirdName}`)
         : null;
+    const resource = ensured?.resource ?? null;
     const stale = existing.filter((m) => !wants.some((w) => w.purpose === m.purpose));
     await Promise.all(
       stale.map(async (m) => {
@@ -312,7 +321,7 @@ export function createNetbirdAutomation(
           serverId,
           w,
           existing.find((m) => m.purpose === w.purpose),
-          force,
+          force || (ensured?.changed ?? false),
           resource,
         ),
       ),
@@ -460,6 +469,9 @@ export function createNetbirdAutomation(
         resourceMode: lanAddress() !== null,
       } satisfies StoredConfig);
       ctx.audit.record(actor, 'netbird.configure', null, { domain, machine: peer.name });
+      // The chosen machine routes to the resources (also after switching to another machine).
+      const saved = config();
+      if (saved && lanAddress()) await ensureNetwork(clientFor(saved), saved);
       const moved =
         previous?.domain !== domain ||
         previous.peerId !== peer.id ||
@@ -526,7 +538,7 @@ export function createNetbirdAutomation(
         mode: 'http',
         port: input.port,
       };
-      const resource = await ensureResource(client, cfg, PANEL_KEY, `${NETWORK_NAME} Panel`);
+      const resource = (await ensureResource(client, cfg, PANEL_KEY, `${NETWORK_NAME} Panel`))?.resource;
       const request = {
         domain: want.domain,
         mode: want.mode,

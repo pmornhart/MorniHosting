@@ -54,7 +54,7 @@ interface FakeResource {
  * A tiny NetBird management API: domains, peers and reverse-proxy services. Like NetBird Cloud it hands out
  * ports from 31000 up; with `customPorts` (a self-hosted proxy) it listens where it is asked to.
  */
-function createFakeNetbird(options: { customPorts?: boolean } = {}) {
+function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } = {}) {
   const services = new Map<string, FakeService>();
   const networks: { id: string; name: string }[] = [];
   const groups: { id: string; name: string }[] = [];
@@ -63,6 +63,8 @@ function createFakeNetbird(options: { customPorts?: boolean } = {}) {
   const calls: { method: string; host: string; path: string; auth: string | null }[] = [];
   const next = { port: 31000, id: 1 };
   const handle = async (url: URL, init: RequestInit | undefined): Promise<Response> => {
+    // Like the real API, answers take a moment, so calls running side by side really overlap.
+    await new Promise((resolve) => setTimeout(resolve, options.delayMs ?? 0));
     const method = init?.method ?? 'GET';
     const auth = new Headers(init?.headers).get('authorization');
     calls.push({ method, host: url.host, path: url.pathname, auth });
@@ -501,12 +503,29 @@ describe('NetBird automation', () => {
 
   test('with a home address every server gets its own network resource, the panel can sit on the domain itself', async () => {
     await t.cleanup();
+    netbird = createFakeNetbird({ delayMs: 5 });
     t = await createTestApp({ MH_LAN_IP: '10.13.4.103' });
     s = await setupAdmin(t);
     await configure();
     const server = await create();
-    await call('PUT', `/api/servers/${server.id}/netbird`, { name: 'survival' });
+    const other = await create({ name: 'Creative', port: 25566 });
+    // As after an update of an older setup: no network yet in NetBird.
+    netbird.networks.length = 0;
+    netbird.groups.length = 0;
+    netbird.routers.length = 0;
+    // Both at once: the network, its group and the routing peer still exist only once.
+    await Promise.all([
+      call('PUT', `/api/servers/${server.id}/netbird`, { name: 'survival' }),
+      call('PUT', `/api/servers/${other.id}/netbird`, { name: 'creative' }),
+    ]);
     await waitFor(() => netbird.byDomain(`survival.${BASE}`) !== undefined);
+    await waitFor(() => netbird.byDomain(`creative.${BASE}`) !== undefined);
+    expect(netbird.byDomain(`creative.${BASE}`)?.targets[0]).toMatchObject({
+      target_type: 'host',
+      port: 25566,
+    });
+    await call('DELETE', `/api/servers/${other.id}`);
+    await waitFor(() => [...netbird.resources.values()].every((r) => r.name !== 'MorniHosting creative'));
 
     expect(netbird.networks.map((n) => n.name)).toEqual(['MorniHosting']);
     expect(netbird.groups.map((g) => g.name)).toEqual(['MorniHosting']);
