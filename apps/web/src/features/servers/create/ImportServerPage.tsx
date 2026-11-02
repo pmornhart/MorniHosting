@@ -23,11 +23,13 @@ import { api, upload, type UploadProgress } from '@/lib/api';
 import { formatBytes } from '@/lib/format';
 import { errorText } from '@/lib/query';
 import { cn } from '@/lib/utils';
+import { hostQuery } from '@/features/dashboard/HostStrip';
 import { serversQuery } from '../live';
 
 const FULL = 100;
-const MAX_MEMORY_GB = 16;
-const MEMORY_OPTIONS_GB = Array.from({ length: MAX_MEMORY_GB }, (_, i) => i + 1);
+/** Same ceiling as the server accepts; the list stops at the machine's own RAM. */
+const MAX_MEMORY_GB = 128;
+const FALLBACK_HOST_GB = 16;
 const MB_PER_GB = 1024;
 const PORT_SEARCH_LIMIT = 200;
 const ZIP_TYPES = '.zip,application/zip';
@@ -38,6 +40,12 @@ export function ImportServerPage(): ReactElement {
   const queryClient = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const { data: servers = [] } = useQuery(serversQuery);
+  const { data: host } = useQuery(hostQuery);
+  const hostGb = host ? Math.floor(host.memoryTotalMb / MB_PER_GB) : FALLBACK_HOST_GB;
+  const memoryOptionsGb = Array.from(
+    { length: Math.max(1, Math.min(MAX_MEMORY_GB, hostGb)) },
+    (_, i) => i + 1,
+  );
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [detected, setDetected] = useState<ImportDetectionResult | null>(null);
@@ -211,7 +219,7 @@ export function ImportServerPage(): ReactElement {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {MEMORY_OPTIONS_GB.map((gb) => (
+                  {memoryOptionsGb.map((gb) => (
                     <SelectItem key={gb} value={String(gb * MB_PER_GB)}>
                       {gb} GB
                     </SelectItem>

@@ -161,7 +161,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/m
 
 | CPU     | RAM  | Platte | System    | Adresse danach             |
 | ------- | ---- | ------ | --------- | -------------------------- |
-| 4 Kerne | 8 GB | 32 GB  | Debian 12 | `http://<IP des LXC>:8080` |
+| 4 Kerne | 8 GB | 100 GB | Debian 12 | `http://<IP des LXC>:8080` |
 
 Das Skript legt einen eigenen Container an, installiert Docker und MorniHosting und zeigt dir am Ende die
 Adresse. Alle Werte kannst du vorher ändern. Nutzt du [NetBird](#netbird-eigene-domain-ohne-portfreigabe), fragt

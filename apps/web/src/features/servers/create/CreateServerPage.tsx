@@ -102,7 +102,8 @@ const TIER_GLOW: Readonly<Record<Tier, string>> = {
 const PLAYERS_PER_GB = 2;
 const MEMORY_STEP_MB = 512;
 const MEMORY_MIN_MB = 1024;
-const MEMORY_CAP_MB = 32768;
+/** Same ceiling as the server accepts (128 GB); the slider still stops at the machine's own RAM. */
+const MEMORY_CAP_MB = 131072;
 const FALLBACK_HOST_MB = 16384;
 const EULA_URL = 'https://www.minecraft.net/eula';
 const BACKUP_TIME = '04:00';

@@ -17,7 +17,7 @@ Es erscheint eine Zusammenfassung mit den Standardwerten:
 | ----------- | ------------- | --------------------------------------------------- |
 | CPU-Kerne   | 4             | Minecraft mag schnelle Kerne mehr als viele         |
 | RAM         | 8192 MB       | Panel (~200 MB) plus alle Minecraft-Server zusammen |
-| Festplatte  | 32 GB         | Welten, Plugins und Backups                         |
+| Festplatte  | 100 GB        | Welten, Plugins und Backups                         |
 | Netzwerk    | `vmbr0`, DHCP | Der Container bekommt eine eigene IP im Heimnetz    |
 
 Mit **Ja** geht es los, mit **Nein** kannst du jeden Wert ändern.
@@ -89,3 +89,14 @@ etwa 1 GB für das System. Das Panel warnt, wenn du mehr RAM verteilst, als frei
 ---
 
 <sub>Verfasst mit Claude 🤖</sub>
+
+## Später mehr RAM oder Festplatte
+
+Auf dem Proxmox-Host (Shell), `<ID>` ist die Nummer des Containers:
+
+```bash
+pct set <ID> --memory 65536     # RAM in MB, hier 64 GB
+pct resize <ID> rootfs +200G    # Festplatte um 200 GB vergrößern
+```
+
+Der RAM gilt sofort, das Panel zeigt die neue Grenze beim nächsten Laden. Verkleinern geht bei der Festplatte nicht.
