@@ -122,7 +122,8 @@ deiner Domain und Add-ons wie Bedrock-Spieler, Voice-Chat oder tägliche Backups
 
 | Bereich                   | Was du bekommst                                                                                                                                       |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🖥️ **Server**             | Java (Vanilla, Paper, Purpur, Fabric, Forge, NeoForge), Velocity-Proxy und Bedrock. Assistent mit RAM-Empfehlung, Versionen werden live geladen.      |
+| 🖥️ **Server**             | Java (Vanilla, Paper, Purpur, Fabric, Forge, NeoForge), Velocity-Proxy und Bedrock. Bestellseite wie bei einem Hoster, bis 128 GB RAM pro Server.     |
+| 🎮 **Weitere Spiele**     | Factorio, Counter-Strike 2, Garry's Mod, Satisfactory, Euro Truck Simulator 2 und Hytale – mit Einstellungen und Konsole im selben Panel.             |
 | 📦 **Import**             | Vorhandenen Server als ZIP hochladen – Software und Version werden erkannt.                                                                           |
 | 🔗 **Adresse**            | Oben auf jeder Server-Seite: Adresse zum Kopieren, öffentliche und lokale IP, Prüfung „Von außen erreichbar?“ mit Hilfe zur Portfreigabe.             |
 | ⌨️ **Konsole**            | Live, mit Farben, Befehlsverlauf (↑/↓), Tab-Ergänzung, Suche und Kopieren.                                                                            |
@@ -140,6 +141,11 @@ deiner Domain und Add-ons wie Bedrock-Spieler, Voice-Chat oder tägliche Backups
 | 🔔 **Benachrichtigungen** | Discord, Slack, Microsoft Teams oder eigene Webhooks: Server gestartet oder abgestürzt, Backup fertig, Spieler beigetreten.                           |
 | 🔐 **Benutzer & Rollen**  | Rollen pro Server (Besitzer, Moderator, Zuschauer oder eigene), Passkeys, 2FA per App, Protokoll aller Aktionen.                                      |
 | 🛡️ **Admin-Bereich**      | Domain des Panels, Updates per Klick, Passwörter anderer zurücksetzen, Einstellungen für das ganze Panel.                                             |
+| 🙋 **Freigaben**          | Registrierung auf der Startseite („Konto anfragen“) und Server-Anfragen – du gibst sie im Panel, per Mail oder per Discord-Knopf frei, in Echtzeit.   |
+| 💬 **Discord-Bot**        | Private Nachrichten bei neuen Anfragen und Abstürzen, `/verbinden` mit einem Klick, Profilbild und Beschreibung stellt das Panel selbst ein.          |
+| ✉️ **E-Mail**             | Willkommen, Bestätigung, „Passwort vergessen“, Bestellungen. Schnellstart mit zwei Angaben, **Postausgang** zeigt jede Mail und warum sie hängt.      |
+| 🛡️ **DDoS-Schutz**        | Grenzen pro Absender für Verbindungen und Pakete auf allen Server-Ports, mit einem Schalter im Admin-Bereich.                                         |
+| 📦 **Umzug**              | Alle Einstellungen und Verbindungen per Code (mit Passwort) auf ein anderes MorniHosting übertragen.                                                  |
 | 🤖 **REST-API**           | API-Schlüssel mit Ablaufdatum und OpenAPI-Doku unter `/api/docs`.                                                                                     |
 | ⬆️ **Updates**            | Das Panel zeigt neue Versionen an und aktualisiert sich per Knopfdruck. Deine Minecraft-Server laufen dabei weiter.                                   |
 | 🌗 **Bedienung**          | Dunkel und hell, Deutsch und Englisch, auch auf dem Handy gut bedienbar.                                                                              |
@@ -310,11 +316,19 @@ deine Minecraft-Server, ohne im Router etwas freizugeben.
    Rechner wählen (beim Proxmox-Einzeiler heißt er `mornihosting`), **Speichern**.
 3. Optional **Adresse fürs Panel → Einrichten** (Name frei wählbar, z. B. `hosting`): Das Panel ist dann
    unter `https://hosting.deine-domain.de` erreichbar und die Domain für Passkeys ist gleich eingetragen.
+   **Name leer lassen** = das Panel läuft direkt unter `https://deine-domain.de`. Dafür beim Domain-Anbieter
+   die Hauptdomain per A-Eintrag auf die IP des NetBird-Proxys zeigen lassen (ein CNAME geht dort nicht).
 4. Beim **Server anlegen** steht schon ein Name, z. B. `minecraft` – fertig. MorniHosting legt in NetBird
    `minecraft.deine-domain.de` an, bei Bedrock-Spielern (Geyser) `minecraft-bedrock…` und beim Voice-Chat
    `minecraft-voice…`. Ändern oder entfernen kannst du den Namen in den Server-Einstellungen.
 
 <img src="docs/screenshots/netbird-wizard.webp" alt="Beim Anlegen nur noch den Namen eingeben" width="100%">
+
+**Eine Resource pro Server:** Kennt das Panel die Heimnetz-Adresse des Rechners (**Admin-Bereich →
+Einstellungen → LAN-IP**, z. B. `10.13.4.103`), legt es in NetBird unter **Networks** das Netzwerk
+„MorniHosting“ an – mit dem Rechner als Routing-Peer – und für jeden Server und das Panel eine eigene
+**Resource**. Die Domain-Dienste zeigen auf diese Resource, also immer auf die richtige Adresse im Heimnetz.
+Wird ein Server gelöscht, verschwindet auch seine Resource.
 
 Den Port nach außen vergibt NetBird Cloud selbst, die Adresse sieht also so aus:
 `minecraft.deine-domain.de:31234`. MorniHosting zeigt sie überall fertig zum Kopieren an.
@@ -363,11 +377,19 @@ Das Panel sucht Mailserver, Port (465/587) und Verschlüsselung selbst heraus, p
 
 ## Freigaben und Discord-Benachrichtigungen
 
-- **Registrierung mit Freigabe:** Neue Konten warten nach der E-Mail-Bestätigung auf dich. Du bekommst eine Mail und, wenn verbunden, eine Discord-DM mit den Knöpfen **Freigeben** und **Ablehnen**. Im Panel geht es unter **Freigaben**.
+- **Registrierung mit Freigabe:** Auf der Startseite gibt es „Konto anfragen“ (E-Mail ist Pflicht). Sobald jemand absendet, bekommst du eine Mail und, wenn verbunden, eine Discord-DM mit den Knöpfen **Freigeben** und **Ablehnen** – schon bevor die Person ihre Adresse bestätigt hat. Im Panel steht die Anfrage sofort unter **Freigaben** (ohne Neuladen).
 - **Server-Anfragen:** Wer keine Server selbst erstellen darf, fragt einen an. Du gibst ihn per Discord-Knopf, im Panel oder nach der Mail frei, dann wird er für die Person angelegt.
-- **Discord-Bot, nur private Nachrichten:** Freigaben, Abstürze und Antworten auf Anfragen kommen per DM. Kein Discord-Server und kein offener Port nötig.
+- **Discord-Bot, nur private Nachrichten:** Freigaben, Abstürze und Antworten auf Anfragen kommen per DM. Kein Discord-Server und kein offener Port nötig. Verbinden: in Discord `/verbinden` → **Jetzt verbinden** → im Panel **Ja, verbinden**.
+- **Postausgang:** Unter **Admin-Bereich → E-Mail** und **Benachrichtigungen** steht jede Mail und Discord-Nachricht mit „angenommen/zugestellt“ oder dem Grund, warum sie nicht rausging.
 
 👉 Einrichten in 4 Minuten: [docs/discord.md](docs/discord.md)
+
+## Umzug auf ein anderes Panel
+
+**Admin-Bereich → Umzug:** Auf dem alten Panel ein Passwort wählen und **Code erstellen** (kopieren oder als
+Datei speichern). Auf dem neuen Panel den Code einfügen, Passwort eingeben, **Einstellungen übernehmen** –
+Domain, E-Mail, Discord-Bot, NetBird, DNS, HTTPS, DDoS-Schutz und Registrierung sind dann drüben. Server,
+Benutzer und Dateien bleiben, wo sie sind.
 
 ## Updates
 
