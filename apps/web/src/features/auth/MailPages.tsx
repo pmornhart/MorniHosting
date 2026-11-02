@@ -1,9 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { CheckCircle2, MailCheck, TriangleAlert, UserPlus } from 'lucide-react';
+import { CheckCircle2, Hourglass, MailCheck, TriangleAlert, UserPlus } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useSearchParams } from 'react-router';
-import type { ConfirmResult, Locale } from '@mornihosting/shared';
+import type { ConfirmResult, Locale, RegisterResult } from '@mornihosting/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
@@ -64,7 +64,7 @@ export function RegisterPage(): ReactElement {
   const [password, setPassword] = useState('');
   const register = useMutation({
     mutationFn: () =>
-      api<void>('/api/auth/register', {
+      api<RegisterResult>('/api/auth/register', {
         method: 'POST',
         body: {
           username,
@@ -81,7 +81,13 @@ export function RegisterPage(): ReactElement {
   };
   return (
     <LandingLayout>
-      {register.isSuccess ? (
+      {register.data?.next === 'wait_approval' ? (
+        <Done
+          icon={<Hourglass />}
+          title={t('mailPages.requestSentTitle')}
+          text={t('mailPages.requestSent')}
+        />
+      ) : register.isSuccess ? (
         <Done
           icon={<MailCheck />}
           title={t('mailPages.registerSentTitle')}

@@ -14,6 +14,8 @@ import {
   type MailSettingsView,
   type MailStatus,
   type MailTestResult,
+  type RegisterResult,
+  type SignupSettings,
 } from '@mornihosting/shared';
 import net from 'node:net';
 import { hashPassword } from '../auth/passwords.js';
@@ -97,7 +99,9 @@ export interface MailService {
   /** Test mail, step by step; tries 465/TLS and 587/STARTTLS when the saved port does not answer and keeps what works. */
   readonly test: (to: string, locale: Locale, vars: Partial<MailVars>) => Promise<MailTestResult>;
   readonly welcome: (user: UserRow) => void;
-  readonly register: (input: RegisterInput) => Promise<void>;
+  readonly register: (input: RegisterInput) => Promise<RegisterResult>;
+  readonly signup: () => SignupSettings;
+  readonly setSignup: (input: SignupSettings) => SignupSettings;
   readonly confirm: (token: string) => ConfirmResult;
   readonly forgot: (email: string) => void;
   readonly reset: (token: string, password: string, actor: Actor) => Promise<void>;
@@ -115,6 +119,8 @@ export interface RegisterInput {
 }
 
 const MAIL_KEY = 'mail';
+/** "Konto anfragen" on the start page, on unless an admin switched it off. */
+const SIGNUP_KEY = 'signup';
 const SMTP_SOCKET_TIMEOUT_SECONDS = 30;
 const SMTP_SOCKET_TIMEOUT_MS = SMTP_SOCKET_TIMEOUT_SECONDS * MS_PER_SECOND;
 /** Tried in this order when the saved port/encryption gets no answer. */
@@ -181,17 +187,18 @@ export function createMailService(
       security: s?.security ?? 'starttls',
       user: s?.user ?? '',
       from: s?.from ?? defaultSender(settings.get().panelDomain),
-      registration: s?.registration ?? false,
+      registration: signup().enabled,
       registrationOrders: s?.registrationOrders ?? false,
       registrationApproval: s?.registrationApproval ?? true,
       crashMails: s?.crashMails ?? false,
     };
   };
 
-  const status = (): MailStatus => {
-    const ready = configured() && panelUrl() !== null;
-    return { registration: ready && Boolean(stored()?.registration), passwordReset: ready };
-  };
+  const mailReady = (): boolean => configured() && panelUrl() !== null;
+  const signup = (): SignupSettings =>
+    settings.getValue<SignupSettings>(SIGNUP_KEY) ?? { enabled: stored()?.registration ?? true };
+
+  const status = (): MailStatus => ({ registration: signup().enabled, passwordReset: mailReady() });
 
   const smtp = (): SmtpConfig => {
     const s = stored();
@@ -421,6 +428,25 @@ export function createMailService(
       .get();
     if (taken) throw conflict('username_taken');
     const existing = userByEmail(input.email);
+    // Without mail nobody can confirm an address: the request goes straight to the admins.
+    if (!mailReady()) {
+      if (existing) return { next: 'wait_approval' };
+      const row = db
+        .insert(users)
+        .values({
+          username: input.username,
+          email: input.email,
+          passwordHash: await hashPassword(input.password),
+          locale: input.locale,
+          approvalPending: true,
+          canCreateServers: stored()?.registrationOrders ?? false,
+        })
+        .returning()
+        .get();
+      ctx.audit.record({ userId: row.id, username: row.username, ip: input.ip }, 'auth.register');
+      ctx.events.emit('user.awaiting_approval', { userId: row.id });
+      return { next: 'wait_approval' };
+    }
     if (existing) {
       // Same answer as for a new address: nobody can find out which addresses have an account.
       if (existing.signupPending) {
@@ -437,7 +463,7 @@ export function createMailService(
           link: linkTo('/'),
         });
       }
-      return;
+      return { next: 'verify_email' };
     }
     const row = db
       .insert(users)
@@ -457,6 +483,7 @@ export function createMailService(
       name: row.username,
       link: linkTo('/verify', issue(row.id, 'register', SIGNUP_TTL_MS)),
     });
+    return { next: 'verify_email' };
   };
 
   const confirm: MailService['confirm'] = (token) => {
@@ -578,6 +605,7 @@ export function createMailService(
       const passwordSealed = input.password
         ? secrets.encrypt(input.password)
         : (previous?.passwordSealed ?? '');
+      settings.setValue(SIGNUP_KEY, { enabled: input.registration } satisfies SignupSettings);
       settings.setValue(MAIL_KEY, {
         host: input.host,
         internalHost: input.internalHost,
@@ -603,6 +631,11 @@ export function createMailService(
     test,
     welcome,
     register,
+    signup,
+    setSignup: (input) => {
+      settings.setValue(SIGNUP_KEY, input);
+      return signup();
+    },
     confirm,
     forgot,
     reset,

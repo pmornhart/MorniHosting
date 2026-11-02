@@ -127,6 +127,14 @@ export const registerSchema = z.object({
   password: passwordSchema,
   locale: z.enum(LOCALES).default('de'),
 });
+/** After asking for an account: confirm the mail first, or just wait for an admin (panel without mail). */
+export interface RegisterResult {
+  readonly next: 'verify_email' | 'wait_approval';
+}
+/** Whether the start page offers "Konto anfragen"; works with and without mail. */
+export const signupSettingsSchema = z.object({ enabled: z.boolean() });
+export type SignupSettings = z.infer<typeof signupSettingsSchema>;
+
 export const forgotSchema = z.object({ email: emailSchema });
 export const resetSchema = z.object({ token: z.string().min(1).max(TOKEN_MAX), password: passwordSchema });
 export const confirmSchema = z.object({ token: z.string().min(1).max(TOKEN_MAX) });

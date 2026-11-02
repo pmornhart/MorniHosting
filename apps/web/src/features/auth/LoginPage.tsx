@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { KeyRound, LogIn, ShieldCheck } from 'lucide-react';
+import { KeyRound, LogIn, ShieldCheck, UserPlus } from 'lucide-react';
 import { useState, type FormEvent, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
@@ -169,12 +169,15 @@ export function LoginPage(): ReactElement {
           </Link>
         ) : null}
         {step === 'password' && status.data?.mail.registration ? (
-          <p className="text-center text-sm text-muted-foreground">
-            {t('login.noAccount')}{' '}
-            <Link className="font-semibold text-primary hover:underline" to="/register">
-              {t('login.register')}
-            </Link>
-          </p>
+          <div className="grid gap-2 border-t border-border pt-4">
+            <p className="text-center text-sm text-muted-foreground">{t('login.noAccount')}</p>
+            <Button asChild variant="secondary" size="lg">
+              <Link to="/register">
+                <UserPlus />
+                {t('landing.requestAccount')}
+              </Link>
+            </Button>
+          </div>
         ) : null}
         {step === 'code' ? (
           <Button variant="link" onClick={() => setStep('password')}>

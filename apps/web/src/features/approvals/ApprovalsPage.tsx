@@ -3,15 +3,22 @@ import { Check, Inbox, UserPlus, X } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { SOFTWARE, type ApprovalsView, type ServerRequestView } from '@mornihosting/shared';
+import {
+  SOFTWARE,
+  type ApprovalsView,
+  type ServerRequestView,
+  type SignupSettings,
+} from '@mornihosting/shared';
 import { PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Pill } from '@/components/ui/pill';
+import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { formatMemoryMb, formatRelative } from '@/lib/format';
 import { errorText } from '@/lib/query';
+import { statusQuery } from '@/features/auth/session';
 
 export const approvalsQuery = {
   queryKey: ['approvals'],
@@ -132,6 +139,37 @@ function RequestCard({ request }: { readonly request: ServerRequestView }): Reac
   );
 }
 
+/** Whether visitors see "Konto anfragen" on the start page. */
+function SignupSwitch(): ReactElement {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { data } = useQuery({ queryKey: ['signup'], queryFn: () => api<SignupSettings>('/api/signup') });
+  const save = useMutation({
+    mutationFn: (enabled: boolean) =>
+      api<SignupSettings>('/api/signup', { method: 'PUT', body: { enabled } }),
+    onSuccess: (view) => {
+      queryClient.setQueryData(['signup'], view);
+      void queryClient.invalidateQueries({ queryKey: statusQuery.queryKey });
+    },
+  });
+  return (
+    <Card className="min-w-0 p-4 sm:p-5">
+      <label className="flex items-start gap-3">
+        <Switch
+          checked={data?.enabled ?? false}
+          disabled={!data || save.isPending}
+          onCheckedChange={(enabled) => save.mutate(enabled)}
+          className="mt-0.5"
+        />
+        <span>
+          <b className="block text-sm font-semibold">{t('approvals.signupOpen')}</b>
+          <span className="text-[13px] text-muted-foreground">{t('approvals.signupOpenHint')}</span>
+        </span>
+      </label>
+    </Card>
+  );
+}
+
 /** Admins: who wants in, and who wants a server. The same decisions also work from the mail and Discord. */
 export function ApprovalsPage(): ReactElement {
   const { t } = useTranslation();
@@ -141,6 +179,7 @@ export function ApprovalsPage(): ReactElement {
   return (
     <div className="grid max-w-4xl gap-6">
       <PageHeader title={t('approvals.title')} subtitle={t('approvals.subtitle')} />
+      <SignupSwitch />
 
       <section className="grid gap-3">
         <h2 className="flex items-center gap-2 text-lg font-semibold">

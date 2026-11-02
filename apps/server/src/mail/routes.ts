@@ -8,10 +8,13 @@ import {
   mailTestSchema,
   registerSchema,
   resetSchema,
+  signupSettingsSchema,
   type ConfirmResult,
   type MailQuickResult,
   type MailSettingsView,
   type MailTestResult,
+  type RegisterResult,
+  type SignupSettings,
 } from '@mornihosting/shared';
 import { actorOf, requireAdmin, requireAuth } from '../auth/context.js';
 import { verifyPassword } from '../auth/passwords.js';
@@ -95,9 +98,20 @@ export function registerMailRoutes(app: Api, ctx: AppContext, mail: MailService)
   app.post(
     '/api/auth/register',
     { schema: { body: registerSchema }, config: anonymousRateLimit },
-    async (request, reply) => {
-      await mail.register({ ...request.body, ip: request.ip });
-      return reply.code(HTTP_NO_CONTENT).send();
+    async (request): Promise<RegisterResult> => mail.register({ ...request.body, ip: request.ip }),
+  );
+
+  app.get('/api/signup', async (request): Promise<SignupSettings> => {
+    requireAdmin(request);
+    return mail.signup();
+  });
+  app.put(
+    '/api/signup',
+    { schema: { body: signupSettingsSchema } },
+    async (request): Promise<SignupSettings> => {
+      requireAdmin(request);
+      ctx.audit.record(actorOf(request), 'signup.settings', null, { enabled: request.body.enabled });
+      return mail.setSignup(request.body);
     },
   );
 

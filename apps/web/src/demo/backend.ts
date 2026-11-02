@@ -905,7 +905,7 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
         passkeys: 'ok',
         panelDomain: state.settings.panelDomain || null,
         mail: {
-          registration: state.mail.configured && state.mail.registration,
+          registration: state.mail.registration,
           passwordReset: state.mail.configured,
         },
       } satisfies SystemStatus),
@@ -1156,7 +1156,16 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
       } satisfies MailQuickResult);
     },
   ],
-  ['POST', '/api/auth/register', () => noContent()],
+  ['POST', '/api/auth/register', () => ok({ next: 'wait_approval' })],
+  ['GET', '/api/signup', () => ok({ enabled: state.mail.registration })],
+  [
+    'PUT',
+    '/api/signup',
+    ({ body }) => {
+      state.mail = { ...state.mail, registration: Boolean(body['enabled']) };
+      return ok({ enabled: state.mail.registration });
+    },
+  ],
   ['POST', '/api/auth/confirm', () => ok({ kind: 'register' } satisfies ConfirmResult)],
   ['POST', '/api/auth/forgot', () => noContent()],
   ['POST', '/api/auth/reset', () => noContent()],
