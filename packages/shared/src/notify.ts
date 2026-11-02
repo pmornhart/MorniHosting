@@ -94,6 +94,8 @@ export interface PendingUser {
   readonly id: number;
   readonly username: string;
   readonly email: string | null;
+  /** False until the person clicked the link in their sign-up mail; they can log in only after both. */
+  readonly emailConfirmed: boolean;
   readonly createdAt: string;
 }
 

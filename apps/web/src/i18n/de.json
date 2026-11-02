@@ -2421,7 +2421,8 @@
     },
     "hint": "Neue Registrierungen und Anfragen kommen per E-Mail und Discord-DM zu allen Admins, die das unter „Mein Konto → Benachrichtigungen“ eingeschaltet haben.",
     "signupOpen": "„Konto anfragen“ auf der Startseite",
-    "signupOpenHint": "Besucher können auf der Startseite ein Konto anfragen. Anmelden geht erst, wenn du hier freigibst."
+    "signupOpenHint": "Besucher können auf der Startseite ein Konto anfragen. Anmelden geht erst, wenn du hier freigibst.",
+    "emailUnconfirmed": "E-Mail noch nicht bestätigt"
   },
   "discordBot": {
     "title": "Discord-Bot (private Nachrichten)",
@@ -2509,5 +2510,13 @@
     "warning": "Die Einstellungen hier werden ersetzt. Danach startet das Panel kurz neu. Tipp: Auf dem alten Panel danach Discord-Bot trennen, sonst antworten zwei Panels.",
     "done": "Fertig, alle Einstellungen sind übernommen. Starte das Panel einmal neu, damit alles mit den neuen Einstellungen läuft.",
     "doneRestart": "Fertig, alle Einstellungen sind übernommen. Das Panel startet jetzt neu und lädt gleich von selbst."
+  },
+  "outbox": {
+    "title": "Postausgang",
+    "text": "Die letzten Mails des Panels und was dein Mailserver geantwortet hat. Aktualisiert sich von selbst.",
+    "empty": "Seit dem letzten Neustart wurde noch keine Mail verschickt.",
+    "sent": "angenommen",
+    "failed": "fehlgeschlagen",
+    "hint": "„angenommen“ heißt: Dein Mailserver hat die Mail übernommen. Kommt sie trotzdem nicht an, schau in den Spam-Ordner. Läuft dein Mailserver zu Hause, lehnen Gmail, Outlook und Co. Mails von Heim-Anschlüssen oft ab – dann steht der Grund im Protokoll deines Mailservers (z. B. Stalwart → Warteschlange)."
   }
 }

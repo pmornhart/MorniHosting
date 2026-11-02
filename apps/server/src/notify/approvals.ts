@@ -221,7 +221,12 @@ export function createApprovalService(
         title: '🙋 Neue Registrierung',
         text: `**${user.username}** möchte bei MorniHosting mitmachen. Erst nach deiner Freigabe kann sich die Person anmelden.`,
         colour: COLOUR_INFO,
-        fields: [{ name: 'E-Mail', value: user.email ?? '–' }],
+        fields: [
+          {
+            name: 'E-Mail',
+            value: `${user.email ?? '–'}${user.signupPending ? ' (noch nicht bestätigt)' : ''}`,
+          },
+        ],
         buttons: [
           { label: 'Freigeben', id: notify.actionId('approve-user', String(user.id)), style: 'approve' },
           { label: 'Ablehnen', id: notify.actionId('reject-user', String(user.id)), style: 'reject' },
@@ -315,9 +320,15 @@ export function createApprovalService(
       users: db
         .select()
         .from(users)
-        .where(and(eq(users.approvalPending, true), eq(users.signupPending, false)))
+        .where(eq(users.approvalPending, true))
         .all()
-        .map((u) => ({ id: u.id, username: u.username, email: u.email, createdAt: u.createdAt })),
+        .map((u) => ({
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          emailConfirmed: !u.signupPending,
+          createdAt: u.createdAt,
+        })),
       requests: db.select().from(serverRequests).orderBy(desc(serverRequests.createdAt)).all().map(toView),
     }),
     approveUser,
