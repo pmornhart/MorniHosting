@@ -1819,7 +1819,7 @@
     "disconnectText": "MorniHosting deletes the servers' services in NetBird again; the servers no longer have an address through NetBird. The panel's address stays.",
     "disconnected": "NetBird disconnected",
     "panelTitle": "Address for the panel",
-    "panelText": "Makes the panel reachable under your domain with HTTPS – with “Pass Host Header”, so passkeys work. If the service already exists in NetBird, it is taken over and set up correctly.",
+    "panelText": "Makes the panel reachable under your domain with HTTPS – with “Pass Host Header”, so passkeys work. If the service already exists in NetBird, it is taken over and set up correctly. When the panel knows the machine's home-network address, it creates its own resource for the panel and every server under “Networks → MorniHosting” in NetBird.",
     "panelName": "Name",
     "panelPort": "Panel port",
     "panelButton": "Set up",
@@ -1846,7 +1846,8 @@
       "firewall": "If your provider has its own firewall in the customer panel (e.g. IONOS, Hetzner), open the same ports there – no script can reach it. By hand works too: add the ports above to netbird-proxy in docker-compose.yml, or run the proxy with “network_mode: host”.",
       "auto": "Easiest: run this command once on your NetBird server. It opens 25565–25575/tcp, 19132–19140/udp and 24454–24460/udp on netbird-proxy (and in ufw/firewalld if active) and restarts only the proxy."
     },
-    "managedDns": "Set up through your own domain."
+    "managedDns": "Set up through your own domain.",
+    "panelNameHint": "Leave empty to put the panel on {{domain}} itself."
   },
   "minecraftAccount": {
     "title": "Minecraft account",

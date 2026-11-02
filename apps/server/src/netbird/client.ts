@@ -34,15 +34,35 @@ const serviceSchema = z.object({
   listen_port: z.number().int().nullable().optional(),
 });
 const errorSchema = z.object({ message: z.string() });
+const namedSchema = z.object({ id: z.string(), name: z.string().catch('') });
+const resourceSchema = z.object({
+  id: z.string(),
+  name: z.string().catch(''),
+  address: z.string().catch(''),
+});
+const routerSchema = z.object({ id: z.string(), peer: z.string().nullable().catch(null) });
 
 export type NetbirdDomain = z.infer<typeof domainSchema>;
 export type NetbirdPeer = z.infer<typeof peerSchema>;
 export type NetbirdService = z.infer<typeof serviceSchema>;
 
+export type NetbirdNamed = z.infer<typeof namedSchema>;
+export type NetbirdResource = z.infer<typeof resourceSchema>;
+
+/** A network resource: one address in the home network that NetBird reaches through a routing peer. */
+export interface NetbirdResourceRequest {
+  readonly name: string;
+  readonly address: string;
+  readonly groupId: string;
+}
+
 export interface NetbirdServiceRequest {
   readonly domain: string;
   readonly mode: 'http' | 'tcp' | 'udp';
   readonly peerId: string;
+  /** When set, the service goes to this network resource (at `resourceAddress`) instead of the peer. */
+  readonly resourceId?: string | null;
+  readonly resourceAddress?: string | null;
   /** Port on the peer that NetBird forwards to. */
   readonly port: number;
   /** Outside port to keep on an update; new L4 services get one assigned by NetBird. */
@@ -58,9 +78,37 @@ export interface NetbirdClient {
   readonly updateService: (id: string, request: NetbirdServiceRequest) => Promise<NetbirdService>;
   /** Deleting a service that is already gone counts as done. */
   readonly deleteService: (id: string) => Promise<void>;
+  readonly groups: () => Promise<NetbirdNamed[]>;
+  readonly createGroup: (name: string) => Promise<NetbirdNamed>;
+  readonly networks: () => Promise<NetbirdNamed[]>;
+  readonly createNetwork: (name: string, description: string) => Promise<NetbirdNamed>;
+  readonly routers: (networkId: string) => Promise<{ id: string; peer: string | null }[]>;
+  readonly createRouter: (networkId: string, peerId: string) => Promise<void>;
+  readonly resources: (networkId: string) => Promise<NetbirdResource[]>;
+  readonly createResource: (networkId: string, request: NetbirdResourceRequest) => Promise<NetbirdResource>;
+  readonly updateResource: (
+    networkId: string,
+    id: string,
+    request: NetbirdResourceRequest,
+  ) => Promise<NetbirdResource>;
+  /** Deleting a resource that is already gone counts as done. */
+  readonly deleteResource: (networkId: string, id: string) => Promise<void>;
 }
 
 export type NetbirdClientFactory = (apiUrl: string, token: string) => NetbirdClient;
+
+/** NetBird's default priority for a route; only one router per network here, so the value hardly matters. */
+const ROUTER_METRIC = 9999;
+
+function resourceBody(request: NetbirdResourceRequest): Record<string, unknown> {
+  return {
+    name: request.name,
+    description: 'Angelegt von MorniHosting',
+    address: request.address,
+    enabled: true,
+    groups: [request.groupId],
+  };
+}
 
 function serviceBody(request: NetbirdServiceRequest): Record<string, unknown> {
   const layer4 = request.mode !== 'http';
@@ -71,8 +119,9 @@ function serviceBody(request: NetbirdServiceRequest): Record<string, unknown> {
     ...(layer4 ? { listen_port: request.listenPort ?? 0 } : {}),
     targets: [
       {
-        target_id: request.peerId,
-        target_type: 'peer',
+        ...(request.resourceId
+          ? { target_id: request.resourceId, target_type: 'host', host: request.resourceAddress ?? undefined }
+          : { target_id: request.peerId, target_type: 'peer' }),
         protocol: request.mode,
         port: request.port,
         enabled: true,
@@ -127,6 +176,43 @@ export const createNetbirdClient: NetbirdClientFactory = (apiUrl, token) => {
       json(serviceSchema, 'PUT', `/reverse-proxies/services/${encodeURIComponent(id)}`, serviceBody(request)),
     deleteService: async (id) => {
       const response = await call('DELETE', `/reverse-proxies/services/${encodeURIComponent(id)}`);
+      if (!response.ok && response.status !== HTTP_NOT_FOUND) throw await rejection(response, host);
+    },
+    groups: () => json(z.array(namedSchema), 'GET', '/groups'),
+    createGroup: (name) => json(namedSchema, 'POST', '/groups', { name }),
+    networks: () => json(z.array(namedSchema), 'GET', '/networks'),
+    createNetwork: (name, description) => json(namedSchema, 'POST', '/networks', { name, description }),
+    routers: (networkId) =>
+      json(z.array(routerSchema), 'GET', `/networks/${encodeURIComponent(networkId)}/routers`),
+    createRouter: async (networkId, peerId) => {
+      await json(routerSchema, 'POST', `/networks/${encodeURIComponent(networkId)}/routers`, {
+        peer: peerId,
+        metric: ROUTER_METRIC,
+        masquerade: true,
+        enabled: true,
+      });
+    },
+    resources: (networkId) =>
+      json(z.array(resourceSchema), 'GET', `/networks/${encodeURIComponent(networkId)}/resources`),
+    createResource: (networkId, request) =>
+      json(
+        resourceSchema,
+        'POST',
+        `/networks/${encodeURIComponent(networkId)}/resources`,
+        resourceBody(request),
+      ),
+    updateResource: (networkId, id, request) =>
+      json(
+        resourceSchema,
+        'PUT',
+        `/networks/${encodeURIComponent(networkId)}/resources/${encodeURIComponent(id)}`,
+        resourceBody(request),
+      ),
+    deleteResource: async (networkId, id) => {
+      const response = await call(
+        'DELETE',
+        `/networks/${encodeURIComponent(networkId)}/resources/${encodeURIComponent(id)}`,
+      );
       if (!response.ok && response.status !== HTTP_NOT_FOUND) throw await rejection(response, host);
     },
   };

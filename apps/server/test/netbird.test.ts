@@ -40,7 +40,14 @@ interface FakeService {
   mode: string;
   listen_port: number;
   pass_host_header: boolean;
-  targets: { target_id: string; target_type: string; protocol: string; port: number }[];
+  targets: { target_id: string; target_type: string; protocol: string; port: number; host?: string }[];
+}
+
+interface FakeResource {
+  id: string;
+  name: string;
+  address: string;
+  groups: string[];
 }
 
 /**
@@ -49,6 +56,10 @@ interface FakeService {
  */
 function createFakeNetbird(options: { customPorts?: boolean } = {}) {
   const services = new Map<string, FakeService>();
+  const networks: { id: string; name: string }[] = [];
+  const groups: { id: string; name: string }[] = [];
+  const routers: { network: string; peer: string }[] = [];
+  const resources = new Map<string, FakeResource>();
   const calls: { method: string; host: string; path: string; auth: string | null }[] = [];
   const next = { port: 31000, id: 1 };
   const handle = async (url: URL, init: RequestInit | undefined): Promise<Response> => {
@@ -78,6 +89,46 @@ function createFakeNetbird(options: { customPorts?: boolean } = {}) {
         { id: 'd2', domain: 'abc.netbird.app', validated: true, type: 'free' },
       ]);
     }
+    // Networks, groups, routing peers and resources: /api/networks/<net>/(routers|resources)/<id>
+    const net = url.pathname.split('/');
+    if (url.pathname === '/api/groups' && method === 'GET') return Response.json(groups);
+    if (url.pathname === '/api/groups' && method === 'POST') {
+      const group = { id: `grp-${next.id++}`, name: String((body as { name?: string } | null)?.name) };
+      groups.push(group);
+      return Response.json(group);
+    }
+    if (url.pathname === '/api/networks' && method === 'GET') return Response.json(networks);
+    if (url.pathname === '/api/networks' && method === 'POST') {
+      const network = { id: `net-${next.id++}`, name: String((body as { name?: string } | null)?.name) };
+      networks.push(network);
+      return Response.json(network);
+    }
+    if (net[2] === 'networks' && net[4] === 'routers') {
+      if (method === 'POST') {
+        const peer = String((body as { peer?: string } | null)?.peer);
+        routers.push({ network: net[3] ?? '', peer });
+        return Response.json({ id: `rt-${next.id++}`, peer });
+      }
+      return Response.json(
+        routers.filter((r) => r.network === net[3]).map((r) => ({ id: 'rt', peer: r.peer })),
+      );
+    }
+    if (net[2] === 'networks' && net[4] === 'resources') {
+      const resourceBody = body as unknown as Omit<FakeResource, 'id'> | null;
+      const resourceId = net[5] ?? '';
+      if (method === 'GET') return Response.json([...resources.values()]);
+      if (method === 'POST' && resourceBody) {
+        const created = { ...resourceBody, id: `res-${next.id++}` };
+        resources.set(created.id, created);
+        return Response.json(created);
+      }
+      if (method === 'PUT' && resourceBody && resources.has(resourceId)) {
+        resources.set(resourceId, { ...resourceBody, id: resourceId });
+        return Response.json({ ...resourceBody, id: resourceId });
+      }
+      if (method === 'DELETE')
+        return new Response(null, { status: resources.delete(resourceId) ? 200 : 404 });
+    }
     if (url.pathname === '/api/reverse-proxies/services' && method === 'GET')
       return Response.json([...services.values()]);
     if (method === 'POST' && body) {
@@ -104,6 +155,10 @@ function createFakeNetbird(options: { customPorts?: boolean } = {}) {
   };
   return {
     services,
+    networks,
+    groups,
+    routers,
+    resources,
     calls,
     handle,
     byDomain: (domain: string) => [...services.values()].find((s) => s.domain === domain),
@@ -442,5 +497,43 @@ describe('NetBird automation', () => {
     expect((await call('PUT', `/api/servers/${hers.id}/netbird`, { name: 'lena' }, lena)).statusCode).toBe(
       403,
     );
+  });
+
+  test('with a home address every server gets its own network resource, the panel can sit on the domain itself', async () => {
+    await t.cleanup();
+    t = await createTestApp({ MH_LAN_IP: '10.13.4.103' });
+    s = await setupAdmin(t);
+    await configure();
+    const server = await create();
+    await call('PUT', `/api/servers/${server.id}/netbird`, { name: 'survival' });
+    await waitFor(() => netbird.byDomain(`survival.${BASE}`) !== undefined);
+
+    expect(netbird.networks.map((n) => n.name)).toEqual(['MorniHosting']);
+    expect(netbird.groups.map((g) => g.name)).toEqual(['MorniHosting']);
+    expect(netbird.routers).toEqual([{ network: netbird.networks[0]?.id, peer: 'peer-mh' }]);
+    const resource = [...netbird.resources.values()].find((r) => r.name === 'MorniHosting survival');
+    expect(resource).toMatchObject({ address: '10.13.4.103', groups: [netbird.groups[0]?.id] });
+    expect(netbird.byDomain(`survival.${BASE}`)?.targets[0]).toMatchObject({
+      target_type: 'host',
+      target_id: resource?.id,
+      host: '10.13.4.103',
+      port: 25565,
+    });
+
+    // The panel on the domain itself (empty name), through its own resource.
+    const panel = (await call('POST', '/api/netbird/panel', { name: '', port: 8080 })).json<NetbirdStatus>();
+    expect(panel.panelAddress).toBe(BASE);
+    expect(netbird.byDomain(BASE)?.targets[0]).toMatchObject({ target_type: 'host', port: 8080 });
+    expect([...netbird.resources.values()].map((r) => r.name).sort()).toEqual([
+      'MorniHosting Panel',
+      'MorniHosting survival',
+    ]);
+
+    // Deleting the server removes its resource too; the panel's stays.
+    await call('DELETE', `/api/servers/${server.id}`);
+    await waitFor(() => !netbird.byDomain(`survival.${BASE}`));
+    await waitFor(() => [...netbird.resources.values()].every((r) => r.name !== 'MorniHosting survival'));
+    expect([...netbird.resources.values()].map((r) => r.name)).toEqual(['MorniHosting Panel']);
+    expect(netbird.networks).toHaveLength(1);
   });
 });
