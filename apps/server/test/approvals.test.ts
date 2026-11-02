@@ -134,6 +134,11 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
   });
   afterEach(async () => t.cleanup());
 
+  test('linking with /verbinden: the bot writes first, which opens the private chat', async () => {
+    await waitFor(() => discord.dms.some((d) => d.userId === PHILIP_DISCORD));
+    expect(discord.dms[0]?.message.title).toBe('👋 Hallo von MorniHosting');
+  });
+
   test('a wrong bot token is refused with its own message', async () => {
     expect((await as(admin, 'PUT', '/api/discord', { token: 'nope' })).json()).toMatchObject({
       error: 'discord_token_invalid',

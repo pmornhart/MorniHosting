@@ -37,7 +37,10 @@ const BUTTON_DANGER = 4;
 const BUTTON_LINK = 5;
 /** The /verbinden command: usable by people who added the app to their account, in the bot's DM. */
 const INTEGRATION_USER_INSTALL = 1;
+/** Where /verbinden works: servers, the bot's DM and any other DM or group, so nobody has to find the bot's chat first. */
+const CONTEXT_GUILD = 0;
 const CONTEXT_BOT_DM = 1;
+const CONTEXT_PRIVATE_CHANNEL = 2;
 const OPTION_STRING = 3;
 export const LINK_COMMAND = 'verbinden';
 
@@ -183,7 +186,7 @@ export const realDiscord: DiscordApi = {
         name: LINK_COMMAND,
         description: 'Verbindet dich mit deinem MorniHosting-Konto',
         integration_types: [INTEGRATION_USER_INSTALL],
-        contexts: [CONTEXT_BOT_DM],
+        contexts: [CONTEXT_GUILD, CONTEXT_BOT_DM, CONTEXT_PRIVATE_CHANNEL],
         options: [
           { type: OPTION_STRING, name: 'code', description: 'Code aus „Mein Konto“', required: true },
         ],

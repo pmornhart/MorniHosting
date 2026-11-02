@@ -2463,7 +2463,7 @@
     "unlink": "Trennen",
     "step1": "Füge die MorniHosting-App zu deinem Discord-Konto hinzu („Zu meinen Apps hinzufügen“). Kein Server nötig.",
     "addApp": "App hinzufügen",
-    "step2": "Öffne in Discord die Direktnachricht mit der App und schick diesen Befehl:",
+    "step2": "Schreib diesen Befehl in irgendeinen Discord-Chat – egal welchen Server-Kanal oder Freundes-Chat. Nur du siehst die Antwort. Danach schreibt dir der Bot privat und der Chat mit ihm ist offen.",
     "getCode": "Code anzeigen",
     "step3": "Fertig – hier steht gleich „Verbunden“. Der Code gilt 10 Minuten.",
     "test": "Test-Nachricht senden",

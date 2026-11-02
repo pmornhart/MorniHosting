@@ -28,8 +28,8 @@ Kein Discord-Server nötig, alles läuft über private Nachrichten. Das Panel br
 1. Im Panel: **Mein Konto** (unten links auf deinen Namen) → Karte **Benachrichtigungen** → **Discord verbinden**.
 2. Klick **App hinzufügen**. Discord öffnet sich und fragt „Zu meinen Apps hinzufügen“ → **Autorisieren**.
 3. Zurück im Panel: **Code anzeigen**. Du siehst z. B. `/verbinden 482913`.
-4. In Discord: links bei den Direktnachrichten die App **MorniHosting** öffnen (oder oben auf **+** neben „Direktnachrichten“ und „MorniHosting“ suchen). Tippe `/verbinden`, wähle den Befehl aus und gib den Code ein. Abschicken.
-5. Der Bot antwortet „✅ Verbunden“, und im Panel steht **Verbunden mit …**. Fertig!
+4. In Discord: Tippe in **irgendeinen Chat** (einen Kanal auf einem beliebigen Server oder einen Chat mit einem Freund) `/verbinden`, wähle den Befehl von MorniHosting aus und gib den Code ein. Abschicken. Die Antwort siehst nur du.
+5. Der Bot antwortet „✅ Verbunden“ und schreibt dir gleich danach privat „👋 Hallo von MorniHosting“. Damit ist der Chat mit ihm offen und steht bei deinen Direktnachrichten. Im Panel steht **Verbunden mit …**. Fertig!
 
 Unter **Mein Konto → Benachrichtigungen** kannst du jederzeit einstellen, **wie** (E-Mail, Discord) und **worüber** (Freigaben, Abstürze, Antworten auf Anfragen) du Bescheid bekommst.
 
