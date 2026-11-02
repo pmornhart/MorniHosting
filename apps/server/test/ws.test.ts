@@ -67,4 +67,18 @@ describe('live connection (WebSocket)', () => {
     say(socket, { type: 'subscribe', channel: 'servers' });
     expect(await closed).toBe(POLICY_VIOLATION);
   });
+
+  test('new sign-ups and decided requests reach the open panel right away', async () => {
+    const socket = await open({ host: 'localhost', origin: 'http://localhost' });
+    say(socket, { type: 'subscribe', channel: 'servers' });
+    say(socket, { type: 'ping' });
+    expect(await nextMessage(socket)).toEqual({ type: 'pong' });
+    const signUp = nextMessage(socket);
+    t.ctx.events.emit('user.awaiting_approval', { userId: 2 });
+    expect(await signUp).toEqual({ type: 'approvals' });
+    const decided = nextMessage(socket);
+    t.ctx.events.emit('approvals.changed', { userId: 2 });
+    expect(await decided).toEqual({ type: 'approvals' });
+    socket.terminate();
+  });
 });

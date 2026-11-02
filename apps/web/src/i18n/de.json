@@ -562,7 +562,9 @@
     "discord_not_linked": "Verbinde zuerst dein Discord (Mein Konto → Benachrichtigungen), dann kann der Bot dir schreiben.",
     "discord_dm_blocked": "Discord lässt die Nachricht nicht durch, weil du mit dem Bot keinen gemeinsamen Server hast (oder Direktnachrichten von Apps aus sind). Hol den Bot mit dem Knopf unten auf einen deiner Server, dann klappt es.",
     "discord_dm_failed": "Die Test-Nachricht ging nicht raus: {{message}}",
-    "discord_link_expired": "Der Link ist abgelaufen oder wurde schon benutzt. Tippe in Discord noch einmal /verbinden."
+    "discord_link_expired": "Der Link ist abgelaufen oder wurde schon benutzt. Tippe in Discord noch einmal /verbinden.",
+    "transfer_password_wrong": "Passwort falsch oder Code beschädigt. Prüfe beides.",
+    "transfer_code_invalid": "Das ist kein Umzugs-Code. Er beginnt mit „MH1-“."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1472,6 +1474,8 @@
       "token_create": "API-Schlüssel erstellt",
       "token_delete": "API-Schlüssel widerrufen",
       "settings_update": "Panel-Einstellungen geändert",
+      "transfer_export": "Umzugs-Code erstellt",
+      "transfer_import": "Umzugs-Code eingelöst",
       "auth_login": "Angemeldet",
       "auth_login_failed": "Anmeldung fehlgeschlagen",
       "account_password_changed": "Passwort geändert",
@@ -1681,7 +1685,8 @@
       "settings": "Einstellungen",
       "netbird": "NetBird",
       "ddos": "DDoS-Schutz",
-      "mail": "E-Mail"
+      "mail": "E-Mail",
+      "move": "Umzug"
     },
     "domainTitle": "Panel-Adresse von Hand",
     "domainSet": "Eingetragen",
@@ -1706,7 +1711,8 @@
       "passwords": "Jemand hat sein Passwort vergessen? Hier setzt du es zurück.",
       "settings": "Adressen im Heimnetz, CurseForge-Schlüssel, Zeitzone und Sprache.",
       "ddos": "Schützt deine Server und das Panel vor Flut-Angriffen, so gut das zu Hause geht.",
-      "mail": "Mails an deine Leute: Willkommen, Registrierung, „Passwort vergessen“ und Bestellungen."
+      "mail": "Mails an deine Leute: Willkommen, Registrierung, „Passwort vergessen“ und Bestellungen.",
+      "move": "Einstellungen und Verbindungen per Code auf ein anderes MorniHosting übertragen."
     },
     "netbirdManual": "NetBird von Hand einrichten",
     "netbirdManualHint": "Nur nötig, wenn du die Automatik oben nicht nutzt. Zum Aufklappen tippen."
@@ -2485,5 +2491,23 @@
     "noDm": "Verbunden – aber Discord lässt den Bot dir noch nicht privat schreiben. Hol ihn mit einem Klick auf einen deiner Server, dann klappt es:",
     "toAccount": "Zu meinem Konto",
     "missing": "Der Link ist abgelaufen. Tippe in Discord noch einmal /verbinden."
+  },
+  "transfer": {
+    "makeTitle": "Code für den Umzug erstellen",
+    "makeText": "Hier auf dem alten Panel: Alle Einstellungen und Verbindungen (Domain, E-Mail, Discord-Bot, NetBird, DNS, HTTPS, DDoS-Schutz, Registrierung) landen in einem Code. Server, Benutzer und Dateien bleiben hier.",
+    "password": "Passwort für den Code",
+    "passwordHint": "Mindestens 8 Zeichen. Brauchst du gleich auf dem neuen Panel.",
+    "make": "Code erstellen",
+    "code": "Umzugs-Code",
+    "copy": "Code kopieren",
+    "save": "Als Datei speichern",
+    "makeDone": "Jetzt auf dem neuen Panel unter Admin-Bereich → Umzug den Code einfügen. Der Code enthält Passwörter und Schlüssel: nur mit dem Passwort lesbar, trotzdem nicht herumschicken.",
+    "useTitle": "Code einlösen",
+    "useText": "Hier auf dem neuen Panel: Code vom alten Panel einfügen, Passwort eingeben, fertig.",
+    "openFile": "Datei öffnen",
+    "use": "Einstellungen übernehmen",
+    "warning": "Die Einstellungen hier werden ersetzt. Danach startet das Panel kurz neu. Tipp: Auf dem alten Panel danach Discord-Bot trennen, sonst antworten zwei Panels.",
+    "done": "Fertig, alle Einstellungen sind übernommen. Starte das Panel einmal neu, damit alles mit den neuen Einstellungen läuft.",
+    "doneRestart": "Fertig, alle Einstellungen sind übernommen. Das Panel startet jetzt neu und lädt gleich von selbst."
   }
 }

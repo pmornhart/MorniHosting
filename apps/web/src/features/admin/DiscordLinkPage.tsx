@@ -39,7 +39,7 @@ export function DiscordLinkPage(): ReactElement {
   const [token] = useState(readToken);
   const peek = useQuery({
     queryKey: ['discord-peek', token],
-    queryFn: () => api<{ name: string }>('/api/account/discord/peek', { method: 'POST', body: { token } }),
+    queryFn: () => api<{ name: string }>(`/api/account/discord/peek?token=${encodeURIComponent(token)}`),
     enabled: Boolean(token),
     retry: false,
   });

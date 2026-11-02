@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  PackageOpen,
   ArrowUpCircle,
   ExternalLink,
   Globe,
@@ -35,6 +36,7 @@ import { NetbirdAutomationCard } from './NetbirdAutomationCard';
 import { PasswordResetCard } from './PasswordResetCard';
 import { UpdateSection } from './UpdateSection';
 import { DdosSection } from './DdosSection';
+import { TransferSection } from './TransferCard';
 
 const LANGUAGE_NAMES: Readonly<Record<Locale, string>> = { de: 'Deutsch', en: 'English' };
 /** The admin area's tabs; the address bar (#update …) opens one directly. */
@@ -45,6 +47,7 @@ const TABS = [
   { key: 'ddos', icon: Shield },
   { key: 'mail', icon: Mail },
   { key: 'passwords', icon: KeyRound },
+  { key: 'move', icon: PackageOpen },
   { key: 'settings', icon: SlidersHorizontal },
 ] as const;
 type Tab = (typeof TABS)[number]['key'];
@@ -387,6 +390,7 @@ export function PanelSettingsPage(): ReactElement {
     ddos: <DdosSection />,
     mail: <MailCard />,
     passwords: <PasswordResetCard />,
+    move: <TransferSection />,
     settings: settingsForm,
   };
 

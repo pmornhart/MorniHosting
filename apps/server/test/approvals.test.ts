@@ -62,6 +62,8 @@ function fakeDiscord() {
       return { id: '999', name: 'MorniBot' };
     },
     registerCommands: async () => undefined,
+    appKey: async () => '00'.repeat(32),
+    setEventWebhook: async () => undefined,
     brand: async (_token, look) => {
       looks.push(look);
     },
@@ -159,7 +161,9 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
       ?.buttons?.[0];
     expect(button?.url).toMatch(/^https:\/\/mornihosting\.de\/discord-link#/);
     const token = button?.url?.split('#')[1] ?? '';
-    expect((await as(lena, 'POST', '/api/account/discord/peek', { token })).json()).toEqual({
+    expect(
+      (await as(lena, 'GET', `/api/account/discord/peek?token=${encodeURIComponent(token)}`)).json(),
+    ).toEqual({
       name: 'philip_dc',
     });
     expect((await as(lena, 'POST', '/api/account/discord/claim', { token })).json()).toMatchObject({

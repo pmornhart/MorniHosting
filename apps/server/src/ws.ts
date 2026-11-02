@@ -71,6 +71,13 @@ export function registerWebSocket(app: Api, ctx: AppContext, servers: ServerServ
         subscriptions.consoles.delete(serverId);
         if (subscriptions.servers) send({ type: 'deleted', serverId });
       }),
+      // Admins see every sign-up and request at once; a person sees their own request being decided.
+      ctx.events.on('user.awaiting_approval', () => {
+        if (subscriptions.servers && user.isAdmin) send({ type: 'approvals' });
+      }),
+      ctx.events.on('approvals.changed', ({ userId }) => {
+        if (subscriptions.servers && (user.isAdmin || userId === user.id)) send({ type: 'approvals' });
+      }),
     ];
 
     socket.on('message', (raw: Buffer) => {

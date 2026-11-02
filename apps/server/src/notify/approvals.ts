@@ -95,6 +95,7 @@ export function createApprovalService(
     if (!user)
       return done('Schon erledigt', 'Über diese Registrierung wurde schon entschieden.', COLOUR_INFO);
     db.update(users).set({ approvalPending: false }).where(eq(users.id, user.id)).run();
+    ctx.events.emit('approvals.changed', { userId: user.id });
     ctx.audit.record(by, 'user.approved', null, { username: user.username });
     notify.tell([user], 'decisions', () => ({
       mail: { kind: 'account_approved', vars: { link: link('/login') } },
@@ -116,6 +117,7 @@ export function createApprovalService(
     // The mail goes out before the account (and its address) is gone.
     if (user.email) mail.deliver(user.email, 'account_rejected', user.locale, { name: user.username, note });
     db.delete(users).where(eq(users.id, user.id)).run();
+    ctx.events.emit('approvals.changed', { userId: null });
     ctx.audit.record(by, 'user.rejected', null, { username: user.username });
     return done(
       '❌ Abgelehnt',
@@ -133,6 +135,7 @@ export function createApprovalService(
       name: input.name,
     });
     ctx.events.emit('server.requested', { requestId: id });
+    ctx.events.emit('approvals.changed', { userId: user.id });
     return toView(requestRow(id));
   };
 
@@ -147,6 +150,7 @@ export function createApprovalService(
       .set({ status, note, serverId, decidedBy: by.username, decidedAt: new Date().toISOString() })
       .where(and(eq(serverRequests.id, id), eq(serverRequests.status, 'pending')))
       .run();
+    ctx.events.emit('approvals.changed', { userId: requestRow(id).userId });
   };
 
   const alreadyDecided = (row: typeof serverRequests.$inferSelect): DiscordMessage =>
