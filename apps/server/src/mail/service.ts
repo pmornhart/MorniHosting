@@ -16,6 +16,7 @@ import {
   type MailTestResult,
   type RegisterResult,
   type SignupSettings,
+  type OutboxEntry,
 } from '@mornihosting/shared';
 import net from 'node:net';
 import { hashPassword } from '../auth/passwords.js';
@@ -108,6 +109,8 @@ export interface MailService {
   readonly startEmailChange: (user: UserRow, email: string) => void;
   readonly init: (servers: ServerService) => void;
   readonly purgeStale: () => void;
+  /** The last mails with what the mail server said, so a missing mail can be traced. */
+  readonly outbox: () => readonly OutboxEntry[];
 }
 
 export interface RegisterInput {
@@ -121,6 +124,8 @@ export interface RegisterInput {
 const MAIL_KEY = 'mail';
 /** "Konto anfragen" on the start page, on unless an admin switched it off. */
 const SIGNUP_KEY = 'signup';
+/** How many sent mails the outbox keeps (in memory, gone after a restart). */
+const OUTBOX_SIZE = 30;
 const SMTP_SOCKET_TIMEOUT_SECONDS = 30;
 const SMTP_SOCKET_TIMEOUT_MS = SMTP_SOCKET_TIMEOUT_SECONDS * MS_PER_SECOND;
 /** Tried in this order when the saved port/encryption gets no answer. */
@@ -214,6 +219,21 @@ export function createMailService(
     };
   };
 
+  const outbox: OutboxEntry[] = [];
+  const note = (entry: Omit<OutboxEntry, 'at'>): void => {
+    outbox.unshift({
+      at: new Date().toISOString(),
+      ...entry,
+      detail: oneLine(entry.detail).slice(0, SMTP_ERROR_MAX),
+    });
+    outbox.splice(OUTBOX_SIZE);
+  };
+  const answerOf = (info: unknown): string => {
+    const response =
+      typeof info === 'object' && info !== null ? (info as { response?: unknown }).response : null;
+    return typeof response === 'string' ? response : '';
+  };
+
   const send: MailService['send'] = async (to, kind, locale, vars) => {
     const config = smtp();
     const message = renderMail(kind, locale, {
@@ -223,8 +243,10 @@ export function createMailService(
       ...vars,
     });
     try {
-      await factory(config).sendMail({ from: config.from, to, ...message });
+      const info = await factory(config).sendMail({ from: config.from, to, ...message });
+      note({ to, subject: message.subject, ok: true, detail: answerOf(info) });
     } catch (err) {
+      note({ to, subject: message.subject, ok: false, detail: errorMessage(err) });
       log.warn({ err, kind }, 'mail could not be sent');
       throw badRequest('mail_failed', { message: oneLine(errorMessage(err)).slice(0, SMTP_ERROR_MAX) });
     }
@@ -343,7 +365,10 @@ export function createMailService(
 
   /** Mails nobody waits for: a failure is logged, never shown to (or timed for) the visitor. */
   const sendQuietly = (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>): void => {
-    if (!configured()) return;
+    if (!configured()) {
+      note({ to, subject: kind, ok: false, detail: 'E-Mail ist im Panel nicht eingerichtet' });
+      return;
+    }
     send(to, kind, locale, vars).catch((err: unknown) => {
       log.warn({ err, kind, to: `${to.slice(0, LOG_ADDRESS_VISIBLE)}…` }, 'mail dropped');
     });
@@ -483,6 +508,8 @@ export function createMailService(
       name: row.username,
       link: linkTo('/verify', issue(row.id, 'register', SIGNUP_TTL_MS)),
     });
+    // Admins hear about it right away, not only after the mail link was clicked.
+    if (row.approvalPending) ctx.events.emit('user.awaiting_approval', { userId: row.id });
     return { next: 'verify_email' };
   };
 
@@ -495,7 +522,8 @@ export function createMailService(
       db.update(users).set({ signupPending: false }).where(eq(users.id, user.id)).run();
       ctx.audit.record({ userId: user.id, username: user.username, ip: null }, 'auth.email_confirmed');
       if (!user.approvalPending) return { kind: 'register' };
-      ctx.events.emit('user.awaiting_approval', { userId: user.id });
+      // The admins were told at sign-up; the approvals list now shows the address as confirmed.
+      ctx.events.emit('approvals.changed', { userId: user.id });
       return { kind: 'register_pending' };
     }
     const other = row.email ? userByEmail(row.email) : undefined;
@@ -642,5 +670,6 @@ export function createMailService(
     startEmailChange,
     init,
     purgeStale,
+    outbox: () => outbox,
   };
 }

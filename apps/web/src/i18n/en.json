@@ -2421,7 +2421,8 @@
     },
     "hint": "New sign-ups and requests reach every admin by e-mail and Discord DM who turned that on under “My account → Notifications”.",
     "signupOpen": "“Request an account” on the start page",
-    "signupOpenHint": "Visitors can request an account on the start page. They can only log in once you approve here."
+    "signupOpenHint": "Visitors can request an account on the start page. They can only log in once you approve here.",
+    "emailUnconfirmed": "E-mail not confirmed yet"
   },
   "discordBot": {
     "title": "Discord bot (private messages)",
@@ -2509,5 +2510,13 @@
     "warning": "The settings here are replaced. The panel restarts briefly afterwards. Tip: disconnect the Discord bot on the old panel afterwards, or two panels answer.",
     "done": "Done, all settings are taken over. Restart the panel once so everything runs with the new settings.",
     "doneRestart": "Done, all settings are taken over. The panel restarts now and reloads by itself."
+  },
+  "outbox": {
+    "title": "Outbox",
+    "text": "The panel's last mails and what your mail server answered. Updates by itself.",
+    "empty": "No mail was sent since the last restart.",
+    "sent": "accepted",
+    "failed": "failed",
+    "hint": "\"accepted\" means your mail server took the mail. If it still does not arrive, check the spam folder. If your mail server runs at home, Gmail, Outlook and others often refuse mail from home connections – the reason is then in your mail server's log (e.g. Stalwart → queue)."
   }
 }

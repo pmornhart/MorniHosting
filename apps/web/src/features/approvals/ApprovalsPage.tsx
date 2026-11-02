@@ -197,6 +197,9 @@ export function ApprovalsPage(): ReactElement {
                 {user.email ?? '–'} · {formatRelative(user.createdAt)}
               </CardDescription>
             </CardHeader>
+            {user.emailConfirmed ? null : (
+              <Pill className="justify-self-start">{t('approvals.emailUnconfirmed')}</Pill>
+            )}
             <Decide
               approveUrl={`/api/approvals/users/${user.id}/approve`}
               rejectUrl={`/api/approvals/users/${user.id}/reject`}

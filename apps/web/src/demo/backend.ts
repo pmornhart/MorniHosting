@@ -153,6 +153,7 @@ const state = {
         id: 41,
         username: 'kevin',
         email: 'kevin@example.de',
+        emailConfirmed: true,
         createdAt: new Date(Date.now() - 3_600_000).toISOString(),
       },
     ], // eslint-disable-line ts-patterns/no-magic-numbers -- an hour ago

@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { updateQuery } from '@/features/shell/UpdateCard';
 import { useSession } from '@/features/auth/session';
 import { MailCard } from './MailCard';
+import { MailOutbox } from './MailOutbox';
 import { NetBirdGuide } from './NetBirdGuide';
 import { DnsDomainCard } from './DnsDomainCard';
 import { NetbirdAutomationCard } from './NetbirdAutomationCard';
@@ -388,7 +389,12 @@ export function PanelSettingsPage(): ReactElement {
     ),
     update: <UpdateSection />,
     ddos: <DdosSection />,
-    mail: <MailCard />,
+    mail: (
+      <>
+        <MailCard />
+        <MailOutbox />
+      </>
+    ),
     passwords: <PasswordResetCard />,
     move: <TransferSection />,
     settings: settingsForm,

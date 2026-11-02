@@ -39,6 +39,16 @@ export const mailSettingsSchema = z.object({
 });
 export type MailSettingsInput = z.infer<typeof mailSettingsSchema>;
 
+/** One mail the panel tried to send, newest first in the outbox. */
+export interface OutboxEntry {
+  readonly at: string;
+  readonly to: string;
+  readonly subject: string;
+  readonly ok: boolean;
+  /** The mail server's answer ("250 Ok: queued as …") or the error. */
+  readonly detail: string;
+}
+
 export interface MailSettingsView extends Omit<MailSettingsInput, 'password'> {
   readonly configured: boolean;
   /** The password is never sent back; this only says that one is saved. */

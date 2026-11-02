@@ -15,6 +15,7 @@ import {
   type MailTestResult,
   type RegisterResult,
   type SignupSettings,
+  type OutboxEntry,
 } from '@mornihosting/shared';
 import { actorOf, requireAdmin, requireAuth } from '../auth/context.js';
 import { verifyPassword } from '../auth/passwords.js';
@@ -31,6 +32,11 @@ const ANONYMOUS_WINDOW = '1 minute';
 const anonymousRateLimit = { rateLimit: { max: ANONYMOUS_LIMIT, timeWindow: ANONYMOUS_WINDOW } };
 
 export function registerMailRoutes(app: Api, ctx: AppContext, mail: MailService): void {
+  app.get('/api/mail/outbox', async (request): Promise<readonly OutboxEntry[]> => {
+    requireAdmin(request);
+    return mail.outbox();
+  });
+
   app.get('/api/mail', async (request): Promise<MailSettingsView> => {
     requireAdmin(request);
     return mail.view();

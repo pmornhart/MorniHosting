@@ -191,7 +191,12 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
       email: 'lena@example.test',
       password: 'longenough1',
     });
-    const token = sent.at(-1)?.text.match(/token=([\w-]+)/)?.[1] ?? '';
+    // The admin hears about it at once, before the address is confirmed.
+    await waitFor(() => discord.dms.length > 0);
+    expect(
+      (await as(admin, 'GET', '/api/approvals')).json<ApprovalsView>().users.map((u) => u.emailConfirmed),
+    ).toEqual([false]);
+    const token = sent.findLast((m) => m.to === 'lena@example.test')?.text.match(/token=([\w-]+)/)?.[1] ?? '';
     expect((await as(null, 'POST', '/api/auth/confirm', { token })).json<ConfirmResult>().kind).toBe(
       'register_pending',
     );
