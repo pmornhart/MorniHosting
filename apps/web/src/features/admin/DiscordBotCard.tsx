@@ -142,6 +142,23 @@ export function DiscordBotCard(): ReactElement {
         </p>
       ) : null}
       {data?.error ? <p className="text-[13px] text-muted-foreground">{data.error}</p> : null}
+      {data?.lastDmError ? (
+        <div className="grid gap-2 rounded-[10px] bg-warning-soft px-3 py-2 text-sm">
+          <b>{t('notifyCard.noDmTitle')}</b>
+          <span>{t('notifyCard.lastError', { message: data.lastDmError.message })}</span>
+          {data.lastDmError.blocked && data.serverInstallUrl ? (
+            <>
+              <span>{t('notifyCard.noDmText')}</span>
+              <Button asChild size="sm" className="justify-self-start">
+                <a href={data.serverInstallUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink />
+                  {t('notifyCard.addToServer')}
+                </a>
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </Card>
   );
 }

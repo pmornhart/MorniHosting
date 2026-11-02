@@ -154,6 +154,23 @@ export function NotifyCard(): ReactElement {
           </ol>
         )}
         {code.error ? <p className="text-sm text-destructive">{errorText(code.error)}</p> : null}
+        {linked && (data.discord.lastDmError || testDm.error) && data.discord.serverInstallUrl ? (
+          <div className="grid gap-2 rounded-[10px] border border-border p-3 text-sm">
+            <b>{t('notifyCard.noDmTitle')}</b>
+            <span className="text-muted-foreground">{t('notifyCard.noDmText')}</span>
+            <Button asChild size="sm" className="justify-self-start">
+              <a href={data.discord.serverInstallUrl} target="_blank" rel="noreferrer">
+                <ExternalLink />
+                {t('notifyCard.addToServer')}
+              </a>
+            </Button>
+            {data.discord.lastDmError ? (
+              <span className="text-[13px] text-muted-foreground">
+                {t('notifyCard.lastError', { message: data.discord.lastDmError.message })}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         {testDm.error ? (
           <p role="alert" className="rounded-[10px] bg-destructive-soft px-3 py-2 text-sm">
             {errorText(testDm.error)}

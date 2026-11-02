@@ -4,6 +4,7 @@ import {
   wantsNotice,
   type DiscordLinkCode,
   type DiscordSettingsView,
+  type DmError,
   type NotifyPrefsInput,
   type NotifySettingsView,
   type NotifyTopic,
@@ -40,6 +41,7 @@ const CODE_MAX = 1000000;
 const ACTION_PREFIX = 'mh';
 /** Discord's "Cannot send messages to this user": DMs from apps are switched off or the app was removed. */
 const DISCORD_CANNOT_DM = 50007;
+const WELCOME_WAIT_MS = 2000;
 const ACTION_SEPARATOR = ':';
 export const COLOUR_INFO = 0x10b981;
 export const COLOUR_DONE = 0x059669;
@@ -96,6 +98,8 @@ export function createNotifyService(
     error: null,
     disconnect: null,
   };
+  /** Last failed private message per Discord user (kept in memory; cleared by the next one that works). */
+  const dmErrors = new Map<string, DmError>();
 
   const stored = (): StoredDiscord | undefined => settings.getValue<StoredDiscord>(DISCORD_KEY);
   const token = (): string | null => {
@@ -109,6 +113,33 @@ export function createNotifyService(
       : null;
   };
 
+  const serverInstallUrl = (): string | null => {
+    const s = stored();
+    return s
+      ? `https://discord.com/oauth2/authorize?client_id=${s.appId}&integration_type=0&scope=bot%20applications.commands&permissions=0`
+      : null;
+  };
+
+  /** Sends one DM and remembers whether it went through, so the panel can say why nothing arrived. */
+  const deliverDm = async (discordId: string, message: DiscordMessage): Promise<DmError | null> => {
+    const t = token();
+    if (!t) return null;
+    try {
+      await api.sendDm(t, discordId, message);
+      dmErrors.delete(discordId);
+      return null;
+    } catch (err) {
+      const failure: DmError = {
+        at: new Date().toISOString(),
+        message: errorMessage(err),
+        blocked: err instanceof DiscordError && err.code === DISCORD_CANNOT_DM,
+      };
+      dmErrors.set(discordId, failure);
+      log.warn({ err: failure.message, discordId }, 'discord message failed');
+      return failure;
+    }
+  };
+
   const discordView = (): DiscordSettingsView => {
     const s = stored();
     return {
@@ -118,6 +149,8 @@ export function createNotifyService(
       installUrl: installUrl(),
       online: state.online,
       error: state.error,
+      serverInstallUrl: serverInstallUrl(),
+      lastDmError: [...dmErrors.values()].toSorted((a, b) => b.at.localeCompare(a.at))[0] ?? null,
     };
   };
 
@@ -137,7 +170,7 @@ export function createNotifyService(
     void quietly(() => api.reply(interaction, type, message), 'discord reply failed');
   };
 
-  const link = (interaction: DiscordInteraction): void => {
+  const link = async (interaction: DiscordInteraction): Promise<void> => {
     const entry = codes.get(interaction.value.trim());
     if (!entry || entry.expires < Date.now()) {
       reply(interaction, REPLY_MESSAGE, {
@@ -159,22 +192,33 @@ export function createNotifyService(
       { userId: entry.userId, username: interaction.userName, ip: null },
       'account.discord_linked',
     );
-    reply(interaction, REPLY_MESSAGE, {
-      title: '✅ Verbunden',
-      text: 'Ich habe dir gerade privat geschrieben – ab jetzt kommen deine MorniHosting-Benachrichtigungen dort an.',
+    // The first message from the bot opens the private chat. Discord wants an answer within three seconds,
+    // so the reply waits for the DM only briefly and then says what happened.
+    const welcome = deliverDm(interaction.userId, {
+      title: '👋 Hallo von MorniHosting',
+      text: 'Dein Discord ist jetzt verbunden. Hier bekommst du ab sofort deine Benachrichtigungen – Freigaben, Abstürze und Antworten auf deine Anfragen.',
+      colour: COLOUR_INFO,
     });
-    // The first message from the bot opens the private chat, so it shows up among the person's DMs.
-    const t = token();
-    if (t)
-      void quietly(
-        () =>
-          api.sendDm(t, interaction.userId, {
-            title: '👋 Hallo von MorniHosting',
-            text: 'Dein Discord ist jetzt verbunden. Hier bekommst du ab sofort deine Benachrichtigungen – Freigaben, Abstürze und Antworten auf deine Anfragen.',
-            colour: COLOUR_INFO,
-          }),
-        'discord welcome message failed',
-      );
+    const waited = await Promise.race([
+      welcome,
+      new Promise<'slow'>((resolve) => setTimeout(() => resolve('slow'), WELCOME_WAIT_MS)),
+    ]);
+    const invite = serverInstallUrl();
+    reply(
+      interaction,
+      REPLY_MESSAGE,
+      waited === null || waited === 'slow'
+        ? {
+            title: '✅ Verbunden',
+            text: 'Ich habe dir gerade privat geschrieben – schau bei deinen Direktnachrichten. Dort kommen ab jetzt deine MorniHosting-Benachrichtigungen an.',
+          }
+        : {
+            title: '✅ Verbunden – aber ich darf dir nicht privat schreiben',
+            text: waited.blocked
+              ? `Discord lässt meine Nachricht nicht durch, weil wir keinen gemeinsamen Server haben (oder Direktnachrichten von Apps aus sind). Lösung: Hol mich auf einen deiner Server – dort schreibe ich nichts, aber dann darf ich dir privat schreiben: ${invite ?? ''}`
+              : `Discord meldet: ${waited.message}`,
+          },
+    );
   };
 
   const click = async (interaction: DiscordInteraction): Promise<void> => {
@@ -196,7 +240,7 @@ export function createNotifyService(
   };
 
   const onInteraction = (interaction: DiscordInteraction): void => {
-    if (interaction.type === INTERACTION_COMMAND) link(interaction);
+    if (interaction.type === INTERACTION_COMMAND) void link(interaction);
     if (interaction.type === INTERACTION_COMPONENT) void click(interaction);
   };
 
@@ -229,6 +273,8 @@ export function createNotifyService(
         linked: Boolean(user.discordId),
         name: user.discordName,
         installUrl: installUrl(),
+        serverInstallUrl: serverInstallUrl(),
+        lastDmError: user.discordId ? (dmErrors.get(user.discordId) ?? null) : null,
       },
       emailSet: Boolean(user.email),
     };
@@ -249,7 +295,7 @@ export function createNotifyService(
             ...n.mail.vars,
           });
         if (t && person.discordId && wantsNotice(person.notify, 'discord'))
-          void quietly(() => api.sendDm(t, person.discordId ?? '', n.discord), 'discord message failed');
+          void deliverDm(person.discordId, n.discord);
       });
   };
 
@@ -296,19 +342,13 @@ export function createNotifyService(
       const person = fresh(user);
       if (!t) throw badRequest('discord_not_configured');
       if (!person.discordId) throw badRequest('discord_not_linked');
-      try {
-        await api.sendDm(t, person.discordId, {
-          title: '🎉 Test-Nachricht',
-          text: `Hallo ${person.displayName || person.username}, das hat geklappt! Ab jetzt bekommst du deine MorniHosting-Benachrichtigungen hier.`,
-          colour: COLOUR_INFO,
-        });
-      } catch (err) {
-        if (err instanceof DiscordError && err.code === DISCORD_CANNOT_DM)
-          throw badRequest('discord_dm_blocked');
-        if (err instanceof DiscordError || err instanceof UpstreamError)
-          throw badRequest('discord_dm_failed', { message: err.message });
-        throw err;
-      }
+      const failure = await deliverDm(person.discordId, {
+        title: '🎉 Test-Nachricht',
+        text: `Hallo ${person.displayName || person.username}, das hat geklappt! Ab jetzt bekommst du deine MorniHosting-Benachrichtigungen hier.`,
+        colour: COLOUR_INFO,
+      });
+      if (failure?.blocked) throw badRequest('discord_dm_blocked');
+      if (failure) throw badRequest('discord_dm_failed', { message: failure.message });
     },
     unlink: (user) => {
       db.update(users).set({ discordId: null, discordName: null }).where(eq(users.id, user.id)).run();

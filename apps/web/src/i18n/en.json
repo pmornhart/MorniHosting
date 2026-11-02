@@ -560,7 +560,7 @@
     "request_not_found": "This request no longer exists.",
     "request_user_gone": "The person who asked no longer exists or is locked.",
     "discord_not_linked": "Link your Discord first (My account → Notifications), then the bot can write to you.",
-    "discord_dm_blocked": "Discord does not let the message through. In Discord, check Settings → Privacy & Safety whether DMs from apps are allowed, and that the MorniHosting app is still among your apps.",
+    "discord_dm_blocked": "Discord does not let the message through because you share no server with the bot (or DMs from apps are off). Add the bot to one of your servers with the button below, then it works.",
     "discord_dm_failed": "The test message could not be sent: {{message}}"
   },
   "update": {
@@ -2427,7 +2427,7 @@
     "install": "Add app to my Discord",
     "remove": "Remove bot",
     "step1": "Open the Discord Developer Portal and click “New Application”, e.g. “MorniHosting”.",
-    "step2": "“Installation” on the left: tick only “User Install”, install link “Discord Provided Link”, save.",
+    "step2": "“Installation” on the left: tick “User Install” and “Guild Install” (for Guild Install the scopes “bot” and “applications.commands”), install link “Discord Provided Link”, save.",
     "step3": "“Bot” on the left: click “Reset Token” and copy the token.",
     "step4": "Paste the token below and click “Connect”. Done.",
     "portal": "Open Discord Developer Portal",
@@ -2468,6 +2468,10 @@
     "step3": "Done – this card shows “Linked” in a moment. The code is valid for 10 minutes.",
     "test": "Send test message",
     "testSending": "Sending …",
-    "testSent": "Test message sent – check your Discord DMs."
+    "testSent": "Test message sent – check your Discord DMs.",
+    "noDmTitle": "No message arrived?",
+    "noDmText": "Discord only lets a bot write to you privately if you share a server. Add the bot to one of your servers (any, even an empty one) – it writes nothing there, but private messages reach you afterwards. Then “Send test message”.",
+    "addToServer": "Add bot to my server",
+    "lastError": "Last error from Discord: {{message}}"
   }
 }
