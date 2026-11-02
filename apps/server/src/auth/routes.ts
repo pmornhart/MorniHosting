@@ -33,11 +33,13 @@ function userCount(ctx: AppContext): number {
   return ctx.db.select({ n: count() }).from(users).get()?.n ?? 0;
 }
 
+/** By user name, or by e-mail address when the input has an "@" (user names cannot contain one). */
 function findUser(ctx: AppContext, username: string): UserRow | undefined {
+  const column = username.includes('@') ? users.email : users.username;
   return ctx.db
     .select()
     .from(users)
-    .where(eq(sql`lower(${users.username})`, username.toLowerCase()))
+    .where(eq(sql`lower(${column})`, username.toLowerCase()))
     .get();
 }
 

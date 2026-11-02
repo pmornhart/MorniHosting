@@ -158,7 +158,8 @@
     "passkeyElsewhere": "Passkey sign-in works at",
     "forgot": "Forgot your password?",
     "noAccount": "No account yet? Request one – we will let you in.",
-    "register": "Sign up now"
+    "register": "Sign up now",
+    "usernameOrEmail": "User name or e-mail"
   },
   "dashboard": {
     "title": "Your servers",

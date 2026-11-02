@@ -241,11 +241,13 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
       note: 'Dein Passwort steht natürlich nicht in dieser Mail – das bekommst du persönlich überreicht. VIP-Behandlung eben.',
     }),
     register: (v) => ({
-      subject: 'Deine Anfrage ist raus – bitte E-Mail bestätigen',
+      subject: v.link ? 'Deine Anfrage ist raus – bitte E-Mail bestätigen' : 'Deine Anfrage ist raus',
       heading: 'Deine Anfrage ist raus 📬',
       paragraphs: [
         hi.de(v.name),
-        'danke für deine Anfrage bei MorniHosting, sie ist angekommen. Bestätige bitte noch kurz deine E-Mail-Adresse. Der Link gilt 24 Stunden.',
+        v.link
+          ? 'danke für deine Anfrage bei MorniHosting, sie ist angekommen. Bestätige bitte noch kurz deine E-Mail-Adresse. Der Link gilt 24 Stunden.'
+          : 'danke für deine Anfrage bei MorniHosting, sie ist angekommen.',
         'Muss ein Admin dein Konto erst freigeben, bekommst du danach noch eine Mail, sobald es so weit ist.',
       ],
       ...(v.link ? { button: { label: 'E-Mail bestätigen', url: v.link } } : {}),
@@ -393,11 +395,13 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
       note: 'Your password is of course not in this mail – you get it handed over in person. VIP treatment.',
     }),
     register: (v) => ({
-      subject: 'Your request is in – please confirm your e-mail',
+      subject: v.link ? 'Your request is in – please confirm your e-mail' : 'Your request is in',
       heading: 'Your request is in 📬',
       paragraphs: [
         hi.en(v.name),
-        'thanks for your request at MorniHosting, it has arrived. Please confirm your e-mail address. The link is valid for 24 hours.',
+        v.link
+          ? 'thanks for your request at MorniHosting, it has arrived. Please confirm your e-mail address. The link is valid for 24 hours.'
+          : 'thanks for your request at MorniHosting, it has arrived.',
         'If an admin has to approve your account first, you get another mail as soon as that happens.',
       ],
       ...(v.link ? { button: { label: 'Confirm e-mail', url: v.link } } : {}),

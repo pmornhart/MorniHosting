@@ -158,7 +158,8 @@
     "passkeyElsewhere": "Mit Passkey anmelden geht über",
     "forgot": "Passwort vergessen?",
     "noAccount": "Noch kein Konto? Frag eins an – wir schalten dich frei.",
-    "register": "Jetzt registrieren"
+    "register": "Jetzt registrieren",
+    "usernameOrEmail": "Benutzername oder E-Mail"
   },
   "dashboard": {
     "title": "Deine Server",
