@@ -18,6 +18,8 @@ export interface PanelEvents {
   'user.awaiting_approval': { userId: number };
   /** Someone without the right to order asked for a server. */
   'server.requested': { requestId: string };
+  /** A sign-up or server request was decided; `userId` is the person it was about (null when deleted). */
+  'approvals.changed': { userId: number | null };
 }
 
 export type PanelEventName = keyof PanelEvents;

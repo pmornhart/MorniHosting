@@ -817,6 +817,8 @@ export type WsServerMessage =
   | { readonly type: 'console'; readonly serverId: string; readonly line: string }
   | { readonly type: 'console-history'; readonly serverId: string; readonly lines: readonly string[] }
   | { readonly type: 'deleted'; readonly serverId: string }
+  /** Sign-ups or server requests changed: reload the approvals, own requests and server list. */
+  | { readonly type: 'approvals' }
   | { readonly type: 'error'; readonly code: string }
   | { readonly type: 'pong' };
 

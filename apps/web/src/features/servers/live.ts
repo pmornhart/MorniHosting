@@ -74,6 +74,10 @@ export function useLiveSync(): boolean {
         }
       }
       if (message.type === 'deleted') void queryClient.invalidateQueries({ queryKey: serversQuery.queryKey });
+      if (message.type === 'approvals')
+        [['approvals'], ['server-requests'], ['users'], serversQuery.queryKey].forEach((queryKey) => {
+          void queryClient.invalidateQueries({ queryKey });
+        });
     });
     return () => {
       stopSubscription();
