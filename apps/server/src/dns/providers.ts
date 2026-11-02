@@ -268,6 +268,8 @@ function inwx(token: string): DnsClient {
     if (cookie) session.cookie = cookie;
     // INWX labels its JSON "text/json"; read the text so an odd answer can be shown as it is.
     const text = await response.text().catch(() => '');
+    // INWX answers some successful calls (e.g. nameserver.updateRecord) with an empty body.
+    if (response.ok && text.trim() === '') return undefined;
     const answer = inwxAnswer.safeParse(parseJson(text));
     if (!answer.success)
       throw new AppError(HTTP_BAD_GATEWAY, 'dns_rejected', {

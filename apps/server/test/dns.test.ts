@@ -375,4 +375,20 @@ describe('INWX', () => {
       params: { message: expect.stringContaining('Wartungsarbeiten') },
     });
   });
+
+  test('an empty INWX answer to a change counts as done', async () => {
+    vi.stubGlobal('fetch', async (_input: string | URL | Request, init?: RequestInit) => {
+      const { method } = JSON.parse(String(init?.body)) as { method: string };
+      if (method === 'account.login')
+        return Response.json(
+          { code: 1000, msg: 'ok', resData: { tfa: '0' } },
+          { headers: { 'set-cookie': 'domrobot=x; Path=/' } },
+        );
+      return new Response('', { status: 200, headers: { 'content-type': 'text/json; charset=utf-8' } });
+    });
+    const client = createDnsClient('inwx', JSON.stringify({ user: 'philip', pass: 'geheim' }));
+    await expect(
+      client.update('mornihosting.de', '4711', { type: 'A', name: 'mornihosting.de', ip: '85.215.54.143' }),
+    ).resolves.toBeUndefined();
+  });
 });
