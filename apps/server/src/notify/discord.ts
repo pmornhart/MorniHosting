@@ -1,3 +1,4 @@
+import { createPublicKey, verify } from 'node:crypto';
 import { errorMessage } from '../lib/errors.js';
 import { fetchResponse } from '../lib/http-client.js';
 import { MS_PER_SECOND } from '../lib/units.js';
@@ -36,6 +37,8 @@ const BUTTON_SUCCESS = 3;
 const BUTTON_DANGER = 4;
 const BUTTON_LINK = 5;
 /** The /verbinden command: usable by people who added the app to their account, in the bot's DM. */
+const EVENT_WEBHOOKS_ENABLED = 2;
+export const EVENT_APPLICATION_AUTHORIZED = 'APPLICATION_AUTHORIZED';
 const INTEGRATION_GUILD_INSTALL = 0;
 const INTEGRATION_USER_INSTALL = 1;
 /** Where /verbinden works: servers, the bot's DM and any other DM or group, so nobody has to find the bot's chat first. */
@@ -85,6 +88,10 @@ export interface DiscordApi {
     token: string,
     look: { readonly avatar: string; readonly description: string },
   ) => Promise<void>;
+  /** The app's public key (hex), used to check that events really come from Discord. */
+  readonly appKey: (token: string) => Promise<string>;
+  /** Discord tells this address when someone adds the app ("Autorisieren"); no chat needed to link. */
+  readonly setEventWebhook: (token: string, url: string) => Promise<void>;
   readonly sendDm: (token: string, userId: string, message: DiscordMessage) => Promise<void>;
   readonly reply: (
     interaction: DiscordInteraction,
@@ -224,6 +231,15 @@ export const realDiscord: DiscordApi = {
       },
     });
   },
+  appKey: async (token) =>
+    ((await call(token, 'GET', '/applications/@me')) as { verify_key: string }).verify_key,
+  setEventWebhook: async (token, url) => {
+    await call(token, 'PATCH', '/applications/@me', {
+      event_webhooks_url: url,
+      event_webhooks_status: EVENT_WEBHOOKS_ENABLED,
+      event_webhooks_types: [EVENT_APPLICATION_AUTHORIZED],
+    });
+  },
   sendDm: async (token, userId, message) => {
     const channel = (await call(token, 'POST', '/users/@me/channels', { recipient_id: userId })) as {
       id: string;
@@ -335,3 +351,25 @@ export const realDiscord: DiscordApi = {
     };
   },
 };
+
+/** DER prefix of an Ed25519 public key; Discord hands out only the 32 raw bytes. */
+const ED25519_SPKI_PREFIX = '302a300506032b6570032100';
+
+/** Checks Discord's signature over "timestamp + body" (https://docs.discord.com/developers/events/webhook-events). */
+export function discordSignatureValid(
+  publicKeyHex: string,
+  signatureHex: string,
+  timestamp: string,
+  body: string,
+): boolean {
+  try {
+    const key = createPublicKey({
+      key: Buffer.from(ED25519_SPKI_PREFIX + publicKeyHex, 'hex'),
+      format: 'der',
+      type: 'spki',
+    });
+    return verify(null, Buffer.from(timestamp + body), key, Buffer.from(signatureHex, 'hex'));
+  } catch {
+    return false;
+  }
+}

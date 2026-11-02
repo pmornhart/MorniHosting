@@ -62,6 +62,8 @@ function fakeDiscord() {
       return { id: '999', name: 'MorniBot' };
     },
     registerCommands: async () => undefined,
+    appKey: async () => '00'.repeat(32),
+    setEventWebhook: async () => undefined,
     brand: async (_token, look) => {
       looks.push(look);
     },

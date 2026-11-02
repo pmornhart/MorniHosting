@@ -72,6 +72,7 @@ import { registerMinecraftRoutes } from './minecraft/routes.js';
 import type { Resolver } from './lib/net-guard.js';
 import { createDdosService } from './ddos/service.js';
 import { registerDdosRoutes } from './ddos/routes.js';
+import { rememberRawBody } from './lib/raw-body.js';
 import type { MailNetwork } from './mail/check.js';
 import { createMailService, type MailService, type TransportFactory } from './mail/service.js';
 import { registerMailRoutes } from './mail/routes.js';
@@ -141,7 +142,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   app.addContentTypeParser(
     'application/json',
     { parseAs: 'string' },
-    async (_request: unknown, body: string) => {
+    async (request: object, body: string) => {
+      rememberRawBody(request, body);
       if (!body.trim()) return undefined;
       try {
         return JSON.parse(body) as unknown;
