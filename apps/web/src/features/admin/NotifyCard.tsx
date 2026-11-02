@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, ExternalLink, Send, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   NOTIFY_CHANNELS,
@@ -16,12 +16,31 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { errorText } from '@/lib/query';
-import { useSession } from '@/features/auth/session';
+import { statusQuery, useSession } from '@/features/auth/session';
 
 const settingsQuery = {
   queryKey: ['notify-settings'],
   queryFn: () => api<NotifySettingsView>('/api/account/notifications'),
 } as const;
+
+/** One numbered step; the number is drawn, so it stays right whatever the item contains. */
+function Step(props: {
+  readonly n: number;
+  readonly text: string;
+  readonly children?: ReactNode;
+}): ReactElement {
+  return (
+    <li className="flex gap-3">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+        {props.n}
+      </span>
+      <span className="grid min-w-0 flex-1 gap-2">
+        <span>{props.text}</span>
+        {props.children}
+      </span>
+    </li>
+  );
+}
 
 /** "Mein Konto": what to be told about, by mail and/or Discord private message, and linking Discord. */
 export function NotifyCard(): ReactElement {
@@ -29,6 +48,7 @@ export function NotifyCard(): ReactElement {
   const { me } = useSession();
   const queryClient = useQueryClient();
   const { data } = useQuery(settingsQuery);
+  const panelDomain = useQuery(statusQuery).data?.panelDomain;
   const linked = Boolean(data?.discord.linked);
   // While a code is shown, look every few seconds whether /verbinden arrived.
   const code = useMutation({
@@ -120,9 +140,8 @@ export function NotifyCard(): ReactElement {
             </Button>
           </div>
         ) : (
-          <ol className="grid list-decimal gap-3 pl-5 text-sm">
-            <li className="grid gap-2">
-              <span>{t('notifyCard.step1')}</span>
+          <ol className="grid gap-4 text-sm">
+            <Step n={1} text={t('notifyCard.step1')}>
               {data.discord.installUrl ? (
                 <Button asChild variant="outline" size="sm" className="justify-self-start">
                   <a href={data.discord.installUrl} target="_blank" rel="noreferrer">
@@ -131,26 +150,32 @@ export function NotifyCard(): ReactElement {
                   </a>
                 </Button>
               ) : null}
-            </li>
-            <li className="grid gap-2">
-              <span>{t('notifyCard.step2')}</span>
-              {code.data ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <code className="rounded-[8px] bg-muted px-3 py-1.5 font-mono text-base">{command}</code>
-                  <CopyButton text={command} />
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  className="justify-self-start"
-                  disabled={code.isPending}
-                  onClick={() => code.mutate()}
-                >
-                  {t('notifyCard.getCode')}
-                </Button>
-              )}
-            </li>
-            <li>{t('notifyCard.step3')}</li>
+            </Step>
+            {panelDomain ? (
+              <Step n={2} text={t('notifyCard.stepCommand')}>
+                <code className="justify-self-start rounded-[8px] bg-muted px-3 py-1.5 font-mono text-base">
+                  /verbinden
+                </code>
+              </Step>
+            ) : (
+              <Step n={2} text={t('notifyCard.step2Code')}>
+                {code.data ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <code className="rounded-[8px] bg-muted px-3 py-1.5 font-mono text-base">{command}</code>
+                    <CopyButton text={command} />
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="justify-self-start"
+                    disabled={code.isPending}
+                    onClick={() => code.mutate()}
+                  >
+                    {t('notifyCard.getCode')}
+                  </Button>
+                )}
+              </Step>
+            )}
           </ol>
         )}
         {code.error ? <p className="text-sm text-destructive">{errorText(code.error)}</p> : null}

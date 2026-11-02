@@ -1,3 +1,4 @@
+import { DiscordLinkPage } from '@/features/admin/DiscordLinkPage';
 import { ApprovalsPage } from '@/features/approvals/ApprovalsPage';
 import { Suspense, type ReactElement } from 'react';
 import { Navigate, type RouteObject } from 'react-router';
@@ -39,6 +40,7 @@ export const appRoutes: RouteObject[] = [
   { path: 'admin', element: <Navigate to="/settings" replace /> },
   { path: 'audit', element: <AuditPage /> },
   { path: 'account', element: <AccountPage /> },
+  { path: 'discord-link', element: <DiscordLinkPage /> },
   { path: 'servers/import', element: <ImportServerPage /> },
   {
     path: 'servers/:serverId',

@@ -561,7 +561,8 @@
     "request_user_gone": "The person who asked no longer exists or is locked.",
     "discord_not_linked": "Link your Discord first (My account → Notifications), then the bot can write to you.",
     "discord_dm_blocked": "Discord does not let the message through because you share no server with the bot (or DMs from apps are off). Add the bot to one of your servers with the button below, then it works.",
-    "discord_dm_failed": "The test message could not be sent: {{message}}"
+    "discord_dm_failed": "The test message could not be sent: {{message}}",
+    "discord_link_expired": "The link has expired or was already used. Type /verbinden in Discord again."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -2423,13 +2424,12 @@
     "online": "Online",
     "connecting": "Connecting …",
     "connectedAs": "Connected as",
-    "nextStep": "Now everyone adds the app to their own Discord account and links it under “My account → Notifications” – you too.",
+    "nextStep": "All set. Now everyone links their Discord under “My account → Notifications” – you too.",
     "install": "Add app to my Discord",
     "remove": "Remove bot",
-    "step1": "Open the Discord Developer Portal and click “New Application”, e.g. “MorniHosting”.",
-    "step2": "“Installation” on the left: tick “User Install” and “Guild Install” (for Guild Install the scopes “bot” and “applications.commands”), install link “Discord Provided Link”, save.",
-    "step3": "“Bot” on the left: click “Reset Token” and copy the token.",
-    "step4": "Paste the token below and click “Connect”. Done.",
+    "step1": "Open the Discord Developer Portal, click “New Application”, name it “MorniHosting”, create.",
+    "step2": "“Bot” on the left, then “Reset Token” and copy the token.",
+    "step3": "Paste the token here and click “Connect”. The panel sets the picture, description and all settings itself.",
     "portal": "Open Discord Developer Portal",
     "token": "Bot token",
     "connect": "Connect",
@@ -2461,7 +2461,7 @@
     "discordUnavailable": "Discord is not set up on this panel yet (admin: Notifications → Discord bot).",
     "linkedAs": "Linked to {{name}} ✅",
     "unlink": "Unlink",
-    "step1": "Add the MorniHosting app to your Discord account (“Add to My Apps”). No server needed.",
+    "step1": "Add the MorniHosting app to your Discord account: press the button, “Authorize”.",
     "addApp": "Add app",
     "step2": "Send this command in any Discord chat – any server channel or chat with a friend. Only you see the answer. The bot then writes to you privately, which opens its chat.",
     "getCode": "Show code",
@@ -2472,6 +2472,18 @@
     "noDmTitle": "No message arrived?",
     "noDmText": "Discord only lets a bot write to you privately if you share a server. Add the bot to one of your servers (any, even an empty one) – it writes nothing there, but private messages reach you afterwards. Then “Send test message”.",
     "addToServer": "Add bot to my server",
-    "lastError": "Last error from Discord: {{message}}"
+    "lastError": "Last error from Discord: {{message}}",
+    "stepServer": "Add the bot to one of your Discord servers (any, even an empty one). Without a shared server Discord does not let it write to you privately. It writes nothing on the server.",
+    "stepCommand": "In Discord, type /verbinden in any chat, pick the command from the list and press Enter. Then click “Jetzt verbinden” – done, the bot writes to you.",
+    "step2Code": "In Discord, type /verbinden, pick the command from the list and enter this code in the “code” field:"
+  },
+  "discordLink": {
+    "title": "Link Discord",
+    "question": "Link the Discord account “{{name}}” to your MorniHosting account?",
+    "confirm": "Yes, link",
+    "done": "Linked! The bot just wrote to you privately.",
+    "noDm": "Linked – but Discord does not let the bot write to you privately yet. Add it to one of your servers with one click, then it works:",
+    "toAccount": "To my account",
+    "missing": "The link has expired. Type /verbinden in Discord again."
   }
 }

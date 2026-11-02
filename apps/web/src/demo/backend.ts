@@ -1011,6 +1011,8 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
           'https://discord.com/oauth2/authorize?client_id=1300000000000000000&integration_type=1&scope=applications.commands',
         online: true,
         error: null,
+        branded: true,
+        brandError: null,
         serverInstallUrl:
           'https://discord.com/oauth2/authorize?client_id=1300000000000000000&integration_type=0&scope=bot%20applications.commands&permissions=0',
         lastDmError: null,

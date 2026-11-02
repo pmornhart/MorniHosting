@@ -54,6 +54,7 @@ const BLOCKED_DISCORD = '333';
 function fakeDiscord() {
   const dms: { userId: string; message: DiscordMessage }[] = [];
   const replies: { type: number; message: DiscordMessage | null }[] = [];
+  const looks: { avatar: string; description: string }[] = [];
   const hooks: { onInteraction: ((i: DiscordInteraction) => void) | null } = { onInteraction: null };
   const api: DiscordApi = {
     whoAmI: async (token) => {
@@ -61,6 +62,9 @@ function fakeDiscord() {
       return { id: '999', name: 'MorniBot' };
     },
     registerCommands: async () => undefined,
+    brand: async (_token, look) => {
+      looks.push(look);
+    },
     sendDm: async (_token, userId, message) => {
       if (userId === BLOCKED_DISCORD) throw new DiscordError(403, 50007, 'Cannot send messages to this user');
       dms.push({ userId, message });
@@ -76,7 +80,7 @@ function fakeDiscord() {
   };
   const interact = (type: number, value: string, userId = PHILIP_DISCORD): void =>
     hooks.onInteraction?.({ id: 'i1', token: 't1', type, userId, userName: 'philip_dc', value });
-  return { api, dms, replies, interact };
+  return { api, dms, replies, interact, looks };
 }
 
 describe('approvals: accounts and server requests, by panel, mail and Discord DM', () => {
@@ -137,6 +141,38 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
   test('linking with /verbinden: the bot writes first, which opens the private chat', async () => {
     await waitFor(() => discord.dms.some((d) => d.userId === PHILIP_DISCORD));
     expect(discord.dms[0]?.message.title).toBe('👋 Hallo von MorniHosting');
+  });
+
+  test('connecting the bot gives it the MorniHosting picture and description, once', async () => {
+    await waitFor(() => discord.looks.length > 0);
+    expect(discord.looks[0]?.avatar.startsWith('data:image/png;base64,iVBOR')).toBe(true);
+    expect(discord.looks[0]?.description).toContain('MorniHosting');
+    await waitFor(async () => (await as(admin, 'GET', '/api/discord')).json<{ branded: boolean }>().branded);
+  });
+
+  test('/verbinden without a code: button opens the panel, one click there links and the bot says hello', async () => {
+    await as(admin, 'POST', '/api/users', { username: 'lena', password: 'lena-passwort-1' });
+    const lena = await login(t, 'lena', 'lena-passwort-1');
+    discord.interact(INTERACTION_COMMAND, '', '555');
+    await waitFor(() => discord.replies.some((r) => r.message?.title === 'Mit MorniHosting verbinden'));
+    const button = discord.replies.find((r) => r.message?.title === 'Mit MorniHosting verbinden')?.message
+      ?.buttons?.[0];
+    expect(button?.url).toMatch(/^https:\/\/mornihosting\.de\/discord-link#/);
+    const token = button?.url?.split('#')[1] ?? '';
+    expect((await as(lena, 'POST', '/api/account/discord/peek', { token })).json()).toEqual({
+      name: 'philip_dc',
+    });
+    expect((await as(lena, 'POST', '/api/account/discord/claim', { token })).json()).toMatchObject({
+      dm: null,
+    });
+    expect(discord.dms.at(-1)).toMatchObject({
+      userId: '555',
+      message: { title: '👋 Hallo von MorniHosting' },
+    });
+    // One use only.
+    expect((await as(lena, 'POST', '/api/account/discord/claim', { token })).json()).toMatchObject({
+      error: 'discord_link_expired',
+    });
   });
 
   test('a wrong bot token is refused with its own message', async () => {

@@ -561,7 +561,8 @@
     "request_user_gone": "Die Person, die angefragt hat, gibt es nicht mehr oder sie ist gesperrt.",
     "discord_not_linked": "Verbinde zuerst dein Discord (Mein Konto → Benachrichtigungen), dann kann der Bot dir schreiben.",
     "discord_dm_blocked": "Discord lässt die Nachricht nicht durch, weil du mit dem Bot keinen gemeinsamen Server hast (oder Direktnachrichten von Apps aus sind). Hol den Bot mit dem Knopf unten auf einen deiner Server, dann klappt es.",
-    "discord_dm_failed": "Die Test-Nachricht ging nicht raus: {{message}}"
+    "discord_dm_failed": "Die Test-Nachricht ging nicht raus: {{message}}",
+    "discord_link_expired": "Der Link ist abgelaufen oder wurde schon benutzt. Tippe in Discord noch einmal /verbinden."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -2423,13 +2424,12 @@
     "online": "Online",
     "connecting": "Verbindet …",
     "connectedAs": "Verbunden als",
-    "nextStep": "Jetzt fügt jede Person die App zu ihrem eigenen Discord-Konto hinzu und verbindet sich unter „Mein Konto → Benachrichtigungen“ – du auch.",
+    "nextStep": "Fertig eingerichtet. Jetzt verbindet jede Person ihr Discord unter „Mein Konto → Benachrichtigungen“ – du auch.",
     "install": "App zu meinem Discord hinzufügen",
     "remove": "Bot entfernen",
-    "step1": "Öffne das Discord Developer Portal und klicke „New Application“. Name z. B. „MorniHosting“.",
-    "step2": "Links „Installation“: bei „Installation Contexts“ „User Install“ und „Guild Install“ anhaken (bei Guild Install als Scopes „bot“ und „applications.commands“), Install Link „Discord Provided Link“, speichern.",
-    "step3": "Links „Bot“: „Reset Token“ klicken und den Token kopieren.",
-    "step4": "Token unten einfügen und „Verbinden“ klicken. Fertig.",
+    "step1": "Öffne das Discord Developer Portal, klicke „New Application“, Name „MorniHosting“, erstellen.",
+    "step2": "Links auf „Bot“, dann „Reset Token“ und den Token kopieren.",
+    "step3": "Token hier einfügen und „Verbinden“ klicken. Profilbild, Beschreibung und alle Einstellungen macht das Panel selbst.",
     "portal": "Discord Developer Portal öffnen",
     "token": "Bot-Token",
     "connect": "Verbinden",
@@ -2461,7 +2461,7 @@
     "discordUnavailable": "Discord ist auf diesem Panel noch nicht eingerichtet (Admin: Benachrichtigungen → Discord-Bot).",
     "linkedAs": "Verbunden mit {{name}} ✅",
     "unlink": "Trennen",
-    "step1": "Füge die MorniHosting-App zu deinem Discord-Konto hinzu („Zu meinen Apps hinzufügen“). Kein Server nötig.",
+    "step1": "Füge die MorniHosting-App zu deinem Discord-Konto hinzu: Knopf drücken, „Autorisieren“.",
     "addApp": "App hinzufügen",
     "step2": "Schreib diesen Befehl in irgendeinen Discord-Chat – egal welchen Server-Kanal oder Freundes-Chat. Nur du siehst die Antwort. Danach schreibt dir der Bot privat und der Chat mit ihm ist offen.",
     "getCode": "Code anzeigen",
@@ -2472,6 +2472,18 @@
     "noDmTitle": "Keine Nachricht angekommen?",
     "noDmText": "Discord lässt einen Bot nur privat schreiben, wenn ihr einen gemeinsamen Server habt. Hol den Bot auf einen deiner Server (irgendeinen, auch einen leeren) – dort schreibt er nichts, aber danach kommen die Nachrichten privat bei dir an. Dann „Test-Nachricht senden“.",
     "addToServer": "Bot auf meinen Server holen",
-    "lastError": "Letzter Fehler von Discord: {{message}}"
+    "lastError": "Letzter Fehler von Discord: {{message}}",
+    "stepServer": "Hol den Bot auf einen deiner Discord-Server (irgendeinen, auch einen leeren). Ohne gemeinsamen Server lässt Discord ihn dir nicht privat schreiben. Auf dem Server schreibt er nichts.",
+    "stepCommand": "Tippe in Discord in irgendeinen Chat /verbinden, wähle den Befehl aus der Liste und drück Enter. Dann auf „Jetzt verbinden“ klicken – fertig, der Bot schreibt dir.",
+    "step2Code": "Tippe in Discord /verbinden, wähle den Befehl aus der Liste und trag im Feld „code“ diesen Code ein:"
+  },
+  "discordLink": {
+    "title": "Discord verbinden",
+    "question": "Discord-Konto „{{name}}“ mit deinem MorniHosting-Konto verbinden?",
+    "confirm": "Ja, verbinden",
+    "done": "Verbunden! Der Bot hat dir gerade privat geschrieben.",
+    "noDm": "Verbunden – aber Discord lässt den Bot dir noch nicht privat schreiben. Hol ihn mit einem Klick auf einen deiner Server, dann klappt es:",
+    "toAccount": "Zu meinem Konto",
+    "missing": "Der Link ist abgelaufen. Tippe in Discord noch einmal /verbinden."
   }
 }

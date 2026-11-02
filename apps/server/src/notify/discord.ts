@@ -21,8 +21,8 @@ const OP_IDENTIFY = 2;
 const OP_RECONNECT = 7;
 const OP_INVALID_SESSION = 9;
 const OP_HELLO = 10;
-/** No intents: interactions (commands, buttons) arrive without any. */
-const NO_INTENTS = 0;
+/** Only "guilds": interactions need no intent; this one tells us when the bot joins a server. */
+const INTENT_GUILDS = 1;
 
 /** Interaction types and answers, https://docs.discord.com/developers/interactions/receiving-and-responding */
 export const INTERACTION_COMMAND = 2;
@@ -36,6 +36,7 @@ const BUTTON_SUCCESS = 3;
 const BUTTON_DANGER = 4;
 const BUTTON_LINK = 5;
 /** The /verbinden command: usable by people who added the app to their account, in the bot's DM. */
+const INTEGRATION_GUILD_INSTALL = 0;
 const INTEGRATION_USER_INSTALL = 1;
 /** Where /verbinden works: servers, the bot's DM and any other DM or group, so nobody has to find the bot's chat first. */
 const CONTEXT_GUILD = 0;
@@ -79,6 +80,11 @@ export interface DiscordBot {
 export interface DiscordApi {
   readonly whoAmI: (token: string) => Promise<DiscordBot>;
   readonly registerCommands: (token: string, appId: string) => Promise<void>;
+  /** Bot profile picture, app icon and the description shown on the bot's profile. */
+  readonly brand: (
+    token: string,
+    look: { readonly avatar: string; readonly description: string },
+  ) => Promise<void>;
   readonly sendDm: (token: string, userId: string, message: DiscordMessage) => Promise<void>;
   readonly reply: (
     interaction: DiscordInteraction,
@@ -90,6 +96,8 @@ export interface DiscordApi {
     token: string,
     onInteraction: (interaction: DiscordInteraction) => void,
     onStatus: (online: boolean, error: string | null) => void,
+    /** The bot is on a server (joined just now, or seen again after connecting). */
+    onServer?: () => void,
   ) => () => void;
 }
 
@@ -185,13 +193,36 @@ export const realDiscord: DiscordApi = {
       {
         name: LINK_COMMAND,
         description: 'Verbindet dich mit deinem MorniHosting-Konto',
-        integration_types: [INTEGRATION_USER_INSTALL],
+        integration_types: [INTEGRATION_GUILD_INSTALL, INTEGRATION_USER_INSTALL],
         contexts: [CONTEXT_GUILD, CONTEXT_BOT_DM, CONTEXT_PRIVATE_CHANNEL],
+        // Without a code the bot answers with a button that opens the panel; the code stays for panels without
+        // a domain.
         options: [
-          { type: OPTION_STRING, name: 'code', description: 'Code aus „Mein Konto“', required: true },
+          {
+            type: OPTION_STRING,
+            name: 'code',
+            description: 'Nur nötig, wenn das Panel es sagt',
+            required: false,
+          },
         ],
       },
     ]);
+  },
+  brand: async (token, look) => {
+    await call(token, 'PATCH', '/users/@me', { avatar: look.avatar });
+    await call(token, 'PATCH', '/applications/@me', {
+      icon: look.avatar,
+      description: look.description,
+      // Install links ask for the right things, so nobody has to tick anything in the Developer Portal.
+      integration_types_config: {
+        [INTEGRATION_GUILD_INSTALL]: {
+          oauth2_install_params: { scopes: ['bot', 'applications.commands'], permissions: '0' },
+        },
+        [INTEGRATION_USER_INSTALL]: {
+          oauth2_install_params: { scopes: ['applications.commands'], permissions: '0' },
+        },
+      },
+    });
   },
   sendDm: async (token, userId, message) => {
     const channel = (await call(token, 'POST', '/users/@me/channels', { recipient_id: userId })) as {
@@ -202,7 +233,11 @@ export const realDiscord: DiscordApi = {
   reply: async (interaction, type, message) => {
     const data =
       type === REPLY_MESSAGE
-        ? { content: message ? `**${message.title}**\n${message.text}` : '', flags: FLAG_EPHEMERAL }
+        ? {
+            content: message ? `**${message.title}**\n${message.text}` : '',
+            components: (toDiscordPayload(message) as { components: unknown[] }).components,
+            flags: FLAG_EPHEMERAL,
+          }
         : toDiscordPayload(message);
     const response = await fetchResponse(
       `${API}/interactions/${interaction.id}/${interaction.token}/callback`,
@@ -214,7 +249,7 @@ export const realDiscord: DiscordApi = {
     );
     if (!response.ok) throw new DiscordError(response.status, null, await response.text());
   },
-  connect: (token, onInteraction, onStatus) => {
+  connect: (token, onInteraction, onStatus, onServer) => {
     const state: {
       socket: WebSocket | null;
       heartbeat: NodeJS.Timeout | null;
@@ -267,7 +302,7 @@ export const realDiscord: DiscordApi = {
             state.heartbeat = setInterval(() => send(OP_HEARTBEAT, state.seq), every);
             send(OP_IDENTIFY, {
               token,
-              intents: NO_INTENTS,
+              intents: INTENT_GUILDS,
               properties: { os: 'linux', browser: 'mornihosting', device: 'mornihosting' },
             });
           } else if (packet.op === OP_RECONNECT || packet.op === OP_INVALID_SESSION) {
@@ -275,6 +310,8 @@ export const realDiscord: DiscordApi = {
           } else if (packet.op === OP_DISPATCH && packet.t === 'READY') {
             state.delaySeconds = RECONNECT_MIN_SECONDS;
             onStatus(true, null);
+          } else if (packet.op === OP_DISPATCH && packet.t === 'GUILD_CREATE') {
+            onServer?.();
           } else if (packet.op === OP_DISPATCH && packet.t === 'INTERACTION_CREATE') {
             const interaction = parseInteraction(packet.d as RawInteraction);
             if (interaction) onInteraction(interaction);
