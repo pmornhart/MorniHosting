@@ -186,8 +186,13 @@ function PanelAddress({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   // The address the panel already has (e.g. hosting.moinmornhart.de) gives the name, otherwise "panel".
-  const known = status.panelAddress ?? (panelDomain.endsWith(`.${domain}`) ? panelDomain : null);
-  const [name, setName] = useState(known?.slice(0, -(domain.length + 1)) ?? PANEL_NAME);
+  const known =
+    status.panelAddress ??
+    (panelDomain === domain || panelDomain.endsWith(`.${domain}`) ? panelDomain : null);
+  // The panel on the domain itself (mornihosting.de) has no name in front.
+  const [name, setName] = useState(
+    known === domain ? '' : (known?.slice(0, -(domain.length + 1)) ?? PANEL_NAME),
+  );
   const [port, setPort] = useState(String(Number(window.location.port) || DEFAULT_PANEL_PORT));
   const setup = useMutation({
     mutationFn: () =>
@@ -209,7 +214,11 @@ function PanelAddress({
       </b>
       <p className="text-[13px] text-muted-foreground">{t('netbirdAuto.panelText')}</p>
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px_auto] sm:items-end">
-        <Field id="nb-panel" label={t('netbirdAuto.panelName')}>
+        <Field
+          id="nb-panel"
+          label={t('netbirdAuto.panelName')}
+          hint={t('netbirdAuto.panelNameHint', { domain })}
+        >
           <NetbirdNameInput
             id="nb-panel"
             value={name}
@@ -226,12 +235,7 @@ function PanelAddress({
             onChange={(e) => setPort(e.target.value.trim())}
           />
         </Field>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={setup.isPending || !name.trim()}
-          onClick={() => setup.mutate()}
-        >
+        <Button type="button" variant="secondary" disabled={setup.isPending} onClick={() => setup.mutate()}>
           <Save />
           {t('netbirdAuto.panelButton')}
         </Button>

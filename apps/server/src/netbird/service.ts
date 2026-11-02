@@ -26,7 +26,11 @@ import { createNetbirdClient, type NetbirdClient, type NetbirdClientFactory } fr
  */
 
 const SETTINGS_KEY = 'netbird';
+const RESOURCES_KEY = 'netbird_resources';
+/** Name of the NetBird network, its group and the resources the panel makes. */
+const NETWORK_NAME = 'MorniHosting';
 const PANEL_KEY = 'panel';
+const NETWORK_LOCK = 'network';
 /** Machines whose name contains this are offered first: the Proxmox script calls its container so. */
 const MACHINE_HINT = 'mornihosting';
 const SUFFIX: Readonly<Record<NetbirdPurpose, string>> = {
@@ -45,6 +49,18 @@ interface StoredConfig {
   readonly peerName: string;
   /** The domain's proxy listens on the ports the panel asks for; unknown for setups saved before. */
   readonly customPorts?: boolean;
+  /** NetBird network "MorniHosting" and its group, found or made once. */
+  readonly networkId?: string;
+  readonly groupId?: string;
+  /** Set once all services point at network resources (older setups pointed at the machine itself). */
+  readonly resourceMode?: boolean;
+}
+
+/** One network resource per server (key: server id) and one for the panel (key: "panel"). */
+interface StoredResource {
+  readonly id: string;
+  readonly name: string;
+  readonly address: string;
 }
 
 interface Wanted {
@@ -85,6 +101,76 @@ export function createNetbirdAutomation(
     const cfg = config();
     if (!cfg) throw badRequest('netbird_not_configured');
     return cfg;
+  };
+
+  const saveConfig = (patch: Partial<StoredConfig>): void => {
+    const cfg = config();
+    if (cfg) ctx.settings.setValue(SETTINGS_KEY, { ...cfg, ...patch });
+  };
+  const storedResources = (): Record<string, StoredResource> =>
+    ctx.settings.getValue<Record<string, StoredResource>>(RESOURCES_KEY) ?? {};
+  const saveResource = (key: string, resource: StoredResource | null): void => {
+    const rest = Object.fromEntries(Object.entries(storedResources()).filter(([k]) => k !== key));
+    ctx.settings.setValue(RESOURCES_KEY, resource ? { ...rest, [key]: resource } : rest);
+  };
+  /** The machine's address in the home network; without it services go straight to the machine (peer). */
+  const lanAddress = (): string | null => ctx.settings.get().lanIp.trim() || null;
+
+  /** The network "MorniHosting" with this machine as routing peer, and the group for its resources. */
+  // One at a time: after an update all servers move at once and would otherwise each create the network.
+  const ensureNetwork = (
+    client: NetbirdClient,
+    cfg: StoredConfig,
+  ): Promise<{ networkId: string; groupId: string }> =>
+    lock(NETWORK_LOCK, () => ensureNetworkNow(client, config() ?? cfg));
+  const ensureNetworkNow = async (
+    client: NetbirdClient,
+    cfg: StoredConfig,
+  ): Promise<{ networkId: string; groupId: string }> => {
+    const networks = await client.networks();
+    const network =
+      networks.find((n) => n.id === cfg.networkId) ??
+      networks.find((n) => n.name === NETWORK_NAME) ??
+      (await client.createNetwork(NETWORK_NAME, 'Game-Server von MorniHosting'));
+    const groups = await client.groups();
+    const group =
+      groups.find((g) => g.id === cfg.groupId) ??
+      groups.find((g) => g.name === NETWORK_NAME) ??
+      (await client.createGroup(NETWORK_NAME));
+    const routers = await client.routers(network.id);
+    if (!routers.some((r) => r.peer === cfg.peerId)) await client.createRouter(network.id, cfg.peerId);
+    if (cfg.networkId !== network.id || cfg.groupId !== group.id)
+      saveConfig({ networkId: network.id, groupId: group.id });
+    return { networkId: network.id, groupId: group.id };
+  };
+
+  /** Creates or updates the network resource for one server (or the panel); null without a home address. */
+  const ensureResource = async (
+    client: NetbirdClient,
+    cfg: StoredConfig,
+    key: string,
+    name: string,
+  ): Promise<{ resource: StoredResource; changed: boolean } | null> => {
+    const address = lanAddress();
+    if (!address) return null;
+    const known = storedResources()[key];
+    if (known && known.address === address && known.name === name) return { resource: known, changed: false };
+    const { networkId, groupId } = await ensureNetwork(client, cfg);
+    const request = { name, address, groupId };
+    const existing = known ? (await client.resources(networkId)).find((r) => r.id === known.id) : undefined;
+    const result = existing
+      ? await client.updateResource(networkId, existing.id, request)
+      : await client.createResource(networkId, request);
+    const saved: StoredResource = { id: result.id, name, address };
+    saveResource(key, saved);
+    // A new or moved resource: the services must point at it, even if nothing else changed.
+    return { resource: saved, changed: true };
+  };
+  const dropResource = async (client: NetbirdClient, cfg: StoredConfig, key: string): Promise<void> => {
+    const known = storedResources()[key];
+    if (!known) return;
+    if (cfg.networkId) await client.deleteResource(cfg.networkId, known.id);
+    saveResource(key, null);
   };
 
   const mappings = (serverId: string | null): Mapping[] =>
@@ -148,11 +234,14 @@ export function createNetbirdAutomation(
     want: Wanted,
     existing: Mapping | undefined,
     force: boolean,
+    resource: StoredResource | null,
   ): Promise<Mapping> => {
     const request = {
       domain: want.domain,
       mode: want.mode,
       peerId: cfg.peerId,
+      resourceId: resource?.id ?? null,
+      resourceAddress: resource?.address ?? null,
       port: want.port,
       passHostHeader: want.mode === 'http',
     };
@@ -212,6 +301,11 @@ export function createNetbirdAutomation(
     const row = serverRow(serverId);
     const wants = row ? wanted(row, cfg) : [];
     const client = clientFor(cfg);
+    const ensured =
+      row?.netbirdName && wants.length
+        ? await ensureResource(client, cfg, serverId, `${NETWORK_NAME} ${row.netbirdName}`)
+        : null;
+    const resource = ensured?.resource ?? null;
     const stale = existing.filter((m) => !wants.some((w) => w.purpose === m.purpose));
     await Promise.all(
       stale.map(async (m) => {
@@ -227,10 +321,12 @@ export function createNetbirdAutomation(
           serverId,
           w,
           existing.find((m) => m.purpose === w.purpose),
-          force,
+          force || (ensured?.changed ?? false),
+          resource,
         ),
       ),
     );
+    if (!wants.length) await dropResource(client, cfg, serverId);
     if (row) servers.setTunnelAddress(serverId, addressOf(done));
     failures.delete(serverId);
   };
@@ -324,7 +420,13 @@ export function createNetbirdAutomation(
       : null;
   servers.describeNetbird(describe);
   // After an update, addresses made under older rules (e.g. a random port on a self-hosted proxy) follow.
-  if (config()) void Promise.allSettled(namedServers().map((r) => syncQuietly(r.id)));
+  // Setups from before network resources move over once: every service then points at its resource.
+  const moveToResources = config()?.resourceMode !== true && lanAddress() !== null;
+  if (config())
+    void (async () => {
+      await Promise.allSettled(namedServers().map((r) => syncQuietly(r.id, moveToResources)));
+      if (moveToResources) saveConfig({ resourceMode: true });
+    })();
 
   return {
     status,
@@ -362,12 +464,19 @@ export function createNetbirdAutomation(
         peerId: peer.id,
         peerName: peer.name,
         customPorts: chosen.supports_custom_ports,
+        ...(previous?.networkId ? { networkId: previous.networkId } : {}),
+        ...(previous?.groupId ? { groupId: previous.groupId } : {}),
+        resourceMode: lanAddress() !== null,
       } satisfies StoredConfig);
       ctx.audit.record(actor, 'netbird.configure', null, { domain, machine: peer.name });
+      // The chosen machine routes to the resources (also after switching to another machine).
+      const saved = config();
+      if (saved && lanAddress()) await ensureNetwork(clientFor(saved), saved);
       const moved =
         previous?.domain !== domain ||
         previous.peerId !== peer.id ||
-        previous.customPorts !== chosen.supports_custom_ports;
+        previous.customPorts !== chosen.supports_custom_ports ||
+        previous.resourceMode !== (lanAddress() !== null);
       await Promise.allSettled(namedServers().map((r) => syncQuietly(r.id, moved)));
       return status();
     },
@@ -377,6 +486,8 @@ export function createNetbirdAutomation(
       // The panel's own service stays in NetBird: removing it could lock the admin out of the panel.
       const serverServices = owned.filter((m) => m.serverId !== null);
       if (cfg) await Promise.allSettled(serverServices.map((m) => clientFor(cfg).deleteService(m.id)));
+      const serverResources = Object.keys(storedResources()).filter((key) => key !== PANEL_KEY);
+      if (cfg) await Promise.allSettled(serverResources.map((key) => dropResource(clientFor(cfg), cfg, key)));
       ctx.db.delete(netbirdServices).run();
       namedServers().forEach((r) =>
         servers.setTunnelAddress(r.id, {
@@ -422,14 +533,18 @@ export function createNetbirdAutomation(
       const client = clientFor(cfg);
       const want: Wanted = {
         purpose: 'panel',
-        domain: `${input.name}${SUFFIX.panel}.${cfg.domain}`,
+        // An empty name puts the panel on the domain itself (mornihosting.de).
+        domain: input.name ? `${input.name}${SUFFIX.panel}.${cfg.domain}` : cfg.domain,
         mode: 'http',
         port: input.port,
       };
+      const resource = (await ensureResource(client, cfg, PANEL_KEY, `${NETWORK_NAME} Panel`))?.resource;
       const request = {
         domain: want.domain,
         mode: want.mode,
         peerId: cfg.peerId,
+        resourceId: resource?.id ?? null,
+        resourceAddress: resource?.address ?? null,
         port: want.port,
         passHostHeader: true,
       };

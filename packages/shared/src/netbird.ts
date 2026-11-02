@@ -34,7 +34,11 @@ export type NetbirdConfigInput = z.infer<typeof netbirdConfigSchema>;
 
 export const netbirdServerSchema = z.object({ name: netbirdNameSchema.nullable() });
 
-export const netbirdPanelSchema = z.object({ name: netbirdNameSchema, port: portSchema });
+/** An empty name puts the panel on the domain itself. */
+export const netbirdPanelSchema = z.object({
+  name: z.union([netbirdNameSchema, z.literal('')]),
+  port: portSchema,
+});
 
 /** What a NetBird service is for: the server itself, Bedrock players via Geyser, voice chat, the panel. */
 export type NetbirdPurpose = 'main' | 'geyser' | 'voice' | 'panel';
