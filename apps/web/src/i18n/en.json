@@ -2461,7 +2461,7 @@
     "discordUnavailable": "Discord is not set up on this panel yet (admin: Notifications → Discord bot).",
     "linkedAs": "Linked to {{name}} ✅",
     "unlink": "Unlink",
-    "step1": "Add the MorniHosting app to your Discord account (“Add to My Apps”). No server needed.",
+    "step1": "Add the MorniHosting app to your Discord account (“Add to My Apps”).",
     "addApp": "Add app",
     "step2": "Send this command in any Discord chat – any server channel or chat with a friend. Only you see the answer. The bot then writes to you privately, which opens its chat.",
     "getCode": "Show code",
@@ -2472,6 +2472,7 @@
     "noDmTitle": "No message arrived?",
     "noDmText": "Discord only lets a bot write to you privately if you share a server. Add the bot to one of your servers (any, even an empty one) – it writes nothing there, but private messages reach you afterwards. Then “Send test message”.",
     "addToServer": "Add bot to my server",
-    "lastError": "Last error from Discord: {{message}}"
+    "lastError": "Last error from Discord: {{message}}",
+    "stepServer": "Add the bot to one of your Discord servers (any, even an empty one). Without a shared server Discord does not let it write to you privately. It writes nothing on the server."
   }
 }

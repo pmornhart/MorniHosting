@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, ExternalLink, Send, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   NOTIFY_CHANNELS,
@@ -22,6 +22,25 @@ const settingsQuery = {
   queryKey: ['notify-settings'],
   queryFn: () => api<NotifySettingsView>('/api/account/notifications'),
 } as const;
+
+/** One numbered step; the number is drawn, so it stays right whatever the item contains. */
+function Step(props: {
+  readonly n: number;
+  readonly text: string;
+  readonly children?: ReactNode;
+}): ReactElement {
+  return (
+    <li className="flex gap-3">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+        {props.n}
+      </span>
+      <span className="grid min-w-0 flex-1 gap-2">
+        <span>{props.text}</span>
+        {props.children}
+      </span>
+    </li>
+  );
+}
 
 /** "Mein Konto": what to be told about, by mail and/or Discord private message, and linking Discord. */
 export function NotifyCard(): ReactElement {
@@ -120,9 +139,8 @@ export function NotifyCard(): ReactElement {
             </Button>
           </div>
         ) : (
-          <ol className="grid list-decimal gap-3 pl-5 text-sm">
-            <li className="grid gap-2">
-              <span>{t('notifyCard.step1')}</span>
+          <ol className="grid gap-4 text-sm">
+            <Step n={1} text={t('notifyCard.step1')}>
               {data.discord.installUrl ? (
                 <Button asChild variant="outline" size="sm" className="justify-self-start">
                   <a href={data.discord.installUrl} target="_blank" rel="noreferrer">
@@ -131,9 +149,18 @@ export function NotifyCard(): ReactElement {
                   </a>
                 </Button>
               ) : null}
-            </li>
-            <li className="grid gap-2">
-              <span>{t('notifyCard.step2')}</span>
+            </Step>
+            <Step n={2} text={t('notifyCard.stepServer')}>
+              {data.discord.serverInstallUrl ? (
+                <Button asChild variant="outline" size="sm" className="justify-self-start">
+                  <a href={data.discord.serverInstallUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink />
+                    {t('notifyCard.addToServer')}
+                  </a>
+                </Button>
+              ) : null}
+            </Step>
+            <Step n={3} text={t('notifyCard.step2')}>
               {code.data ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <code className="rounded-[8px] bg-muted px-3 py-1.5 font-mono text-base">{command}</code>
@@ -149,8 +176,8 @@ export function NotifyCard(): ReactElement {
                   {t('notifyCard.getCode')}
                 </Button>
               )}
-            </li>
-            <li>{t('notifyCard.step3')}</li>
+            </Step>
+            <Step n={4} text={t('notifyCard.step3')} />
           </ol>
         )}
         {code.error ? <p className="text-sm text-destructive">{errorText(code.error)}</p> : null}

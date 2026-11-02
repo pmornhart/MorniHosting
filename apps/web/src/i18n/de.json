@@ -2461,7 +2461,7 @@
     "discordUnavailable": "Discord ist auf diesem Panel noch nicht eingerichtet (Admin: Benachrichtigungen → Discord-Bot).",
     "linkedAs": "Verbunden mit {{name}} ✅",
     "unlink": "Trennen",
-    "step1": "Füge die MorniHosting-App zu deinem Discord-Konto hinzu („Zu meinen Apps hinzufügen“). Kein Server nötig.",
+    "step1": "Füge die MorniHosting-App zu deinem Discord-Konto hinzu („Zu meinen Apps hinzufügen“).",
     "addApp": "App hinzufügen",
     "step2": "Schreib diesen Befehl in irgendeinen Discord-Chat – egal welchen Server-Kanal oder Freundes-Chat. Nur du siehst die Antwort. Danach schreibt dir der Bot privat und der Chat mit ihm ist offen.",
     "getCode": "Code anzeigen",
@@ -2472,6 +2472,7 @@
     "noDmTitle": "Keine Nachricht angekommen?",
     "noDmText": "Discord lässt einen Bot nur privat schreiben, wenn ihr einen gemeinsamen Server habt. Hol den Bot auf einen deiner Server (irgendeinen, auch einen leeren) – dort schreibt er nichts, aber danach kommen die Nachrichten privat bei dir an. Dann „Test-Nachricht senden“.",
     "addToServer": "Bot auf meinen Server holen",
-    "lastError": "Letzter Fehler von Discord: {{message}}"
+    "lastError": "Letzter Fehler von Discord: {{message}}",
+    "stepServer": "Hol den Bot auf einen deiner Discord-Server (irgendeinen, auch einen leeren). Ohne gemeinsamen Server lässt Discord ihn dir nicht privat schreiben. Auf dem Server schreibt er nichts."
   }
 }
