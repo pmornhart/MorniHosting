@@ -1,4 +1,5 @@
 import { DiscordBotCard } from './DiscordBotCard';
+import { MailOutbox } from './MailOutbox';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
@@ -386,6 +387,7 @@ export function NotificationsPage(): ReactElement {
         }
       />
       <DiscordBotCard />
+      <MailOutbox />
       <h2 className="text-lg font-semibold">{t('webhooks.channelsTitle')}</h2>
       {list()}
       <WebhookDialog

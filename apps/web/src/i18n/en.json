@@ -2513,8 +2513,8 @@
   },
   "outbox": {
     "title": "Outbox",
-    "text": "The panel's last mails and what your mail server answered. Updates by itself.",
-    "empty": "No mail was sent since the last restart.",
+    "text": "The panel's last mails and Discord messages: what went out and what did not – with the reason. Updates by itself.",
+    "empty": "Nothing was sent since the last restart.",
     "sent": "accepted",
     "failed": "failed",
     "hint": "\"accepted\" means your mail server took the mail. If it still does not arrive, check the spam folder. If your mail server runs at home, Gmail, Outlook and others often refuse mail from home connections – the reason is then in your mail server's log (e.g. Stalwart → queue)."

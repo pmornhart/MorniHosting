@@ -111,6 +111,8 @@ export interface MailService {
   readonly purgeStale: () => void;
   /** The last mails with what the mail server said, so a missing mail can be traced. */
   readonly outbox: () => readonly OutboxEntry[];
+  /** Adds a line to the outbox (Discord messages and notices that could not go out). */
+  readonly note: (entry: Omit<OutboxEntry, 'at'>) => void;
 }
 
 export interface RegisterInput {
@@ -220,7 +222,7 @@ export function createMailService(
   };
 
   const outbox: OutboxEntry[] = [];
-  const note = (entry: Omit<OutboxEntry, 'at'>): void => {
+  const note: MailService['note'] = (entry) => {
     outbox.unshift({
       at: new Date().toISOString(),
       ...entry,
@@ -244,9 +246,9 @@ export function createMailService(
     });
     try {
       const info = await factory(config).sendMail({ from: config.from, to, ...message });
-      note({ to, subject: message.subject, ok: true, detail: answerOf(info) });
+      note({ channel: 'mail', to, subject: message.subject, ok: true, detail: answerOf(info) });
     } catch (err) {
-      note({ to, subject: message.subject, ok: false, detail: errorMessage(err) });
+      note({ channel: 'mail', to, subject: message.subject, ok: false, detail: errorMessage(err) });
       log.warn({ err, kind }, 'mail could not be sent');
       throw badRequest('mail_failed', { message: oneLine(errorMessage(err)).slice(0, SMTP_ERROR_MAX) });
     }
@@ -366,7 +368,13 @@ export function createMailService(
   /** Mails nobody waits for: a failure is logged, never shown to (or timed for) the visitor. */
   const sendQuietly = (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>): void => {
     if (!configured()) {
-      note({ to, subject: kind, ok: false, detail: 'E-Mail ist im Panel nicht eingerichtet' });
+      note({
+        channel: 'mail',
+        to,
+        subject: kind,
+        ok: false,
+        detail: 'E-Mail ist im Panel nicht eingerichtet',
+      });
       return;
     }
     send(to, kind, locale, vars).catch((err: unknown) => {
@@ -481,6 +489,8 @@ export function createMailService(
             name: nameOf(existing),
             link: linkTo('/verify', token),
           });
+          // Asked again: the admins hear about it again too (at most once per resend pause).
+          if (existing.approvalPending) ctx.events.emit('user.awaiting_approval', { userId: existing.id });
         }
       } else {
         sendQuietly(input.email, 'already_registered', localeOf(existing), {
@@ -671,5 +681,6 @@ export function createMailService(
     init,
     purgeStale,
     outbox: () => outbox,
+    note,
   };
 }

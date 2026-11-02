@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Inbox, XCircle } from 'lucide-react';
+import { CheckCircle2, Inbox, Mail, MessageCircle, XCircle } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OutboxEntry } from '@mornihosting/shared';
@@ -42,7 +42,14 @@ export function MailOutbox(): ReactElement {
               <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" aria-label={t('outbox.failed')} />
             )}
             <div className="grid min-w-0 gap-0.5 text-sm">
-              <p className="truncate font-semibold">{entry.subject}</p>
+              <p className="flex min-w-0 items-center gap-1.5 font-semibold">
+                {entry.channel === 'discord' ? (
+                  <MessageCircle className="size-3.5 shrink-0 text-muted-foreground" aria-label="Discord" />
+                ) : (
+                  <Mail className="size-3.5 shrink-0 text-muted-foreground" aria-label="E-Mail" />
+                )}
+                <span className="truncate">{entry.subject}</span>
+              </p>
               <p className="truncate text-muted-foreground">
                 {entry.to} · {formatRelative(entry.at)} · {entry.ok ? t('outbox.sent') : t('outbox.failed')}
               </p>

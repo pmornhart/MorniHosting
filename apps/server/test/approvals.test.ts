@@ -196,6 +196,16 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
     expect(
       (await as(admin, 'GET', '/api/approvals')).json<ApprovalsView>().users.map((u) => u.emailConfirmed),
     ).toEqual([false]);
+    // The outbox shows the sign-up mail and the Discord message to the admin.
+    await waitFor(async () => {
+      const lines = (await as(admin, 'GET', '/api/mail/outbox')).json<
+        { channel: string; to: string; ok: boolean }[]
+      >();
+      return (
+        lines.some((m) => m.channel === 'mail' && m.to === 'lena@example.test' && m.ok) &&
+        lines.some((m) => m.channel === 'discord' && m.to === 'philip' && m.ok)
+      );
+    });
     const token = sent.findLast((m) => m.to === 'lena@example.test')?.text.match(/token=([\w-]+)/)?.[1] ?? '';
     expect((await as(null, 'POST', '/api/auth/confirm', { token })).json<ConfirmResult>().kind).toBe(
       'register_pending',

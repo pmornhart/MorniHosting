@@ -42,6 +42,8 @@ export type MailSettingsInput = z.infer<typeof mailSettingsSchema>;
 /** One mail the panel tried to send, newest first in the outbox. */
 export interface OutboxEntry {
   readonly at: string;
+  /** Mail or Discord direct message. */
+  readonly channel: 'mail' | 'discord';
   readonly to: string;
   readonly subject: string;
   readonly ok: boolean;
