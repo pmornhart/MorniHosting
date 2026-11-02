@@ -2463,7 +2463,7 @@
     "unlink": "Unlink",
     "step1": "Add the MorniHosting app to your Discord account (“Add to My Apps”). No server needed.",
     "addApp": "Add app",
-    "step2": "In Discord, open the direct message with the app and send this command:",
+    "step2": "Send this command in any Discord chat – any server channel or chat with a friend. Only you see the answer. The bot then writes to you privately, which opens its chat.",
     "getCode": "Show code",
     "step3": "Done – this card shows “Linked” in a moment. The code is valid for 10 minutes.",
     "test": "Send test message",

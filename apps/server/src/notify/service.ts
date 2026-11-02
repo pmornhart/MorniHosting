@@ -161,8 +161,20 @@ export function createNotifyService(
     );
     reply(interaction, REPLY_MESSAGE, {
       title: '✅ Verbunden',
-      text: 'Ab jetzt bekommst du deine MorniHosting-Benachrichtigungen hier per Direktnachricht.',
+      text: 'Ich habe dir gerade privat geschrieben – ab jetzt kommen deine MorniHosting-Benachrichtigungen dort an.',
     });
+    // The first message from the bot opens the private chat, so it shows up among the person's DMs.
+    const t = token();
+    if (t)
+      void quietly(
+        () =>
+          api.sendDm(t, interaction.userId, {
+            title: '👋 Hallo von MorniHosting',
+            text: 'Dein Discord ist jetzt verbunden. Hier bekommst du ab sofort deine Benachrichtigungen – Freigaben, Abstürze und Antworten auf deine Anfragen.',
+            colour: COLOUR_INFO,
+          }),
+        'discord welcome message failed',
+      );
   };
 
   const click = async (interaction: DiscordInteraction): Promise<void> => {
@@ -192,7 +204,10 @@ export function createNotifyService(
     state.disconnect?.();
     state.disconnect = null;
     const t = token();
-    if (!t) return;
+    const s = stored();
+    if (!t || !s) return;
+    // Panels set up before /verbinden worked everywhere get the new command once at start.
+    void quietly(() => api.registerCommands(t, s.appId), 'discord command update failed');
     state.disconnect = api.connect(t, onInteraction, (online, error) => {
       state.online = online;
       state.error = error;
