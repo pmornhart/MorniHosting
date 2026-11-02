@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bot, ExternalLink, Save, Trash2 } from 'lucide-react';
+import { Bot, ExternalLink, Save, Send, Trash2 } from 'lucide-react';
 import { useState, type FormEvent, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -40,6 +40,12 @@ export function DiscordBotCard(): ReactElement {
       refresh(view);
       toast.success(t('discordBot.saved', { name: view.botName ?? '' }));
     },
+  });
+  const testDm = useMutation({
+    mutationFn: () => api<void>('/api/account/discord/test', { method: 'POST' }),
+    onSuccess: () => toast.success(t('notifyCard.testSent')),
+    // The reason stays in the card; no second pop-up.
+    onError: () => undefined,
   });
   const remove = useMutation({
     mutationFn: () => api<void>('/api/discord', { method: 'DELETE' }),
@@ -84,6 +90,10 @@ export function DiscordBotCard(): ReactElement {
                 </a>
               </Button>
             ) : null}
+            <Button variant="secondary" disabled={testDm.isPending} onClick={() => testDm.mutate()}>
+              <Send />
+              {testDm.isPending ? t('notifyCard.testSending') : t('discordBot.testToMe')}
+            </Button>
             <Button variant="outline" disabled={remove.isPending} onClick={() => remove.mutate()}>
               <Trash2 />
               {t('discordBot.remove')}
@@ -121,6 +131,11 @@ export function DiscordBotCard(): ReactElement {
           </form>
         </>
       )}
+      {testDm.error ? (
+        <p role="alert" className="rounded-[10px] bg-destructive-soft px-3 py-2 text-sm">
+          {errorText(testDm.error)}
+        </p>
+      ) : null}
       {save.error ? (
         <p role="alert" className="rounded-[10px] bg-destructive-soft px-3 py-2 text-sm">
           {errorText(save.error)}

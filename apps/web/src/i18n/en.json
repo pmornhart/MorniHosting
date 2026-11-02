@@ -558,7 +558,10 @@
     "discord_not_configured": "Discord is not set up yet.",
     "request_not_needed": "You may create servers directly – no request needed.",
     "request_not_found": "This request no longer exists.",
-    "request_user_gone": "The person who asked no longer exists or is locked."
+    "request_user_gone": "The person who asked no longer exists or is locked.",
+    "discord_not_linked": "Link your Discord first (My account → Notifications), then the bot can write to you.",
+    "discord_dm_blocked": "Discord does not let the message through. In Discord, check Settings → Privacy & Safety whether DMs from apps are allowed, and that the MorniHosting app is still among your apps.",
+    "discord_dm_failed": "The test message could not be sent: {{message}}"
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -2430,7 +2433,8 @@
     "portal": "Open Discord Developer Portal",
     "token": "Bot token",
     "connect": "Connect",
-    "saved": "Bot {{name}} is connected."
+    "saved": "Bot {{name}} is connected.",
+    "testToMe": "Test message to me"
   },
   "notifyCard": {
     "title": "Notifications",
@@ -2461,6 +2465,9 @@
     "addApp": "Add app",
     "step2": "In Discord, open the direct message with the app and send this command:",
     "getCode": "Show code",
-    "step3": "Done – this card shows “Linked” in a moment. The code is valid for 10 minutes."
+    "step3": "Done – this card shows “Linked” in a moment. The code is valid for 10 minutes.",
+    "test": "Send test message",
+    "testSending": "Sending …",
+    "testSent": "Test message sent – check your Discord DMs."
   }
 }

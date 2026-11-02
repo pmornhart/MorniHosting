@@ -558,7 +558,10 @@
     "discord_not_configured": "Discord ist noch nicht eingerichtet.",
     "request_not_needed": "Du darfst Server direkt erstellen – keine Anfrage nötig.",
     "request_not_found": "Diese Anfrage gibt es nicht mehr.",
-    "request_user_gone": "Die Person, die angefragt hat, gibt es nicht mehr oder sie ist gesperrt."
+    "request_user_gone": "Die Person, die angefragt hat, gibt es nicht mehr oder sie ist gesperrt.",
+    "discord_not_linked": "Verbinde zuerst dein Discord (Mein Konto → Benachrichtigungen), dann kann der Bot dir schreiben.",
+    "discord_dm_blocked": "Discord lässt die Nachricht nicht durch. Prüfe in Discord unter Einstellungen → Privatsphäre & Sicherheit, ob Direktnachrichten von Apps erlaubt sind, und ob die MorniHosting-App noch bei deinen Apps ist.",
+    "discord_dm_failed": "Die Test-Nachricht ging nicht raus: {{message}}"
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -2430,7 +2433,8 @@
     "portal": "Discord Developer Portal öffnen",
     "token": "Bot-Token",
     "connect": "Verbinden",
-    "saved": "Bot {{name}} ist verbunden."
+    "saved": "Bot {{name}} ist verbunden.",
+    "testToMe": "Test-Nachricht an mich"
   },
   "notifyCard": {
     "title": "Benachrichtigungen",
@@ -2461,6 +2465,9 @@
     "addApp": "App hinzufügen",
     "step2": "Öffne in Discord die Direktnachricht mit der App und schick diesen Befehl:",
     "getCode": "Code anzeigen",
-    "step3": "Fertig – hier steht gleich „Verbunden“. Der Code gilt 10 Minuten."
+    "step3": "Fertig – hier steht gleich „Verbunden“. Der Code gilt 10 Minuten.",
+    "test": "Test-Nachricht senden",
+    "testSending": "Wird gesendet …",
+    "testSent": "Test-Nachricht ist raus – schau in deine Discord-DMs."
   }
 }

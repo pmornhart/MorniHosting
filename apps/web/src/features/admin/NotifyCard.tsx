@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ExternalLink, Unlink } from 'lucide-react';
+import { Bell, ExternalLink, Send, Unlink } from 'lucide-react';
+import { toast } from 'sonner';
 import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -38,6 +39,12 @@ export function NotifyCard(): ReactElement {
     mutationFn: (prefs: NotifyPrefsInput) =>
       api<NotifySettingsView>('/api/account/notifications', { method: 'PUT', body: prefs }),
     onSuccess: (view) => queryClient.setQueryData(settingsQuery.queryKey, view),
+  });
+  const testDm = useMutation({
+    mutationFn: () => api<void>('/api/account/discord/test', { method: 'POST' }),
+    onSuccess: () => toast.success(t('notifyCard.testSent')),
+    // The reason stays in the card; no second pop-up.
+    onError: () => undefined,
   });
   const unlink = useMutation({
     mutationFn: () => api<void>('/api/account/discord', { method: 'DELETE' }),
@@ -103,6 +110,10 @@ export function NotifyCard(): ReactElement {
         ) : linked ? (
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <span>{t('notifyCard.linkedAs', { name: data.discord.name ?? '' })}</span>
+            <Button size="sm" disabled={testDm.isPending} onClick={() => testDm.mutate()}>
+              <Send />
+              {testDm.isPending ? t('notifyCard.testSending') : t('notifyCard.test')}
+            </Button>
             <Button variant="outline" size="sm" disabled={unlink.isPending} onClick={() => unlink.mutate()}>
               <Unlink />
               {t('notifyCard.unlink')}
@@ -143,6 +154,11 @@ export function NotifyCard(): ReactElement {
           </ol>
         )}
         {code.error ? <p className="text-sm text-destructive">{errorText(code.error)}</p> : null}
+        {testDm.error ? (
+          <p role="alert" className="rounded-[10px] bg-destructive-soft px-3 py-2 text-sm">
+            {errorText(testDm.error)}
+          </p>
+        ) : null}
       </div>
     </Card>
   );

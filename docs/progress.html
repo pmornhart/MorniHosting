@@ -132,8 +132,8 @@ footer { color: var(--muted); font-size: 13px; }
 <script type="application/json" id="data">
 {
   "goal": "Ein selbst gehostetes Panel für Minecraft-Server: so viel wie Crafty Controller 4, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-11-02T10:06:07+00:00",
-  "now": "Startseite mit „Konto anfragen“ fertig – wartet auf Philips Go.",
+  "updated": "2026-11-02T10:23:25+00:00",
+  "now": "Discord-Test-Nachricht fertig – wartet auf Philips Go.",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -374,9 +374,29 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "Startseite: Konto anfragen",
       "status": "fertig",
       "detail": "Ausgeloggt stehen oben, im Hero und in der Anmeldekarte groß „Anmelden“ und „Konto anfragen“. Geht jetzt auch ohne E-Mail-Einrichtung: die Anfrage landet direkt unter Freigaben (plus Mail/Discord an Admins). E-Mail-Adresse ist Pflicht. Schalter „Konto anfragen auf der Startseite“ oben auf der Freigaben-Seite. 264 Tests grün."
+    },
+    {
+      "title": "Konto anfragen veröffentlicht",
+      "status": "fertig",
+      "detail": "Nach Philips Go nach main gemergt (PR #26), CI grün."
+    },
+    {
+      "title": "Discord: Test-Nachricht",
+      "status": "fertig",
+      "detail": "Knopf „Test-Nachricht senden“ unter Mein Konto (wenn Discord verbunden) und „Test-Nachricht an mich“ auf der Discord-Bot-Karte. Klappt es nicht, steht der Grund da (z. B. DMs von Apps in Discord gesperrt). 265 Tests grün."
     }
   ],
   "shots": [
+    {
+      "img": "progress/discord-test-ok.webp",
+      "caption": "Discord: Test-Nachricht gesendet",
+      "time": "2026-11-02T10:23:25+00:00"
+    },
+    {
+      "img": "progress/discord-test-fehler.webp",
+      "caption": "Wenn Discord die DM blockt: Grund und Tipp (Handy)",
+      "time": "2026-11-02T10:23:25+00:00"
+    },
     {
       "img": "progress/konto-start-desktop.webp",
       "caption": "Startseite: Anmelden und Konto anfragen",
@@ -425,16 +445,6 @@ footer { color: var(--muted); font-size: 13px; }
     {
       "img": "progress/smtp-desktop-wechsel.webp",
       "caption": "Test-Mail: 587 antwortet nicht, 465/TLS gefunden und gespeichert",
-      "time": "2026-10-30T22:21:52+00:00"
-    },
-    {
-      "img": "progress/smtp-desktop-zertifikat.webp",
-      "caption": "Zertifikat passt nicht zum Namen – mit Tipp",
-      "time": "2026-10-30T22:21:52+00:00"
-    },
-    {
-      "img": "progress/smtp-desktop-passwort.webp",
-      "caption": "Falsches Passwort – Anmeldung abgelehnt",
       "time": "2026-10-30T22:21:52+00:00"
     }
   ],
