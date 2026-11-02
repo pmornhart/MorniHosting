@@ -75,12 +75,12 @@ export function registerNotifyRoutes(
       return reply.code(HTTP_NO_CONTENT).send();
     },
   );
-  app.post(
+  app.get(
     '/api/account/discord/peek',
-    { schema: { body: discordClaimSchema } },
+    { schema: { querystring: discordClaimSchema } },
     async (request): Promise<{ name: string }> => {
       requireAuth(request);
-      return notify.peekClaim(request.body.token);
+      return notify.peekClaim(request.query.token);
     },
   );
   app.post(

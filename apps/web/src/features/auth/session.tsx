@@ -47,6 +47,8 @@ export function adoptMe(me: MeResponse): void {
 
 export function SessionProvider({ me, children }: { me: MeResponse; children: ReactNode }): ReactElement {
   const queryClient = useQueryClient();
+  // Set before the children render: their first requests already need the token.
+  setCsrfToken(me.csrfToken);
   useEffect(() => adoptMe(me), [me]);
   useEffect(
     () =>
