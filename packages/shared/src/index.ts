@@ -10,3 +10,4 @@ export * from './ddos.js';
 export * from './mail.js';
 export * from './games.js';
 export * from './game-demo.js';
+export * from './notify.js';

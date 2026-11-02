@@ -37,7 +37,13 @@ export type MailKind =
   | 'email_change'
   | 'password_reset'
   | 'server_ordered'
-  | 'server_crashed';
+  | 'server_crashed'
+  | 'approval_needed'
+  | 'account_approved'
+  | 'account_rejected'
+  | 'request_new'
+  | 'request_approved'
+  | 'request_rejected';
 
 const EMERALD = '#10b981';
 const EMERALD_DEEP = '#065f46';
@@ -61,6 +67,12 @@ const LOOK: Readonly<Record<MailKind, { readonly icon: string; readonly warn?: b
   password_reset: { icon: '🔑' },
   server_ordered: { icon: '🎮' },
   server_crashed: { icon: '⚠️', warn: true },
+  approval_needed: { icon: '🙋' },
+  account_approved: { icon: '✅' },
+  account_rejected: { icon: '🚫', warn: true },
+  request_new: { icon: '🖥️' },
+  request_approved: { icon: '🚀' },
+  request_rejected: { icon: '🚫', warn: true },
 };
 
 /** Mail apps that know dark mode (Apple Mail, Outlook app) switch colours through these classes. */
@@ -297,6 +309,65 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
       rows: [['Zeitpunkt', v['when'] ?? '']],
       ...(v.link ? { button: { label: 'Server ansehen', url: v.link } } : {}),
     }),
+    approval_needed: (v) => ({
+      subject: `${v['who'] ?? ''} möchte bei MorniHosting mitmachen`,
+      heading: 'Neue Registrierung wartet auf dich',
+      paragraphs: [
+        hi.de(v.name),
+        `${v['who'] ?? ''} hat sich registriert und die E-Mail-Adresse bestätigt. Erst wenn du zustimmst, kann sich die Person anmelden.`,
+      ],
+      rows: [
+        ['Benutzername', v['who'] ?? ''],
+        ['E-Mail', v['email'] ?? ''],
+      ],
+      ...(v.link ? { button: { label: 'Im Panel freigeben', url: v.link } } : {}),
+      note: 'Freigeben oder ablehnen kannst du im Panel unter Benutzer oder, wenn verbunden, direkt in Discord.',
+    }),
+    account_approved: (v) => ({
+      subject: 'Du bist freigeschaltet 🎉',
+      heading: 'Willkommen bei MorniHosting',
+      paragraphs: [hi.de(v.name), 'dein Konto wurde freigegeben. Du kannst dich ab sofort anmelden.'],
+      ...(v.link ? { button: { label: 'Jetzt anmelden', url: v.link } } : {}),
+    }),
+    account_rejected: (v) => ({
+      subject: 'Deine Registrierung bei MorniHosting',
+      heading: 'Leider keine Freigabe',
+      paragraphs: [
+        hi.de(v.name),
+        'deine Registrierung wurde nicht freigegeben. Dein Konto und deine Daten wurden gelöscht.',
+        v['note'] ? `Begründung: ${v['note']}` : '',
+      ].filter(Boolean),
+    }),
+    request_new: (v) => ({
+      subject: `${v['who'] ?? ''} fragt einen Server an`,
+      heading: 'Neue Server-Anfrage',
+      paragraphs: [hi.de(v.name), `${v['who'] ?? ''} möchte einen Server. Bitte gib ihn frei oder lehne ab.`],
+      rows: [
+        ['Name', v['server'] ?? ''],
+        ['Spiel', v['software'] ?? ''],
+        ['Paket', v['plan'] ?? ''],
+      ],
+      ...(v.link ? { button: { label: 'Anfrage ansehen', url: v.link } } : {}),
+      note: 'Freigeben kannst du im Panel unter Server-Anfragen oder, wenn verbunden, direkt in Discord.',
+    }),
+    request_approved: (v) => ({
+      subject: `Dein Server „${v['server'] ?? ''}“ wurde freigegeben`,
+      heading: 'Anfrage angenommen 🚀',
+      paragraphs: [
+        hi.de(v.name),
+        `dein Server „${v['server'] ?? ''}“ wurde freigegeben und wird jetzt angelegt.`,
+      ],
+      ...(v.link ? { button: { label: 'Server öffnen', url: v.link } } : {}),
+    }),
+    request_rejected: (v) => ({
+      subject: `Deine Anfrage für „${v['server'] ?? ''}“`,
+      heading: 'Anfrage abgelehnt',
+      paragraphs: [
+        hi.de(v.name),
+        `deine Anfrage für den Server „${v['server'] ?? ''}“ wurde leider abgelehnt.`,
+        v['note'] ? `Begründung: ${v['note']}` : '',
+      ].filter(Boolean),
+    }),
   },
   en: {
     test: () => ({
@@ -383,6 +454,62 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
       ),
       rows: [['Time', v['when'] ?? '']],
       ...(v.link ? { button: { label: 'View server', url: v.link } } : {}),
+    }),
+    approval_needed: (v) => ({
+      subject: `${v['who'] ?? ''} wants to join MorniHosting`,
+      heading: 'A new sign-up is waiting for you',
+      paragraphs: [
+        hi.en(v.name),
+        `${v['who'] ?? ''} signed up and confirmed the e-mail address. They can only log in once you agree.`,
+      ],
+      rows: [
+        ['Username', v['who'] ?? ''],
+        ['E-mail', v['email'] ?? ''],
+      ],
+      ...(v.link ? { button: { label: 'Approve in the panel', url: v.link } } : {}),
+      note: 'Approve or decline in the panel under Users or, if linked, right in Discord.',
+    }),
+    account_approved: (v) => ({
+      subject: 'You are in 🎉',
+      heading: 'Welcome to MorniHosting',
+      paragraphs: [hi.en(v.name), 'your account was approved. You can log in now.'],
+      ...(v.link ? { button: { label: 'Log in now', url: v.link } } : {}),
+    }),
+    account_rejected: (v) => ({
+      subject: 'Your sign-up at MorniHosting',
+      heading: 'Not approved',
+      paragraphs: [
+        hi.en(v.name),
+        'your sign-up was not approved. Your account and data were deleted.',
+        v['note'] ? `Reason: ${v['note']}` : '',
+      ].filter(Boolean),
+    }),
+    request_new: (v) => ({
+      subject: `${v['who'] ?? ''} asks for a server`,
+      heading: 'New server request',
+      paragraphs: [hi.en(v.name), `${v['who'] ?? ''} would like a server. Please approve or decline.`],
+      rows: [
+        ['Name', v['server'] ?? ''],
+        ['Game', v['software'] ?? ''],
+        ['Plan', v['plan'] ?? ''],
+      ],
+      ...(v.link ? { button: { label: 'View request', url: v.link } } : {}),
+      note: 'Approve in the panel under Server requests or, if linked, right in Discord.',
+    }),
+    request_approved: (v) => ({
+      subject: `Your server “${v['server'] ?? ''}” was approved`,
+      heading: 'Request approved 🚀',
+      paragraphs: [hi.en(v.name), `your server “${v['server'] ?? ''}” was approved and is being set up now.`],
+      ...(v.link ? { button: { label: 'Open server', url: v.link } } : {}),
+    }),
+    request_rejected: (v) => ({
+      subject: `Your request for “${v['server'] ?? ''}”`,
+      heading: 'Request declined',
+      paragraphs: [
+        hi.en(v.name),
+        `your request for the server “${v['server'] ?? ''}” was declined.`,
+        v['note'] ? `Reason: ${v['note']}` : '',
+      ].filter(Boolean),
     }),
   },
 };

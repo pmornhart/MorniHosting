@@ -1,5 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Inbox,
   Bell,
   ChevronsUpDown,
   Code2,
@@ -42,6 +43,7 @@ import { meQuery, useSession } from '@/features/auth/session';
 import { useLiveSync, useServers } from '@/features/servers/live';
 import { applyTheme, useResolvedTheme } from './theme';
 import { VersionBadge } from './VersionBadge';
+import { approvalsQuery } from '@/features/approvals/ApprovalsPage';
 import { UpdateCard } from './UpdateCard';
 
 interface NavItem {
@@ -50,18 +52,29 @@ interface NavItem {
   readonly icon: typeof LayoutGrid;
   readonly show: boolean;
   readonly end?: boolean;
+  /** Small number next to the entry (open approvals). */
+  readonly badge?: number;
 }
 
 function useNavItems(): { main: NavItem[]; admin: NavItem[] } {
   const { t } = useTranslation();
   const { me } = useSession();
   const admin = me.user.isAdmin;
+  const { data: approvals } = useQuery({ ...approvalsQuery, enabled: admin });
+  const pendingCount =
+    (approvals?.users.length ?? 0) + (approvals?.requests.filter((r) => r.status === 'pending').length ?? 0);
   return {
     main: [
       { to: '/', label: t('nav.overview'), icon: LayoutGrid, show: true, end: true },
-      { to: '/servers/new', label: t('nav.createServer'), icon: Plus, show: me.user.canCreateServers },
+      {
+        to: '/servers/new',
+        label: me.user.canCreateServers ? t('nav.createServer') : t('nav.requestServer'),
+        icon: Plus,
+        show: true,
+      },
     ],
     admin: [
+      { to: '/approvals', label: t('nav.approvals'), icon: Inbox, show: admin, badge: pendingCount },
       { to: '/users', label: t('nav.users'), icon: Users, show: admin },
       { to: '/notifications', label: t('nav.notifications'), icon: Bell, show: admin },
       { to: '/api-access', label: t('nav.api'), icon: Code2, show: true },
@@ -88,7 +101,12 @@ function NavList({ onNavigate }: { onNavigate?: () => void }): ReactElement {
       }
     >
       <item.icon aria-hidden />
-      {item.label}
+      <span className="flex-1">{item.label}</span>
+      {item.badge ? (
+        <span className="rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground">
+          {item.badge}
+        </span>
+      ) : null}
     </NavLink>
   );
   const adminItems = admin.filter((i) => i.show);

@@ -361,6 +361,14 @@ Das Panel sucht Mailserver, Port (465/587) und Verschlüsselung selbst heraus, p
 
 👉 Ausführliche Schritt-für-Schritt-Anleitung: [docs/email-schnellstart.md](docs/email-schnellstart.md) · Profi-Einstellungen: [docs/email.md](docs/email.md)
 
+## Freigaben und Discord-Benachrichtigungen
+
+- **Registrierung mit Freigabe:** Neue Konten warten nach der E-Mail-Bestätigung auf dich. Du bekommst eine Mail und, wenn verbunden, eine Discord-DM mit den Knöpfen **Freigeben** und **Ablehnen**. Im Panel geht es unter **Freigaben**.
+- **Server-Anfragen:** Wer keine Server selbst erstellen darf, fragt einen an. Du gibst ihn per Discord-Knopf, im Panel oder nach der Mail frei, dann wird er für die Person angelegt.
+- **Discord-Bot, nur private Nachrichten:** Freigaben, Abstürze und Antworten auf Anfragen kommen per DM. Kein Discord-Server und kein offener Port nötig.
+
+👉 Einrichten in 4 Minuten: [docs/discord.md](docs/discord.md)
+
 ## Updates
 
 <img src="docs/screenshots/admin.webp" alt="Admin-Bereich mit Updates" width="100%">

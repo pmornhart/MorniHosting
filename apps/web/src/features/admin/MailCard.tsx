@@ -409,6 +409,14 @@ export function MailCard(): ReactElement {
             />
             {draft.registration ? (
               <Toggle
+                checked={draft.registrationApproval}
+                onChange={(registrationApproval) => set({ registrationApproval })}
+                title={t('mail.registrationApproval')}
+                hint={t('mail.registrationApprovalHint')}
+              />
+            ) : null}
+            {draft.registration ? (
+              <Toggle
                 checked={draft.registrationOrders}
                 onChange={(registrationOrders) => set({ registrationOrders })}
                 title={t('mail.registrationOrders')}

@@ -12,7 +12,11 @@ import {
   type Changelog,
   type ConfirmResult,
   type MailSettingsView,
+  type ApprovalsView,
+  type DiscordSettingsView,
   type MailQuickResult,
+  type NotifyPrefsInput,
+  type NotifySettingsView,
   type MailTestResult,
   type ConnectionInfo,
   type DdosHostStatus,
@@ -138,7 +142,56 @@ const adminMe = read<MeResponse>('/api/auth/me');
 const roles = read<RoleEntry[]>('/api/roles');
 const state = {
   userId: null as number | null,
-  users: read<UserListEntry[]>('/api/users').map((u) => ({ ...u, email: u.email ?? null })),
+  users: read<UserListEntry[]>('/api/users').map((u) => ({
+    ...u,
+    email: u.email ?? null,
+    approvalPending: false,
+  })),
+  approvals: {
+    users: [
+      {
+        id: 41,
+        username: 'kevin',
+        email: 'kevin@example.de',
+        createdAt: new Date(Date.now() - 3_600_000).toISOString(),
+      },
+    ], // eslint-disable-line ts-patterns/no-magic-numbers -- an hour ago
+    requests: [
+      {
+        id: 'req1',
+        user: { id: 7, username: 'lena', displayName: 'Lena' },
+        input: {
+          name: 'Lenas Insel',
+          edition: 'java',
+          software: 'paper',
+          version: '1.21.10',
+          memoryMb: 4096,
+          port: 25566,
+          autoStart: true,
+          startNow: true,
+        }, // eslint-disable-line ts-patterns/no-magic-numbers -- demo order
+        status: 'pending',
+        note: '',
+        serverId: null,
+        decidedBy: null,
+        decidedAt: null,
+        createdAt: new Date(Date.now() - 600_000).toISOString(), // eslint-disable-line ts-patterns/no-magic-numbers -- ten minutes ago
+      },
+    ],
+  } as ApprovalsView,
+  discord: {
+    configured: false,
+    botName: null,
+    appId: null,
+    installUrl: null,
+    online: false,
+    error: null,
+  } as DiscordSettingsView,
+  notify: {
+    prefs: { approvals: true, crashes: true, decisions: true, email: true, discord: true },
+    discord: { available: false, linked: false, name: null, installUrl: null },
+    emailSet: true,
+  } as NotifySettingsView,
   mail: {
     configured: true,
     passwordSet: true,
@@ -897,6 +950,122 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
     },
   ],
   ['GET', '/api/account/passkeys', () => ok(state.passkeys.get(state.userId ?? -1) ?? [])],
+  ['GET', '/api/approvals', () => ok(state.approvals)],
+  [
+    'POST',
+    '/api/approvals/users/:id/:decision',
+    ({ params }) => {
+      const user = state.approvals.users.find((u) => String(u.id) === params['id']);
+      state.approvals = { ...state.approvals, users: state.approvals.users.filter((u) => u !== user) };
+      return ok(
+        params['decision'] === 'approve'
+          ? { title: '✅ Freigegeben', text: `${user?.username ?? ''} kann sich jetzt anmelden.` }
+          : { title: '❌ Abgelehnt', text: `Die Registrierung von ${user?.username ?? ''} wurde gelöscht.` },
+      );
+    },
+  ],
+  [
+    'POST',
+    '/api/server-requests/:id/:decision',
+    ({ params }) => {
+      const approved = params['decision'] === 'approve';
+      state.approvals = {
+        ...state.approvals,
+        requests: state.approvals.requests.map((r) =>
+          r.id === params['id']
+            ? {
+                ...r,
+                status: approved ? 'approved' : 'rejected',
+                decidedBy: 'philip',
+                decidedAt: new Date().toISOString(),
+              }
+            : r,
+        ),
+      };
+      return ok(
+        approved
+          ? { title: '✅ Angenommen', text: 'Der Server wird angelegt.' }
+          : { title: '❌ Abgelehnt', text: 'Die Anfrage wurde abgelehnt.' },
+      );
+    },
+  ],
+  ['POST', '/api/server-requests', () => ok({})],
+  ['GET', '/api/server-requests/mine', () => ok([])],
+  ['GET', '/api/discord', () => ok(state.discord)],
+  [
+    'PUT',
+    '/api/discord',
+    () => {
+      state.discord = {
+        configured: true,
+        botName: 'MorniBot',
+        appId: '1300000000000000000',
+        installUrl:
+          'https://discord.com/oauth2/authorize?client_id=1300000000000000000&integration_type=1&scope=applications.commands',
+        online: true,
+        error: null,
+      };
+      return ok(state.discord);
+    },
+  ],
+  [
+    'DELETE',
+    '/api/discord',
+    () => {
+      state.discord = { ...state.discord, configured: false, online: false, botName: null, installUrl: null };
+      return noContent();
+    },
+  ],
+  [
+    'GET',
+    '/api/account/notifications',
+    () =>
+      ok({
+        ...state.notify,
+        discord: {
+          ...state.notify.discord,
+          available: state.discord.configured,
+          installUrl: state.discord.installUrl,
+        },
+      }),
+  ],
+  [
+    'PUT',
+    '/api/account/notifications',
+    ({ body }) => {
+      state.notify = { ...state.notify, prefs: body as unknown as NotifyPrefsInput };
+      return ok({
+        ...state.notify,
+        discord: {
+          ...state.notify.discord,
+          available: state.discord.configured,
+          installUrl: state.discord.installUrl,
+        },
+      });
+    },
+  ],
+  [
+    'POST',
+    '/api/account/discord/code',
+    () => {
+      // The demo pretends /verbinden arrives a few seconds later.
+      setTimeout(() => {
+        state.notify = {
+          ...state.notify,
+          discord: { ...state.notify.discord, linked: true, name: 'philip' },
+        };
+      }, 4000); // eslint-disable-line ts-patterns/no-magic-numbers -- a few seconds, like typing the command
+      return ok({ code: '482913', expiresAt: new Date(Date.now() + 600_000).toISOString() }); // eslint-disable-line ts-patterns/no-magic-numbers -- ten minutes
+    },
+  ],
+  [
+    'DELETE',
+    '/api/account/discord',
+    () => {
+      state.notify = { ...state.notify, discord: { ...state.notify.discord, linked: false, name: null } };
+      return noContent();
+    },
+  ],
   ['GET', '/api/mail', () => ok(state.mail)],
   [
     'PUT',
@@ -1151,6 +1320,7 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
         createdAt: nowIso(),
         lastLoginAt: null,
         disabled: false,
+        approvalPending: false,
         access: [],
       };
       state.users = [...state.users, user];

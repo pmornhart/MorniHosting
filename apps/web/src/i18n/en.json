@@ -79,7 +79,9 @@
     "menu": "Open menu",
     "administrator": "Administrator",
     "member": "Member",
-    "theme": "Theme"
+    "theme": "Theme",
+    "approvals": "Approvals",
+    "requestServer": "Request a server"
   },
   "states": {
     "installing": "Setting up",
@@ -425,7 +427,7 @@
     "csrf": "Your session expired. Reload the page.",
     "bad_origin": "Request from a foreign page rejected. If the panel runs behind NetBird or another proxy, turn on “Pass Host Header” there.",
     "forbidden": "You do not have the rights for this.",
-    "admin_only": "Only an administrator can do this.",
+    "admin_only": "Only admins may do that.",
     "owner_only": "Only the server's owner can do this.",
     "no_server_access": "You have no access to this server.",
     "cannot_create_servers": "You may not create servers.",
@@ -549,7 +551,14 @@
     "email_taken": "This e-mail address already belongs to another account.",
     "mail_failed": "The mail could not be sent: {{message}}",
     "mail_not_configured": "E-mail is not set up yet (admin area → E-mail, plus the panel's domain).",
-    "mail_no_recipient": "Please enter a recipient address or add your own e-mail address first."
+    "mail_no_recipient": "Please enter a recipient address or add your own e-mail address first.",
+    "account_pending_approval": "Your account is still waiting for an admin to approve it. You get a mail once it is unlocked.",
+    "discord_token_invalid": "Discord does not know this bot token. Copy it again in the Developer Portal under “Bot” → “Reset Token”.",
+    "discord_unreachable": "Discord cannot be reached right now. Try again in a moment.",
+    "discord_not_configured": "Discord is not set up yet.",
+    "request_not_needed": "You may create servers directly – no request needed.",
+    "request_not_found": "This request no longer exists.",
+    "request_user_gone": "The person who asked no longer exists or is locked."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1268,7 +1277,8 @@
     "emptyTitle": "No notifications yet",
     "emptyText": "Connect Discord, Slack or Teams and know right away when a server crashes.",
     "deleteTitle": "Delete “{{name}}”?",
-    "deleteText": "No more messages will be sent there."
+    "deleteText": "No more messages will be sent there.",
+    "channelsTitle": "Webhooks for Discord servers, Slack & co."
   },
   "users": {
     "subtitle": "Who may use the panel, and what each person may do on which server.",
@@ -1503,7 +1513,15 @@
       "account_email_removed": "E-mail address removed",
       "auth_password_forgotten": "Password reset by mail",
       "mail_settings": "Mail settings saved",
-      "mail_removed": "Mail settings removed"
+      "mail_removed": "Mail settings removed",
+      "user_approved": "Sign-up approved",
+      "user_rejected": "Sign-up declined",
+      "server_requested": "Server requested",
+      "server_request_approved": "Server request approved",
+      "server_request_rejected": "Server request declined",
+      "account_discord_linked": "Discord linked",
+      "discord_settings": "Discord bot set up",
+      "discord_removed": "Discord bot removed"
     }
   },
   "ddos": {
@@ -2139,7 +2157,9 @@
       "found": "Found and saved: {{host}}, port {{port}} with {{security}}.",
       "tried": "Tried: {{list}}",
       "allSettings": "Set everything yourself (server, sender, sign-up, crash mails)"
-    }
+    },
+    "registrationApproval": "I approve new accounts first",
+    "registrationApprovalHint": "After the e-mail is confirmed you are told (mail and Discord) and decide under “Approvals”. Until then nobody can log in."
   },
   "mailPages": {
     "backToLogin": "Back to login",
@@ -2173,6 +2193,10 @@
       "email_change": {
         "title": "Address confirmed",
         "text": "Your new e-mail address is saved."
+      },
+      "register_pending": {
+        "title": "E-mail confirmed – almost there",
+        "text": "An admin still has to approve your account. You get a mail as soon as that happens."
       }
     }
   },
@@ -2352,5 +2376,86 @@
         "autoUpdateHint": "Downloads the newest server version before every start. Off = only on the first start."
       }
     }
+  },
+  "requests": {
+    "sentTitle": "Request sent 🚀",
+    "sentText": "An admin will look at your request. Once approved, your server is set up and you are told by e-mail and, if linked, on Discord.",
+    "toOverview": "Back to overview",
+    "submit": "Request server",
+    "mine": "My requests"
+  },
+  "approvals": {
+    "title": "Approvals",
+    "subtitle": "Who wants to join and who wants a server. You can also decide right in the mail or on Discord.",
+    "signups": "New sign-ups",
+    "noSignups": "Nobody is waiting right now.",
+    "requests": "Server requests",
+    "noRequests": "No open server requests.",
+    "history": "Decided requests ({{count}})",
+    "approve": "Approve",
+    "reject": "Decline",
+    "reason": "Reason",
+    "reasonPlaceholder": "Reason (optional, goes into the mail)",
+    "by": "by {{name}}",
+    "game": "Game",
+    "plan": "Memory",
+    "port": "Port",
+    "decided": "Decided by {{name}}",
+    "status": {
+      "pending": "Waiting",
+      "approved": "Approved",
+      "rejected": "Declined"
+    },
+    "hint": "New sign-ups and requests reach every admin by e-mail and Discord DM who turned that on under “My account → Notifications”."
+  },
+  "discordBot": {
+    "title": "Discord bot (private messages)",
+    "text": "The bot writes to each person privately: approvals with buttons for admins, crashes, answers to server requests. No Discord server needed.",
+    "off": "Not set up",
+    "online": "Online",
+    "connecting": "Connecting …",
+    "connectedAs": "Connected as",
+    "nextStep": "Now everyone adds the app to their own Discord account and links it under “My account → Notifications” – you too.",
+    "install": "Add app to my Discord",
+    "remove": "Remove bot",
+    "step1": "Open the Discord Developer Portal and click “New Application”, e.g. “MorniHosting”.",
+    "step2": "“Installation” on the left: tick only “User Install”, install link “Discord Provided Link”, save.",
+    "step3": "“Bot” on the left: click “Reset Token” and copy the token.",
+    "step4": "Paste the token below and click “Connect”. Done.",
+    "portal": "Open Discord Developer Portal",
+    "token": "Bot token",
+    "connect": "Connect",
+    "saved": "Bot {{name}} is connected."
+  },
+  "notifyCard": {
+    "title": "Notifications",
+    "text": "Choose what you hear about and how.",
+    "how": "How?",
+    "what": "About what?",
+    "channels": {
+      "email": "By e-mail",
+      "discord": "By Discord (private message)"
+    },
+    "noEmail": "no e-mail address set",
+    "notLinked": "not linked yet",
+    "topics": {
+      "approvals": "Approvals",
+      "crashes": "Crashes",
+      "decisions": "Answers to my requests"
+    },
+    "topicHints": {
+      "approvals": "New sign-ups and server requests – with buttons to approve.",
+      "crashes": "When one of your servers crashes.",
+      "decisions": "When your server request was approved or declined."
+    },
+    "discordTitle": "Link Discord",
+    "discordUnavailable": "Discord is not set up on this panel yet (admin: Notifications → Discord bot).",
+    "linkedAs": "Linked to {{name}} ✅",
+    "unlink": "Unlink",
+    "step1": "Add the MorniHosting app to your Discord account (“Add to My Apps”). No server needed.",
+    "addApp": "Add app",
+    "step2": "In Discord, open the direct message with the app and send this command:",
+    "getCode": "Show code",
+    "step3": "Done – this card shows “Linked” in a moment. The code is valid for 10 minutes."
   }
 }

@@ -29,6 +29,7 @@ const SMTP = {
   from: 'MorniHosting <noreply@mornihosting.de>',
   registration: true,
   registrationOrders: true,
+  registrationApproval: false,
   crashMails: false,
 };
 

@@ -33,6 +33,8 @@ export const mailSettingsSchema = z.object({
   registration: z.boolean().default(false),
   /** Self-registered people may order servers right away (otherwise an admin must allow it). */
   registrationOrders: z.boolean().default(false),
+  /** New accounts wait until an admin lets them in (by mail link, in the panel or in Discord). */
+  registrationApproval: z.boolean().default(true),
   crashMails: z.boolean().default(false),
 });
 export type MailSettingsInput = z.infer<typeof mailSettingsSchema>;
@@ -128,7 +130,7 @@ export const registerSchema = z.object({
 export const forgotSchema = z.object({ email: emailSchema });
 export const resetSchema = z.object({ token: z.string().min(1).max(TOKEN_MAX), password: passwordSchema });
 export const confirmSchema = z.object({ token: z.string().min(1).max(TOKEN_MAX) });
-export type ConfirmKind = 'register' | 'email_change';
+export type ConfirmKind = 'register' | 'register_pending' | 'email_change';
 export interface ConfirmResult {
   readonly kind: ConfirmKind;
 }

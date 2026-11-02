@@ -28,7 +28,6 @@ import {
   type GameId,
   recommendedMemoryMb,
   type CreateServerInput,
-  type ServerSummary,
   type SoftwareId,
   type VersionOption,
 } from '@mornihosting/shared';
@@ -45,6 +44,7 @@ import { ProjectLogo } from '@/components/project-logo';
 import { api } from '@/lib/api';
 import { formatMemoryMb } from '@/lib/format';
 import { errorText } from '@/lib/query';
+import { useSession } from '@/features/auth/session';
 import { cn } from '@/lib/utils';
 import { hostQuery } from '@/features/dashboard/HostStrip';
 import { toNetbirdName, useAddressAutomation } from '@/features/netbird/netbird';
@@ -52,6 +52,7 @@ import { GEYSER_SOFTWARE } from '../settings/GeyserCard';
 import { VOICE_CHAT_SOFTWARE } from '../settings/VoiceChatCard';
 import { serversQuery } from '../live';
 import { GameOrderPage } from './GameOrderPage';
+import { placeOrder, RequestSent } from './order-submit';
 import {
   AddOn,
   AddOnTile,
@@ -218,6 +219,8 @@ export function CreateServerPage(): ReactElement {
   const name = displayName.trim() || subdomain.trim();
   const hostname = address && addressName ? `${addressName}.${address.domain}` : null;
 
+  const { me } = useSession();
+  const [requestSent, setRequestSent] = useState(false);
   const create = useMutation({
     mutationFn: async () => {
       if (software === null || memoryMb === null) throw new Error('incomplete order');
@@ -233,7 +236,8 @@ export function CreateServerPage(): ReactElement {
         startNow,
         ...(address && addressName ? { netbirdName: addressName } : {}),
       };
-      const server = await api<ServerSummary>('/api/servers', { method: 'POST', body });
+      const server = await placeOrder(body, me.user.canCreateServers);
+      if (!server) return null;
       // The add-ons from the order; a failing one does not stop the server from being there.
       await Promise.allSettled([
         geyser ? api(`/api/servers/${server.id}/geyser`, { method: 'PUT', body: { enabled: true } }) : null,
@@ -253,6 +257,10 @@ export function CreateServerPage(): ReactElement {
       return server;
     },
     onSuccess: (server) => {
+      if (!server) {
+        setRequestSent(true);
+        return;
+      }
       void queryClient.invalidateQueries({ queryKey: serversQuery.queryKey });
       void queryClient.invalidateQueries({ queryKey: ['me'] });
       navigate(`/servers/${server.id}`);
@@ -260,6 +268,7 @@ export function CreateServerPage(): ReactElement {
     onError: () => undefined,
   });
 
+  if (requestSent) return <RequestSent />;
   if (otherGame) return <GameOrderPage key={otherGame} game={otherGame} />;
   if (!game) return <GamePicker onPick={(g) => setParams({ game: g })} />;
 
@@ -692,7 +701,11 @@ export function CreateServerPage(): ReactElement {
           ) : null}
           <Button size="lg" disabled={!ready || create.isPending} onClick={() => create.mutate()}>
             <Rocket />
-            {create.isPending ? t('create.creating') : t('create.submit')}
+            {create.isPending
+              ? t('create.creating')
+              : me.user.canCreateServers
+                ? t('create.submit')
+                : t('requests.submit')}
           </Button>
           <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
             <Check className="size-3.5" />

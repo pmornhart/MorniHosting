@@ -71,6 +71,8 @@ interface StoredMail {
   from: string;
   registration: boolean;
   registrationOrders: boolean;
+  /** Missing in settings saved before it existed: then approval is required. */
+  registrationApproval?: boolean;
   crashMails: boolean;
 }
 
@@ -83,6 +85,8 @@ export interface MailService {
   readonly panelUrl: () => string | null;
   /** Sends and reports a failure to the caller (admin test). */
   readonly send: (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>) => Promise<void>;
+  /** Sends without waiting; a failure is only logged (notifications). */
+  readonly deliver: (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>) => void;
   /** Quick start: finds server, port and encryption from address + password, saves them and sends a test mail. */
   readonly quick: (
     input: MailQuickInput,
@@ -179,6 +183,7 @@ export function createMailService(
       from: s?.from ?? defaultSender(settings.get().panelDomain),
       registration: s?.registration ?? false,
       registrationOrders: s?.registrationOrders ?? false,
+      registrationApproval: s?.registrationApproval ?? true,
       crashMails: s?.crashMails ?? false,
     };
   };
@@ -321,6 +326,7 @@ export function createMailService(
       from: previous.configured ? previous.from : winner.from,
       registration: previous.registration,
       registrationOrders: previous.registrationOrders,
+      registrationApproval: previous.registrationApproval,
       crashMails: previous.crashMails,
     } satisfies StoredMail);
     log.info({ host: winner.host, port: winner.port }, 'mail: quick start found a server');
@@ -441,6 +447,7 @@ export function createMailService(
         passwordHash: await hashPassword(input.password),
         locale: input.locale,
         signupPending: true,
+        approvalPending: stored()?.registrationApproval ?? true,
         canCreateServers: stored()?.registrationOrders ?? false,
       })
       .returning()
@@ -460,7 +467,9 @@ export function createMailService(
     if (row.purpose === 'register') {
       db.update(users).set({ signupPending: false }).where(eq(users.id, user.id)).run();
       ctx.audit.record({ userId: user.id, username: user.username, ip: null }, 'auth.email_confirmed');
-      return { kind: 'register' };
+      if (!user.approvalPending) return { kind: 'register' };
+      ctx.events.emit('user.awaiting_approval', { userId: user.id });
+      return { kind: 'register_pending' };
     }
     const other = row.email ? userByEmail(row.email) : undefined;
     if (!row.email || (other && other.id !== user.id)) throw conflict('email_taken');
@@ -579,6 +588,7 @@ export function createMailService(
         from: input.from,
         registration: input.registration,
         registrationOrders: input.registrationOrders,
+        registrationApproval: input.registrationApproval,
         crashMails: input.crashMails,
       } satisfies StoredMail);
       return view();
@@ -588,6 +598,7 @@ export function createMailService(
     configured,
     panelUrl,
     send,
+    deliver: sendQuietly,
     quick,
     test,
     welcome,

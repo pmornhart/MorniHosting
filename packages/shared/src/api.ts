@@ -128,6 +128,8 @@ export interface UserInfo {
   readonly minecraft: MinecraftAccount | null;
   /** Mail address for notifications and "password forgotten"; null if none was given. */
   readonly email: string | null;
+  /** Signed up and waits for an admin (approvals page). */
+  readonly approvalPending: boolean;
 }
 
 export interface MinecraftAccount {
