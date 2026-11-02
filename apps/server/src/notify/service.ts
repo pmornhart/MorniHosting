@@ -375,17 +375,54 @@ export function createNotifyService(
 
   const tell: NotifyService['tell'] = (people, topic, notice) => {
     const t = token();
+    // Whatever does not go out lands in the outbox with the reason, so a missing message can be explained.
+    const skipped = (channel: 'mail' | 'discord', person: UserRow, subject: string, detail: string): void =>
+      mail.note({ channel, to: person.username, subject, ok: false, detail });
     people
-      .filter((person) => !person.disabled && wantsNotice(person.notify, topic))
+      .filter((person) => !person.disabled)
       .forEach((person) => {
         const n = notice(person);
+        const subject = n.discord.title;
+        if (!wantsNotice(person.notify, topic)) {
+          skipped('discord', person, subject, `${person.username} hat diese Benachrichtigung ausgeschaltet`);
+          return;
+        }
+        if (n.mail && !person.email) skipped('mail', person, subject, 'Keine E-Mail-Adresse im Konto');
+        if (n.mail && person.email && !wantsNotice(person.notify, 'email'))
+          skipped('mail', person, subject, 'Mails sind in den Benachrichtigungen ausgeschaltet');
         if (n.mail && person.email && wantsNotice(person.notify, 'email'))
           mail.deliver(person.email, n.mail.kind, person.locale, {
             name: person.displayName || person.username,
             ...n.mail.vars,
           });
-        if (t && person.discordId && wantsNotice(person.notify, 'discord'))
-          void deliverDm(person.discordId, n.discord);
+        if (!t) return;
+        if (!person.discordId) {
+          skipped(
+            'discord',
+            person,
+            subject,
+            `${person.username} hat Discord nicht verbunden (Mein Konto → Benachrichtigungen)`,
+          );
+          return;
+        }
+        if (!wantsNotice(person.notify, 'discord')) {
+          skipped('discord', person, subject, 'Discord ist in den Benachrichtigungen ausgeschaltet');
+          return;
+        }
+        void (async () => {
+          const failure = await deliverDm(person.discordId ?? '', n.discord);
+          mail.note({
+            channel: 'discord',
+            to: person.username,
+            subject,
+            ok: !failure,
+            detail: failure
+              ? failure.blocked
+                ? 'Discord lässt die Nachricht nicht durch: Bot auf einen gemeinsamen Server holen'
+                : failure.message
+              : 'zugestellt',
+          });
+        })();
       });
   };
 

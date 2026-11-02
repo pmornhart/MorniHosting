@@ -132,8 +132,8 @@ footer { color: var(--muted); font-size: 13px; }
 <script type="application/json" id="data">
 {
   "goal": "Ein selbst gehostetes Panel für Minecraft-Server: so viel wie Crafty Controller 4, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-11-02T13:31:25+00:00",
-  "now": "Registrierung meldet sich sofort, Postausgang zeigt jede Mail.",
+  "updated": "2026-11-02T14:12:39+00:00",
+  "now": "Postausgang erklärt fehlende Discord-Nachrichten.",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -444,9 +444,19 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "Registrierung sofort melden + Postausgang",
       "status": "fertig",
       "detail": "Admins bekommen Mail/Discord/Freigabe-Eintrag direkt beim Absenden, nicht erst nach dem Bestätigungslink. Postausgang im Admin-Bereich → E-Mail zeigt jede Mail mit Antwort des Mailservers oder Fehler."
+    },
+    {
+      "title": "Fehlende Discord-Nachricht erklären",
+      "status": "fertig",
+      "detail": "Postausgang zeigt auch Discord-Nachrichten und warum etwas nicht rausging (nicht verbunden, ausgeschaltet, blockiert, keine Mail-Adresse). Erneute Registrierung mit gleicher Adresse meldet sich wieder."
     }
   ],
   "shots": [
+    {
+      "img": "progress/outbox-reasons.webp",
+      "caption": "Postausgang mit Gründen, z. B. „Keine E-Mail-Adresse im Konto“",
+      "time": "2026-11-02T14:12:39+00:00"
+    },
     {
       "img": "progress/outbox-desktop.webp",
       "caption": "Postausgang: jede Mail mit Antwort des Mailservers",

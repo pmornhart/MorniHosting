@@ -2513,8 +2513,8 @@
   },
   "outbox": {
     "title": "Postausgang",
-    "text": "Die letzten Mails des Panels und was dein Mailserver geantwortet hat. Aktualisiert sich von selbst.",
-    "empty": "Seit dem letzten Neustart wurde noch keine Mail verschickt.",
+    "text": "Die letzten Mails und Discord-Nachrichten des Panels: was angekommen ist und was nicht – mit Grund. Aktualisiert sich von selbst.",
+    "empty": "Seit dem letzten Neustart wurde noch nichts verschickt.",
     "sent": "angenommen",
     "failed": "fehlgeschlagen",
     "hint": "„angenommen“ heißt: Dein Mailserver hat die Mail übernommen. Kommt sie trotzdem nicht an, schau in den Spam-Ordner. Läuft dein Mailserver zu Hause, lehnen Gmail, Outlook und Co. Mails von Heim-Anschlüssen oft ab – dann steht der Grund im Protokoll deines Mailservers (z. B. Stalwart → Warteschlange)."
