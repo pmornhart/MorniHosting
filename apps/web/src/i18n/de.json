@@ -68,7 +68,6 @@
     "administration": "Verwaltung",
     "users": "Benutzer und Rollen",
     "notifications": "Benachrichtigungen",
-    "api": "API-Zugänge",
     "settings": "Admin-Bereich",
     "audit": "Protokoll",
     "account": "Mein Konto",
@@ -1365,30 +1364,6 @@
       "plugins": "Plugins und Mods installieren und entfernen."
     }
   },
-  "apiAccess": {
-    "subtitle": "Schlüssel für eigene Skripte, Home Assistant oder Discord-Bots. Sie haben deine Rechte.",
-    "docs": "API-Dokumentation",
-    "new": "Neuer Schlüssel",
-    "newText": "Gib dem Schlüssel einen Namen, damit du später weißt, wofür er ist.",
-    "nameHint": "z. B. „Home Assistant“ oder „Discord-Bot“",
-    "expiry": "Gültig für",
-    "days_one": "1 Tag",
-    "days_other": "{{count}} Tage",
-    "noExpiry": "Läuft nicht ab",
-    "expires": "gültig bis {{when}}",
-    "expired": "abgelaufen am {{when}}",
-    "lastUsed": "zuletzt benutzt {{when}}",
-    "neverUsed": "noch nie benutzt",
-    "copyNow": "Kopiere den Schlüssel jetzt. Er wird nur dieses eine Mal angezeigt.",
-    "emptyTitle": "Noch keine API-Schlüssel",
-    "emptyText": "Mit einem Schlüssel können Programme das Panel steuern, z. B. einen Server starten.",
-    "howTitle": "So benutzt du den Schlüssel",
-    "howText": "Schicke ihn bei jeder Anfrage im Header „Authorization: Bearer …“ mit. Alle Befehle stehen in der API-Dokumentation.",
-    "revoke": "{{name}} widerrufen",
-    "revokeTitle": "Schlüssel „{{name}}“ widerrufen?",
-    "revokeText": "Programme, die ihn benutzen, haben sofort keinen Zugriff mehr.",
-    "revokeButton": "Widerrufen"
-  },
   "panelSettings": {
     "title": "Panel-Einstellungen",
     "subtitle": "Gilt für das ganze Panel und alle Server.",
@@ -2423,7 +2398,9 @@
     "hint": "Neue Registrierungen und Anfragen kommen per E-Mail und Discord-DM zu allen Admins, die das unter „Mein Konto → Benachrichtigungen“ eingeschaltet haben.",
     "signupOpen": "„Konto anfragen“ auf der Startseite",
     "signupOpenHint": "Besucher können auf der Startseite ein Konto anfragen. Anmelden geht erst, wenn du hier freigibst.",
-    "emailUnconfirmed": "E-Mail noch nicht bestätigt"
+    "emailUnconfirmed": "E-Mail noch nicht bestätigt",
+    "software": "Software",
+    "version": "Version"
   },
   "discordBot": {
     "title": "Discord-Bot (private Nachrichten)",

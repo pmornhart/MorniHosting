@@ -68,7 +68,6 @@
     "administration": "Administration",
     "users": "Users and roles",
     "notifications": "Notifications",
-    "api": "API access",
     "settings": "Admin area",
     "audit": "Activity log",
     "account": "My account",
@@ -1365,30 +1364,6 @@
       "plugins": "Install and remove plugins and mods."
     }
   },
-  "apiAccess": {
-    "subtitle": "Keys for your own scripts, Home Assistant or Discord bots. They have your rights.",
-    "docs": "API documentation",
-    "new": "New key",
-    "newText": "Give the key a name so you know later what it is for.",
-    "nameHint": "e.g. “Home Assistant” or “Discord bot”",
-    "expiry": "Valid for",
-    "days_one": "1 day",
-    "days_other": "{{count}} days",
-    "noExpiry": "Does not expire",
-    "expires": "valid until {{when}}",
-    "expired": "expired on {{when}}",
-    "lastUsed": "last used {{when}}",
-    "neverUsed": "never used",
-    "copyNow": "Copy the key now. It is shown only this once.",
-    "emptyTitle": "No API keys yet",
-    "emptyText": "With a key, programs can control the panel, e.g. start a server.",
-    "howTitle": "How to use the key",
-    "howText": "Send it with every request in the header “Authorization: Bearer …”. All commands are in the API documentation.",
-    "revoke": "Revoke {{name}}",
-    "revokeTitle": "Revoke key “{{name}}”?",
-    "revokeText": "Programs using it lose access right away.",
-    "revokeButton": "Revoke"
-  },
   "panelSettings": {
     "title": "Panel settings",
     "subtitle": "Applies to the whole panel and all servers.",
@@ -2423,7 +2398,9 @@
     "hint": "New sign-ups and requests reach every admin by e-mail and Discord DM who turned that on under “My account → Notifications”.",
     "signupOpen": "“Request an account” on the start page",
     "signupOpenHint": "Visitors can request an account on the start page. They can only log in once you approve here.",
-    "emailUnconfirmed": "E-mail not confirmed yet"
+    "emailUnconfirmed": "E-mail not confirmed yet",
+    "software": "Software",
+    "version": "Version"
   },
   "discordBot": {
     "title": "Discord bot (private messages)",

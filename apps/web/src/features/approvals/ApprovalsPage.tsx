@@ -8,6 +8,8 @@ import {
   type ApprovalsView,
   type ServerRequestView,
   type SignupSettings,
+  gameName,
+  isMinecraft,
 } from '@mornihosting/shared';
 import { PageHeader } from '@/components/page';
 import { Button } from '@/components/ui/button';
@@ -111,9 +113,17 @@ function RequestCard({ request }: { readonly request: ServerRequestView }): Reac
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-3">
         <div>
           <dt className="text-muted-foreground">{t('approvals.game')}</dt>
-          <dd>
-            {software.label} {request.input.version}
-          </dd>
+          <dd>{gameName(request.input.edition)}</dd>
+        </div>
+        {isMinecraft(request.input.edition) ? (
+          <div>
+            <dt className="text-muted-foreground">{t('approvals.software')}</dt>
+            <dd>{software.label}</dd>
+          </div>
+        ) : null}
+        <div>
+          <dt className="text-muted-foreground">{t('approvals.version')}</dt>
+          <dd>{request.input.version}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">{t('approvals.plan')}</dt>

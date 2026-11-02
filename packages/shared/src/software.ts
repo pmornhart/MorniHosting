@@ -10,6 +10,16 @@ export function isMinecraft(edition: Edition): edition is MinecraftEdition {
   return (MINECRAFT_EDITIONS as readonly string[]).includes(edition);
 }
 
+const MINECRAFT_NAMES: Readonly<Record<MinecraftEdition, string>> = {
+  java: 'Minecraft Java Edition',
+  bedrock: 'Minecraft Bedrock Edition',
+};
+
+/** The game a server runs, as people call it: "Minecraft Java Edition", "Factorio" … */
+export function gameName(edition: Edition): string {
+  return isMinecraft(edition) ? MINECRAFT_NAMES[edition] : GAMES[edition].label;
+}
+
 export const SOFTWARE_IDS = [
   'vanilla',
   'paper',
