@@ -562,7 +562,9 @@
     "discord_not_linked": "Link your Discord first (My account → Notifications), then the bot can write to you.",
     "discord_dm_blocked": "Discord does not let the message through because you share no server with the bot (or DMs from apps are off). Add the bot to one of your servers with the button below, then it works.",
     "discord_dm_failed": "The test message could not be sent: {{message}}",
-    "discord_link_expired": "The link has expired or was already used. Type /verbinden in Discord again."
+    "discord_link_expired": "The link has expired or was already used. Type /verbinden in Discord again.",
+    "transfer_password_wrong": "Wrong password or damaged code. Check both.",
+    "transfer_code_invalid": "That is not a move code. It starts with \"MH1-\"."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1472,6 +1474,8 @@
       "token_create": "API key created",
       "token_delete": "API key revoked",
       "settings_update": "Panel settings changed",
+      "transfer_export": "Move code created",
+      "transfer_import": "Move code redeemed",
       "auth_login": "Signed in",
       "auth_login_failed": "Sign-in failed",
       "account_password_changed": "Password changed",
@@ -1681,7 +1685,8 @@
       "settings": "Settings",
       "netbird": "NetBird",
       "ddos": "DDoS protection",
-      "mail": "E-mail"
+      "mail": "E-mail",
+      "move": "Move"
     },
     "domainTitle": "Panel address by hand",
     "domainSet": "Set",
@@ -1706,7 +1711,8 @@
       "passwords": "Someone forgot their password? Reset it here.",
       "settings": "Home network addresses, CurseForge key, time zone and language.",
       "ddos": "Protects your servers and the panel from flood attacks, as far as that is possible at home.",
-      "mail": "Mails to your people: welcome, sign-up, “password forgotten” and orders."
+      "mail": "Mails to your people: welcome, sign-up, “password forgotten” and orders.",
+      "move": "Move settings and connections to another MorniHosting with a code."
     },
     "netbirdManual": "Set up NetBird by hand",
     "netbirdManualHint": "Only needed if you don't use the automation above. Tap to open."
@@ -2485,5 +2491,23 @@
     "noDm": "Linked – but Discord does not let the bot write to you privately yet. Add it to one of your servers with one click, then it works:",
     "toAccount": "To my account",
     "missing": "The link has expired. Type /verbinden in Discord again."
+  },
+  "transfer": {
+    "makeTitle": "Create a move code",
+    "makeText": "On the old panel: every setting and connection (domain, e-mail, Discord bot, NetBird, DNS, HTTPS, DDoS protection, sign-up) goes into one code. Servers, users and files stay here.",
+    "password": "Password for the code",
+    "passwordHint": "At least 8 characters. You need it on the new panel.",
+    "make": "Create code",
+    "code": "Move code",
+    "copy": "Copy code",
+    "save": "Save as file",
+    "makeDone": "Now paste the code on the new panel under Admin area → Move. The code holds passwords and keys: readable only with the password, still do not pass it around.",
+    "useTitle": "Redeem a code",
+    "useText": "On the new panel: paste the code from the old panel, type the password, done.",
+    "openFile": "Open file",
+    "use": "Take over settings",
+    "warning": "The settings here are replaced. The panel restarts briefly afterwards. Tip: disconnect the Discord bot on the old panel afterwards, or two panels answer.",
+    "done": "Done, all settings are taken over. Restart the panel once so everything runs with the new settings.",
+    "doneRestart": "Done, all settings are taken over. The panel restarts now and reloads by itself."
   }
 }

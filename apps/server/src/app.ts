@@ -51,6 +51,8 @@ import { createServerService, type ServerService } from './servers/service.js';
 import { registerScheduleRoutes } from './schedules/routes.js';
 import { createScheduleService } from './schedules/service.js';
 import { registerSettingsRoutes } from './settings/routes.js';
+import { registerTransferRoutes } from './transfer/routes.js';
+import { createTransferService } from './transfer/service.js';
 import { createSettingsService } from './settings/service.js';
 import { sampleHostCpu } from './system/host.js';
 import { registerSystemRoutes } from './system/routes.js';
@@ -277,6 +279,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerTokenRoutes(app, ctx);
   registerAuditRoutes(app, ctx);
   registerSettingsRoutes(app, ctx);
+  registerTransferRoutes(app, ctx, createTransferService(ctx));
   registerSystemRoutes(app, createUpdateService(ctx));
   registerDdosRoutes(app, ddos);
   registerWebSocket(app, ctx, servers);
