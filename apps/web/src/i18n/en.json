@@ -2123,6 +2123,22 @@
         "title": "Unexpected error",
         "tip": "This matches no known cause. The reply below helps to look further."
       }
+    },
+    "quick": {
+      "title": "Quick start: done in a minute",
+      "text": "Just three things. The panel finds the mail server, port and encryption itself, saves everything and sends you a test mail.",
+      "email": "E-mail address the panel sends from",
+      "emailHint": "The mailbox you created for it, e.g. noreply@example.com.",
+      "password": "Password of this mailbox",
+      "passwordHint": "Stored encrypted and never shown.",
+      "atHome": "My mail server is at home",
+      "atHomeHint": "For example your own Stalwart in your home network. Then the panel also needs its IP.",
+      "ipHint": "The mail machine’s address in your home network, shown in your router’s device list.",
+      "go": "Set up and send test mail",
+      "running": "Looking for the mail server … (up to 30 seconds)",
+      "found": "Found and saved: {{host}}, port {{port}} with {{security}}.",
+      "tried": "Tried: {{list}}",
+      "allSettings": "Set everything yourself (server, sender, sign-up, crash mails)"
     }
   },
   "mailPages": {

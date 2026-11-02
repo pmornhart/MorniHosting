@@ -27,8 +27,9 @@ export const GAME_ART_SOURCES = Object.freeze({
   bedrock:
     'https://minecraft.wiki/images/thumb/Minecraft_Java_%26_Bedrock_Edition_key_art.jpg/1200px-Minecraft_Java_%26_Bedrock_Edition_key_art.jpg',
   crossplay: 'https://geysermc.org/img/geyser-1760-860.png',
+  // Hytale is not on Steam: the picture of its announcement trailer, as hytale.com itself shows it.
+  hytale: 'https://img.youtube.com/vi/o77MzDQT1cg/maxresdefault.jpg',
   // Other games: the header picture of their Steam store page.
-  // Games without one (Hytale is not on Steam) show their drawn scene.
   ...(Object.fromEntries(
     GAME_IDS.flatMap((id) => {
       const url = steamHeaderUrl(GAMES[id]);

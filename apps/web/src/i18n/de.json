@@ -2123,6 +2123,22 @@
         "title": "Unerwarteter Fehler",
         "tip": "Das passt in keine bekannte Ursache. Die Antwort unten hilft beim Suchen."
       }
+    },
+    "quick": {
+      "title": "Schnellstart: in einer Minute fertig",
+      "text": "Nur drei Angaben. Den Mailserver, den Port und die Verschlüsselung sucht das Panel selbst heraus, speichert alles und schickt dir eine Test-Mail.",
+      "email": "E-Mail-Adresse, von der das Panel schreibt",
+      "emailHint": "Das Postfach, das du dafür angelegt hast, z. B. noreply@mornihosting.de.",
+      "password": "Passwort dieses Postfachs",
+      "passwordHint": "Wird verschlüsselt gespeichert und nie angezeigt.",
+      "atHome": "Mein Mailserver steht bei mir zu Hause",
+      "atHomeHint": "Zum Beispiel ein eigener Stalwart im Heimnetz. Dann braucht das Panel noch seine IP.",
+      "ipHint": "Die Adresse des Mail-Rechners im Heimnetz. Du findest sie in der Fritzbox unter Heimnetz → Netzwerk.",
+      "go": "Einrichten und Test-Mail senden",
+      "running": "Suche den Mailserver … (bis zu 30 Sekunden)",
+      "found": "Gefunden und gespeichert: {{host}}, Port {{port}} mit {{security}}.",
+      "tried": "Ausprobiert: {{list}}",
+      "allSettings": "Alle Einstellungen selbst festlegen (Server, Absender, Registrierung, Absturz-Mails)"
     }
   },
   "mailPages": {

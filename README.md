@@ -348,30 +348,18 @@ Kurz gesagt:
 
 Ausführlich mit allen Feldern: [docs/netbird.md](docs/netbird.md).
 
-## E-Mail mit eigenem Mailserver im Heimnetz (z. B. Stalwart)
+## E-Mail einrichten (Schnellstart)
 
-Das Panel verschickt Mails (Willkommen, Registrierung, „Passwort vergessen“, Bestellungen) über ein Postfach per SMTP. So klappt es mit einem eigenen Stalwart, der bei dir zu Hause läuft:
+Das Panel verschickt Mails (Willkommen, Registrierung, „Passwort vergessen“, Bestellungen). Einrichten geht in einer Minute:
 
-1. **Admin-Bereich → E-Mail** öffnen.
-2. **Mailserver:** der Name aus dem Zertifikat, z. B. `mail.pmornhart.de`.
-3. **Server-Adresse intern (IP):** die IP des Mailservers im Heimnetz, z. B. `192.168.178.116`. Das Panel verbindet sich mit dieser IP, prüft das Zertifikat aber gegen den Namen aus Schritt 2. Die Prüfung bleibt immer an.
-   Warum nötig? Zeigt der Name von außen auf einen anderen Rechner (z. B. NetBird), kommt die Verbindung dort an und läuft ins Leere. Ein Eintrag in `/etc/hosts` des Rechners hilft nicht, weil das Panel in einem eigenen Container läuft.
-4. **Port und Verschlüsselung:** `465` mit **TLS** (das nutzt Stalwart meist). `587` mit **STARTTLS** geht nur, wenn Stalwart auch dort lauscht.
-5. **Benutzer:** die ganze Adresse, z. B. `noreply@mornihosting.de`, dazu das Passwort. Es wird verschlüsselt gespeichert und nie wieder angezeigt.
-6. **Absender:** `MorniHosting <noreply@mornihosting.de>`. Speichern.
-7. **Test-Mail senden.** Das Panel zeigt Schritt für Schritt, was klappt: Adresse (DNS) → Verbindung → Verschlüsselung → Anmeldung → Versand. Antwortet der eingestellte Port nicht, probiert es selbst 465/TLS und 587/STARTTLS und speichert, was funktioniert.
+1. Ein Postfach fürs Panel anlegen, z. B. `noreply@deine-domain.de` (bei Stalwart, INWX, IONOS, Gmail …).
+2. **Admin-Bereich → E-Mail → Schnellstart:** E-Mail-Adresse und Passwort eintragen.
+3. Läuft der Mailserver bei dir zu Hause (z. B. Stalwart)? Schalter **„Mein Mailserver steht bei mir zu Hause“** an und seine IP eintragen, z. B. `192.168.178.116`.
+4. **„Einrichten und Test-Mail senden“** klicken.
 
-| Meldung                              | Was tun?                                                                  |
-| ------------------------------------ | ------------------------------------------------------------------------- |
-| Mailserver nicht gefunden            | IP ins Feld „Server-Adresse intern“ eintragen.                            |
-| Keine Antwort (nach 10 Sekunden)     | Meist falscher Rechner oder Firewall: interne IP eintragen, Port 465/TLS. |
-| Port geschlossen                     | Läuft Stalwart auf diesem Port? Firewall am Mailserver prüfen.            |
-| Verschlüsselung passt nicht zum Port | 465 → TLS, 587 → STARTTLS.                                                |
-| Zertifikat passt nicht               | Bei „Mailserver“ den Namen aus dem Zertifikat eintragen, nicht die IP.    |
-| Anmeldung abgelehnt                  | Benutzer ist die ganze Adresse; Passwort neu eingeben.                    |
-| Absender abgelehnt                   | In Stalwart dem Konto erlauben, als diese Adresse zu senden.              |
+Das Panel sucht Mailserver, Port (465/587) und Verschlüsselung selbst heraus, prüft das Zertifikat und speichert, was funktioniert. Danach zeigt es Schritt für Schritt (DNS → Verbindung → TLS → Anmeldung → Versand), was geklappt hat, und bei einem Fehler, was zu tun ist.
 
-Mehr dazu: [docs/email.md](docs/email.md).
+👉 Ausführliche Schritt-für-Schritt-Anleitung: [docs/email-schnellstart.md](docs/email-schnellstart.md) · Profi-Einstellungen: [docs/email.md](docs/email.md)
 
 ## Updates
 

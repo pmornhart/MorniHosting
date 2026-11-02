@@ -132,8 +132,8 @@ footer { color: var(--muted); font-size: 13px; }
 <script type="application/json" id="data">
 {
   "goal": "Ein selbst gehostetes Panel für Minecraft-Server: so viel wie Crafty Controller 4, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-10-30T22:21:52+00:00",
-  "now": "E-Mail-Versand robust gemacht – wartet auf Philips Go zum Veröffentlichen.",
+  "updated": "2026-11-02T09:11:28+00:00",
+  "now": "Teste die restlichen Spiele (Satisfactory, CS2, ETS2, Hytale) echt mit Docker; E-Mail-Schnellstart ist gebaut.",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -334,6 +334,21 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "E-Mail-Versand robust (SMTP)",
       "status": "fertig",
       "detail": "Test-Mail zeigt jeden Schritt (DNS → Verbindung → TLS → Anmeldung → Versand) mit Ursache und Tipp; antwortet der Port nicht, werden 465/TLS und 587/STARTTLS probiert und gespeichert. Neues Feld „Server-Adresse intern (IP)“: Verbindung zur IP, Zertifikat gegen den Namen. 10 s Timeout. Echt geprüft mit nodemailer gegen einen lokalen TLS-Mailserver; mail.pmornhart.de selbst ist aus der Cloud nicht erreichbar. 256 Tests."
+    },
+    {
+      "title": "Hytale-Bild",
+      "status": "fertig",
+      "detail": "Hytale-Karte zeigt jetzt das offizielle Trailer-Bild (wie auf hytale.com). Wird zur Laufzeit geladen, nicht im Repo."
+    },
+    {
+      "title": "Alle Server echt mit Docker testen",
+      "status": "läuft",
+      "detail": "Panel echt mit Docker gestartet (wie bei dir zu Hause). Echt gestartet, Befehl beantwortet, gestoppt, gelöscht: Vanilla, Paper, Purpur, Fabric, Forge, NeoForge, Velocity, Bedrock, Factorio, Garry's Mod. 2 Fehler gefunden und behoben: Garry's Mod blieb im Panel ewig auf „startet“ (jetzt: antwortet die Fernsteuerung, gilt er als bereit) und lief im Entwickler-Modus mit Debugger (jetzt Produktion). Satisfactory: Steam-Fehler „Missing configuration“ beim ersten Download, wird gerade untersucht. Offen: CS2 (60 GB, passt nicht in die Sandbox), ETS2, Hytale (braucht Hytale-Konto)."
+    },
+    {
+      "title": "E-Mail-Schnellstart",
+      "status": "läuft",
+      "detail": "Nur noch E-Mail-Adresse, Passwort und (bei Mailserver zu Hause) die IP eintragen – das Panel findet Server, Port und Verschlüsselung selbst (MX-Eintrag, Zertifikat der Heim-IP, bekannte Anbieter), speichert und schickt eine Test-Mail. Ein fremdes Zertifikat bekommt nie das Passwort. Schritt-für-Schritt-Anleitung docs/email-schnellstart.md. Tests grün (259). Screenshots folgen."
     }
   ],
   "shots": [
@@ -401,11 +416,15 @@ footer { color: var(--muted); font-size: 13px; }
   "files": [
     {
       "tag": "neu",
-      "path": "apps/server/src/mail/check.ts (Schritt-Prüfung, Fehler-Einordnung), test/mail-check.test.ts"
+      "path": "apps/server/src/mail/quick.ts (Schnellstart), docs/email-schnellstart.md, test/mail-quick.test.ts"
+    },
+    {
+      "tag": "behoben",
+      "path": "servers/service.ts (Spiel gilt als bereit, sobald RCON antwortet), games.ts (Garry's Mod PRODUCTION=1)"
     },
     {
       "tag": "geändert",
-      "path": "mail/service.ts (interne IP, 10 s, Port-Erkennung), MailCard.tsx (Schritte, Tipps), packages/shared/src/mail.ts, README (Stalwart im Heimnetz), docs/email.md"
+      "path": "MailCard.tsx (Schnellstart oben, Rest eingeklappt), branding.ts (Hytale-Bild), README"
     }
   ],
   "eta": null,

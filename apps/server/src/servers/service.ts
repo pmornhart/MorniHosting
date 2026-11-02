@@ -131,6 +131,8 @@ const LOG_BUFFER_LINES = 1000;
 const PORT_SEARCH_LIMIT = 100;
 const ATTACH_TAIL_LINES = 300;
 const STATS_INTERVAL_SECONDS = 10;
+/** Harmless command that every Source-engine console answers. */
+const READY_PROBE_COMMAND = 'status';
 const TPS_EVERY_TICKS = 3;
 const LIST_EVERY_TICKS = 6;
 const PERSIST_EVERY_TICKS = 6;
@@ -571,6 +573,15 @@ export function createServerService(ctx: AppContext): ServerService {
     runtime.playersMax = game.maxPlayers;
   };
 
+  const probeReady = async (id: string, game: GameInfo): Promise<void> => {
+    try {
+      await quietCommand(id, game.listCommand ?? READY_PROBE_COMMAND);
+      if (rt(id).state === 'starting') setState(id, 'running');
+    } catch {
+      // Not listening yet: still downloading or loading.
+    }
+  };
+
   const sampleTps = async (id: string, r: ServerRow): Promise<void> => {
     const command = SOFTWARE[r.software].tpsCommand;
     if (!command) return;
@@ -593,6 +604,10 @@ export function createServerService(ctx: AppContext): ServerService {
     if (isRunningJava && !(tick % LIST_EVERY_TICKS)) await syncPlayers(r.id);
     if (runtime.state === 'running' && runtime.game?.listCommand && !(tick % LIST_EVERY_TICKS))
       await syncGamePlayers(r.id, runtime.game);
+    // Some games print their "ready" line late or not at all (Garry's Mod buffers its output):
+    // once their remote console answers, they are up.
+    if (runtime.state === 'starting' && runtime.game?.console === 'rcon')
+      await probeReady(r.id, runtime.game);
     if (!(tick % PERSIST_EVERY_TICKS)) {
       db.insert(stats)
         .values({

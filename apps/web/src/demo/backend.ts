@@ -12,6 +12,7 @@ import {
   type Changelog,
   type ConfirmResult,
   type MailSettingsView,
+  type MailQuickResult,
   type MailTestResult,
   type ConnectionInfo,
   type DdosHostStatus,
@@ -943,6 +944,47 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
         attempts: silent ? [tried, { port: 465, security: 'tls', problem: null }] : [], // eslint-disable-line ts-patterns/no-magic-numbers -- SMTP with implicit TLS
         switchedTo: silent ? { port: 465, security: 'tls' } : null, // eslint-disable-line ts-patterns/no-magic-numbers -- SMTP with implicit TLS
       } satisfies MailTestResult);
+    },
+  ],
+  [
+    'POST',
+    '/api/mail/quick',
+    ({ body }) => {
+      const email = String(body['email'] ?? 'noreply@mornihosting.de');
+      const domain = email.split('@')[1] ?? 'mornihosting.de';
+      const internalHost = String(body['internalHost'] ?? '');
+      const host = `mail.${domain}`;
+      state.mail = {
+        ...state.mail,
+        configured: true,
+        passwordSet: true,
+        host,
+        internalHost,
+        port: 465,
+        security: 'tls',
+        user: email,
+      }; // eslint-disable-line ts-patterns/no-magic-numbers -- SMTP with implicit TLS
+      const at = internalHost || '192.168.178.116';
+      return ok({
+        found: { host, port: 465, security: 'tls' }, // eslint-disable-line ts-patterns/no-magic-numbers -- SMTP with implicit TLS
+        tried: [],
+        closest: null,
+        test: {
+          ok: true,
+          sentTo: meNow()?.user.email || email,
+          steps: [
+            { step: 'dns', state: 'ok', detail: at },
+            { step: 'connect', state: 'ok', detail: `${at}:465` },
+            { step: 'tls', state: 'ok', detail: host },
+            { step: 'login', state: 'ok', detail: email },
+            { step: 'send', state: 'ok' },
+          ],
+          problem: null,
+          message: '',
+          attempts: [],
+          switchedTo: null,
+        },
+      } satisfies MailQuickResult);
     },
   ],
   ['POST', '/api/auth/register', () => noContent()],

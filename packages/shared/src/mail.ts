@@ -95,6 +95,30 @@ export interface MailTestResult {
   readonly switchedTo: MailEndpoint | null;
 }
 
+/** Quick start: address, password and (for a mail server at home) its IP; the panel finds the rest. */
+export const mailQuickSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1).max(CREDENTIAL_MAX),
+  internalHost: z.string().trim().max(HOST_MAX).default(''),
+});
+export type MailQuickInput = z.infer<typeof mailQuickSchema>;
+
+export interface MailQuickTry extends MailEndpoint {
+  readonly host: string;
+  readonly problem: MailProblem | null;
+}
+
+export interface MailQuickResult {
+  /** The mail server that accepted the login; it is saved. Null when none did. */
+  readonly found: (MailEndpoint & { readonly host: string }) | null;
+  readonly tried: readonly MailQuickTry[];
+  /** The test mail sent with what was found. */
+  readonly test: MailTestResult | null;
+  /** When nothing worked: the attempt that came furthest, step by step. */
+  readonly closest:
+    (MailQuickTry & { readonly steps: readonly MailStepResult[]; readonly message: string }) | null;
+}
+
 export const registerSchema = z.object({
   username: usernameSchema,
   email: emailSchema,
