@@ -563,7 +563,12 @@
     "discord_dm_failed": "The test message could not be sent: {{message}}",
     "discord_link_expired": "The link has expired or was already used. Type /verbinden in Discord again.",
     "transfer_password_wrong": "Wrong password or damaged code. Check both.",
-    "transfer_code_invalid": "That is not a move code. It starts with \"MH1-\"."
+    "transfer_code_invalid": "That is not a move code. It starts with \"MH1-\".",
+    "quota_servers": "The quota allows at most {{limit}} servers.",
+    "quota_memory": "Not enough RAM left in the quota (already given: {{used}} MB of {{limit}} MB).",
+    "quota_cpus": "Not enough CPU cores left in the quota (already given: {{used}} of {{limit}}).",
+    "quota_disk": "Not enough disk left in the quota (already given: {{used}} MB of {{limit}} MB).",
+    "disk_limit_reached": "The server needs {{used}} MB and may only have {{limit}} MB. Delete old worlds or backups, or an admin gives more space."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1504,7 +1509,9 @@
       "server_request_rejected": "Server request declined",
       "account_discord_linked": "Discord linked",
       "discord_settings": "Discord bot set up",
-      "discord_removed": "Discord bot removed"
+      "discord_removed": "Discord bot removed",
+      "quota_defaults": "Quota defaults changed",
+      "quota_user": "Quota of a person changed"
     }
   },
   "ddos": {
@@ -1661,7 +1668,8 @@
       "netbird": "NetBird",
       "ddos": "DDoS protection",
       "mail": "E-mail",
-      "move": "Move"
+      "move": "Move",
+      "quotas": "Quotas"
     },
     "domainTitle": "Panel address by hand",
     "domainSet": "Set",
@@ -1687,7 +1695,8 @@
       "settings": "Home network addresses, CurseForge key, time zone and language.",
       "ddos": "Protects your servers and the panel from flood attacks, as far as that is possible at home.",
       "mail": "Mails to your people: welcome, sign-up, “password forgotten” and orders.",
-      "move": "Move settings and connections to another MorniHosting with a code."
+      "move": "Move settings and connections to another MorniHosting with a code.",
+      "quotas": "How much RAM, disk, CPU and how many servers each person may have. Admins have no limits."
     },
     "netbirdManual": "Set up NetBird by hand",
     "netbirdManualHint": "Only needed if you don't use the automation above. Tap to open."
@@ -2496,5 +2505,36 @@
     "sent": "accepted",
     "failed": "failed",
     "hint": "\"accepted\" means your mail server took the mail. If it still does not arrive, check the spam folder. If your mail server runs at home, Gmail, Outlook and others often refuse mail from home connections – the reason is then in your mail server's log (e.g. Stalwart → queue)."
+  },
+  "quota": {
+    "defaultsTitle": "For everyone (default)",
+    "defaultsText": "Applies to everyone without own limits. Empty field = no limit. A new server automatically gets the CPU and disk that are still free.",
+    "host": "Your machine has {{memory}} RAM, {{cpus}} CPU cores and {{disk}} disk.",
+    "fields": {
+      "servers": "Servers",
+      "memoryMb": "RAM (GB)",
+      "diskMb": "Disk (GB)",
+      "cpus": "CPU cores"
+    },
+    "unlimited": "no limit",
+    "save": "Save",
+    "saved": "Saved",
+    "peopleTitle": "Per person",
+    "peopleText": "What each person uses right now. “Change” gives them own limits instead of the defaults.",
+    "own": "Own limits",
+    "default": "Default",
+    "edit": "Change",
+    "saveOwn": "Save own limits",
+    "useDefault": "Use default",
+    "nobody": "No users besides admins yet.",
+    "usedOf": "{{used}} of {{limit}}",
+    "usedNoLimit": "{{used}} · no limit",
+    "diskUsed": "Actually in use right now: {{used}}"
+  },
+  "serverLimits": {
+    "title": "Limits (admins only)",
+    "cpu": "CPU cores",
+    "disk": "Disk (GB)",
+    "hint": "Empty = no limit. The CPU limit applies from the next start; above the disk limit the server does not start."
   }
 }

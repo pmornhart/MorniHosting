@@ -11,6 +11,8 @@ export interface ContainerSpec {
   readonly env: Readonly<Record<string, string>>;
   readonly ports: readonly PortBinding[];
   readonly memoryLimitBytes: number;
+  /** CPU cores the container may use; missing = all. */
+  readonly cpus?: number;
   /** Server folder as the panel sees it, e.g. /data/servers/abc. */
   readonly dataDir: string;
   /** Folders of dataDir and where they appear in the container (default: all of it at /data, as itzg expects). */

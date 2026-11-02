@@ -131,6 +131,8 @@ export function createApprovalService(
   /* ---------- Server requests ---------- */
 
   const request: ApprovalService['request'] = (input, user) => {
+    // Too big for the person's quota: say so now, not only when an admin tries to approve it.
+    serverService.checkNewServer(user, input.memoryMb);
     const id = serverService.newId();
     db.insert(serverRequests).values({ id, userId: user.id, input }).run();
     ctx.audit.record({ userId: user.id, username: user.username, ip: null }, 'server.requested', null, {

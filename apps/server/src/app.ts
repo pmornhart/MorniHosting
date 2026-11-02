@@ -56,6 +56,8 @@ import { createTransferService } from './transfer/service.js';
 import { createSettingsService } from './settings/service.js';
 import { sampleHostCpu } from './system/host.js';
 import { registerSystemRoutes } from './system/routes.js';
+import { registerQuotaRoutes } from './quota/routes.js';
+import { createQuotaService } from './quota/service.js';
 import { createUpdateService } from './system/update.js';
 import { createAccessService } from './users/access.js';
 import { registerUserRoutes } from './users/routes.js';
@@ -282,6 +284,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerTransferRoutes(app, ctx, createTransferService(ctx));
   registerSystemRoutes(app, createUpdateService(ctx));
   registerDdosRoutes(app, ddos);
+  registerQuotaRoutes(app, createQuotaService(ctx, servers));
   registerWebSocket(app, ctx, servers);
 
   const hasWeb = fs.existsSync(path.join(config.webDir, 'index.html'));

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/banner.webp" alt="MorniHosting – dein eigenes Minecraft-Hosting zu Hause" width="100%">
+  <img src="docs/screenshots/banner.webp" alt="MorniHosting – dein eigenes Game-Hosting zu Hause" width="100%">
 </p>
 
 <p align="center">

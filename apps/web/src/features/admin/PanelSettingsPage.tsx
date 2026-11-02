@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Gauge,
   PackageOpen,
   ArrowUpCircle,
   ExternalLink,
@@ -37,6 +38,7 @@ import { NetbirdAutomationCard } from './NetbirdAutomationCard';
 import { PasswordResetCard } from './PasswordResetCard';
 import { UpdateSection } from './UpdateSection';
 import { DdosSection } from './DdosSection';
+import { QuotaSection } from './QuotaSection';
 import { TransferSection } from './TransferCard';
 
 const LANGUAGE_NAMES: Readonly<Record<Locale, string>> = { de: 'Deutsch', en: 'English' };
@@ -46,6 +48,7 @@ const TABS = [
   { key: 'netbird', icon: Network },
   { key: 'update', icon: ArrowUpCircle },
   { key: 'ddos', icon: Shield },
+  { key: 'quotas', icon: Gauge },
   { key: 'mail', icon: Mail },
   { key: 'passwords', icon: KeyRound },
   { key: 'move', icon: PackageOpen },
@@ -389,6 +392,7 @@ export function PanelSettingsPage(): ReactElement {
     ),
     update: <UpdateSection />,
     ddos: <DdosSection />,
+    quotas: <QuotaSection />,
     mail: (
       <>
         <MailCard />

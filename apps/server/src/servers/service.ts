@@ -21,9 +21,9 @@ import {
 import type { Actor } from '../audit/service.js';
 import type { UserRow } from '../auth/context.js';
 import type { AppContext } from '../context.js';
-import { roles, serverAccess, servers, stats } from '../db/schema.js';
+import { roles, serverAccess, servers, stats, users } from '../db/schema.js';
 import { randomToken } from '../lib/crypto.js';
-import { AppError, badRequest, conflict, errorMessage, notFound } from '../lib/errors.js';
+import { AppError, badRequest, conflict, errorMessage, forbidden, notFound } from '../lib/errors.js';
 import { HTTP_CONFLICT } from '../lib/http-status.js';
 import { BYTES_PER_MB, MS_PER_DAY, MS_PER_SECOND, nowIso, sleep } from '../lib/units.js';
 import { folderBytes } from '../lib/folder-size.js';
@@ -103,6 +103,27 @@ export interface ServerService {
   /** The first port from `start` upwards that no other server uses. */
   readonly freePort: (start: number, protocol: 'tcp' | 'udp', exceptId: string) => number;
   readonly newId: () => string;
+  /** The quota rules (quota/service.ts) plug in here; without them nothing is limited. */
+  readonly useQuota: (guard: QuotaGuard) => void;
+  /** Throws when a new server of this size would not fit the person's quota (e.g. for a server request). */
+  readonly checkNewServer: (owner: UserRow, memoryMb: number) => void;
+}
+
+/** Limits per person, checked whenever a server of theirs is created or made bigger. */
+export interface QuotaGuard {
+  /** CPU and disk limits for a new server: what the admin set, or what is left of the owner's quota. */
+  readonly limitsFor: (
+    owner: UserRow,
+    wanted: { cpuLimit: number | null; diskLimitMb: number | null; memoryMb: number },
+  ) => { cpuLimit: number | null; diskLimitMb: number | null };
+  /** Throws when the owner's servers would need more than their quota allows. */
+  readonly check: (
+    owner: UserRow,
+    serverId: string | null,
+    next: { memoryMb: number; cpuLimit: number | null; diskLimitMb: number | null },
+  ) => void;
+  /** The person a server counts against (its owner), or null for admins' servers. */
+  readonly ownerOf: (serverId: string) => UserRow | null;
 }
 
 interface Runtime {
@@ -302,6 +323,7 @@ export function createServerService(ctx: AppContext): ServerService {
   const withLock = createKeyedLock();
   /** Features that keep files in sync with the panel (e.g. voice chat) refresh them here. */
   const beforeStart = new Set<(id: string) => void>();
+  let quota: QuotaGuard | null = null;
   const portListeners = new Set<(id: string) => void>();
   const createdListeners = new Set<(id: string) => Promise<void>>();
   const portsChanged = (id: string): void => portListeners.forEach((listener) => listener(id));
@@ -334,6 +356,8 @@ export function createServerService(ctx: AppContext): ServerService {
     software: r.software,
     version: r.version,
     memoryMb: r.memoryMb,
+    cpuLimit: r.cpuLimit,
+    diskLimitMb: r.diskLimitMb,
     port: r.port,
     address: addressOf(r),
     autoStart: r.autoStart,
@@ -774,6 +798,15 @@ export function createServerService(ctx: AppContext): ServerService {
       const netbirdName = creator.isAdmin ? (input.netbirdName ?? null) : null;
       if (netbirdName && db.select().from(servers).where(eq(servers.netbirdName, netbirdName)).get())
         throw conflict('netbird_name_taken', { name: netbirdName });
+      const wanted = {
+        cpuLimit: creator.isAdmin ? (input.cpuLimit ?? null) : null,
+        diskLimitMb: creator.isAdmin ? (input.diskLimitMb ?? null) : null,
+      };
+      const limits =
+        creator.isAdmin || !quota
+          ? wanted
+          : quota.limitsFor(creator, { ...wanted, memoryMb: input.memoryMb });
+      if (!creator.isAdmin) quota?.check(creator, null, { memoryMb: input.memoryMb, ...limits });
       const id = newId();
       const base = {
         id,
@@ -782,6 +815,7 @@ export function createServerService(ctx: AppContext): ServerService {
         software: input.software,
         version: input.version,
         memoryMb: input.memoryMb,
+        ...limits,
         port: input.port,
         javaTag: null,
         autoStart: input.autoStart,
@@ -813,6 +847,8 @@ export function createServerService(ctx: AppContext): ServerService {
     },
     createFromImport: (input, actor, creator) => {
       const info = SOFTWARE[input.software];
+      if (!creator.isAdmin)
+        quota?.check(creator, null, { memoryMb: input.memoryMb, cpuLimit: null, diskLimitMb: null });
       assertPortFree(input.port, info.protocol, null);
       const base = { ...input, javaTag: null };
       db.insert(servers)
@@ -840,9 +876,21 @@ export function createServerService(ctx: AppContext): ServerService {
       if (patch.port !== undefined && patch.port !== current.port) {
         assertPortFree(patch.port, SOFTWARE[current.software].protocol, id);
       }
+      const limitsChanged = patch.cpuLimit !== undefined || patch.diskLimitMb !== undefined;
+      const acting =
+        actor.userId === null ? undefined : db.select().from(users).where(eq(users.id, actor.userId)).get();
+      if (limitsChanged && !acting?.isAdmin) throw forbidden('admin_only');
+      const cpuLimit = patch.cpuLimit === undefined ? current.cpuLimit : patch.cpuLimit;
+      const diskLimitMb = patch.diskLimitMb === undefined ? current.diskLimitMb : patch.diskLimitMb;
+      const memoryMb = patch.memoryMb ?? current.memoryMb;
+      // Only the owner's own changes are held to the quota; an admin may give more.
+      const owner = quota?.ownerOf(id);
+      if (owner && !acting?.isAdmin) quota?.check(owner, id, { memoryMb, cpuLimit, diskLimitMb });
       const next = {
         name: patch.name ?? current.name,
-        memoryMb: patch.memoryMb ?? current.memoryMb,
+        memoryMb,
+        cpuLimit,
+        diskLimitMb,
         port: patch.port ?? current.port,
         autoStart: patch.autoStart ?? current.autoStart,
         domain: patch.domain === undefined ? current.domain : patch.domain || null,
@@ -916,6 +964,9 @@ export function createServerService(ctx: AppContext): ServerService {
       const missing = missingGameFiles(serverDir(config, id), r.software);
       if (missing.length) throw badRequest('game_files_missing', { files: missing.join(', ') });
       if (ACTIVE_STATES.includes(rt(id).state)) throw conflict('server_already_running');
+      const usedMb = rt(id).diskMb;
+      if (r.diskLimitMb !== null && usedMb !== null && usedMb > r.diskLimitMb)
+        throw conflict('disk_limit_reached', { used: Math.round(usedMb), limit: r.diskLimitMb });
       audit.record(actor, 'server.start', id);
       rt(id).state = 'starting';
       publishLive(id);
@@ -1005,6 +1056,16 @@ export function createServerService(ctx: AppContext): ServerService {
       portsChanged(id);
     },
     voiceHost: (id) => voiceHostOf(row(id)),
+    useQuota: (guard) => {
+      quota = guard;
+    },
+    checkNewServer: (owner, memoryMb) => {
+      if (owner.isAdmin || !quota) return;
+      quota.check(owner, null, {
+        memoryMb,
+        ...quota.limitsFor(owner, { cpuLimit: null, diskLimitMb: null, memoryMb }),
+      });
+    },
     onBeforeStart: (prepare) => {
       beforeStart.add(prepare);
       return () => beforeStart.delete(prepare);
