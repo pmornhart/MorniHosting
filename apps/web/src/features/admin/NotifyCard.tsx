@@ -16,7 +16,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { errorText } from '@/lib/query';
-import { useSession } from '@/features/auth/session';
+import { statusQuery, useSession } from '@/features/auth/session';
 
 const settingsQuery = {
   queryKey: ['notify-settings'],
@@ -48,6 +48,7 @@ export function NotifyCard(): ReactElement {
   const { me } = useSession();
   const queryClient = useQueryClient();
   const { data } = useQuery(settingsQuery);
+  const panelDomain = useQuery(statusQuery).data?.panelDomain;
   const linked = Boolean(data?.discord.linked);
   // While a code is shown, look every few seconds whether /verbinden arrived.
   const code = useMutation({
@@ -150,34 +151,31 @@ export function NotifyCard(): ReactElement {
                 </Button>
               ) : null}
             </Step>
-            <Step n={2} text={t('notifyCard.stepServer')}>
-              {data.discord.serverInstallUrl ? (
-                <Button asChild variant="outline" size="sm" className="justify-self-start">
-                  <a href={data.discord.serverInstallUrl} target="_blank" rel="noreferrer">
-                    <ExternalLink />
-                    {t('notifyCard.addToServer')}
-                  </a>
-                </Button>
-              ) : null}
-            </Step>
-            <Step n={3} text={t('notifyCard.step2')}>
-              {code.data ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <code className="rounded-[8px] bg-muted px-3 py-1.5 font-mono text-base">{command}</code>
-                  <CopyButton text={command} />
-                </div>
-              ) : (
-                <Button
-                  size="sm"
-                  className="justify-self-start"
-                  disabled={code.isPending}
-                  onClick={() => code.mutate()}
-                >
-                  {t('notifyCard.getCode')}
-                </Button>
-              )}
-            </Step>
-            <Step n={4} text={t('notifyCard.step3')} />
+            {panelDomain ? (
+              <Step n={2} text={t('notifyCard.stepCommand')}>
+                <code className="justify-self-start rounded-[8px] bg-muted px-3 py-1.5 font-mono text-base">
+                  /verbinden
+                </code>
+              </Step>
+            ) : (
+              <Step n={2} text={t('notifyCard.step2Code')}>
+                {code.data ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <code className="rounded-[8px] bg-muted px-3 py-1.5 font-mono text-base">{command}</code>
+                    <CopyButton text={command} />
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="justify-self-start"
+                    disabled={code.isPending}
+                    onClick={() => code.mutate()}
+                  >
+                    {t('notifyCard.getCode')}
+                  </Button>
+                )}
+              </Step>
+            )}
           </ol>
         )}
         {code.error ? <p className="text-sm text-destructive">{errorText(code.error)}</p> : null}

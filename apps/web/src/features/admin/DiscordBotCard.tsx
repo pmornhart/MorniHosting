@@ -19,7 +19,7 @@ export const discordQuery = {
 } as const;
 
 const PORTAL = 'https://discord.com/developers/applications';
-const STEPS = ['step1', 'step2', 'step3', 'step4'] as const;
+const STEPS = ['step1', 'step2', 'step3'] as const;
 
 /** Admins: the Discord bot that sends everyone their notifications as private messages. */
 export function DiscordBotCard(): ReactElement {

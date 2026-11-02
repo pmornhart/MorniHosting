@@ -54,6 +54,10 @@ export interface DiscordSettingsView {
   /** The bot is online (connected to Discord) and can receive button clicks. */
   readonly online: boolean;
   readonly error: string | null;
+  /** The bot already has the MorniHosting picture and description. */
+  readonly branded: boolean;
+  /** Why setting picture/description failed last time (retried at the next start). */
+  readonly brandError: string | null;
   /** Link to put the bot on one of your servers: then Discord lets it write to you privately. */
   readonly serverInstallUrl: string | null;
   /** The last private message that did not go through, if any. */
@@ -96,4 +100,11 @@ export interface PendingUser {
 export interface ApprovalsView {
   readonly users: readonly PendingUser[];
   readonly requests: readonly ServerRequestView[];
+}
+
+export const discordClaimSchema = z.object({ token: z.string().min(1).max(TOKEN_MAX) });
+export interface DiscordLinked {
+  readonly name: string;
+  /** Set when the welcome message could not be delivered. */
+  readonly dm: DmError | null;
 }

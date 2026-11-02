@@ -4,6 +4,7 @@ import {
   wantsNotice,
   type DiscordLinkCode,
   type DiscordSettingsView,
+  type DiscordLinked,
   type DmError,
   type NotifyPrefsInput,
   type NotifySettingsView,
@@ -13,10 +14,12 @@ import type { UserRow } from '../auth/context.js';
 import type { AppContext } from '../context.js';
 import { users } from '../db/schema.js';
 import { badRequest, errorMessage } from '../lib/errors.js';
+import { randomToken } from '../lib/crypto.js';
 import { UpstreamError } from '../lib/http-client.js';
 import { MS_PER_MINUTE } from '../lib/units.js';
 import type { MailKind, MailVars } from '../mail/templates.js';
 import type { MailService } from '../mail/service.js';
+import { BOT_AVATAR_PNG_BASE64 } from './bot-avatar.js';
 import {
   DiscordError,
   INTERACTION_COMMAND,
@@ -41,6 +44,7 @@ const CODE_MAX = 1000000;
 const ACTION_PREFIX = 'mh';
 /** Discord's "Cannot send messages to this user": DMs from apps are switched off or the app was removed. */
 const DISCORD_CANNOT_DM = 50007;
+const CLAIM_TOKEN_BYTES = 24;
 const WELCOME_WAIT_MS = 2000;
 const ACTION_SEPARATOR = ':';
 export const COLOUR_INFO = 0x10b981;
@@ -51,7 +55,22 @@ interface StoredDiscord {
   tokenSealed: string;
   appId: string;
   botName: string;
+  /** Which look (picture + description) the bot got last; a newer BRAND_VERSION is applied once at start. */
+  brandVersion?: number;
 }
+
+const WELCOME: DiscordMessage = {
+  title: '👋 Hallo von MorniHosting',
+  text: 'Dein Discord ist jetzt verbunden. Hier bekommst du ab sofort deine Benachrichtigungen – Freigaben, Abstürze und Antworten auf deine Anfragen.',
+  colour: COLOUR_INFO,
+};
+
+/** Raise when picture or description change, so existing bots get the new look once. */
+const BRAND_VERSION = 1;
+const BOT_DESCRIPTION =
+  'Der Bot von MorniHosting – deinem eigenen Server-Panel für Minecraft und mehr. 🟩\n\n' +
+  'Er schreibt dir privat: neue Registrierungen und Server-Anfragen mit Knöpfen zum Freigeben, Abstürze deiner Server und Antworten auf deine Anfragen.\n\n' +
+  'Verbinden: im Panel unter „Mein Konto → Benachrichtigungen“ einen Code holen und /verbinden <code> schicken.';
 
 export interface Notice {
   readonly mail?: { readonly kind: MailKind; readonly vars: Partial<MailVars> };
@@ -68,6 +87,10 @@ export interface NotifyService {
   readonly settingsFor: (user: UserRow) => NotifySettingsView;
   readonly setPrefs: (user: UserRow, prefs: NotifyPrefsInput) => NotifySettingsView;
   readonly linkCode: (user: UserRow) => DiscordLinkCode;
+  /** Link from the /verbinden button: which Discord account it is for (shown before confirming). */
+  readonly peekClaim: (token: string) => { readonly name: string };
+  /** Confirmed in the panel: links that Discord account to the signed-in person and says hello. */
+  readonly claim: (user: UserRow, token: string) => Promise<DiscordLinked>;
   readonly unlink: (user: UserRow) => void;
   /** Sends a test DM to the person's linked Discord and reports a failure (e.g. DMs from apps blocked). */
   readonly testDm: (user: UserRow) => Promise<void>;
@@ -93,13 +116,21 @@ export function createNotifyService(
   const { db, settings, secrets, log } = ctx;
   const codes = new Map<string, { userId: number; expires: number }>();
   const actions = new Map<string, ActionHandler>();
-  const state: { online: boolean; error: string | null; disconnect: (() => void) | null } = {
+  const state: {
+    online: boolean;
+    error: string | null;
+    disconnect: (() => void) | null;
+    brandError: string | null;
+  } = {
     online: false,
     error: null,
     disconnect: null,
+    brandError: null,
   };
   /** Last failed private message per Discord user (kept in memory; cleared by the next one that works). */
   const dmErrors = new Map<string, DmError>();
+  /** Links handed out by /verbinden: token → the Discord account that asked (10 minutes, one use). */
+  const claims = new Map<string, { discordId: string; name: string; expires: number }>();
 
   const stored = (): StoredDiscord | undefined => settings.getValue<StoredDiscord>(DISCORD_KEY);
   const token = (): string | null => {
@@ -149,6 +180,8 @@ export function createNotifyService(
       installUrl: installUrl(),
       online: state.online,
       error: state.error,
+      branded: (stored()?.brandVersion ?? 0) >= BRAND_VERSION,
+      brandError: state.brandError,
       serverInstallUrl: serverInstallUrl(),
       lastDmError: [...dmErrors.values()].toSorted((a, b) => b.at.localeCompare(a.at))[0] ?? null,
     };
@@ -170,7 +203,44 @@ export function createNotifyService(
     void quietly(() => api.reply(interaction, type, message), 'discord reply failed');
   };
 
+  /** Links a Discord account to a panel account (and unlinks it from anyone else). */
+  const linkAccount = (userId: number, discordId: string, discordName: string): void => {
+    db.update(users)
+      .set({ discordId: null, discordName: null })
+      .where(and(eq(users.discordId, discordId), ne(users.id, userId)))
+      .run();
+    db.update(users).set({ discordId, discordName }).where(eq(users.id, userId)).run();
+    ctx.audit.record({ userId, username: discordName, ip: null }, 'account.discord_linked');
+  };
+
+  /** /verbinden without a code: a button that opens the panel, where the signed-in person confirms. */
+  const offerLink = (interaction: DiscordInteraction): void => {
+    const base = mail.panelUrl();
+    if (!base) {
+      reply(interaction, REPLY_MESSAGE, {
+        title: 'Fast geschafft',
+        text: 'Hol dir im Panel unter „Mein Konto → Benachrichtigungen“ einen Code und gib ihn bei /verbinden im Feld „code“ ein.',
+      });
+      return;
+    }
+    const token = randomToken(CLAIM_TOKEN_BYTES);
+    claims.set(token, {
+      discordId: interaction.userId,
+      name: interaction.userName,
+      expires: Date.now() + LINK_TTL_MS,
+    });
+    reply(interaction, REPLY_MESSAGE, {
+      title: 'Mit MorniHosting verbinden',
+      text: 'Klick auf den Knopf – im Panel bestätigst du mit einem Klick, fertig.',
+      buttons: [{ label: 'Jetzt verbinden', url: `${base}/discord-link#${token}` }],
+    });
+  };
+
   const link = async (interaction: DiscordInteraction): Promise<void> => {
+    if (!interaction.value.trim()) {
+      offerLink(interaction);
+      return;
+    }
     const entry = codes.get(interaction.value.trim());
     if (!entry || entry.expires < Date.now()) {
       reply(interaction, REPLY_MESSAGE, {
@@ -180,25 +250,10 @@ export function createNotifyService(
       return;
     }
     codes.delete(interaction.value.trim());
-    db.update(users)
-      .set({ discordId: null, discordName: null })
-      .where(and(eq(users.discordId, interaction.userId), ne(users.id, entry.userId)))
-      .run();
-    db.update(users)
-      .set({ discordId: interaction.userId, discordName: interaction.userName })
-      .where(eq(users.id, entry.userId))
-      .run();
-    ctx.audit.record(
-      { userId: entry.userId, username: interaction.userName, ip: null },
-      'account.discord_linked',
-    );
+    linkAccount(entry.userId, interaction.userId, interaction.userName);
     // The first message from the bot opens the private chat. Discord wants an answer within three seconds,
     // so the reply waits for the DM only briefly and then says what happened.
-    const welcome = deliverDm(interaction.userId, {
-      title: '👋 Hallo von MorniHosting',
-      text: 'Dein Discord ist jetzt verbunden. Hier bekommst du ab sofort deine Benachrichtigungen – Freigaben, Abstürze und Antworten auf deine Anfragen.',
-      colour: COLOUR_INFO,
-    });
+    const welcome = deliverDm(interaction.userId, WELCOME);
     const waited = await Promise.race([
       welcome,
       new Promise<'slow'>((resolve) => setTimeout(() => resolve('slow'), WELCOME_WAIT_MS)),
@@ -244,6 +299,35 @@ export function createNotifyService(
     if (interaction.type === INTERACTION_COMPONENT) void click(interaction);
   };
 
+  /** Gives the bot the MorniHosting picture and description, once per BRAND_VERSION. */
+  const brand = async (t: string): Promise<void> => {
+    try {
+      await api.brand(t, {
+        avatar: `data:image/png;base64,${BOT_AVATAR_PNG_BASE64}`,
+        description: BOT_DESCRIPTION,
+      });
+      const s = stored();
+      if (s) settings.setValue(DISCORD_KEY, { ...s, brandVersion: BRAND_VERSION } satisfies StoredDiscord);
+      state.brandError = null;
+    } catch (err) {
+      // Discord limits picture changes; the next start tries again.
+      state.brandError = errorMessage(err);
+      log.warn({ err: state.brandError }, 'discord profile update failed');
+    }
+  };
+
+  /**
+   * The bot is on a server now: everyone whose welcome could not be delivered (no shared server yet) gets it now,
+   * so linking always ends with a message from the bot.
+   */
+  const retryWelcomes = (): void => {
+    [...dmErrors.entries()]
+      .filter(([, failure]) => failure.blocked)
+      .forEach(([discordId]) => {
+        void deliverDm(discordId, WELCOME);
+      });
+  };
+
   const start = (): void => {
     state.disconnect?.();
     state.disconnect = null;
@@ -252,10 +336,16 @@ export function createNotifyService(
     if (!t || !s) return;
     // Panels set up before /verbinden worked everywhere get the new command once at start.
     void quietly(() => api.registerCommands(t, s.appId), 'discord command update failed');
-    state.disconnect = api.connect(t, onInteraction, (online, error) => {
-      state.online = online;
-      state.error = error;
-    });
+    if ((s.brandVersion ?? 0) < BRAND_VERSION) void brand(t);
+    state.disconnect = api.connect(
+      t,
+      onInteraction,
+      (online, error) => {
+        state.online = online;
+        state.error = error;
+      },
+      retryWelcomes,
+    );
   };
 
   const settingsFor = (user: UserRow): NotifySettingsView => {
@@ -329,6 +419,18 @@ export function createNotifyService(
     setPrefs: (user, prefs) => {
       db.update(users).set({ notify: prefs }).where(eq(users.id, user.id)).run();
       return settingsFor(fresh(user));
+    },
+    peekClaim: (token) => {
+      const entry = claims.get(token);
+      if (!entry || entry.expires < Date.now()) throw badRequest('discord_link_expired');
+      return { name: entry.name };
+    },
+    claim: async (user, token) => {
+      const entry = claims.get(token);
+      claims.delete(token);
+      if (!entry || entry.expires < Date.now()) throw badRequest('discord_link_expired');
+      linkAccount(user.id, entry.discordId, entry.name);
+      return { name: entry.name, dm: await deliverDm(entry.discordId, WELCOME) };
     },
     linkCode: (user) => {
       [...codes].filter(([, e]) => e.userId === user.id).forEach(([code]) => codes.delete(code));

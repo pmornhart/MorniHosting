@@ -2,10 +2,12 @@ import { z } from 'zod';
 import {
   createServerSchema,
   decisionSchema,
+  discordClaimSchema,
   discordSettingsSchema,
   notifyPrefsSchema,
   type ApprovalsView,
   type DiscordLinkCode,
+  type DiscordLinked,
   type DiscordSettingsView,
   type NotifySettingsView,
   type ServerRequestView,
@@ -72,6 +74,19 @@ export function registerNotifyRoutes(
       await notify.testDm(requireAuth(request).user);
       return reply.code(HTTP_NO_CONTENT).send();
     },
+  );
+  app.post(
+    '/api/account/discord/peek',
+    { schema: { body: discordClaimSchema } },
+    async (request): Promise<{ name: string }> => {
+      requireAuth(request);
+      return notify.peekClaim(request.body.token);
+    },
+  );
+  app.post(
+    '/api/account/discord/claim',
+    { schema: { body: discordClaimSchema } },
+    async (request): Promise<DiscordLinked> => notify.claim(requireAuth(request).user, request.body.token),
   );
   app.delete('/api/account/discord', async (request, reply) => {
     notify.unlink(requireAuth(request).user);

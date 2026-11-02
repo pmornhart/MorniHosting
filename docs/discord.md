@@ -11,40 +11,23 @@ Kein Discord-Server nötig, alles läuft über private Nachrichten. Das Panel br
 
 ---
 
-## Teil 1 – Den Bot anlegen (einmal, nur du als Admin, ca. 3 Minuten)
+🎬 **Erklärvideo (48 Sekunden):** [discord-erklaervideo.mp4](discord-erklaervideo.mp4)
 
-1. Öffne <https://discord.com/developers/applications> und melde dich mit deinem Discord-Konto an.
-2. Klick oben rechts auf **New Application**, gib als Namen `MorniHosting` ein, Haken setzen, **Create**.
-3. Links auf **Installation**:
-   - Bei **Installation Contexts** **User Install** und **Guild Install** anhaken.
-   - Bei **Guild Install** als Scopes `bot` und `applications.commands` auswählen (Rechte: keine).
-   - Bei **Install Link** „Discord Provided Link“ auswählen.
-   - Unten **Save Changes**.
-4. Links auf **Bot** → **Reset Token** → **Yes, do it!** → **Copy**. Das ist der Bot-Token. Gib ihn niemandem.
-5. Im Panel: **Benachrichtigungen** (Menü links) → Karte **Discord-Bot** → Token einfügen → **Verbinden**.
-   Steht dort **Online**, ist der Bot fertig.
+## Teil 1 – Den Bot anlegen (einmal, nur du als Admin, 2 Minuten)
 
-## Teil 2 – Dein eigenes Discord verbinden (jede Person, ca. 1 Minute)
+1. Öffne <https://discord.com/developers/applications>, klick **New Application**, Name `MorniHosting`, **Create**.
+2. Links auf **Bot** → **Reset Token** → **Copy**. Das ist der Bot-Token. Gib ihn niemandem.
+3. Im Panel: **Benachrichtigungen** → Karte **Discord-Bot** → Token einfügen → **Verbinden**.
 
-1. Im Panel: **Mein Konto** (unten links auf deinen Namen) → Karte **Benachrichtigungen** → **Discord verbinden**.
-2. Klick **App hinzufügen**. Discord öffnet sich und fragt „Zu meinen Apps hinzufügen“ → **Autorisieren**.
-3. Zurück im Panel: **Code anzeigen**. Du siehst z. B. `/verbinden 482913`.
-4. In Discord: Tippe in **irgendeinen Chat** (einen Kanal auf einem beliebigen Server oder einen Chat mit einem Freund) `/verbinden`, wähle den Befehl von MorniHosting aus und gib den Code ein. Abschicken. Die Antwort siehst nur du.
-5. Der Bot antwortet „✅ Verbunden“ und schreibt dir gleich danach privat „👋 Hallo von MorniHosting“. Damit ist der Chat mit ihm offen und steht bei deinen Direktnachrichten. Im Panel steht **Verbunden mit …**. Fertig!
+Das war's. Profilbild, Beschreibung, Installations-Einstellungen und den Befehl `/verbinden` stellt das Panel selbst ein.
 
-### Keine Nachricht vom Bot? (wichtig)
+## Teil 2 – Dein Discord verbinden (jede Person, 1 Minute)
 
-Discord lässt einen Bot dir nur privat schreiben, wenn ihr **einen gemeinsamen Server** habt. Dann so:
+1. Im Panel: **Mein Konto → Benachrichtigungen** → **App hinzufügen** → in Discord **Autorisieren**.
+2. In Discord in irgendeinen Chat `/verbinden` tippen, den Befehl aus der Liste wählen, Enter.
+3. Auf **Jetzt verbinden** klicken. Das Panel öffnet sich, **Ja, verbinden** klicken. Fertig – der Bot schreibt dir „👋 Hallo von MorniHosting“.
 
-1. Im Panel unter **Mein Konto → Benachrichtigungen** auf **Bot auf meinen Server holen** klicken (oder auf der Karte **Discord-Bot**).
-2. Irgendeinen deiner Server auswählen, auch ein leerer eigener reicht. Auf **Autorisieren** klicken.
-3. Zurück im Panel **Test-Nachricht senden**. Jetzt kommt sie privat bei dir an.
-
-Der Bot schreibt auf dem Server selbst nichts, alles bleibt private Nachricht. Nach `/verbinden` sagt er dir übrigens direkt, ob er dir schreiben darf.
-
-Unter **Mein Konto → Benachrichtigungen** kannst du jederzeit einstellen, **wie** (E-Mail, Discord) und **worüber** (Freigaben, Abstürze, Antworten auf Anfragen) du Bescheid bekommst.
-
----
+Sagt das Panel, dass Discord die Nachricht nicht durchlässt: einmal **Bot auf meinen Server holen** klicken (irgendein Server von dir). Der Bot schreibt dort nichts, aber danach kommen die Nachrichten privat an.
 
 ## So läuft eine Freigabe
 
