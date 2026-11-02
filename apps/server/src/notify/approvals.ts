@@ -4,6 +4,8 @@ import {
   type ApprovalsView,
   type CreateServerInput,
   type ServerRequestView,
+  gameName,
+  isMinecraft,
 } from '@mornihosting/shared';
 import type { UserRow } from '../auth/context.js';
 import type { Actor } from '../audit/service.js';
@@ -240,7 +242,11 @@ export function createApprovalService(
     const row = db.select().from(serverRequests).where(eq(serverRequests.id, requestId)).get();
     const owner = row ? userRow(row.userId) : undefined;
     if (!row || !owner) return;
-    const software = `${SOFTWARE[row.input.software].label} ${row.input.version}`;
+    const game = gameName(row.input.edition);
+    const minecraft = isMinecraft(row.input.edition);
+    const software = minecraft
+      ? `${game} · ${SOFTWARE[row.input.software].label} ${row.input.version}`
+      : `${game} ${row.input.version}`;
     notify.tell(notify.admins(), 'approvals', () => ({
       mail: {
         kind: 'request_new',
@@ -258,7 +264,9 @@ export function createApprovalService(
         colour: COLOUR_INFO,
         fields: [
           { name: 'Name', value: row.input.name },
-          { name: 'Spiel', value: software },
+          { name: 'Spiel', value: game },
+          ...(minecraft ? [{ name: 'Software', value: SOFTWARE[row.input.software].label }] : []),
+          { name: 'Version', value: row.input.version },
           { name: 'Paket', value: plan(row.input.memoryMb) },
         ],
         buttons: [

@@ -3,8 +3,9 @@
 </p>
 
 <p align="center">
-  <b>Minecraft-Server zu Hause – so einfach wie bei einem großen Hoster.</b><br>
-  Anlegen, starten, Plugins installieren, Backups machen: alles im Browser, ohne Fachwissen und ohne monatliche Kosten.
+  <b>Game-Server zu Hause – so einfach wie bei einem großen Hoster.</b><br>
+  Minecraft, Factorio, Counter-Strike 2, Garry's Mod, Satisfactory, Euro Truck Simulator 2 und Hytale:
+  anlegen, starten, Mods installieren, Backups machen – alles im Browser, ohne Fachwissen und ohne monatliche Kosten.
 </p>
 
 <p align="center">
@@ -13,10 +14,12 @@
   <img src="https://img.shields.io/badge/Sprachen-DE%20%7C%20EN-10b981" alt="Sprachen: Deutsch und Englisch">
   <img src="https://img.shields.io/badge/Plattform-Proxmox%20%7C%20Linux%20%7C%20Docker-10b981" alt="Plattform: Proxmox, Linux, Docker">
   <img src="https://img.shields.io/badge/Minecraft-Java%20%26%20Bedrock-10b981" alt="Minecraft: Java und Bedrock">
+  <img src="https://img.shields.io/badge/Spiele-7-10b981" alt="7 Spiele">
 </p>
 
 <p align="center">
   <a href="#installation"><b>Installation</b></a> ·
+  <a href="#mehr-als-minecraft"><b>Spiele</b></a> ·
   <a href="#was-kann-mornihosting"><b>Funktionen</b></a> ·
   <a href="#deine-domain-und-passkeys"><b>Domain &amp; Passkeys</b></a> ·
   <a href="#eigene-domain-ohne-netbird"><b>Eigene Domain</b></a> ·
@@ -25,16 +28,47 @@
   <a href="#häufige-fragen"><b>Fragen</b></a>
 </p>
 
-MorniHosting ist ein Web-Panel für deine eigenen Minecraft-Server – auf Proxmox, einem Mini-PC, einem Raspberry
+MorniHosting ist ein Web-Panel für deine eigenen Game-Server – auf Proxmox, einem Mini-PC, einem Raspberry
 Pi oder einem gemieteten Server. Es kann so viel wie [Crafty Controller 4](https://craftycontrol.com/) und ist
 so aufgeräumt wie die Panels von GGServers oder Nodecraft. Leitsatz: **Jede häufige Aufgabe in höchstens 3
 Klicks – ohne Anleitung.**
 
-## So legst du einen Server an
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/landing.webp" alt="Startseite mit Anmelden und Konto anfragen"></td>
+    <td width="50%"><img src="docs/screenshots/dashboard.webp" alt="Übersicht mit Minecraft- und anderen Spiele-Servern"></td>
+  </tr>
+  <tr>
+    <td><b>Startseite wie bei einem Hoster</b><br>Anmelden oder „Konto anfragen“ – du gibst neue Leute frei.</td>
+    <td><b>Alle Server auf einen Blick</b><br>Minecraft und andere Spiele nebeneinander, live mit RAM und CPU.</td>
+  </tr>
+</table>
+
+## Mehr als Minecraft
 
 <p align="center">
-  <img src="docs/screenshots/order.webp" alt="Server bestellen wie bei einem Hoster: Pakete mit Spielerzahl, Benutzerdefiniert und Bestellübersicht" width="100%">
+  <img src="docs/screenshots/order.webp" alt="Spielauswahl: Minecraft Java, Bedrock, Geyser und weitere Spiele wie Factorio, Counter-Strike 2 und Garry's Mod" width="100%">
 </p>
+
+| Spiel                         | Was dabei ist                                                              |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| ⛏️ **Minecraft Java**         | Vanilla, Paper, Purpur, Fabric, Forge, NeoForge, Velocity – Plugins & Mods |
+| 📱 **Minecraft Bedrock**      | Für Handy, Konsole und Windows; mit Geyser auch zusammen mit Java          |
+| 🏭 **Factorio**               | Stabil oder neueste Version, Space Age, Konsole über RCON                  |
+| 🔫 **Counter-Strike 2**       | Wettkampf, Deathmatch, Workshop-Karten                                     |
+| 🧱 **Garry's Mod**            | Sandbox, Trouble in Terrorist Town, Workshop-Addons                        |
+| 🏗️ **Satisfactory**           | Koop-Fabrikbau mit Freunden                                                |
+| 🚚 **Euro Truck Simulator 2** | Konvoi-Server, Einrichtung per Upload-Assistent                            |
+| 🗡️ **Hytale**                 | Mit offiziellem Downloader                                                 |
+
+<p align="center">
+  <img src="docs/screenshots/game-server.webp" alt="Factorio-Server im Panel mit Konsole" width="100%">
+</p>
+
+Jedes Spiel bekommt dieselbe Server-Seite: Adresse zum Kopieren, Live-Konsole, Einstellungen, Dateien, Backups
+und Routinen. Ausführlich: [docs/spiele.md](docs/spiele.md).
+
+## So legst du einen Server an
 
 Wie bei einem Hoster, nur kostenlos: Spiel wählen (Java, Bedrock oder Crossplay), ein Paket mit Spielerzahl
 (2 GB für etwa 4 Spieler bis 16 GB für etwa 100 – oder „Benutzerdefiniert“), Software und Version, den Namen unter
@@ -45,19 +79,19 @@ deiner Domain und Add-ons wie Bedrock-Spieler, Voice-Chat oder tägliche Backups
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/dashboard.webp" alt="Übersicht mit drei Servern"></td>
-    <td width="50%"><img src="docs/screenshots/server.webp" alt="Server-Seite mit Adresse, Spielern und Kennzahlen"></td>
+    <td width="50%"><img src="docs/screenshots/server.webp" alt="Server-Seite mit Banner, Adresse und Live-Konsole"></td>
+    <td width="50%"><img src="docs/screenshots/approvals.webp" alt="Server-Anfragen mit Spiel, Software und Version"></td>
   </tr>
   <tr>
-    <td><b>Alle Server auf einen Blick</b><br>Status, Spieler, Arbeitsspeicher und Prozessor live – Starten und Stoppen direkt auf der Karte.</td>
-    <td><b>Die Adresse für deine Freunde</b><br>Zum Kopieren, mit Bedrock-Port, Heimnetz-IP und der Prüfung „Von außen erreichbar?“.</td>
+    <td><b>Server-Seite</b><br>Adresse zum Kopieren, Live-Konsole mit Farben und Verlauf, alle Reiter auf einen Blick.</td>
+    <td><b>Freigaben in Echtzeit</b><br>Neue Konten und Server-Anfragen erscheinen sofort – freigeben im Panel, per Mail oder per Discord-Knopf.</td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/console.webp" alt="Live-Konsole"></td>
     <td><img src="docs/screenshots/market.webp" alt="Plugin-Marktplatz"></td>
   </tr>
   <tr>
-    <td><b>Live-Konsole</b><br>Mit Farben, Befehlsverlauf (↑/↓), Tab-Ergänzung, Suche und Kopieren.</td>
+    <td><b>Live-Werte und Verlauf</b><br>Festplatte, Netzwerk, Prozessor und RAM live, dazu der Verlauf über Stunde, Tag oder Woche.</td>
     <td><b>Plugins und Mods mit einem Klick</b><br>Aus Modrinth, Hangar, SpigotMC und CurseForge – nur was zu deinem Server passt, Abhängigkeiten automatisch.</td>
   </tr>
   <tr>
@@ -82,15 +116,23 @@ deiner Domain und Add-ons wie Bedrock-Spieler, Voice-Chat oder tägliche Backups
   </tr>
   <tr>
     <td><b>Spieler</b><br>Online-Liste mit Köpfen, OP, Kick, Bann und Whitelist per Klick. Mit verbundenem Minecraft-Konto bist du auf deinen Servern automatisch OP.</td>
-    <td><b>Bedrock-Spieler erlauben</b><br>Geyser und Floodgate mit einem Schalter: Freunde auf Handy, Konsole oder Windows spielen mit.</td>
+    <td><b>Netzwerk</b><br>Adresse für Freunde, Prüfung „Von außen erreichbar?“ und Bedrock-Spieler (Geyser) mit einem Schalter.</td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/admin.webp" alt="Admin-Bereich mit Domain, Updates und Passwörtern"></td>
-    <td><img src="docs/screenshots/login.webp" alt="Anmelden mit Passwort oder Passkey"></td>
+    <td><img src="docs/screenshots/admin.webp" alt="Admin-Bereich: Updates"></td>
+    <td><img src="docs/screenshots/outbox.webp" alt="E-Mail mit Postausgang"></td>
   </tr>
   <tr>
-    <td><b>Admin-Bereich</b><br>Domain eintragen, Panel aktualisieren, Passwörter zurücksetzen – nur für Admins.</td>
-    <td><b>Anmelden mit Passkey</b><br>Fingerabdruck, Gesicht oder Geräte-PIN statt Passwort.</td>
+    <td><b>Admin-Bereich</b><br>Domain, NetBird, Updates per Klick, DDoS-Schutz, E-Mail, Passwörter, Umzug – nach Themen sortiert.</td>
+    <td><b>E-Mail mit Postausgang</b><br>Schnellstart mit zwei Angaben; jede Mail und Discord-Nachricht steht mit Ergebnis oder Grund im Postausgang.</td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/ddos.webp" alt="DDoS-Schutz"></td>
+    <td><img src="docs/screenshots/move.webp" alt="Umzug per Code"></td>
+  </tr>
+  <tr>
+    <td><b>DDoS-Schutz</b><br>Grenzen pro Absender für alle Server-Ports, mit einem Schalter.</td>
+    <td><b>Umzug per Code</b><br>Alle Einstellungen und Verbindungen mit Passwort auf ein anderes Panel übertragen.</td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/voicechat.webp" alt="Voice-Chat mit einem Schalter"></td>
@@ -102,18 +144,14 @@ deiner Domain und Add-ons wie Bedrock-Spieler, Voice-Chat oder tägliche Backups
   </tr>
 </table>
 
-<p align="center">
-  <img src="docs/screenshots/stats.webp" alt="Verlauf der letzten 24 Stunden" width="70%">
-</p>
-
 <table>
   <tr>
-    <td width="66%"><img src="docs/screenshots/light.webp" alt="Helles Design"></td>
-    <td width="17%"><img src="docs/screenshots/phone.webp" alt="Server-Seite auf dem Handy"></td>
-    <td width="17%"><img src="docs/screenshots/phone-console.webp" alt="Konsole auf dem Handy"></td>
+    <td width="34%"><img src="docs/screenshots/phone-landing.webp" alt="Startseite auf dem Handy"></td>
+    <td width="33%"><img src="docs/screenshots/phone.webp" alt="Übersicht auf dem Handy"></td>
+    <td width="33%"><img src="docs/screenshots/phone-server.webp" alt="Server-Seite auf dem Handy"></td>
   </tr>
   <tr>
-    <td colspan="3" align="center"><b>Hell oder dunkel, am Computer oder auf dem Handy.</b></td>
+    <td colspan="3" align="center"><b>Am Computer oder auf dem Handy, hell oder dunkel.</b></td>
   </tr>
 </table>
 
@@ -146,7 +184,6 @@ deiner Domain und Add-ons wie Bedrock-Spieler, Voice-Chat oder tägliche Backups
 | ✉️ **E-Mail**             | Willkommen, Bestätigung, „Passwort vergessen“, Bestellungen. Schnellstart mit zwei Angaben, **Postausgang** zeigt jede Mail und warum sie hängt.      |
 | 🛡️ **DDoS-Schutz**        | Grenzen pro Absender für Verbindungen und Pakete auf allen Server-Ports, mit einem Schalter im Admin-Bereich.                                         |
 | 📦 **Umzug**              | Alle Einstellungen und Verbindungen per Code (mit Passwort) auf ein anderes MorniHosting übertragen.                                                  |
-| 🤖 **REST-API**           | API-Schlüssel mit Ablaufdatum und OpenAPI-Doku unter `/api/docs`.                                                                                     |
 | ⬆️ **Updates**            | Das Panel zeigt neue Versionen an und aktualisiert sich per Knopfdruck. Deine Minecraft-Server laufen dabei weiter.                                   |
 | 🌗 **Bedienung**          | Dunkel und hell, Deutsch und Englisch, auch auf dem Handy gut bedienbar.                                                                              |
 

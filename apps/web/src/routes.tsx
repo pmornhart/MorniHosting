@@ -5,7 +5,6 @@ import { Navigate, type RouteObject } from 'react-router';
 import { Skeleton } from '@/components/ui/misc';
 import { lazyPage } from '@/lib/lazy-page';
 import { AccountPage } from '@/features/admin/AccountPage';
-import { ApiAccessPage } from '@/features/admin/ApiAccessPage';
 import { AuditPage } from '@/features/admin/AuditPage';
 import { NotificationsPage } from '@/features/admin/NotificationsPage';
 import { PanelSettingsPage } from '@/features/admin/PanelSettingsPage';
@@ -35,7 +34,6 @@ export const appRoutes: RouteObject[] = [
   { path: 'notifications', element: <NotificationsPage /> },
   { path: 'users', element: <UsersPage /> },
   { path: 'approvals', element: <ApprovalsPage /> },
-  { path: 'api-access', element: <ApiAccessPage /> },
   { path: 'settings', element: <PanelSettingsPage /> },
   { path: 'admin', element: <Navigate to="/settings" replace /> },
   { path: 'audit', element: <AuditPage /> },
