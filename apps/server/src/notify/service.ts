@@ -38,6 +38,8 @@ const LINK_TTL_MS = 10 * MS_PER_MINUTE; // eslint-disable-line ts-patterns/no-ma
 const CODE_MIN = 100000;
 const CODE_MAX = 1000000;
 const ACTION_PREFIX = 'mh';
+/** Discord's "Cannot send messages to this user": DMs from apps are switched off or the app was removed. */
+const DISCORD_CANNOT_DM = 50007;
 const ACTION_SEPARATOR = ':';
 export const COLOUR_INFO = 0x10b981;
 export const COLOUR_DONE = 0x059669;
@@ -65,6 +67,8 @@ export interface NotifyService {
   readonly setPrefs: (user: UserRow, prefs: NotifyPrefsInput) => NotifySettingsView;
   readonly linkCode: (user: UserRow) => DiscordLinkCode;
   readonly unlink: (user: UserRow) => void;
+  /** Sends a test DM to the person's linked Discord and reports a failure (e.g. DMs from apps blocked). */
+  readonly testDm: (user: UserRow) => Promise<void>;
   /** Tells each person about something, by every channel they chose for this topic. */
   readonly tell: (
     people: readonly UserRow[],
@@ -271,6 +275,25 @@ export function createNotifyService(
       const expires = Date.now() + LINK_TTL_MS;
       codes.set(code, { userId: user.id, expires });
       return { code, expiresAt: new Date(expires).toISOString() };
+    },
+    testDm: async (user) => {
+      const t = token();
+      const person = fresh(user);
+      if (!t) throw badRequest('discord_not_configured');
+      if (!person.discordId) throw badRequest('discord_not_linked');
+      try {
+        await api.sendDm(t, person.discordId, {
+          title: '🎉 Test-Nachricht',
+          text: `Hallo ${person.displayName || person.username}, das hat geklappt! Ab jetzt bekommst du deine MorniHosting-Benachrichtigungen hier.`,
+          colour: COLOUR_INFO,
+        });
+      } catch (err) {
+        if (err instanceof DiscordError && err.code === DISCORD_CANNOT_DM)
+          throw badRequest('discord_dm_blocked');
+        if (err instanceof DiscordError || err instanceof UpstreamError)
+          throw badRequest('discord_dm_failed', { message: err.message });
+        throw err;
+      }
     },
     unlink: (user) => {
       db.update(users).set({ discordId: null, discordName: null }).where(eq(users.id, user.id)).run();

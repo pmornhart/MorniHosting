@@ -48,6 +48,7 @@ const PAPER = {
   eula: true,
 };
 const PHILIP_DISCORD = '111111111111111111';
+const BLOCKED_DISCORD = '333';
 
 /** Discord as seen by the panel: DMs are collected, clicks and commands are injected. */
 function fakeDiscord() {
@@ -61,6 +62,7 @@ function fakeDiscord() {
     },
     registerCommands: async () => undefined,
     sendDm: async (_token, userId, message) => {
+      if (userId === BLOCKED_DISCORD) throw new DiscordError(403, 50007, 'Cannot send messages to this user');
       dms.push({ userId, message });
     },
     reply: async (_interaction, type, message) => {
@@ -243,5 +245,29 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
     await as(lena, 'POST', '/api/server-requests', PAPER);
     expect(discord.dms.length).toBe(before.dms);
     expect(sent.length).toBe(before.mails);
+  });
+
+  test('test message: arrives as DM; blocked DMs are explained; without link a clear error', async () => {
+    expect((await as(admin, 'POST', '/api/account/discord/test')).statusCode).toBe(204);
+    expect(discord.dms.at(-1)).toMatchObject({
+      userId: PHILIP_DISCORD,
+      message: { title: '🎉 Test-Nachricht' },
+    });
+
+    await as(admin, 'POST', '/api/users', { username: 'lena', password: 'lena-passwort-1' });
+    const lena = await login(t, 'lena', 'lena-passwort-1');
+    expect((await as(lena, 'POST', '/api/account/discord/test')).json()).toMatchObject({
+      error: 'discord_not_linked',
+    });
+    const { code } = (await as(lena, 'POST', '/api/account/discord/code')).json<DiscordLinkCode>();
+    discord.interact(INTERACTION_COMMAND, code, BLOCKED_DISCORD);
+    await waitFor(
+      async () =>
+        (await as(lena, 'GET', '/api/account/notifications')).json<{ discord: { linked: boolean } }>().discord
+          .linked,
+    );
+    expect((await as(lena, 'POST', '/api/account/discord/test')).json()).toMatchObject({
+      error: 'discord_dm_blocked',
+    });
   });
 });

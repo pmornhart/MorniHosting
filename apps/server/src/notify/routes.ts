@@ -21,6 +21,8 @@ import type { NotifyService } from './service.js';
 
 const REQUEST_LIMIT = 5;
 const REQUEST_WINDOW = '1 hour';
+const TEST_LIMIT = 5;
+const TEST_WINDOW = '1 minute';
 const userParams = z.object({ id: z.coerce.number().int().positive() });
 const requestParams = z.object({ id: z.string().min(1).max(64) });
 
@@ -63,6 +65,14 @@ export function registerNotifyRoutes(
     if (!notify.discordView().configured) throw badRequest('discord_not_configured');
     return notify.linkCode(requireAuth(request).user);
   });
+  app.post(
+    '/api/account/discord/test',
+    { config: { rateLimit: { max: TEST_LIMIT, timeWindow: TEST_WINDOW } } },
+    async (request, reply) => {
+      await notify.testDm(requireAuth(request).user);
+      return reply.code(HTTP_NO_CONTENT).send();
+    },
+  );
   app.delete('/api/account/discord', async (request, reply) => {
     notify.unlink(requireAuth(request).user);
     return reply.code(HTTP_NO_CONTENT).send();

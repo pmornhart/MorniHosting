@@ -1059,6 +1059,11 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
     },
   ],
   [
+    'POST',
+    '/api/account/discord/test',
+    () => (state.notify.discord.linked ? noContent() : error(400, 'discord_not_linked')),
+  ],
+  [
     'DELETE',
     '/api/account/discord',
     () => {
