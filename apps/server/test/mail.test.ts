@@ -104,6 +104,22 @@ describe('mail: settings, sign-up, password forgotten, orders', () => {
     return asAdmin('PUT', '/api/mail', { ...SMTP, ...overrides });
   };
 
+  test('with mail but no panel domain: the person still gets a mail that the request arrived', async () => {
+    await asAdmin('PUT', '/api/mail', SMTP);
+    const res = await post('/api/auth/register', {
+      username: 'lena',
+      email: 'lena@example.test',
+      password: 'longenough1',
+    });
+    expect(res.json()).toEqual({ next: 'wait_approval' });
+    await waitFor(() => sent.some((m) => m.to === 'lena@example.test'));
+    const mail = sent.find((m) => m.to === 'lena@example.test');
+    expect(mail?.subject).toBe('Deine Anfrage ist raus');
+    expect(mail?.text).not.toContain('/verify');
+    const outbox = (await asAdmin('GET', '/api/mail/outbox')).json<{ detail: string }[]>();
+    expect(outbox.some((m) => m.detail.includes('Panel-Domain'))).toBe(true);
+  });
+
   test('without SMTP: asking for an account still works and waits for the admin; no password reset', async () => {
     expect(await status()).toEqual({ registration: true, passwordReset: false });
     const res = await post('/api/auth/register', {
@@ -498,5 +514,22 @@ describe('mail: settings, sign-up, password forgotten, orders', () => {
     await new Promise((r) => setTimeout(r, 100));
     expect(sent.length).toBe(2);
     expect(lastMail().subject).toContain('Survival');
+  });
+
+  test('logging in works with the e-mail address instead of the user name', async () => {
+    await asAdmin('POST', '/api/users', {
+      username: 'lena',
+      password: 'lena-passwort-1',
+      email: 'Lena@Example.test',
+    });
+    const byMail = await post('/api/auth/login', {
+      username: 'lena@example.TEST',
+      password: 'lena-passwort-1',
+    });
+    expect(byMail.statusCode).toBe(200);
+    expect(
+      (await post('/api/auth/login', { username: 'lena@example.test', password: 'falsch-falsch' }))
+        .statusCode,
+    ).toBe(401);
   });
 });

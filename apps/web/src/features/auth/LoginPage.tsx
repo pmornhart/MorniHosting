@@ -75,7 +75,7 @@ export function LoginPage(): ReactElement {
               <h1 className="text-2xl font-bold tracking-[-0.02em]">{t('login.title')}</h1>
               <p className="mt-1 text-muted-foreground">{t('login.subtitle')}</p>
             </div>
-            <Field id="username" label={t('setup.username')}>
+            <Field id="username" label={t('login.usernameOrEmail')}>
               <Input
                 id="username"
                 autoComplete="username"

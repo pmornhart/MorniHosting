@@ -89,7 +89,8 @@ export const setupInputSchema = z.object({
 export type SetupInput = z.infer<typeof setupInputSchema>;
 
 export const loginInputSchema = z.object({
-  username: z.string().trim().min(1).max(USERNAME_MAX),
+  /** User name or e-mail address. */
+  username: z.string().trim().min(1).max(EMAIL_MAX),
   password: z.string().min(1).max(PASSWORD_MAX),
 });
 export type LoginInput = z.infer<typeof loginInputSchema>;

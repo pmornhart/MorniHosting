@@ -478,6 +478,17 @@ export function createMailService(
         .get();
       ctx.audit.record({ userId: row.id, username: row.username, ip: input.ip }, 'auth.register');
       ctx.events.emit('user.awaiting_approval', { userId: row.id });
+      // Mail works but there is no panel domain for a link: the person still hears that the request arrived.
+      if (configured()) {
+        note({
+          channel: 'mail',
+          to: input.email,
+          subject: 'Registrierung',
+          ok: false,
+          detail: 'Ohne Panel-Domain gibt es keinen Bestätigungslink – nur die Eingangsbestätigung geht raus',
+        });
+        sendQuietly(input.email, 'register', input.locale, { name: row.username, link: null });
+      }
       return { next: 'wait_approval' };
     }
     if (existing) {
@@ -491,6 +502,14 @@ export function createMailService(
           });
           // Asked again: the admins hear about it again too (at most once per resend pause).
           if (existing.approvalPending) ctx.events.emit('user.awaiting_approval', { userId: existing.id });
+        } else {
+          note({
+            channel: 'mail',
+            to: input.email,
+            subject: 'Registrierung',
+            ok: false,
+            detail: 'Gerade erst verschickt – in einer Minute geht sie wieder raus',
+          });
         }
       } else {
         sendQuietly(input.email, 'already_registered', localeOf(existing), {
