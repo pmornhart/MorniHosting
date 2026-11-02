@@ -51,6 +51,20 @@ export interface DnsClient {
 
 export type DnsClientFactory = (provider: DnsProvider, token: string) => DnsClient;
 
+/** JSON from text, or null when it is none. */
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+/** Collapses line breaks so a message fits on one line. */
+function oneLine(text: string): string {
+  return text.replace(LINE_BREAKS, ' ').trim();
+}
+
 /** The body as JSON, or null when there is none (e.g. an empty answer to DELETE). */
 async function bodyOf(response: Response): Promise<unknown> {
   try {
@@ -178,7 +192,11 @@ const inwxCredentials = z.object({
   pass: z.string().min(1),
   otp: z.string().optional(),
 });
-const inwxAnswer = z.object({ code: z.number(), msg: z.string().catch(''), resData: z.unknown().optional() });
+const inwxAnswer = z.object({
+  code: z.coerce.number(),
+  msg: z.string().catch(''),
+  resData: z.unknown().optional(),
+});
 const inwxLogin = z.object({ tfa: z.union([z.string(), z.number()]).optional() }).catch({});
 const inwxDomains = z
   .object({ domains: z.array(z.object({ domain: z.string() })).catch([]) })
@@ -195,6 +213,9 @@ const INWX_AUTH_UNTIL = 2203;
 const INWX_GONE = 2303;
 /** INWX does not accept a shorter time to live. */
 const INWX_TTL = 300;
+// Line breaks in an answer: "a\r\n  b" becomes "a b".
+// https://regex101.com/?flavor=javascript&regex=%5Cs*%5B%5Cr%5Cn%5D%2B%5Cs*&flags=g&testString=a%0D%0A%20%20b
+const LINE_BREAKS = /\s*[\r\n]+\s*/g;
 const NO_2FA = '0';
 // Spaces in a pasted 2FA secret: "JBSW Y3DP" becomes "JBSWY3DP".
 // https://regex101.com/?flavor=javascript&regex=%5Cs&flags=g&testString=JBSW%20Y3DP
@@ -245,9 +266,13 @@ function inwx(token: string): DnsClient {
     })();
     const cookie = response.headers.get('set-cookie')?.split(';')[0];
     if (cookie) session.cookie = cookie;
-    const answer = inwxAnswer.safeParse(await bodyOf(response));
+    // INWX labels its JSON "text/json"; read the text so an odd answer can be shown as it is.
+    const text = await response.text().catch(() => '');
+    const answer = inwxAnswer.safeParse(parseJson(text));
     if (!answer.success)
-      throw new AppError(HTTP_BAD_GATEWAY, 'dns_rejected', { message: `HTTP ${response.status}` });
+      throw new AppError(HTTP_BAD_GATEWAY, 'dns_rejected', {
+        message: `${method}: HTTP ${response.status} ${oneLine(text).slice(0, MESSAGE_MAX) || '(leer)'}`,
+      });
     const { code, msg } = answer.data;
     if (code >= INWX_OK_FROM && code < INWX_OK_UNTIL) return answer.data.resData;
     // INWX answers "Authentication error" for a wrong user name or password (or 2FA code).
