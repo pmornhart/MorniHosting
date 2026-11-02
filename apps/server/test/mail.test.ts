@@ -104,10 +104,27 @@ describe('mail: settings, sign-up, password forgotten, orders', () => {
     return asAdmin('PUT', '/api/mail', { ...SMTP, ...overrides });
   };
 
-  test('without SMTP nothing is offered and nothing breaks', async () => {
-    expect(await status()).toEqual({ registration: false, passwordReset: false });
+  test('without SMTP: asking for an account still works and waits for the admin; no password reset', async () => {
+    expect(await status()).toEqual({ registration: true, passwordReset: false });
+    const res = await post('/api/auth/register', {
+      username: 'lena',
+      email: 'l@x.de',
+      password: 'longenough1',
+    });
+    expect(res.json()).toEqual({ next: 'wait_approval' });
+    expect(sent).toHaveLength(0);
     expect(
-      (await post('/api/auth/register', { username: 'lena', email: 'l@x.de', password: 'longenough1' }))
+      (await post('/api/auth/login', { username: 'lena', password: 'longenough1' })).json(),
+    ).toMatchObject({
+      error: 'account_pending_approval',
+    });
+    const pending = (await asAdmin('GET', '/api/approvals')).json<{ users: { username: string }[] }>();
+    expect(pending.users.map((u) => u.username)).toEqual(['lena']);
+    // The admin can close the door again.
+    await asAdmin('PUT', '/api/signup', { enabled: false });
+    expect((await status()).registration).toBe(false);
+    expect(
+      (await post('/api/auth/register', { username: 'tom', email: 't@x.de', password: 'longenough1' }))
         .statusCode,
     ).toBe(403);
     expect((await post('/api/auth/forgot', { email: 'l@x.de' })).statusCode).toBe(403);
@@ -213,7 +230,7 @@ describe('mail: settings, sign-up, password forgotten, orders', () => {
       password: 'longenough1',
       locale: 'en',
     });
-    expect(res.statusCode).toBe(204);
+    expect(res.statusCode).toBe(200);
     await waitFor(() => sent.length === 1);
     expect(lastMail()).toMatchObject({ to: 'lena@example.test' });
     expect(lastMail().subject).toContain('confirm');
@@ -262,7 +279,7 @@ describe('mail: settings, sign-up, password forgotten, orders', () => {
       email: 'lena@example.test',
       password: 'longenough1',
     });
-    expect(again.statusCode).toBe(204);
+    expect(again.statusCode).toBe(200);
     await waitFor(() => sent.length === 2);
     expect(lastMail().subject).toBe('Du hast schon einen Zugang');
     expect(lastMail().text).not.toContain('token=');
@@ -292,7 +309,7 @@ describe('mail: settings, sign-up, password forgotten, orders', () => {
           password: 'longenough1',
         })
       ).statusCode,
-    ).toBe(204);
+    ).toBe(200);
   });
 
   test('password forgotten: one-hour link, only once, ends other sessions, no answer about the address', async () => {

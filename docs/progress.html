@@ -132,8 +132,8 @@ footer { color: var(--muted); font-size: 13px; }
 <script type="application/json" id="data">
 {
   "goal": "Ein selbst gehostetes Panel für Minecraft-Server: so viel wie Crafty Controller 4, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-11-02T09:30:01+00:00",
-  "now": "Freigaben, Server-Anfragen und Discord-Bot sind fertig gebaut und getestet. Danach: restliche Spiele (Satisfactory, ETS2, Hytale).",
+  "updated": "2026-11-02T10:06:07+00:00",
+  "now": "Startseite mit „Konto anfragen“ fertig – wartet auf Philips Go.",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -364,9 +364,39 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "Discord-Bot (nur private DMs)",
       "status": "fertig",
       "detail": "Server fertig: Bot-Token im Panel eintragen, App zum eigenen Discord-Konto hinzufügen (kein Server nötig), per DM /verbinden <Code> schicken. Danach kommen Freigaben, Abstürze und Antworten auf Anfragen privat per DM. Verbindung über das Discord-Gateway, also ohne offenen Port. Pro Person wählbar: per Mail, per Discord, welche Themen. 5 neue Tests (264 gesamt) mit nachgebautem Discord. Oberfläche fertig: Karte „Discord-Bot“ unter Benachrichtigungen (Anleitung in 4 Schritten), „Mein Konto → Benachrichtigungen“ (Wie/Worüber, Discord verbinden mit Code), Seite „Freigaben“ mit Zähler im Menü. Anleitung docs/discord.md. 264 Tests grün."
+    },
+    {
+      "title": "Freigaben + Discord + E-Mail-Schnellstart veröffentlicht",
+      "status": "fertig",
+      "detail": "Nach Philips Go nach main gemergt (PR #25), CI grün. Update im Panel verfügbar."
+    },
+    {
+      "title": "Startseite: Konto anfragen",
+      "status": "fertig",
+      "detail": "Ausgeloggt stehen oben, im Hero und in der Anmeldekarte groß „Anmelden“ und „Konto anfragen“. Geht jetzt auch ohne E-Mail-Einrichtung: die Anfrage landet direkt unter Freigaben (plus Mail/Discord an Admins). E-Mail-Adresse ist Pflicht. Schalter „Konto anfragen auf der Startseite“ oben auf der Freigaben-Seite. 264 Tests grün."
     }
   ],
   "shots": [
+    {
+      "img": "progress/konto-start-desktop.webp",
+      "caption": "Startseite: Anmelden und Konto anfragen",
+      "time": "2026-11-02T10:06:07+00:00"
+    },
+    {
+      "img": "progress/konto-anfrage-desktop.webp",
+      "caption": "Konto anfragen (E-Mail ist Pflicht)",
+      "time": "2026-11-02T10:06:07+00:00"
+    },
+    {
+      "img": "progress/konto-anfrage-raus-handy.webp",
+      "caption": "Nach dem Absenden (Handy)",
+      "time": "2026-11-02T10:06:07+00:00"
+    },
+    {
+      "img": "progress/konto-start-handy.webp",
+      "caption": "Startseite auf dem Handy",
+      "time": "2026-11-02T10:06:07+00:00"
+    },
     {
       "img": "progress/freigaben.webp",
       "caption": "Neue Seite „Freigaben“: Registrierungen und Server-Anfragen",
@@ -406,26 +436,6 @@ footer { color: var(--muted); font-size: 13px; }
       "img": "progress/smtp-desktop-passwort.webp",
       "caption": "Falsches Passwort – Anmeldung abgelehnt",
       "time": "2026-10-30T22:21:52+00:00"
-    },
-    {
-      "img": "progress/smtp-handy.webp",
-      "caption": "E-Mail-Einstellungen auf dem Handy",
-      "time": "2026-10-30T22:21:52+00:00"
-    },
-    {
-      "img": "progress/spiele-uebersicht.webp",
-      "caption": "Spielauswahl mit den neuen Spielen",
-      "time": "2026-10-30T21:59:33+00:00"
-    },
-    {
-      "img": "progress/spiele-factorio.webp",
-      "caption": "Factorio-Server",
-      "time": "2026-10-30T21:59:33+00:00"
-    },
-    {
-      "img": "progress/spiele-cs2.webp",
-      "caption": "Counter-Strike 2",
-      "time": "2026-10-30T21:59:33+00:00"
     }
   ],
   "files": [

@@ -158,7 +158,7 @@
     "passkeyWaiting": "Warte auf dein Gerät …",
     "passkeyElsewhere": "Mit Passkey anmelden geht über",
     "forgot": "Passwort vergessen?",
-    "noAccount": "Noch kein Konto?",
+    "noAccount": "Noch kein Konto? Frag eins an – wir schalten dich frei.",
     "register": "Jetzt registrieren"
   },
   "dashboard": {
@@ -1944,7 +1944,8 @@
         "text": "Sichern per Klick oder nach Plan, Neustarts mit Vorwarnung im Chat."
       }
     },
-    "footer": "Läuft auf deinem eigenen Server"
+    "footer": "Läuft auf deinem eigenen Server",
+    "requestAccount": "Konto anfragen"
   },
   "order": {
     "pickTitle": "Welches Spiel soll es sein?",
@@ -2166,9 +2167,9 @@
     "email": "E-Mail-Adresse",
     "usernameHint": "Buchstaben, Zahlen, Punkt, Strich und Unterstrich.",
     "passwordHint": "Mindestens 10 Zeichen.",
-    "registerTitle": "Konto erstellen",
-    "registerText": "Dein eigener Minecraft-Server in wenigen Klicks. Zuerst brauchen wir deine E-Mail-Adresse.",
-    "registerSubmit": "Konto erstellen",
+    "registerTitle": "Konto anfragen",
+    "registerText": "Sag uns kurz, wer du bist. Ein Admin schaut sich deine Anfrage an und schaltet dich frei.",
+    "registerSubmit": "Konto anfragen",
     "registerSentTitle": "Schau in dein Postfach",
     "registerSent": "Wir haben dir eine Mail an {{email}} geschickt. Klicke auf den Link darin, dann kannst du dich anmelden. Nichts angekommen? Schau auch im Spam-Ordner.",
     "forgotTitle": "Passwort vergessen?",
@@ -2198,7 +2199,9 @@
         "title": "E-Mail bestätigt – fast geschafft",
         "text": "Ein Admin muss dein Konto noch freigeben. Du bekommst eine Mail, sobald es so weit ist."
       }
-    }
+    },
+    "requestSentTitle": "Anfrage ist raus 🙌",
+    "requestSent": "Ein Admin schaut sich deine Anfrage an. Sobald du freigeschaltet bist, kannst du dich mit deinem Benutzernamen und Passwort anmelden."
   },
   "emailCard": {
     "title": "E-Mail-Adresse",
@@ -2406,7 +2409,9 @@
       "approved": "Angenommen",
       "rejected": "Abgelehnt"
     },
-    "hint": "Neue Registrierungen und Anfragen kommen per E-Mail und Discord-DM zu allen Admins, die das unter „Mein Konto → Benachrichtigungen“ eingeschaltet haben."
+    "hint": "Neue Registrierungen und Anfragen kommen per E-Mail und Discord-DM zu allen Admins, die das unter „Mein Konto → Benachrichtigungen“ eingeschaltet haben.",
+    "signupOpen": "„Konto anfragen“ auf der Startseite",
+    "signupOpenHint": "Besucher können auf der Startseite ein Konto anfragen. Anmelden geht erst, wenn du hier freigibst."
   },
   "discordBot": {
     "title": "Discord-Bot (private Nachrichten)",

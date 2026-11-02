@@ -1,8 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
-import { Archive, Blocks, Globe, LogIn, Plus, Puzzle, Rocket, ShieldCheck, Upload, Zap } from 'lucide-react';
+import {
+  Archive,
+  Blocks,
+  Globe,
+  LogIn,
+  Plus,
+  Puzzle,
+  Rocket,
+  ShieldCheck,
+  Upload,
+  UserPlus,
+  Zap,
+} from 'lucide-react';
 import type { ReactElement, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { GAME_IDS } from '@mornihosting/shared';
 import { GameCard } from '@/components/game-card';
 import { BrandMark } from '@/components/server-visuals';
@@ -58,10 +70,19 @@ export function LandingLayout({ children }: { children: ReactNode }): ReactEleme
             <LogIn />
             <span className="hidden sm:inline">{t('landing.signIn')}</span>
           </Button>
-          <Button aria-label={t('landing.createServer')} onClick={() => focusLogin('/servers/new')}>
-            <Plus />
-            <span className="hidden sm:inline">{t('landing.createServer')}</span>
-          </Button>
+          {status?.mail.registration ? (
+            <Button asChild aria-label={t('landing.requestAccount')}>
+              <Link to="/register">
+                <UserPlus />
+                <span className="hidden sm:inline">{t('landing.requestAccount')}</span>
+              </Link>
+            </Button>
+          ) : (
+            <Button aria-label={t('landing.createServer')} onClick={() => focusLogin('/servers/new')}>
+              <Plus />
+              <span className="hidden sm:inline">{t('landing.createServer')}</span>
+            </Button>
+          )}
         </div>
       </header>
 
@@ -95,9 +116,18 @@ export function LandingLayout({ children }: { children: ReactNode }): ReactEleme
                 </li>
               ))}
             </ul>
-            <div>
+            <div className="flex flex-wrap gap-2">
+              {status?.mail.registration ? (
+                <Button asChild size="lg">
+                  <Link to="/register">
+                    <UserPlus />
+                    {t('landing.requestAccount')}
+                  </Link>
+                </Button>
+              ) : null}
               <Button
                 size="lg"
+                variant={status?.mail.registration ? 'secondary' : 'default'}
                 onClick={() => document.getElementById('games')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 {t('landing.showGames')}
