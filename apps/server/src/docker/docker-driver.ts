@@ -14,6 +14,8 @@ import {
   type DockerDriver,
 } from './driver.js';
 
+/** Docker counts CPU limits in billionths of a core. */
+const NANO_CPUS_PER_CORE = 1_000_000_000;
 const LOG_MAX_SIZE = '10m';
 const LOG_MAX_FILES = '3';
 const HTTP_NOT_FOUND = 404;
@@ -169,6 +171,7 @@ export function createDockerDriver(config: Config): DockerDriver {
           ),
           PortBindings: bindings,
           Memory: spec.memoryLimitBytes,
+          ...(spec.cpus ? { NanoCpus: Math.round(spec.cpus * NANO_CPUS_PER_CORE) } : {}),
           NetworkMode: config.mcNetwork,
           RestartPolicy: { Name: spec.restart ?? 'no' },
           SecurityOpt: ['no-new-privileges:true'],

@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
+  CPU_STEP,
   JAVA_TAGS,
   SOFTWARE,
   compareMcVersions,
@@ -29,6 +30,7 @@ import { hostQuery } from '@/features/dashboard/HostStrip';
 import { useServerAction } from '@/features/dashboard/ServerCard';
 import { NetbirdServerField } from '@/features/netbird/NetbirdServerField';
 import { useAddressAutomation } from '@/features/netbird/netbird';
+import { useSession } from '@/features/auth/session';
 
 const MEMORY_STEP_MB = 512;
 const MEMORY_MIN_MB = 512;
@@ -38,6 +40,7 @@ const FALLBACK_HOST_MB = 16384;
 const MEMORY_SLIDER_MIN_MAX_MB = 1024;
 const MAX_VERSIONS = 80;
 const AUTO = 'auto';
+const MB_PER_GB = 1024;
 // Everything that is not a digit: in "25 565" it matches the space.
 // https://regex101.com/?regex=%5CD&flags=g&testString=25%20565
 const NON_DIGITS = /\D/g;
@@ -51,6 +54,9 @@ interface Draft {
   readonly publicPort: string;
   readonly javaTag: JavaTag | typeof AUTO;
   readonly version: string;
+  /** Admins only; empty = no limit. Disk in GB. */
+  readonly cpuLimit: string;
+  readonly diskLimitGb: string;
 }
 
 function draftOf(server: ServerDetail): Draft {
@@ -63,8 +69,15 @@ function draftOf(server: ServerDetail): Draft {
     publicPort: server.publicPort ? String(server.publicPort) : '',
     javaTag: server.javaTag ?? AUTO,
     version: server.version,
+    cpuLimit: server.cpuLimit === null ? '' : String(server.cpuLimit),
+    diskLimitGb: server.diskLimitMb === null ? '' : String(server.diskLimitMb / MB_PER_GB),
   };
 }
+
+const cpuLimitOf = (draft: Draft): number | null =>
+  draft.cpuLimit.trim() ? Math.round(Number(draft.cpuLimit.replace(',', '.')) / CPU_STEP) * CPU_STEP : null;
+const diskLimitOf = (draft: Draft): number | null =>
+  draft.diskLimitGb.trim() ? Math.round(Number(draft.diskLimitGb.replace(',', '.')) * MB_PER_GB) : null;
 
 const publicPortOf = (draft: Draft): number | null =>
   draft.publicPort.trim() ? Number(draft.publicPort) : null;
@@ -83,6 +96,8 @@ function patchOf(server: ServerDetail, draft: Draft): UpdateServerInput {
     ...(own && publicPortOf(draft) !== server.publicPort ? { publicPort: publicPortOf(draft) } : {}),
     ...(javaTag !== server.javaTag ? { javaTag } : {}),
     ...(draft.version !== server.version ? { version: draft.version } : {}),
+    ...(cpuLimitOf(draft) !== server.cpuLimit ? { cpuLimit: cpuLimitOf(draft) } : {}),
+    ...(diskLimitOf(draft) !== server.diskLimitMb ? { diskLimitMb: diskLimitOf(draft) } : {}),
   };
 }
 
@@ -94,6 +109,7 @@ export function GeneralCard({ server }: { server: ServerDetail }): ReactElement 
   const [draft, setDraft] = useState<Draft>(() => draftOf(server));
   const [pendingRestart, setPendingRestart] = useState(false);
   const netbird = useAddressAutomation();
+  const isAdmin = useSession().me.user.isAdmin;
   const managed = server.netbird !== null;
   const managedHint = netbird?.via === 'dns' ? t('netbirdAuto.managedDns') : t('netbirdAuto.managed');
   const { data: host } = useQuery(hostQuery);
@@ -178,6 +194,33 @@ export function GeneralCard({ server }: { server: ServerDetail }): ReactElement 
             })}
           </p>
         </div>
+
+        {isAdmin ? (
+          <div className="grid gap-3 rounded-[12px] border border-border p-3 sm:p-4">
+            <b className="text-sm">{t('serverLimits.title')}</b>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field id="s-cpu" label={t('serverLimits.cpu')}>
+                <Input
+                  id="s-cpu"
+                  inputMode="decimal"
+                  placeholder={t('quota.unlimited')}
+                  value={draft.cpuLimit}
+                  onChange={(e) => set('cpuLimit', e.target.value)}
+                />
+              </Field>
+              <Field id="s-disk" label={t('serverLimits.disk')}>
+                <Input
+                  id="s-disk"
+                  inputMode="decimal"
+                  placeholder={t('quota.unlimited')}
+                  value={draft.diskLimitGb}
+                  onChange={(e) => set('diskLimitGb', e.target.value)}
+                />
+              </Field>
+            </div>
+            <p className="text-[13px] text-muted-foreground">{t('serverLimits.hint')}</p>
+          </div>
+        ) : null}
 
         <div className="grid gap-5 md:grid-cols-2">
           <Field

@@ -191,6 +191,13 @@ export interface GameSettingsView {
   readonly secretsSet: readonly string[];
 }
 
+const CPU_LIMIT_MAX = 512;
+const DISK_LIMIT_MIN_MB = 512;
+const DISK_LIMIT_MAX_MB = 104_857_600;
+const CPU_LIMIT_STEP = 0.5;
+export const cpuLimitSchema = z.number().min(CPU_LIMIT_STEP).max(CPU_LIMIT_MAX).multipleOf(CPU_LIMIT_STEP);
+export const diskLimitSchema = z.number().int().min(DISK_LIMIT_MIN_MB).max(DISK_LIMIT_MAX_MB);
+
 export const createServerSchema = z.object({
   name: z.string().trim().min(1).max(NAME_MAX),
   edition: z.enum(EDITIONS),
@@ -205,6 +212,9 @@ export const createServerSchema = z.object({
   netbirdName: netbirdNameSchema.optional(),
   /** Settings of another game (GameField keys from games.ts). */
   gameSettings: gameSettingsSchema.optional(),
+  /** Limits for the server (admins); people with a quota get what is left of it when empty. */
+  cpuLimit: cpuLimitSchema.nullable().optional(),
+  diskLimitMb: diskLimitSchema.nullable().optional(),
 });
 export type CreateServerInput = z.infer<typeof createServerSchema>;
 
@@ -220,6 +230,9 @@ export const updateServerSchema = z.object({
   version: z.string().trim().min(1).max(VERSION_MAX).optional(),
   /** Another server software (Java only, server stopped, see SWITCHABLE_SOFTWARE); needs a version for it. */
   software: z.enum(SOFTWARE_IDS).optional(),
+  /** Admins only: CPU cores and disk space; null = no limit. */
+  cpuLimit: cpuLimitSchema.nullable().optional(),
+  diskLimitMb: diskLimitSchema.nullable().optional(),
 });
 export type UpdateServerInput = z.infer<typeof updateServerSchema>;
 
@@ -274,6 +287,10 @@ export interface ServerSummary {
   readonly software: SoftwareId;
   readonly version: string;
   readonly memoryMb: number;
+  /** CPU cores the server may use, null = no limit. */
+  readonly cpuLimit: number | null;
+  /** Disk space the server may take in MB, null = no limit. */
+  readonly diskLimitMb: number | null;
   readonly port: number;
   readonly address: string;
   readonly autoStart: boolean;

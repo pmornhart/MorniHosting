@@ -109,6 +109,7 @@ export function buildContainerSpec(config: Config, row: ServerRow, timezone: str
       })),
     ],
     memoryLimitBytes: memoryLimitBytes(row),
+    ...(row.cpuLimit ? { cpus: row.cpuLimit } : {}),
     dataDir: serverDir(config, row.id),
     labels: {
       'mornihosting.server': row.id,
@@ -160,6 +161,7 @@ function buildGameSpec(config: Config, row: ServerRow, game: GameInfo, timezone:
     },
     ports: ports.map(({ containerPort, hostPort, protocol }) => ({ containerPort, hostPort, protocol })),
     memoryLimitBytes: memoryLimitBytes(row),
+    ...(row.cpuLimit ? { cpus: row.cpuLimit } : {}),
     dataDir: serverDir(config, row.id),
     mounts: game.mounts,
     labels: {

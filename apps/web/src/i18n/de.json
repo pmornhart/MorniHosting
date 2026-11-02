@@ -563,7 +563,12 @@
     "discord_dm_failed": "Die Test-Nachricht ging nicht raus: {{message}}",
     "discord_link_expired": "Der Link ist abgelaufen oder wurde schon benutzt. Tippe in Discord noch einmal /verbinden.",
     "transfer_password_wrong": "Passwort falsch oder Code beschädigt. Prüfe beides.",
-    "transfer_code_invalid": "Das ist kein Umzugs-Code. Er beginnt mit „MH1-“."
+    "transfer_code_invalid": "Das ist kein Umzugs-Code. Er beginnt mit „MH1-“.",
+    "quota_servers": "Das Kontingent erlaubt höchstens {{limit}} Server.",
+    "quota_memory": "Nicht genug Arbeitsspeicher im Kontingent (schon vergeben: {{used}} MB von {{limit}} MB).",
+    "quota_cpus": "Nicht genug CPU-Kerne im Kontingent (schon vergeben: {{used}} von {{limit}}).",
+    "quota_disk": "Nicht genug Festplatte im Kontingent (schon vergeben: {{used}} MB von {{limit}} MB).",
+    "disk_limit_reached": "Der Server braucht {{used}} MB und darf nur {{limit}} MB haben. Lösch alte Welten oder Backups, oder ein Admin gibt mehr Platz."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1504,7 +1509,9 @@
       "server_request_rejected": "Server-Anfrage abgelehnt",
       "account_discord_linked": "Discord verbunden",
       "discord_settings": "Discord-Bot eingerichtet",
-      "discord_removed": "Discord-Bot entfernt"
+      "discord_removed": "Discord-Bot entfernt",
+      "quota_defaults": "Kontingent-Standard geändert",
+      "quota_user": "Kontingent einer Person geändert"
     }
   },
   "ddos": {
@@ -1661,7 +1668,8 @@
       "netbird": "NetBird",
       "ddos": "DDoS-Schutz",
       "mail": "E-Mail",
-      "move": "Umzug"
+      "move": "Umzug",
+      "quotas": "Kontingente"
     },
     "domainTitle": "Panel-Adresse von Hand",
     "domainSet": "Eingetragen",
@@ -1687,7 +1695,8 @@
       "settings": "Adressen im Heimnetz, CurseForge-Schlüssel, Zeitzone und Sprache.",
       "ddos": "Schützt deine Server und das Panel vor Flut-Angriffen, so gut das zu Hause geht.",
       "mail": "Mails an deine Leute: Willkommen, Registrierung, „Passwort vergessen“ und Bestellungen.",
-      "move": "Einstellungen und Verbindungen per Code auf ein anderes MorniHosting übertragen."
+      "move": "Einstellungen und Verbindungen per Code auf ein anderes MorniHosting übertragen.",
+      "quotas": "Wie viel Arbeitsspeicher, Festplatte, CPU und wie viele Server jede Person haben darf. Admins sind ausgenommen."
     },
     "netbirdManual": "NetBird von Hand einrichten",
     "netbirdManualHint": "Nur nötig, wenn du die Automatik oben nicht nutzt. Zum Aufklappen tippen."
@@ -2496,5 +2505,36 @@
     "sent": "angenommen",
     "failed": "fehlgeschlagen",
     "hint": "„angenommen“ heißt: Dein Mailserver hat die Mail übernommen. Kommt sie trotzdem nicht an, schau in den Spam-Ordner. Läuft dein Mailserver zu Hause, lehnen Gmail, Outlook und Co. Mails von Heim-Anschlüssen oft ab – dann steht der Grund im Protokoll deines Mailservers (z. B. Stalwart → Warteschlange)."
+  },
+  "quota": {
+    "defaultsTitle": "Für alle (Standard)",
+    "defaultsText": "Gilt für jede Person ohne eigene Grenzen. Leeres Feld = unbegrenzt. Beim Bestellen bekommt ein Server automatisch CPU und Festplatte, die noch frei sind.",
+    "host": "Dein Rechner hat {{memory}} Arbeitsspeicher, {{cpus}} CPU-Kerne und {{disk}} Festplatte.",
+    "fields": {
+      "servers": "Server",
+      "memoryMb": "Arbeitsspeicher (GB)",
+      "diskMb": "Festplatte (GB)",
+      "cpus": "CPU-Kerne"
+    },
+    "unlimited": "unbegrenzt",
+    "save": "Speichern",
+    "saved": "Gespeichert",
+    "peopleTitle": "Pro Person",
+    "peopleText": "Was jede Person gerade belegt. Mit „Ändern“ bekommt sie eigene Grenzen statt der Standardwerte.",
+    "own": "Eigene Grenzen",
+    "default": "Standard",
+    "edit": "Ändern",
+    "saveOwn": "Eigene Grenzen speichern",
+    "useDefault": "Standard verwenden",
+    "nobody": "Noch keine Benutzer außer Admins.",
+    "usedOf": "{{used}} von {{limit}}",
+    "usedNoLimit": "{{used}} · unbegrenzt",
+    "diskUsed": "Belegt gerade wirklich: {{used}}"
+  },
+  "serverLimits": {
+    "title": "Grenzen (nur Admins)",
+    "cpu": "CPU-Kerne",
+    "disk": "Festplatte (GB)",
+    "hint": "Leer = unbegrenzt. Die CPU-Grenze gilt ab dem nächsten Start; über der Festplatten-Grenze startet der Server nicht."
   }
 }

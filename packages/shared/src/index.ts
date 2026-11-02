@@ -12,3 +12,4 @@ export * from './games.js';
 export * from './game-demo.js';
 export * from './notify.js';
 export * from './transfer.js';
+export * from './quota.js';

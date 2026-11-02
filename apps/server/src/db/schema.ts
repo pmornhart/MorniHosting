@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import type {
+  Quota,
   BackupSettings,
   CreateServerInput,
   CrashInfo,
@@ -68,6 +69,8 @@ export const users = sqliteTable(
       .$type<NotifyPrefs>()
       .notNull()
       .default(sql`'{}'`),
+    /** Own limits for this person's servers; null = the panel-wide defaults (admin area → quotas). */
+    quota: text('quota', { mode: 'json' }).$type<Quota>(),
   },
   (t) => [
     uniqueIndex('users_username_nocase').on(sql`lower(${t.username})`),
@@ -143,6 +146,10 @@ export const servers = sqliteTable('servers', {
   software: text('software').$type<SoftwareId>().notNull(),
   version: text('version').notNull(),
   memoryMb: integer('memory_mb').notNull(),
+  /** CPU cores the container may use (Docker NanoCpus); null = no limit. */
+  cpuLimit: real('cpu_limit'),
+  /** Disk space the server folder may take; above it the server does not start. null = no limit. */
+  diskLimitMb: integer('disk_limit_mb'),
   port: integer('port').notNull(),
   rconPassword: text('rcon_password').notNull(),
   javaTag: text('java_tag').$type<JavaTag>(),
