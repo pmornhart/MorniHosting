@@ -154,10 +154,14 @@ export function createNetbirdAutomation(
     const address = lanAddress();
     if (!address) return null;
     const known = storedResources()[key];
-    if (known && known.address === address && known.name === name) return { resource: known, changed: false };
+    // Always ask NetBird: a resource (or the whole network) deleted there must be created again,
+    // otherwise services point at an id NetBird no longer knows ("resource target … not found").
     const { networkId, groupId } = await ensureNetwork(client, cfg);
+    const present = await client.resources(networkId);
+    const existing = present.find((r) => r.id === known?.id) ?? present.find((r) => r.name === name);
+    if (known && existing?.id === known.id && known.address === address && known.name === name)
+      return { resource: known, changed: false };
     const request = { name, address, groupId };
-    const existing = known ? (await client.resources(networkId)).find((r) => r.id === known.id) : undefined;
     const result = existing
       ? await client.updateResource(networkId, existing.id, request)
       : await client.createResource(networkId, request);
