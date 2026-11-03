@@ -31,7 +31,10 @@ export function registerNetbirdRoutes(
 
   app.put('/api/netbird', { schema: { body: netbirdConfigSchema } }, async (request) => {
     requireAdmin(request);
-    return netbird.configure(request.body, actorOf(request));
+    const status = await netbird.configure(request.body, actorOf(request));
+    // A connected own domain (INWX, Cloudflare …) from now on only tidies up behind NetBird.
+    await dns.netbirdConnected();
+    return status;
   });
 
   app.delete('/api/netbird', async (request) => {
@@ -61,9 +64,14 @@ export function registerNetbirdRoutes(
     { schema: { params: z.object({ id: z.string().min(1) }), body: netbirdServerSchema } },
     async (request) => {
       requireAdmin(request);
-      // The server's address name belongs to whichever is set up: the own domain (DNS) or NetBird.
-      const target = dns.configured() ? dns : netbird;
-      return { netbird: await target.setServerName(request.params.id, request.body.name, actorOf(request)) };
+      // NetBird hands out the address when it is connected; the own domain then only tidies up the name.
+      const actor = actorOf(request);
+      if (netbird.status().configured) {
+        const info = await netbird.setServerName(request.params.id, request.body.name, actor);
+        if (dns.configured()) await dns.syncServer(request.params.id);
+        return { netbird: info };
+      }
+      return { netbird: await dns.setServerName(request.params.id, request.body.name, actor) };
     },
   );
 }

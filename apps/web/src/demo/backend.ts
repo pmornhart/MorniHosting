@@ -1439,7 +1439,6 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
     'PUT',
     '/api/dns',
     () => {
-      if (netbird.status.configured) return error(409, 'dns_netbird_active');
       dns.configured = true;
       nameAll();
       return ok(dnsStatus());
@@ -1482,7 +1481,6 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
     'PUT',
     '/api/netbird',
     ({ body }) => {
-      if (dns.configured) return error(409, 'netbird_dns_active');
       netbird.status = {
         ...netbird.status,
         configured: true,

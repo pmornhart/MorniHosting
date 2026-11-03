@@ -237,25 +237,39 @@ describe('own domain without NetBird (DNS)', () => {
     expect(await allowed(ZONE.name)).toBe(404);
   });
 
-  test('only one of NetBird and DNS; disconnecting removes the records', async () => {
-    t.ctx.settings.setValue('netbird', { apiUrl: 'https://api.netbird.io' });
-    expect((await connect()).json()).toMatchObject({ error: 'dns_netbird_active' });
-    t.ctx.settings.deleteValue('netbird');
+  test('disconnecting removes the records', async () => {
     await connect();
-    const netbirdNow = await call('PUT', '/api/netbird', {
-      apiUrl: 'https://api.netbird.io',
-      token: 'nbp_x',
-      domain: 'x.de',
-      peerId: 'p',
-    });
-    expect(netbirdNow.json()).toMatchObject({ error: 'netbird_dns_active' });
-
     const server = await create({ netbirdName: 'reich' });
     expect(fake.serverRecords()).toHaveLength(2);
     const off = (await call('DELETE', '/api/dns')).json<DnsStatus>();
     expect(off.configured).toBe(false);
     expect(fake.records.size).toBe(0);
     expect((await detail(server.id)).domain).toBeNull();
+  });
+
+  test('next to NetBird the own domain only tidies up: stray records under server names go, no home IP is published', async () => {
+    // NetBird hands out the addresses (*.domain → NetBird proxy); the root was pointed at the NetBird server by hand.
+    t.ctx.settings.setValue('netbird', { apiUrl: 'https://api.netbird.io' });
+    const server = await create();
+    t.servers.setTunnelAddress(server.id, { netbirdName: 'poco' });
+    fake.records.set('root', { id: 'root', type: 'A', name: ZONE.name, content: '203.0.113.50' });
+    fake.records.set('old-srv', {
+      id: 'old-srv',
+      type: 'SRV',
+      name: `_minecraft._tcp.poco.${ZONE.name}`,
+      data: { priority: 0, weight: 5, port: 25565, target: `poco.${ZONE.name}` },
+    });
+    fake.records.set('old-a', { id: 'old-a', type: 'A', name: `poco.${ZONE.name}`, content: '198.51.100.7' });
+
+    const status = (await connect()).json<DnsStatus>();
+    expect(status).toMatchObject({ configured: true, netbirdActive: true });
+    // The leftovers under "poco" are gone, so the NetBird wildcard reaches poco.<domain> again.
+    expect(fake.records.has('old-srv')).toBe(false);
+    expect(fake.records.has('old-a')).toBe(false);
+    // Nothing else is touched or created – above all no record with this machine's IP.
+    expect([...fake.records.keys()]).toEqual(['root']);
+    await t.dns.refreshIp();
+    expect([...fake.records.keys()]).toEqual(['root']);
   });
 });
 

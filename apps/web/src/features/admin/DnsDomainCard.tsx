@@ -274,7 +274,8 @@ export function DnsDomainCard(): ReactElement | null {
   });
   if (!status) return null;
   // NetBird hands out the addresses already; otherwise the summary, or the form while connecting.
-  const blocked = status.netbirdActive && !status.configured;
+  // Next to NetBird the own domain only tidies up; the hint says so.
+  const withNetbird = status.netbirdActive;
   const showSummary = status.configured && !editing;
   const checked = status.ipCheckedAt
     ? new Date(status.ipCheckedAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })
@@ -294,7 +295,7 @@ export function DnsDomainCard(): ReactElement | null {
         </CardTitle>
       </CardHeader>
       <CardDescription>{t('dnsAuto.text')}</CardDescription>
-      {blocked ? (
+      {withNetbird ? (
         <p className="rounded-[12px] bg-secondary px-3 py-2.5 text-sm">{t('dnsAuto.netbirdActive')}</p>
       ) : null}
       {showSummary ? (
@@ -343,7 +344,7 @@ export function DnsDomainCard(): ReactElement | null {
           />
         </>
       ) : null}
-      {!blocked && !showSummary ? (
+      {!showSummary ? (
         <ConnectForm
           status={status}
           onDone={(next) => void refresh(next)}

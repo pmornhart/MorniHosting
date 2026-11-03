@@ -1890,7 +1890,7 @@
     "disconnected": "Own domain disconnected – the records are deleted.",
     "disconnectTitle": "Disconnect own domain?",
     "disconnectText": "MorniHosting deletes all records it created at your DNS provider. The servers keep running but are only reachable by IP.",
-    "netbirdActive": "NetBird hands out the addresses right now. For an own domain without NetBird, disconnect NetBird first (card below).",
+    "netbirdActive": "NetBird hands out your servers' addresses. If you also connect your DNS provider here (e.g. INWX), the panel only tidies up: it deletes old records under server names that would block the NetBird wildcard (*). It never publishes your IP.",
     "inwxUser": "INWX user name",
     "inwxPass": "INWX password",
     "inwxOtp": "2FA secret (only if 2FA is on)"
