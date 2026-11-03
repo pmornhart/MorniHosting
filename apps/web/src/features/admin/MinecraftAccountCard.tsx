@@ -47,7 +47,7 @@ export function MinecraftAccountCard(): ReactElement {
   const error = link.error ?? unlink.error;
 
   return (
-    <Card className="grid gap-4 p-5 sm:p-6">
+    <Card fold="account-minecraft" className="grid gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex items-center gap-2">
           <Gamepad2 className="size-4 text-primary" aria-hidden />

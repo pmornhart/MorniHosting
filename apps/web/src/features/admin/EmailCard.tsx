@@ -46,7 +46,7 @@ export function EmailCard(): ReactElement {
   const error = change.error ?? remove.error;
 
   return (
-    <Card className="grid gap-4 p-5 sm:p-6">
+    <Card fold="account-email" className="grid gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex items-center gap-2">
           <AtSign className="size-4 text-primary" aria-hidden />

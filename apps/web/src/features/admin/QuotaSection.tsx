@@ -197,7 +197,7 @@ function Defaults({ view }: { view: QuotaView }): ReactElement {
     },
   });
   return (
-    <Card className="grid gap-4 p-5">
+    <Card fold="quota-default" foldOpen className="grid gap-4 p-5">
       <div className="grid gap-1.5">
         <CardTitle className="flex items-center gap-2">
           <Server className="size-5 shrink-0 text-primary" aria-hidden />
@@ -231,7 +231,7 @@ export function QuotaSection(): ReactElement {
   return (
     <>
       <Defaults view={data} />
-      <Card className="grid gap-4 p-5">
+      <Card fold="quota-users" className="grid gap-4 p-5">
         <div className="grid gap-1.5">
           <CardTitle className="flex items-center gap-2">
             <Users className="size-5 shrink-0 text-primary" aria-hidden />

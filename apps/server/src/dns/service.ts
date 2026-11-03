@@ -66,6 +66,10 @@ export interface DnsAutomation {
   readonly access: () => { provider: DnsProvider; token: string; zone: string } | null;
   /** Points `host` (a name in the domain) at `ip`; null removes the record again. */
   readonly setMailHost: (host: string | null, ip: string | null) => Promise<void>;
+  /** Brings one server's records in line (NetBird mode: tidies its name). */
+  readonly syncServer: (serverId: string) => Promise<void>;
+  /** NetBird was connected: records this panel published with the home IP go, server names are tidied. */
+  readonly netbirdConnected: () => Promise<void>;
 }
 
 const failureOf = (err: unknown): Failure =>
@@ -80,6 +84,13 @@ export function createDnsAutomation(
   const failures = new Map<string, Failure>();
   const state: { lastError: Failure | null } = { lastError: null };
 
+  /**
+   * With NetBird active the addresses come from NetBird (`*.domain` → NetBird proxy). The DNS access then only
+   * tidies up: it removes records under a server's name that would hide the wildcard (an A or a leftover
+   * `_minecraft._tcp.<name>` SRV makes `<name>` exist, so `*` no longer applies) – and never publishes this
+   * machine's own IP.
+   */
+  const netbirdOn = (): boolean => ctx.settings.getValue(NETBIRD_KEY) !== undefined;
   const config = (): StoredConfig | null => ctx.settings.getValue<StoredConfig>(SETTINGS_KEY) ?? null;
   const save = (cfg: StoredConfig): void => ctx.settings.setValue(SETTINGS_KEY, cfg);
   const clientFor = (cfg: StoredConfig): DnsClient =>
@@ -176,7 +187,7 @@ export function createDnsAutomation(
    */
   const syncDomain = async (): Promise<void> => {
     const cfg = config();
-    if (!cfg) return;
+    if (!cfg || netbirdOn()) return;
     const ip = await currentIp(cfg);
     const names = [cfg.zone, `*.${cfg.zone}`];
     await syncRecords(
@@ -202,6 +213,11 @@ export function createDnsAutomation(
     const cfg = config();
     if (!cfg) return;
     const row = serverRow(serverId);
+    if (netbirdOn()) {
+      await tidyForNetbird(cfg, serverId, row);
+      failures.delete(serverId);
+      return;
+    }
     const wants = row?.netbirdName ? wanted(row, cfg, await currentIp(cfg)) : [];
     await syncRecords(cfg, serverId, wants);
     if (row?.netbirdName) {
@@ -214,6 +230,25 @@ export function createDnsAutomation(
     }
     failures.delete(serverId);
   };
+
+  /** NetBird mode: own records of this server go, and so do stray ones under its name (made by hand or left over). */
+  async function tidyForNetbird(
+    cfg: StoredConfig,
+    serverId: string,
+    row: ServerRow | undefined,
+  ): Promise<void> {
+    await syncRecords(cfg, serverId, []);
+    if (!row?.netbirdName) return;
+    const host = hostOf(row, cfg);
+    const client = clientFor(cfg);
+    const strays: ['A' | 'AAAA' | 'SRV', string][] = [
+      ['A', host],
+      ['AAAA', host],
+      ['SRV', `_minecraft._tcp.${host}`],
+    ];
+    const found = await Promise.all(strays.map(([type, name]) => client.find(cfg.zoneId, type, name)));
+    await Promise.all(found.filter((id) => id !== null).map((id) => client.remove(cfg.zoneId, id)));
+  }
 
   const sync = async (serverId: string): Promise<void> => {
     try {
@@ -236,7 +271,8 @@ export function createDnsAutomation(
 
   const refreshIp = async (): Promise<void> => {
     const cfg = config();
-    if (!cfg) return;
+    // Behind NetBird the home IP is published nowhere, so there is nothing to keep up to date.
+    if (!cfg || netbirdOn()) return;
     const ip = await freshPublicIp();
     const checkedAt = new Date().toISOString();
     if (!ip) {
@@ -311,7 +347,6 @@ export function createDnsAutomation(
     discover: async (input) =>
       (await clientFactory(input.provider, tokenFor(input)).zones()).map((z) => ({ id: z.id, name: z.name })),
     configure: async (input, actor) => {
-      if (ctx.settings.getValue(NETBIRD_KEY) !== undefined) throw conflict('dns_netbird_active');
       const token = tokenFor(input);
       const zone = (await clientFactory(input.provider, token).zones()).find((z) => z.id === input.zoneId);
       if (!zone) throw badRequest('dns_zone_unknown');
@@ -330,6 +365,11 @@ export function createDnsAutomation(
         ipCheckedAt: null,
       });
       ctx.audit.record(actor, 'dns.configure', null, { provider: input.provider, domain: zone.name });
+      if (netbirdOn()) {
+        state.lastError = null;
+        await syncAll();
+        return status();
+      }
       const ip = await freshPublicIp();
       const cfg = config();
       if (cfg && ip) save({ ...cfg, ip, ipCheckedAt: new Date().toISOString() });
@@ -341,15 +381,17 @@ export function createDnsAutomation(
     disconnect: async (actor) => {
       await Promise.allSettled([DOMAIN_KEY, MAIL_KEY, ...namedServers().map((r) => r.id)].map(clearServer));
       ctx.db.delete(dnsRecords).run();
-      namedServers().forEach((r) =>
-        servers.setTunnelAddress(r.id, {
-          netbirdName: null,
-          domain: null,
-          publicPort: null,
-          geyserPublicPort: null,
-          voicePublicPort: null,
-        }),
-      );
+      // Behind NetBird the server names and addresses belong to NetBird and stay.
+      if (!netbirdOn())
+        namedServers().forEach((r) =>
+          servers.setTunnelAddress(r.id, {
+            netbirdName: null,
+            domain: null,
+            publicPort: null,
+            geyserPublicPort: null,
+            voicePublicPort: null,
+          }),
+        );
       failures.clear();
       state.lastError = null;
       ctx.settings.deleteValue(SETTINGS_KEY);
@@ -386,6 +428,15 @@ export function createDnsAutomation(
     access: () => {
       const cfg = config();
       return cfg ? { provider: cfg.provider, token: ctx.secrets.decrypt(cfg.token), zone: cfg.zone } : null;
+    },
+    syncServer: syncQuietly,
+    netbirdConnected: async () => {
+      if (!config()) return;
+      // The domain records pointed at this connection; NetBird's wildcard takes over, so they must not stay.
+      await clearServer(DOMAIN_KEY).catch((err: unknown) =>
+        ctx.log.warn({ err }, 'DNS: domain records not removed'),
+      );
+      await syncAll();
     },
     setMailHost: async (host, ip) => {
       const cfg = config();

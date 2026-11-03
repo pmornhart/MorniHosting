@@ -37,7 +37,7 @@ function MakeCode(): ReactElement {
     make.mutate();
   };
   return (
-    <Card className="grid gap-4 p-5">
+    <Card fold="transfer-out" foldOpen className="grid gap-4 p-5">
       <div className="grid gap-1.5">
         <CardTitle className="flex items-center gap-2">
           <PackagePlus className="size-5 shrink-0 text-primary" aria-hidden />
@@ -121,7 +121,7 @@ function UseCode(): ReactElement {
     if (file) setCode((await file.text()).trim());
   };
   return (
-    <Card className="grid gap-4 p-5">
+    <Card fold="transfer-in" className="grid gap-4 p-5">
       <div className="grid gap-1.5">
         <CardTitle className="flex items-center gap-2">
           <PackageOpen className="size-5 shrink-0 text-primary" aria-hidden />

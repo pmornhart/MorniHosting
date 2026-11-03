@@ -108,8 +108,8 @@ describe('server lifecycle with the fake driver', () => {
     );
   });
 
-  test('a port can only be used once', async () => {
-    await t.app.inject({
+  test('a taken port is never an error when creating: the next free one is used', async () => {
+    const first = await t.app.inject({
       method: 'POST',
       url: '/api/servers',
       headers: authHeaders(s),
@@ -121,8 +121,8 @@ describe('server lifecycle with the fake driver', () => {
       headers: authHeaders(s),
       payload: { ...paper, name: 'Zwei', startNow: false },
     });
-    expect(second.statusCode).toBe(409);
-    expect(second.json()).toMatchObject({ error: 'port_taken' });
+    expect(second.statusCode).toBe(200);
+    expect(second.json<{ port: number }>().port).toBe(first.json<{ port: number }>().port + 1);
   });
 
   test('a modpack with too little memory crashes and the crash helper names the cause', async () => {

@@ -5,6 +5,8 @@ import {
   forgotSchema,
   mailSettingsSchema,
   mailQuickSchema,
+  mailTestRunSchema,
+  type MailTestRun,
   mailTestSchema,
   registerSchema,
   resetSchema,
@@ -24,6 +26,7 @@ import { users } from '../db/schema.js';
 import { badRequest } from '../lib/errors.js';
 import { HTTP_NO_CONTENT } from '../lib/http-status.js';
 import type { MailService } from './service.js';
+import type { MailTests } from './tests.js';
 
 /** Mail settings for admins, plus the pages behind the links in mails (sign-up, reset, new address). */
 
@@ -31,7 +34,25 @@ const ANONYMOUS_LIMIT = 5;
 const ANONYMOUS_WINDOW = '1 minute';
 const anonymousRateLimit = { rateLimit: { max: ANONYMOUS_LIMIT, timeWindow: ANONYMOUS_WINDOW } };
 
-export function registerMailRoutes(app: Api, ctx: AppContext, mail: MailService): void {
+export function registerMailRoutes(app: Api, ctx: AppContext, mail: MailService, tests: MailTests): void {
+  app.get('/api/mail/tests', async (request): Promise<MailTestRun[]> => {
+    requireAdmin(request);
+    return tests.list();
+  });
+
+  app.post(
+    '/api/mail/tests',
+    { schema: { body: mailTestRunSchema }, config: anonymousRateLimit },
+    async (request): Promise<MailTestRun> => {
+      const auth = requireAdmin(request);
+      const run = await tests.run(request.body, auth.user.locale, {
+        name: auth.user.displayName || auth.user.username,
+      });
+      ctx.audit.record(actorOf(request), 'mail.test_run', null, { recipients: run.recipients.length });
+      return run;
+    },
+  );
+
   app.get('/api/mail/outbox', async (request): Promise<readonly OutboxEntry[]> => {
     requireAdmin(request);
     return mail.outbox();

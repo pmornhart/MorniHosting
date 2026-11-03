@@ -12,7 +12,7 @@ describe('home network addresses', () => {
     ['fd12:3456::1', true],
     ['100.92.14.7', false], // NetBird / CGNAT
     ['127.0.0.1', false],
-    ['93.223.190.172', false],
+    ['198.51.100.7', false],
     ['2003:e0::1', false],
     ['kein-ip', false],
   ])('%s', (address, home) => {

@@ -19,7 +19,7 @@ export function MailOutbox(): ReactElement {
     refetchInterval: REFRESH_MS,
   });
   return (
-    <Card className="grid gap-4 p-5">
+    <Card fold="mail-outbox" className="grid gap-4 p-5">
       <div className="grid gap-1.5">
         <CardTitle className="flex items-center gap-2">
           <Inbox className="size-5 shrink-0 text-primary" aria-hidden />

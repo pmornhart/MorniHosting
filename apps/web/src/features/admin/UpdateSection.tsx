@@ -185,7 +185,7 @@ export function UpdateSection(): ReactElement {
   const look = STATUS_LOOKS[status];
 
   return (
-    <Card id="update" className="grid min-w-0 scroll-mt-4 gap-4 p-5 sm:p-6">
+    <Card fold="update" foldOpen id="update" className="grid min-w-0 scroll-mt-4 gap-4 p-5 sm:p-6">
       <div className="flex flex-wrap items-center gap-4">
         <span
           className={cn(

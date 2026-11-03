@@ -33,7 +33,7 @@ const PEER = {
 };
 const BASE = 'moinmornhart.de';
 /** The home connection (must never show up) and the NetBird server used as exit. */
-const HOME_IP = '93.223.190.172';
+const HOME_IP = '198.51.100.7';
 const EXIT_IP = '85.215.54.143';
 const EXIT_PEER = { ...PEER, id: 'peer-exit', name: 'netbird-server', ip: '100.92.0.1', hostname: 'netbird' };
 /** A self-hosted NetBird that the panel's machine is connected to. */

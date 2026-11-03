@@ -390,6 +390,20 @@ export function createServerService(ctx: AppContext): ServerService {
 
   const newId = (): string => randomBytes(ID_BYTES).toString('hex');
 
+  /**
+   * The first free main port from `start` on: free for the server's own protocol and, for games that use the same
+   * number on the other protocol too, for that one as well. A taken port is never an error when creating — the
+   * next free one is used.
+   */
+  const firstFreeMainPort = (start: number, protocol: 'tcp' | 'udp', game: GameInfo | null): number => {
+    const sameAs = (game?.ports ?? []).filter((p) => p.sameAsMain).map((p) => p.protocol);
+    const fits = (port: number): boolean =>
+      portFree(port, protocol, null) && sameAs.every((other) => portFree(port, other, null));
+    const found = Array.from({ length: PORT_SEARCH_LIMIT }, (_, i) => start + i).find(fits);
+    if (found === undefined) throw conflict('port_taken', { port: start, server: '' });
+    return found;
+  };
+
   /** Extra ports of other games: one per catalog port besides the main one, each on a free host port. */
   const allocateGamePorts = (game: GameInfo, mainPort: number): ServerRow['extraPorts'] =>
     game.ports.slice(1).reduce<ServerRow['extraPorts']>((acc, p) => {
@@ -789,10 +803,10 @@ export function createServerService(ctx: AppContext): ServerService {
       const info = SOFTWARE[input.software];
       if (!CREATABLE_SOFTWARE[input.edition].includes(input.software))
         throw badRequest('software_edition_mismatch');
-      assertPortFree(input.port, info.protocol, null);
       const game = gameOf(input.software);
       if (game) validateGameSettings(game, input.gameSettings ?? {});
-      const extraPorts = game ? allocateGamePorts(game, input.port) : [];
+      const port = firstFreeMainPort(input.port, info.protocol, game);
+      const extraPorts = game ? allocateGamePorts(game, port) : [];
       const gameSettings = game ? mergeGameSettings(game, {}, input.gameSettings ?? {}, secrets) : {};
       // Only admins may publish a server through the admin's NetBird account.
       const netbirdName = creator.isAdmin ? (input.netbirdName ?? null) : null;
@@ -816,7 +830,7 @@ export function createServerService(ctx: AppContext): ServerService {
         version: input.version,
         memoryMb: input.memoryMb,
         ...limits,
-        port: input.port,
+        port,
         javaTag: null,
         autoStart: input.autoStart,
       };

@@ -176,15 +176,16 @@ describe('Factorio with the fake driver', () => {
     });
   });
 
-  test('a second server on the same port is refused', async () => {
-    await create(order('factorio', { startNow: false }));
+  test('a second server on the same port gets the next free one', async () => {
+    const first = await create(order('factorio', { startNow: false }));
     const again = await t.app.inject({
       method: 'POST',
       url: '/api/servers',
       headers: authHeaders(s),
       payload: order('factorio', { startNow: false }),
     });
-    expect(again.statusCode).toBe(409);
+    expect(again.statusCode).toBe(200);
+    expect(again.json<ServerSummary>().port).toBe(first.port + 1);
   });
 });
 
@@ -354,7 +355,9 @@ describe('Satisfactory ports', () => {
         headers: authHeaders(s),
         payload: order('satisfactory', { port: 7778, startNow: false }),
       });
-      expect(res.statusCode).toBe(409);
+      // 7778 is taken now: the third server moves on to the next port free on both UDP and TCP.
+      expect(res.statusCode).toBe(200);
+      expect(res.json<ServerSummary>().port).toBe(7779);
     } finally {
       await t.cleanup();
     }

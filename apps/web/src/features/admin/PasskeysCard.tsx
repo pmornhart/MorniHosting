@@ -90,7 +90,7 @@ export function PasskeysCard(): ReactElement {
   };
 
   return (
-    <Card className="grid gap-4 p-5 sm:p-6">
+    <Card fold="account-passkeys" foldOpen className="grid gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex items-center gap-2">
           <KeyRound className="size-4 text-primary" aria-hidden />

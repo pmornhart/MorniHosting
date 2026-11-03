@@ -180,7 +180,7 @@ export function StalwartCard(): ReactElement {
   const hasChecks = (view?.checks.length ?? 0) > 0;
 
   return (
-    <Card className="grid gap-4 p-5">
+    <Card fold="stalwart" className="grid gap-4 p-5">
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
         <div className="grid min-w-0 gap-1.5">
           <CardTitle className="flex items-center gap-2">
@@ -247,7 +247,7 @@ export function StalwartCard(): ReactElement {
               id="st-publicIp"
               value={publicIp}
               onChange={(e) => setPublicIp(e.target.value)}
-              placeholder="185.164.228.171"
+              placeholder="203.0.113.10"
               inputMode="decimal"
             />
           </Field>

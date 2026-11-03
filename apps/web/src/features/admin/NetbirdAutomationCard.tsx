@@ -321,7 +321,7 @@ export function NetbirdAutomationCard({ panelDomain }: { panelDomain: string }):
   const domain = status.domain ?? '';
 
   return (
-    <Card id="netbird" className="grid min-w-0 scroll-mt-4 gap-4 p-5 sm:p-6">
+    <Card fold="netbird-auto" foldOpen id="netbird" className="grid min-w-0 scroll-mt-4 gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex flex-wrap items-center gap-2">
           <Network className="size-4 text-primary" aria-hidden />

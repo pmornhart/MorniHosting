@@ -451,7 +451,6 @@ export function createNetbirdAutomation(
       };
     },
     configure: async (input, actor) => {
-      if (ctx.settings.getValue('dns') !== undefined) throw conflict('netbird_dns_active');
       const client = clientFromInput(input);
       const token = tokenFor(input);
       const [domains, peers] = await Promise.all([client.domains(), client.peers()]);
