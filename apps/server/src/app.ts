@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Fastify, { type FastifyError } from 'fastify';
 import cookie from '@fastify/cookie';
+import compress from '@fastify/compress';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
@@ -41,6 +42,7 @@ import { registerBackupRoutes } from './backups/routes.js';
 import { createBackupService } from './backups/service.js';
 import { registerGeyserRoutes } from './geyser/routes.js';
 import { createGeyserService } from './geyser/service.js';
+import { createOrderService } from './orders/service.js';
 import { registerVoiceChatRoutes } from './voicechat/routes.js';
 import { createVoiceChatService } from './voicechat/service.js';
 import { registerMarketRoutes } from './market/routes.js';
@@ -130,6 +132,8 @@ const BODY_LIMIT_MB = 2;
 const GLOBAL_RATE_LIMIT = 600;
 const HOST_SAMPLE_SECONDS = 5;
 const SERVER_ERROR_FROM = 500;
+const COMPRESS_MIN_BYTES = 1024;
+const IMMUTABLE_CACHE = 'public, max-age=31536000, immutable';
 
 function createDriver(config: Config): DockerDriver {
   if (config.dockerDriver === 'fake') {
@@ -201,9 +205,16 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   mail.init(servers);
   const stalwart = createStalwartService(ctx, mail, dns, options.stalwart, options.stalwartResolver);
   const notify = createNotifyService(ctx, mail, options.discord);
-  const approvals = createApprovalService(ctx, mail, notify, servers);
+  const market = createMarketService(ctx, servers, files);
+  const geyser = createGeyserService(ctx, servers, market);
+  const voiceChat = createVoiceChatService(ctx, servers, market);
+  const orders = createOrderService(ctx, { servers, geyser, voice: voiceChat, schedules });
+  // Approved server requests are orders too: same add-ons, same order of things.
+  const approvals = createApprovalService(ctx, mail, notify, { ...servers, create: orders.create });
   notify.start();
 
+  // Smaller answers load faster, above all the web app's scripts on a phone. Only text-like types are packed.
+  await app.register(compress, { global: true, threshold: COMPRESS_MIN_BYTES, encodings: ['br', 'gzip'] });
   await app.register(helmet, {
     contentSecurityPolicy: {
       directives: {
@@ -275,13 +286,12 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
 
   registerAuthRoutes(app, ctx, mail);
   registerPasskeyRoutes(app, ctx);
-  registerServerRoutes(app, ctx, servers);
+  registerServerRoutes(app, ctx, servers, orders);
   registerImportRoutes(app, ctx, servers);
   registerFileRoutes(app, ctx, servers, files);
-  const market = createMarketService(ctx, servers, files);
   registerMarketRoutes(app, ctx, servers, market);
-  registerGeyserRoutes(app, ctx, createGeyserService(ctx, servers, market));
-  registerVoiceChatRoutes(app, ctx, createVoiceChatService(ctx, servers, market));
+  registerGeyserRoutes(app, ctx, geyser);
+  registerVoiceChatRoutes(app, ctx, voiceChat);
   registerNetbirdRoutes(app, netbird, dns, createNetbirdExit(ctx, undefined, options.resolver));
   registerDnsRoutes(app, dns);
   registerHttpsRoutes(app, https);
@@ -310,7 +320,18 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
 
   const hasWeb = fs.existsSync(path.join(config.webDir, 'index.html'));
   if (hasWeb) {
-    await app.register(fastifyStatic, { root: config.webDir, wildcard: false, index: false });
+    await app.register(fastifyStatic, {
+      root: config.webDir,
+      wildcard: false,
+      index: false,
+      // Built files carry a hash in their name, so the browser may keep them; everything else is checked each time.
+      setHeaders: (res, file) => {
+        res.header(
+          'cache-control',
+          file.includes(`${path.sep}assets${path.sep}`) ? IMMUTABLE_CACHE : 'no-cache',
+        );
+      },
+    });
   }
   app.setNotFoundHandler((request, reply) => {
     // Missing build files (e.g. an old chunk after an update) must stay 404, not turn into the page.

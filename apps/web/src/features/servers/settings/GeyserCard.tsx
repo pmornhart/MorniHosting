@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { RotateCw, Smartphone } from 'lucide-react';
+import { CheckCircle2, HelpCircle, Radar, RotateCw, Smartphone, XCircle } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import type { ServerDetail, SoftwareId } from '@mornihosting/shared';
+import type { GeyserCheck, ServerDetail, SoftwareId } from '@mornihosting/shared';
 import { Button } from '@/components/ui/button';
 import { ProjectLogo } from '@/components/project-logo';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,69 @@ interface GeyserResult {
 }
 
 /** One switch so friends on phones, consoles and Windows (Bedrock) can join a Java server. */
+/** "Bedrock-Verbindung prüfen": inside the server and from the internet, each with a tip if it fails. */
+function BedrockCheck({ serverId, running }: { serverId: string; running: boolean }): ReactElement {
+  const { t } = useTranslation();
+  const check = useMutation({
+    mutationFn: () => api<GeyserCheck>(`/api/servers/${serverId}/geyser/check`, { method: 'POST' }),
+  });
+  const result = check.data;
+  const outsideTip = (r: GeyserCheck): string => {
+    if (r.outside?.ok === null) return t('geyser.outsideUnknown');
+    return r.inside.ok ? t('geyser.outsideTip', { port: r.outside?.port }) : t('geyser.outsideAfterInside');
+  };
+  const row = (ok: boolean | null, title: string, tip: string): ReactElement => (
+    <li className="grid gap-0.5 rounded-[10px] bg-secondary px-3 py-2">
+      <span className="flex items-center gap-2 font-semibold">
+        {ok === true ? <CheckCircle2 className="size-4 text-success" aria-hidden /> : null}
+        {ok === false ? <XCircle className="size-4 text-destructive" aria-hidden /> : null}
+        {ok === null ? <HelpCircle className="size-4 text-muted-foreground" aria-hidden /> : null}
+        {title}
+      </span>
+      {ok === true ? null : <span className="pl-6 text-[13px] text-muted-foreground">{tip}</span>}
+    </li>
+  );
+  return (
+    <div className="mt-4 grid gap-2 text-sm">
+      <Button
+        variant="outline"
+        className="w-fit"
+        disabled={check.isPending || !running}
+        onClick={() => check.mutate()}
+      >
+        <Radar aria-hidden />
+        {check.isPending ? t('geyser.checking') : t('geyser.check')}
+      </Button>
+      {!running ? (
+        <span className="text-[13px] text-muted-foreground">{t('geyser.checkNeedsRunning')}</span>
+      ) : null}
+      {result ? (
+        <ul className="grid gap-1.5">
+          {row(
+            result.inside.ok,
+            result.inside.ok
+              ? t('geyser.insideOk', { version: result.inside.version ?? '' })
+              : t('geyser.insideFail'),
+            t('geyser.insideTip'),
+          )}
+          {result.outside
+            ? row(
+                result.outside.ok,
+                t('geyser.outside', { host: result.outside.host, port: result.outside.port }),
+                outsideTip(result),
+              )
+            : null}
+        </ul>
+      ) : null}
+      {result?.outside ? (
+        <p className="text-[13px] text-muted-foreground">
+          {t('geyser.howToJoin', { host: result.outside.host, port: result.outside.port })}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function GeyserCard({ server }: { server: ServerDetail }): ReactElement {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -90,6 +153,7 @@ export function GeyserCard({ server }: { server: ServerDetail }): ReactElement {
           </Button>
         </div>
       ) : null}
+      {server.geyser ? <BedrockCheck serverId={server.id} running={server.live.state === 'running'} /> : null}
       <p className="mt-4 text-[13px] text-muted-foreground">{t('geyser.routerHint')}</p>
     </Card>
   );

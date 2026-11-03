@@ -34,7 +34,7 @@ const ITZG_TYPE: Partial<Readonly<Record<SoftwareId, string>>> = {
   custom: 'CUSTOM',
 };
 
-function containerName(serverId: string): string {
+export function containerName(serverId: string): string {
   return `mh-${serverId}`;
 }
 

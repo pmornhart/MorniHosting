@@ -105,6 +105,16 @@ export function registerMarketRoutes(
     },
   );
 
+  // Update counts for every server the person may manage plugins on (dashboard badges, tab dot).
+  app.get('/api/content/updates', async (request) => {
+    const user = requireAuth(request).user;
+    const ids = servers
+      .list(user)
+      .map((s) => s.id)
+      .filter((id) => ctx.access.permissionsFor(user, id).includes('plugins'));
+    return market.updateCounts(ids);
+  });
+
   app.get('/api/servers/:id/content', { schema: { params: idParams } }, async (request) => {
     allow(request, request.params.id);
     return market.list(request.params.id);

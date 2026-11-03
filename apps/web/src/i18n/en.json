@@ -1137,7 +1137,10 @@
     "add": {
       "plugins": "Add plugins",
       "mods": "Add mods"
-    }
+    },
+    "updatesBadge_one": "1 update",
+    "updatesBadge_other": "{{count}} updates",
+    "checkFailed": "Updates could not be checked right now."
   },
   "market": {
     "sources": "Source",
@@ -1697,7 +1700,18 @@
     "enabled": "Bedrock players can now join on port {{port}}",
     "disabled": "Bedrock access is off",
     "portInfo": "Bedrock players connect with the same address and port {{port}}.",
-    "routerHint": "For friends outside your Wi-Fi, open this port for UDP in your router."
+    "routerHint": "For friends outside your Wi-Fi, open this port for UDP in your router.",
+    "check": "Check Bedrock connection",
+    "checking": "Checking …",
+    "checkNeedsRunning": "Start the server, then you can check the connection.",
+    "insideOk": "Geyser runs inside the server (Bedrock {{version}})",
+    "insideFail": "Geyser does not answer inside the server",
+    "insideTip": "Wait about 30 seconds after the start. If that doesn't help: restart the server. If the console shows a Geyser error, a newer Geyser is usually needed (Plugins → updates).",
+    "outside": "Reachable from outside at {{host}} · port {{port}}",
+    "outsideUnknown": "This could not be checked from outside right now. Try again in a few minutes.",
+    "outsideTip": "Works inside, not from outside: forward UDP port {{port}} in the router or in NetBird (UDP service). It has to be UDP, not TCP.",
+    "howToJoin": "How Bedrock players join: Play › Servers › Add server › address “{{host}}”, port “{{port}}” (address without :port).",
+    "outsideAfterInside": "First Geyser has to answer inside the server (see above) – then the way in from outside usually works too."
   },
   "passkeys": {
     "title": "Passkeys",
@@ -2944,5 +2958,10 @@
     "mineTitle": "You pay {{price}} a month for your server.",
     "mineOpen": "Still open: {{amount}}. Pay it directly to whoever runs this panel.",
     "mineAllPaid": "All paid – thank you!"
+  },
+  "download": {
+    "etaSoon": "almost done",
+    "etaMinutes": "about {{minutes}} min left",
+    "etaHours": "about {{hours}} h left"
   }
 }

@@ -18,7 +18,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { useMemo, useState, type ReactElement } from 'react';
-import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
@@ -239,28 +238,11 @@ export function CreateServerPage(): ReactElement {
         startNow,
         ...(address && addressName ? { netbirdName: addressName } : {}),
         ...(coupon ? { coupon } : {}),
+        // The panel sets these up itself, one after another, before the first start.
+        addOns: { geyser, voice, backups: addOns.backups },
       };
       const server = await placeOrder(body, me.user.canCreateServers);
       if (!server) return null;
-      // The add-ons from the order run on while the server page opens; a failing one only shows a note.
-      void Promise.allSettled([
-        geyser ? api(`/api/servers/${server.id}/geyser`, { method: 'PUT', body: { enabled: true } }) : null,
-        voice ? api(`/api/servers/${server.id}/voicechat`, { method: 'PUT', body: { enabled: true } }) : null,
-        addOns.backups
-          ? api(`/api/servers/${server.id}/schedules`, {
-              method: 'POST',
-              body: {
-                name: t('order.backupName'),
-                action: 'backup',
-                spec: { kind: 'daily', time: BACKUP_TIME },
-                enabled: true,
-              },
-            })
-          : null,
-      ]).then(async (results) => {
-        if (results.some((r) => r.status === 'rejected')) toast.error(t('order.addOnsFailed'));
-        await queryClient.invalidateQueries({ queryKey: ['servers'] });
-      });
       return server;
     },
     onSuccess: (server) => {

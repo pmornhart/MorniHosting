@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { versionLabel } from '@/lib/format';
 import { useServerAction } from '@/features/dashboard/ServerCard';
 import { serverQuery } from './live';
+import { useContentUpdates } from './content/updates';
 import { useShareInfo } from './overview/share';
 
 const HTTP_NOT_FOUND = 404;
@@ -317,6 +318,7 @@ export function ServerLayout(): ReactElement {
   const { t } = useTranslation();
   const { serverId = '' } = useParams();
   const { data: server, error, isPending } = useQuery(serverQuery(serverId));
+  const updates = useContentUpdates();
 
   if (isPending) {
     return (
@@ -355,6 +357,14 @@ export function ServerLayout(): ReactElement {
             >
               <tab.icon aria-hidden />
               {t(`server.tabs.${tab.key === 'plugins' ? contentTab : tab.key}`)}
+              {tab.key === 'plugins' && updates[server.id] ? (
+                <span
+                  className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground"
+                  title={t('content.updatesBadge', { count: updates[server.id] })}
+                >
+                  {updates[server.id]}
+                </span>
+              ) : null}
             </NavLink>
           ))}
         </nav>

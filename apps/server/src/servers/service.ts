@@ -38,6 +38,8 @@ import {
   validateGameSettings,
 } from '../games/settings.js';
 import { analyseCrash } from './crash.js';
+import { createDownloadMeter, type DownloadProgress } from './steam-progress.js';
+import { SHARED_GAME_FILES, markInstalled, seedGameFiles, seedSource } from './game-seed.js';
 import { isPanelNoise, isStartFinished, parseListAnswer, parseTps, playerEventOf } from './log-parse.js';
 import {
   GAME_PORT_PURPOSE,
@@ -144,6 +146,8 @@ interface Runtime {
   netTx: number | null;
   startedAt: string | null;
   progress: number | null;
+  download: DownloadProgress | null;
+  meter: (line: string) => DownloadProgress | null;
   stopRequested: boolean;
   /** Log lines that arrive before this time are history; they must not fire webhooks again. */
   quietUntil: number;
@@ -199,6 +203,8 @@ function emptyRuntime(): Runtime {
     netTx: null,
     startedAt: null,
     progress: null,
+    download: null,
+    meter: createDownloadMeter(),
     stopRequested: false,
     quietUntil: 0,
     game: null,
@@ -262,6 +268,13 @@ export function createServerService(ctx: AppContext): ServerService {
       netTxBytes: r.netTx,
       startedAt: r.startedAt,
       progress: r.progress,
+      download: r.download
+        ? {
+            doneBytes: r.download.doneBytes,
+            totalBytes: r.download.totalBytes,
+            bytesPerSecond: r.download.bytesPerSecond,
+          }
+        : null,
     };
   };
 
@@ -279,7 +292,11 @@ export function createServerService(ctx: AppContext): ServerService {
       r.tps = null;
       r.progress = null;
     }
-    if (state === 'running') r.progress = null;
+    if (state === 'running') {
+      r.progress = null;
+      r.download = null;
+      if (r.game) markInstalled(serverDir(config, id));
+    }
     events.emit('server.state', { serverId: id, state, previous });
     publishLive(id);
   };
@@ -298,6 +315,14 @@ export function createServerService(ctx: AppContext): ServerService {
     appendLog(id, line);
     const r = rt(id);
     if (r.state === 'starting' && readyLine(r.game, line)) setState(id, 'running');
+    if (r.game && r.state === 'starting') {
+      const download = r.meter(line);
+      if (download) {
+        r.download = download;
+        r.progress = Math.floor(download.percent);
+        publishLive(id);
+      }
+    }
     const player = playerLine(r.game, line);
     if (!player) return;
     const quiet = Date.now() < r.quietUntil;
@@ -456,6 +481,39 @@ export function createServerService(ctx: AppContext): ServerService {
     events.emit('server.crashed', { serverId: id, crash });
   };
 
+  /** A second CS2/GMod server copies the game from the first one instead of downloading 60 GB again. */
+  const seedFromSibling = async (id: string, software: ServerRow['software']): Promise<void> => {
+    if (!SHARED_GAME_FILES.has(software)) return;
+    const others = db
+      .select({ id: servers.id, name: servers.name })
+      .from(servers)
+      .where(eq(servers.software, software))
+      .all()
+      .filter((s) => s.id !== id);
+    const source = seedSource(
+      serverDir(config, id),
+      others.map((s) => serverDir(config, s.id)),
+    );
+    if (!source) return;
+    const from = others.find((s) => serverDir(config, s.id) === source);
+    panelLog(id, `Kopiere die Spieldateien von „${from?.name ?? ''}“ – das spart den großen Download …`);
+    const started = Date.now();
+    try {
+      const bytes = await seedGameFiles(source, serverDir(config, id));
+      const BYTES_PER_GB = 1024 ** 3;
+      const seconds = Math.round((Date.now() - started) / 1000);
+      panelLog(
+        id,
+        `✓ ${(bytes / BYTES_PER_GB).toFixed(1)} GB in ${seconds} s kopiert. Steam lädt jetzt nur noch Neuerungen.`,
+      );
+    } catch (err) {
+      panelLog(
+        id,
+        `Kopieren hat nicht geklappt (${errorMessage(err)}) – der Server lädt die Dateien von Steam.`,
+      );
+    }
+  };
+
   const bootContainer = async (id: string): Promise<void> => {
     const r = rowWithSecrets(id);
     const runtime = rt(id);
@@ -478,6 +536,7 @@ export function createServerService(ctx: AppContext): ServerService {
     });
     if (r.containerId) await docker.removeContainer(r.containerId);
     fs.mkdirSync(serverDir(config, id), { recursive: true });
+    await seedFromSibling(id, r.software);
     const missing = missingGameFiles(serverDir(config, id), r.software);
     if (missing.length) throw new Error(`Es fehlen Dateien: ${missing.join(', ')}`);
     prepareGameFiles(serverDir(config, id), r);

@@ -265,7 +265,16 @@ export function createCrashHelpService(
     notify.tell(peopleFor(serverId), 'crashes', () => ({
       discord: {
         title: `⚠️ „${row.name}“ ist abgestürzt: ${text.title}`,
-        text: [text.text, text.fix ? `**So behebst du es:** ${text.fix}` : ''].filter(Boolean).join('\n\n'),
+        text: [
+          `• **Was:** ${text.title}`,
+          text.text ? `• **Ursache:** ${text.text}` : '',
+          text.fix ? `• **Lösung:** ${text.fix}` : '',
+          fixes.some((f) => DISCORD_SAFE.has(f.id))
+            ? '• **Schnell:** Knopf unten drücken – der Server startet danach neu.'
+            : '',
+        ]
+          .filter(Boolean)
+          .join('\n'),
         colour: DISCORD_RED,
         fields: crash.excerpt?.length
           ? [

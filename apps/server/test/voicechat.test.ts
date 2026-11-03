@@ -16,10 +16,14 @@ const JARS: Readonly<Record<string, Buffer>> = {
   '9eGKb6K1': Buffer.from('PK voicechat plugin'),
   wKkoqHrH: Buffer.from('PK geyser plugin'),
   floodgate: Buffer.from('PK floodgate plugin'),
+  P1OZGk5p: Buffer.from('PK viaversion'),
+  NpvuJQoq: Buffer.from('PK viabackwards'),
 };
 const FILES: Readonly<Record<string, string>> = {
   '9eGKb6K1': 'voicechat-bukkit-2.6.26.jar',
   wKkoqHrH: 'Geyser-Spigot.jar',
+  P1OZGk5p: 'ViaVersion-5.5.1.jar',
+  NpvuJQoq: 'ViaBackwards-5.5.1.jar',
 };
 const hash = (algorithm: string, id: string): string =>
   crypto
@@ -108,6 +112,25 @@ describe('Simple Voice Chat and public ports', () => {
   afterEach(async () => {
     vi.unstubAllGlobals();
     await t.cleanup();
+  });
+
+  test('ordering with Geyser and voice chat sets both up before the first start', async () => {
+    const server = await create({ startNow: true, addOns: { geyser: true, voice: true, backups: true } });
+    await waitFor(async () => (await detail(server.id)).live.state === 'running');
+    const ready = await detail(server.id);
+    expect(ready).toMatchObject({ geyser: true, geyserPort: 19132, voiceChat: true, voicePort: 24454 });
+    const content = (await call('GET', `/api/servers/${server.id}/content`)).json<InstalledContent[]>();
+    expect(content.map((c) => c.fileName).toSorted()).toEqual(
+      expect.arrayContaining([
+        'Geyser-Spigot.jar',
+        'floodgate-spigot.jar',
+        'voicechat-bukkit-2.6.26.jar',
+        'ViaVersion-5.5.1.jar',
+        'ViaBackwards-5.5.1.jar',
+      ]),
+    );
+    const schedules = (await call('GET', `/api/servers/${server.id}/schedules`)).json<{ action: string }[]>();
+    expect(schedules.map((x) => x.action)).toEqual(['backup']);
   });
 
   test('one switch installs the plugin, opens a UDP port and writes the settings', async () => {

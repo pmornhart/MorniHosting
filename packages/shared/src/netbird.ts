@@ -139,3 +139,12 @@ export interface NetbirdExitStatus {
     readonly params: Readonly<Record<string, string | number>>;
   } | null;
 }
+
+/** "Bedrock-Verbindung prüfen": does Geyser answer inside, and from the internet? */
+export interface GeyserCheck {
+  readonly running: boolean;
+  /** Answer from Geyser inside the server (container port 19132). */
+  readonly inside: { readonly ok: boolean; readonly version: string | null; readonly motd: string | null };
+  /** What Bedrock players type: address and port, checked from outside via mcsrvstat.us. */
+  readonly outside: { readonly host: string; readonly port: number; readonly ok: boolean | null } | null;
+}
