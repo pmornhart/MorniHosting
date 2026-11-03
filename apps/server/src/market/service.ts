@@ -72,6 +72,11 @@ export interface MarketService {
   ) => Promise<MarketSearchResult>;
   readonly versions: (serverId: string, source: MarketSource, projectId: string) => Promise<MarketVersion[]>;
   readonly install: (serverId: string, input: MarketInstallInput, actor: Actor) => Promise<InstallResult>;
+  /**
+   * Downloads the newest fitting version into the download cache without installing it, outside the per-server
+   * lock: several plugins can load at the same time, the installs afterwards only copy.
+   */
+  readonly prefetch: (serverId: string, source: ContentSource, projectId: string) => Promise<void>;
   /** Installs the newest fitting version from any content source (also GeyserMC), with dependencies. */
   readonly installFrom: (
     serverId: string,
@@ -440,6 +445,22 @@ export function createMarketService(
         }),
       ),
 
+    prefetch: async (serverId, source, projectId) => {
+      try {
+        const resolved = await providerOf(source).resolve(targetOf(serverId), projectId);
+        const dir = path.join(ctx.config.dataDir, 'cache', 'prefetch');
+        const temp = await downloadVerified(
+          resolved.file,
+          dir,
+          ctx.config.pluginUploadBytes * MAX_DOWNLOAD_FACTOR,
+          path.join(ctx.config.dataDir, 'cache', 'downloads'),
+        );
+        fs.rmSync(temp, { force: true });
+      } catch (err) {
+        // Only a head start: the real install tries again and reports problems.
+        ctx.log.debug({ err, serverId, projectId }, 'prefetch failed');
+      }
+    },
     installFrom: (serverId, source, projectId, actor) =>
       withLock(serverId, () =>
         wrapUpstream(async () => {

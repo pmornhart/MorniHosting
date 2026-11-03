@@ -23,6 +23,8 @@ const HTTP_NOT_MODIFIED = 304;
 const CONTAINER_DATA_DIR = '/data';
 const EVENT_ACTIONS: readonly ContainerEvent['action'][] = ['start', 'die', 'oom', 'destroy'];
 const MANAGED_LABEL = 'mornihosting.server';
+/** How often an image that is already there gets checked for a newer version (when a server starts). */
+const IMAGE_REFRESH_MS = 24 * 60 * 60 * 1000;
 
 interface DockerApiError {
   readonly statusCode?: number;
@@ -85,6 +87,38 @@ export function createDockerDriver(config: Config): DockerDriver {
     }
   };
 
+  const pulledAt = new Map<string, number>();
+  const pullImage = async (
+    image: string,
+    onProgress: Parameters<DockerDriver['ensureImage']>[1],
+  ): Promise<void> => {
+    // dockerode resolves pull() to the Node stream of progress events.
+    const stream = (await docker.pull(image)) as unknown as Readable;
+    const layers = new Map<string, { current: number; total: number }>();
+    await new Promise<void>((resolve, reject) => {
+      docker.modem.followProgress(
+        stream,
+        (err) => (err ? reject(err) : resolve()),
+        (event: { id?: string; status?: string; progressDetail?: { current?: number; total?: number } }) => {
+          if (event.id && event.progressDetail?.total) {
+            layers.set(event.id, {
+              current: event.progressDetail.current ?? 0,
+              total: event.progressDetail.total,
+            });
+          }
+          const totals = [...layers.values()].reduce(
+            (acc, l) => ({ current: acc.current + l.current, total: acc.total + l.total }),
+            { current: 0, total: 0 },
+          );
+          onProgress?.(
+            totals.total ? Math.round((totals.current / totals.total) * PERCENT) : null,
+            event.status ?? '',
+          );
+        },
+      );
+    });
+  };
+
   const driver: DockerDriver = {
     kind: 'docker',
     ping: async () => {
@@ -95,41 +129,26 @@ export function createDockerDriver(config: Config): DockerDriver {
       }
     },
     ensureImage: async (image, onProgress) => {
+      const present = await (async (): Promise<boolean> => {
+        try {
+          await docker.getImage(image).inspect();
+          return true;
+        } catch (err) {
+          if (statusOf(err) !== HTTP_NOT_FOUND) throw err;
+          return false;
+        }
+      })();
+      // An image that is there gets refreshed once a day: old ones talk to services that changed meanwhile
+      // (e.g. PaperMC's API v2 is gone, old itzg images then hang at "Resolving type given PAPER").
+      if (present && Date.now() - (pulledAt.get(image) ?? 0) < IMAGE_REFRESH_MS) return;
       try {
-        await docker.getImage(image).inspect();
-        return;
+        await pullImage(image, onProgress);
+        pulledAt.set(image, Date.now());
       } catch (err) {
-        if (statusOf(err) !== HTTP_NOT_FOUND) throw err;
+        // Offline or a locally built image: the one we have still works.
+        if (!present) throw err;
+        pulledAt.set(image, Date.now());
       }
-      // dockerode resolves pull() to the Node stream of progress events.
-      const stream = (await docker.pull(image)) as unknown as Readable;
-      const layers = new Map<string, { current: number; total: number }>();
-      await new Promise<void>((resolve, reject) => {
-        docker.modem.followProgress(
-          stream,
-          (err) => (err ? reject(err) : resolve()),
-          (event: {
-            id?: string;
-            status?: string;
-            progressDetail?: { current?: number; total?: number };
-          }) => {
-            if (event.id && event.progressDetail?.total) {
-              layers.set(event.id, {
-                current: event.progressDetail.current ?? 0,
-                total: event.progressDetail.total,
-              });
-            }
-            const totals = [...layers.values()].reduce(
-              (acc, l) => ({ current: acc.current + l.current, total: acc.total + l.total }),
-              { current: 0, total: 0 },
-            );
-            onProgress?.(
-              totals.total ? Math.round((totals.current / totals.total) * PERCENT) : null,
-              event.status ?? '',
-            );
-          },
-        );
-      });
     },
     ensureNetwork: async (name) => {
       try {

@@ -92,6 +92,8 @@ export interface GeyserResult {
 export interface GeyserService {
   readonly set: (serverId: string, enabled: boolean, actor: Actor) => Promise<GeyserResult>;
   readonly check: (serverId: string) => Promise<GeyserCheck>;
+  /** Loads Geyser, Floodgate and ViaVersion into the download cache at the same time (before `set`). */
+  readonly prefetch: (serverId: string) => Promise<void>;
 }
 
 /** Geyser needs a moment after the Java server is up before it answers Bedrock pings. */
@@ -293,8 +295,19 @@ export function createGeyserService(
     }, AFTER_START_CHECK_MS);
   });
 
+  const prefetch: GeyserService['prefetch'] = async (serverId) => {
+    const row = servers.row(serverId);
+    const plugins = PLUGINS[row.software];
+    if (row.edition !== 'java' || !plugins) return;
+    const first = [plugins.geyser[0], plugins.floodgate[0], ...(VIA[row.software] ?? [])].filter(
+      (p): p is Plugin => p !== undefined,
+    );
+    await Promise.all(first.map((p) => market.prefetch(serverId, p.source, p.id)));
+  };
+
   return {
     check,
+    prefetch,
     set: (serverId, enabled, actor) =>
       serial(serverId, async () => (enabled ? enable(serverId, actor) : disable(serverId, actor))),
   };

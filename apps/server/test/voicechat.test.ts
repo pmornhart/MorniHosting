@@ -118,7 +118,7 @@ describe('Simple Voice Chat and public ports', () => {
     const server = await create({ startNow: true, addOns: { geyser: true, voice: true, backups: true } });
     // Right after the order the page already knows what is being set up (switches show "busy").
     const right = await detail(server.id);
-    expect(right.live.setup?.length).toBeGreaterThan(0);
+    expect(right.live.setup?.pending.length).toBeGreaterThan(0);
     // Ticked at the order = on at once, not only after the setup.
     expect(right).toMatchObject({ geyser: true, voiceChat: true });
     await waitFor(async () => (await detail(server.id)).live.state === 'running');

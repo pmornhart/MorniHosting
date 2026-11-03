@@ -44,6 +44,7 @@ import { useServerAction } from '@/features/dashboard/ServerCard';
 import { serverQuery } from './live';
 import { useContentUpdates } from './content/updates';
 import { useShareInfo } from './overview/share';
+import { SetupScreen } from './SetupScreen';
 
 const HTTP_NOT_FOUND = 404;
 const HTTP_FORBIDDEN = 403;
@@ -333,6 +334,9 @@ export function ServerLayout(): ReactElement {
     const missing = error instanceof ApiError && [HTTP_NOT_FOUND, HTTP_FORBIDDEN].includes(error.status);
     return <EmptyState title={missing ? t('server.notFound') : t('errors.generic')} />;
   }
+
+  // Freshly ordered: only the setup screen until everything is in place and the server runs.
+  if (server.live.setup) return <SetupScreen server={server} />;
 
   const can = (permission: ServerPermission): boolean => server.permissions.includes(permission);
   const tabs = TABS.filter((tab) => tab.show(server) && (!tab.permission || can(tab.permission)));
