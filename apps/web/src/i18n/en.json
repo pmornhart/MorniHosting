@@ -66,7 +66,7 @@
     "overview": "Overview",
     "createServer": "Create server",
     "administration": "Administration",
-    "users": "Users and roles",
+    "users": "Users",
     "notifications": "Notifications",
     "settings": "Admin area",
     "audit": "Activity log",
@@ -1329,7 +1329,7 @@
     "usernameHint": "For signing in. 3 to 32 characters: letters, digits, dot, dash, underscore.",
     "displayName": "Display name",
     "password": "Password",
-    "passwordHint": "At least 10 characters.",
+    "passwordHint": "At least 10 characters – or just press “Generate”.",
     "newPassword": "New password",
     "newPasswordHint": "Leave empty to keep the password. A new password signs the person out everywhere.",
     "isAdmin": "Administrator",
@@ -1355,7 +1355,8 @@
     "deleteTitle": "Delete {{name}}?",
     "deleteText": "The account and its API keys are deleted. Servers stay.",
     "email": "E-mail address (optional)",
-    "emailHint": "For the welcome mail, “password forgotten” and confirmations. Each address only once."
+    "emailHint": "For the welcome mail, “password forgotten” and confirmations. Each address only once.",
+    "generatePassword": "Generate"
   },
   "roles": {
     "new": "Add role",
@@ -2759,8 +2760,8 @@
         "text": "Enter your username (or e-mail) and the password from above."
       },
       "secure": {
-        "title": "Set your own password",
-        "text": "Change the password under “My account”. Safer and easier still: turn on a passkey or two-factor sign-in."
+        "title": "Choose your own password",
+        "text": "On your first sign-in the panel asks you for your own password. Safer and easier still: then turn on a passkey or two-factor sign-in under “My account”."
       },
       "servers": {
         "admin": {
@@ -2777,12 +2778,24 @@
         }
       }
     },
-    "javaTitle": "Minecraft Java (PC)",
-    "javaText": "Start Minecraft › Multiplayer › Add server. Use the address from the panel (“Connect” on the server page).",
-    "bedrockTitle": "Minecraft Bedrock (phone, console, Windows)",
-    "bedrockText": "Play › Servers › Add server. Enter the address from the panel and the Bedrock port as port (usually 19132).",
-    "warning": "Please keep this sheet to yourself and change the password after your first sign-in.",
+    "javaTitle": "Minecraft Java",
+    "javaText": "On PC: start Minecraft › Multiplayer › Add server. Use the address from the panel (“Connect”).",
+    "bedrockTitle": "Minecraft Bedrock",
+    "bedrockText": "Phone, console, Windows: Play › Servers › Add server. Address from the panel, port = Bedrock port (usually 19132).",
+    "warning": "Please keep this sheet to yourself. The start password only lasts until your first sign-in.",
     "footer": "Created {{date}} · {{address}}",
     "fileName": "MorniHosting-access"
+  },
+  "forcePassword": {
+    "title": "Welcome, {{name}}! Choose your own password",
+    "text": "An admin created your password. So that only you know it, set your own now – then you're good to go.",
+    "current": "Start password",
+    "currentHint": "The password you just signed in with.",
+    "next": "New password",
+    "nextHint": "At least 10 characters. A sentence of several words is strong and easy to remember.",
+    "same": "Please choose a different one than the start password.",
+    "save": "Save password",
+    "logout": "Sign out",
+    "done": "Done! From now on you sign in with your own password."
   }
 }

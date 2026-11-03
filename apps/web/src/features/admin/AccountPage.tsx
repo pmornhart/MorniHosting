@@ -1,5 +1,5 @@
 import { NotifyCard } from './NotifyCard';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, ShieldOff } from 'lucide-react';
 import { useState, type FormEvent, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
 import { Pill } from '@/components/ui/pill';
 import { api } from '@/lib/api';
-import { adoptMe, useSession } from '@/features/auth/session';
+import { adoptMe, meQuery, useSession } from '@/features/auth/session';
 import { EmailCard } from './EmailCard';
 import { MinecraftAccountCard } from './MinecraftAccountCard';
 import { PasskeysCard } from './PasskeysCard';
@@ -73,6 +73,7 @@ function ProfileCard(): ReactElement {
 
 function PasswordCard(): ReactElement {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [repeat, setRepeat] = useState('');
@@ -80,6 +81,7 @@ function PasswordCard(): ReactElement {
     mutationFn: () => api('/api/account/password', { method: 'POST', body: { current, next } }),
     onSuccess: () => {
       toast.success(t('account.passwordChanged'));
+      void queryClient.invalidateQueries({ queryKey: meQuery.queryKey });
       setCurrent('');
       setNext('');
       setRepeat('');

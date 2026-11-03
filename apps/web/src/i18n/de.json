@@ -66,7 +66,7 @@
     "overview": "Übersicht",
     "createServer": "Server erstellen",
     "administration": "Verwaltung",
-    "users": "Benutzer und Rollen",
+    "users": "Benutzer",
     "notifications": "Benachrichtigungen",
     "settings": "Admin-Bereich",
     "audit": "Protokoll",
@@ -1329,7 +1329,7 @@
     "usernameHint": "Zum Anmelden. 3 bis 32 Zeichen: Buchstaben, Zahlen, Punkt, Minus, Unterstrich.",
     "displayName": "Anzeigename",
     "password": "Passwort",
-    "passwordHint": "Mindestens 10 Zeichen.",
+    "passwordHint": "Mindestens 10 Zeichen – oder einfach „Erzeugen“ drücken.",
     "newPassword": "Neues Passwort",
     "newPasswordHint": "Leer lassen, um das Passwort zu behalten. Ein neues Passwort meldet die Person überall ab.",
     "isAdmin": "Administrator",
@@ -1355,7 +1355,8 @@
     "deleteTitle": "{{name}} löschen?",
     "deleteText": "Das Konto und seine API-Schlüssel werden gelöscht. Server bleiben erhalten.",
     "email": "E-Mail-Adresse (optional)",
-    "emailHint": "Für Willkommens-Mail, „Passwort vergessen“ und Bestätigungen. Jede Adresse nur einmal."
+    "emailHint": "Für Willkommens-Mail, „Passwort vergessen“ und Bestätigungen. Jede Adresse nur einmal.",
+    "generatePassword": "Erzeugen"
   },
   "roles": {
     "new": "Rolle anlegen",
@@ -2759,8 +2760,8 @@
         "text": "Gib deinen Benutzernamen (oder deine E-Mail) und das Passwort von oben ein."
       },
       "secure": {
-        "title": "Eigenes Passwort setzen",
-        "text": "Unter „Mein Konto“ änderst du das Passwort. Noch sicherer und bequemer: einen Passkey oder die Zwei-Faktor-Anmeldung einschalten."
+        "title": "Eigenes Passwort wählen",
+        "text": "Beim ersten Anmelden fragt dich das Panel nach einem eigenen Passwort. Noch sicherer und bequemer: danach unter „Mein Konto“ einen Passkey oder die Zwei-Faktor-Anmeldung einschalten."
       },
       "servers": {
         "admin": {
@@ -2777,12 +2778,24 @@
         }
       }
     },
-    "javaTitle": "Minecraft Java (PC)",
-    "javaText": "Minecraft starten › Mehrspieler › Server hinzufügen. Als Adresse die aus dem Panel nehmen (Feld „Verbinden“ auf der Server-Seite).",
-    "bedrockTitle": "Minecraft Bedrock (Handy, Konsole, Windows)",
-    "bedrockText": "Spielen › Server › Server hinzufügen. Adresse aus dem Panel eintragen und als Port den Bedrock-Port (meist 19132).",
-    "warning": "Bitte gib dieses Blatt nicht weiter und ändere das Passwort nach der ersten Anmeldung.",
+    "javaTitle": "Minecraft Java",
+    "javaText": "Am PC: Minecraft starten › Mehrspieler › Server hinzufügen. Als Adresse die aus dem Panel nehmen (Feld „Verbinden“).",
+    "bedrockTitle": "Minecraft Bedrock",
+    "bedrockText": "Handy, Konsole, Windows: Spielen › Server › Server hinzufügen. Adresse aus dem Panel, Port = Bedrock-Port (meist 19132).",
+    "warning": "Bitte gib dieses Blatt nicht weiter. Das Startpasswort gilt nur bis zu deiner ersten Anmeldung.",
     "footer": "Erstellt am {{date}} · {{address}}",
     "fileName": "MorniHosting-Zugang"
+  },
+  "forcePassword": {
+    "title": "Willkommen, {{name}}! Wähle dein eigenes Passwort",
+    "text": "Dein Passwort hat ein Admin für dich erstellt. Damit nur du es kennst, legst du jetzt ein eigenes fest – danach geht es direkt los.",
+    "current": "Startpasswort",
+    "currentHint": "Das Passwort, mit dem du dich gerade angemeldet hast.",
+    "next": "Neues Passwort",
+    "nextHint": "Mindestens 10 Zeichen. Ein Satz aus mehreren Wörtern ist sicher und leicht zu merken.",
+    "same": "Bitte nimm ein anderes als das Startpasswort.",
+    "save": "Passwort speichern",
+    "logout": "Abmelden",
+    "done": "Geschafft! Ab jetzt meldest du dich mit deinem eigenen Passwort an."
   }
 }

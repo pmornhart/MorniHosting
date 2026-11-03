@@ -195,7 +195,7 @@ export function registerAuthRoutes(app: Api, ctx: AppContext, mail: MailService)
         throw badRequest('wrong_password');
       ctx.db
         .update(users)
-        .set({ passwordHash: await hashPassword(request.body.next) })
+        .set({ passwordHash: await hashPassword(request.body.next), mustChangePassword: false })
         .where(eq(users.id, auth.user.id))
         .run();
       ctx.sessions.destroyAllFor(auth.user.id, auth.sessionId ?? undefined);

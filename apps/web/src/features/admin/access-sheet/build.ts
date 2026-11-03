@@ -45,11 +45,11 @@ export interface AccessSheetInput {
 }
 
 const PAGE = { width: 595.28, height: 841.89, margin: 44 } as const;
-const BAND = { height: 196, slices: 48, logo: 40 } as const;
+const BAND = { height: 168, slices: 48, logo: 40 } as const;
 const SIZE = {
   brand: 15,
   tag: 9,
-  welcome: 26,
+  welcome: 24,
   intro: 11.5,
   title: 13.5,
   label: 8,
@@ -58,8 +58,8 @@ const SIZE = {
   small: 8.5,
 } as const;
 const LINE = 1.4;
-const CARD = { radius: 12, pad: 20, rowGap: 34, qr: 112 } as const;
-const STEP = { circle: 11, gap: 14, textIndent: 34 } as const;
+const CARD = { radius: 12, pad: 18, rowGap: 30, qr: 104 } as const;
+const STEP = { circle: 11, gap: 6, textIndent: 34 } as const;
 const BOX_GAP = 14;
 const QR_PIXELS = 512;
 const LOGO_PIXELS = 256;
@@ -181,13 +181,13 @@ function drawBand(page: PDFPage, fonts: Fonts, logo: PDFImage, texts: AccessShee
   welcome.map((line, i) =>
     page.drawText(line, {
       x: PAGE.margin,
-      y: top - 82 - i * SIZE.welcome * 1.15,
+      y: top - 70 - i * SIZE.welcome * 1.15,
       size: SIZE.welcome,
       font: fonts.bold,
       color: COLOURS.white,
     }),
   );
-  const introTop = top - 82 - welcome.length * SIZE.welcome * 1.15 - 6;
+  const introTop = top - 70 - welcome.length * SIZE.welcome * 1.15 - 6;
   wrap(fonts.safe(texts.intro), fonts.regular, SIZE.intro, PAGE.width - PAGE.margin * 2).map((line, i) =>
     page.drawText(line, {
       x: PAGE.margin,
@@ -416,20 +416,20 @@ export async function buildAccessSheet(input: AccessSheetInput): Promise<Uint8Ar
   ]);
   page.drawRectangle({ x: 0, y: 0, width: PAGE.width, height: PAGE.height, color: COLOURS.white });
   drawBand(page, fonts, logo, input.texts);
-  const afterCard = drawCard(page, fonts, qr, input, PAGE.height - BAND.height - 26);
-  const afterSteps = drawSteps(page, fonts, input.texts, afterCard - 28);
+  const afterCard = drawCard(page, fonts, qr, input, PAGE.height - BAND.height - 20);
+  const afterSteps = drawSteps(page, fonts, input.texts, afterCard - 22);
   const afterBoxes = drawGameBoxes(page, fonts, input.texts, afterSteps - 4);
-  drawWarning(page, fonts, input.texts, afterBoxes - 18);
+  drawWarning(page, fonts, input.texts, afterBoxes - 14);
   const footer = fonts.safe(input.texts.footer);
   page.drawLine({
-    start: { x: PAGE.margin, y: PAGE.margin - 2 },
-    end: { x: PAGE.width - PAGE.margin, y: PAGE.margin - 2 },
+    start: { x: PAGE.margin, y: PAGE.margin - 14 },
+    end: { x: PAGE.width - PAGE.margin, y: PAGE.margin - 14 },
     thickness: 0.5,
     color: COLOURS.line,
   });
   page.drawText(footer, {
     x: PAGE.margin,
-    y: PAGE.margin - 16,
+    y: PAGE.margin - 27,
     size: SIZE.small,
     font: fonts.regular,
     color: COLOURS.muted,

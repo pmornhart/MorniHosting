@@ -131,9 +131,9 @@ footer { color: var(--muted); font-size: 13px; }
 
 <script type="application/json" id="data">
 {
-  "goal": "Ein selbst gehostetes Panel für Minecraft-Server: so viel wie Crafty Controller 4, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-11-03T07:37:46+00:00",
-  "now": "Stalwart verbinden ist fertig und wird freigegeben.",
+  "goal": "Ein selbst gehostetes Panel für Minecraft-Server: alles, was man braucht, so einfach wie die Panels der großen Hoster.",
+  "updated": "2026-11-03T13:06:23+00:00",
+  "now": "Zugangsblatt als PDF, Startpasswort und Pflicht-Passwortwechsel werden freigegeben. Danach: Animationen und Issues-Check.",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -469,9 +469,64 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "Stalwart verbinden",
       "status": "fertig",
       "detail": "Admin → E-Mail: Adresse und Admin-Passwort von Stalwart eingeben (kostenlose Version ab 1.0). Das Panel legt Domain und noreply-Konto an, stellt den Mail-Versand ein, schickt eine Test-Mail, gibt den INWX-Zugang an Stalwart weiter (MX, SPF, DKIM, DMARC setzt Stalwart selbst) und prüft A, PTR, MX, SPF, DKIM, DMARC. 287 Tests grün; mit nachgebautem Stalwart und echtem TLS-Mailversand geprüft (Test-Mail kam an). Gegen ein echtes Stalwart noch nicht getestet."
+    },
+    {
+      "title": "Hausanschluss verstecken",
+      "status": "fertig",
+      "detail": "NetBird-Exit-Node: Panel geht über den NetBird-Server ins Internet, Prüfung ob die Heim-IP noch irgendwo sichtbar ist."
+    },
+    {
+      "title": "Mail-Tests",
+      "status": "fertig",
+      "detail": "Bis zu 5 Adressen auf einmal, Zustellung live über Stalwart verfolgt, Spam-Punktzahl über mail-tester.com, Verlauf."
+    },
+    {
+      "title": "Ein- und ausklappen + freier Port",
+      "status": "fertig",
+      "detail": "Alle Karten im Admin-Bereich und unter Mein Konto klappen auf und zu. Beim Erstellen nimmt das Panel automatisch den nächsten freien Port."
+    },
+    {
+      "title": "INWX neben NetBird",
+      "status": "fertig",
+      "detail": "Eigene Domain und NetBird gleichzeitig: alte DNS-Einträge, die NetBird stören, räumt das Panel selbst weg."
+    },
+    {
+      "title": "Schneller bestellen",
+      "status": "fertig",
+      "detail": "Server-Seite öffnet sofort, Add-ons laufen im Hintergrund, Downloads werden zwischengespeichert."
+    },
+    {
+      "title": "Server-Mitarbeiter",
+      "status": "fertig",
+      "detail": "Reiter „Mitarbeiter“: Leute per Benutzername oder E-Mail mit Rolle (Besitzer, Moderator, Zuschauer) eintragen. Bedrock-Port steht jetzt deutlich im Server-Kopf."
+    },
+    {
+      "title": "Zugangsblatt + Startpasswort",
+      "status": "fertig",
+      "detail": "Beim Anlegen „Erzeugen“ für ein Startpasswort, danach ein schönes PDF mit Adresse, Zugangsdaten, QR-Code und Kurzanleitung (Deutsch/Englisch). Beim ersten Anmelden muss man ein eigenes Passwort wählen. Reiter „Rollen“ entfernt."
     }
   ],
   "shots": [
+    {
+      "img": "progress/zugangsblatt.webp",
+      "caption": "Zugangsblatt als PDF (Testdaten)",
+      "time": "2026-11-03T13:06:23+00:00"
+    },
+    {
+      "img": "progress/zugang-fertig.webp",
+      "caption": "Nach dem Anlegen: Zugangsdaten + PDF",
+      "time": "2026-11-03T13:06:23+00:00"
+    },
+    {
+      "img": "progress/passwort-pflicht.webp",
+      "caption": "Erste Anmeldung: eigenes Passwort wählen",
+      "time": "2026-11-03T13:06:23+00:00"
+    },
+    {
+      "img": "progress/mitarbeiter.webp",
+      "caption": "Reiter Mitarbeiter + Java-/Bedrock-Port",
+      "time": "2026-11-03T13:06:23+00:00"
+    },
     {
       "img": "progress/stalwart-desktop.webp",
       "caption": "Admin → E-Mail → Stalwart verbinden (nach dem Einrichten)",
@@ -511,26 +566,6 @@ footer { color: var(--muted); font-size: 13px; }
       "img": "progress/move-make-desktop.webp",
       "caption": "Admin-Bereich → Umzug: Code erstellen und einlösen",
       "time": "2026-11-02T13:10:36+00:00"
-    },
-    {
-      "img": "progress/move-make-handy.webp",
-      "caption": "Umzug auf dem Handy",
-      "time": "2026-11-02T13:10:36+00:00"
-    },
-    {
-      "img": "progress/discord-link-fix.webp",
-      "caption": "Verbinden-Seite: fragt jetzt richtig nach (Test-Link absichtlich ungültig)",
-      "time": "2026-11-02T12:59:20+00:00"
-    },
-    {
-      "img": "progress/discord-video.webp",
-      "caption": "Aus dem Erklärvideo: Schritt 5 von 9",
-      "time": "2026-11-02T12:28:41+00:00"
-    },
-    {
-      "img": "progress/discord-schritte.webp",
-      "caption": "Discord verbinden in 4 Schritten",
-      "time": "2026-11-02T12:17:14+00:00"
     }
   ],
   "files": [
