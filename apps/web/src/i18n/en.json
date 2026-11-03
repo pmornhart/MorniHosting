@@ -1700,16 +1700,16 @@
     "enabled": "Bedrock players can now join on port {{port}}",
     "disabled": "Bedrock access is off",
     "portInfo": "Bedrock players connect with the same address and port {{port}}.",
-    "routerHint": "For friends outside your Wi-Fi, open this port for UDP in your router.",
+    "routerHint": "For friends outside your Wi-Fi, forward this port in your router for TCP and UDP (since Bedrock 26.60 both are needed).",
     "check": "Check Bedrock connection",
     "checking": "Checking …",
     "checkNeedsRunning": "Start the server, then you can check the connection.",
     "insideOk": "Geyser runs inside the server (Bedrock {{version}})",
     "insideFail": "Geyser does not answer inside the server",
-    "insideTip": "Wait about 30 seconds after the start. If that doesn't help: restart the server. If the console shows a Geyser error, a newer Geyser is usually needed (Plugins → updates).",
+    "insideTip": "Wait about 30 seconds after the start. If that does not help, restart the server. Since Bedrock 26.60 Geyser 2.12.1 or newer is needed – update it under Plugins → Updates. If the console shows a Geyser error, send it to us.",
     "outside": "Reachable from outside at {{host}} · port {{port}}",
     "outsideUnknown": "This could not be checked from outside right now. Try again in a few minutes.",
-    "outsideTip": "Works inside, not from outside: forward UDP port {{port}} in the router or in NetBird (UDP service). It has to be UDP, not TCP.",
+    "outsideTip": "It works inside the server but not from outside: forward port {{port}} in your router for TCP and UDP (or in NetBird – the panel creates both services itself). Since Bedrock 26.60 the game finds the server over TCP and plays over UDP.",
     "howToJoin": "How Bedrock players join: Play › Servers › Add server › address “{{host}}”, port “{{port}}” (address without :port).",
     "outsideAfterInside": "First Geyser has to answer inside the server (see above) – then the way in from outside usually works too."
   },
@@ -2166,7 +2166,7 @@
     "registration": "Allow sign-up on the start page",
     "registrationHint": "New people create their own account and must confirm their e-mail address with a link. They only get standard rights.",
     "registrationOrders": "New accounts may order servers",
-    "registrationOrdersHint": "Without this switch you have to approve new accounts first (Users → “May create servers”).",
+    "registrationOrdersHint": "Only applies when new accounts start without approval. Anyone you accept under Approvals may always order servers.",
     "crashMails": "Mail admins when a server crashes",
     "crashMailsHint": "At most one mail per server every 15 minutes, in addition to webhooks.",
     "saved": "E-mail settings saved.",
@@ -2963,5 +2963,8 @@
     "etaSoon": "almost done",
     "etaMinutes": "about {{minutes}} min left",
     "etaHours": "about {{hours}} h left"
+  },
+  "addOnSetup": {
+    "running": "Being set up automatically right now – you picked it when ordering. Usually takes less than a minute, then the server starts."
   }
 }

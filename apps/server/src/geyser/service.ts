@@ -7,7 +7,10 @@ import type { ServerService } from '../servers/service.js';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { netbirdServices } from '../db/schema.js';
-import { bedrockPing } from '../lib/bedrock-ping.js';
+import { bedrockPing, signalingAnswers } from '../lib/bedrock-ping.js';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
+import { isHomeNetworkAddress } from '../lib/net-guard.js';
 import { fetchJson } from '../lib/http-client.js';
 import { connectionInfo } from '../servers/connectivity.js';
 import { containerName } from '../servers/spec.js';
@@ -93,6 +96,8 @@ export interface GeyserService {
 
 /** Geyser needs a moment after the Java server is up before it answers Bedrock pings. */
 const AFTER_START_CHECK_MS = 20_000;
+const IPV4 = 4;
+const LOOPBACK_PREFIX = '127.';
 const BEDROCK_STATUS = 'https://api.mcsrvstat.us/bedrock/3/';
 const bedrockStatusSchema = z.object({ online: z.boolean() }).loose();
 
@@ -165,7 +170,12 @@ export function createGeyserService(
     }, Promise.resolve());
     const row = servers.row(serverId);
     const existing = row.extraPorts.find((p) => p.purpose === PURPOSE);
-    const port = existing?.port ?? servers.freePort(PORT_BEDROCK, 'udp', serverId);
+    // NetherNet needs the port on UDP and TCP, so look for a number that is free on both.
+    const freeOnBoth = (start: number): number => {
+      const udp = servers.freePort(start, 'udp', serverId);
+      return servers.freePort(udp, 'tcp', serverId) === udp ? udp : freeOnBoth(udp + 1);
+    };
+    const port = existing?.port ?? freeOnBoth(PORT_BEDROCK);
     if (!existing) {
       servers.setExtraPorts(serverId, [
         ...row.extraPorts,
@@ -207,25 +217,54 @@ export function createGeyserService(
     return host && port ? { host, port } : null;
   };
 
+  /** NetherNet signaling (TCP) or the old RakNet ping (UDP): either answer means Geyser is up. */
+  const answersInside = async (
+    serverId: string,
+  ): Promise<{ ok: boolean; pong: Awaited<ReturnType<typeof bedrockPing>> }> => {
+    const [signaling, pong] = await Promise.all([
+      signalingAnswers(containerName(serverId), PORT_BEDROCK),
+      bedrockPing(containerName(serverId), PORT_BEDROCK),
+    ]);
+    return { ok: signaling || pong !== null, pong };
+  };
+
+  /**
+   * NetherNet hands players the address to play on. Behind NetBird or a router Geyser cannot see it itself, so the
+   * panel passes the public one (the name looked up to an IPv4 address) when the server starts.
+   */
+  servers.onStartEnv(async (serverId): Promise<Record<string, string>> => {
+    const row = servers.row(serverId);
+    if (!row.geyser || row.edition !== 'java') return {};
+    const target = await outsideTarget(serverId);
+    if (!target) return {};
+    const ip = isIP(target.host) ? target.host : (await lookup(target.host, { family: IPV4 })).address;
+    // Geyser refuses private or special addresses ("no player can reach it") and would not start signaling.
+    if (isHomeNetworkAddress(ip) || ip.startsWith(LOOPBACK_PREFIX)) return {};
+    return { JVM_OPTS: `-DgeyserAdvertiseAddresses=${ip}:${target.port}` };
+  });
+
   const check: GeyserService['check'] = async (serverId) => {
     const row = servers.row(serverId);
     const running = servers.isRunning(serverId);
-    const pong = running && row.geyser ? await bedrockPing(containerName(serverId), PORT_BEDROCK) : null;
+    const inside = running && row.geyser ? await answersInside(serverId) : null;
+    const pong = inside?.pong ?? null;
     const target = row.geyser ? await outsideTarget(serverId) : null;
     const outsideOk = await (async (): Promise<boolean | null> => {
       if (!target || !running) return null;
       try {
+        // NetherNet first (what current Bedrock uses), then the old RakNet way through mcsrvstat.
+        if (await signalingAnswers(target.host, target.port)) return true;
         const data = bedrockStatusSchema.parse(
           await fetchJson(BEDROCK_STATUS + encodeURIComponent(`${target.host}:${target.port}`)),
         );
-        return data.online;
+        return data.online ? true : null;
       } catch {
         return null;
       }
     })();
     return {
       running,
-      inside: { ok: pong !== null, version: pong?.version ?? null, motd: pong?.motd ?? null },
+      inside: { ok: inside?.ok ?? false, version: pong?.version ?? null, motd: pong?.motd ?? null },
       outside: target ? { ...target, ok: outsideOk } : null,
     };
   };
@@ -243,12 +282,8 @@ export function createGeyserService(
     if (!row?.geyser) return;
     setTimeout(() => {
       if (!servers.isRunning(serverId)) return;
-      void bedrockPing(containerName(serverId), PORT_BEDROCK).then((pong) => {
-        if (pong)
-          servers.note(
-            serverId,
-            `✓ Geyser ist bereit – Bedrock-Spieler können rein (Bedrock ${pong.version}).`,
-          );
+      void answersInside(serverId).then(({ ok }) => {
+        if (ok) servers.note(serverId, '✓ Geyser ist bereit – Bedrock-Spieler können rein.');
         else
           servers.note(
             serverId,

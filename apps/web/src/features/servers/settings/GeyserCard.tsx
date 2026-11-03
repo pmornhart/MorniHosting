@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, HelpCircle, Radar, RotateCw, Smartphone, XCircle } from 'lucide-react';
+import { CheckCircle2, HelpCircle, Loader2, Radar, RotateCw, Smartphone, XCircle } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { ProjectLogo } from '@/components/project-logo';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Pill } from '@/components/ui/pill';
 import { Switch } from '@/components/ui/switch';
+import { useAddOnSetup } from './add-on-setup';
 import { api } from '@/lib/api';
 import { useServerAction } from '@/features/dashboard/ServerCard';
 
@@ -97,6 +98,7 @@ export function GeyserCard({ server }: { server: ServerDetail }): ReactElement {
   const queryClient = useQueryClient();
   const restart = useServerAction(server.id);
   const [restartNeeded, setRestartNeeded] = useState(false);
+  const settingUp = useAddOnSetup(server, 'geyser');
   const toggle = useMutation({
     mutationFn: (enabled: boolean) =>
       api<GeyserResult>(`/api/servers/${server.id}/geyser`, { method: 'PUT', body: { enabled } }),
@@ -121,14 +123,19 @@ export function GeyserCard({ server }: { server: ServerDetail }): ReactElement {
           {t('geyser.title')}
         </CardTitle>
         <Switch
-          checked={server.geyser}
-          disabled={toggle.isPending}
+          checked={server.geyser || settingUp || (toggle.isPending && toggle.variables)}
+          disabled={settingUp || toggle.isPending}
           aria-label={t('geyser.title')}
           onCheckedChange={(on) => toggle.mutate(on)}
         />
       </CardHeader>
       <CardDescription>{t('geyser.text')}</CardDescription>
-      {toggle.isPending ? (
+      {settingUp ? (
+        <p className="mt-3 flex items-center gap-2 text-sm font-medium text-primary">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          {t('addOnSetup.running')}
+        </p>
+      ) : toggle.isPending ? (
         <p className="mt-3 text-sm text-muted-foreground">{t('geyser.installing')}</p>
       ) : null}
       {server.geyser && server.geyserPort ? (

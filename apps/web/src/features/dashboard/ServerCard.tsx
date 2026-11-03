@@ -164,13 +164,16 @@ export function ServerCard({ server }: { server: ServerSummary }): ReactElement 
         <ServerIcon id={server.id} software={server.software} hasIcon={server.hasIcon} className="mh-hop" />
         <Link to={`/servers/${server.id}`} className="min-w-0 flex-1 after:absolute">
           <b className="block truncate text-[15px] font-bold hover:underline">{server.name}</b>
-          <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
-            {server.software === 'bedrock' ? 'Bedrock' : SOFTWARE[server.software].label}
+          {/* Wraps instead of overlapping when the name is long ("Counter-Strike 2" + "Immer aktuell"). */}
+          <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-muted-foreground">
+            <span className="whitespace-nowrap">
+              {server.software === 'bedrock' ? 'Bedrock' : SOFTWARE[server.software].label}
+            </span>
             <Tag>{versionLabel(server.software, server.version)}</Tag>
             {isGameId(server.edition) ? null : `· ${server.edition === 'java' ? 'Java' : 'Bedrock'}`}
           </span>
         </Link>
-        <StatePill state={live.state} />
+        <StatePill state={live.state} className="shrink-0 self-start" />
       </div>
       {updateCount ? (
         <Link

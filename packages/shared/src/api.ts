@@ -202,6 +202,10 @@ const CPU_LIMIT_STEP = 0.5;
 export const cpuLimitSchema = z.number().min(CPU_LIMIT_STEP).max(CPU_LIMIT_MAX).multipleOf(CPU_LIMIT_STEP);
 export const diskLimitSchema = z.number().int().min(DISK_LIMIT_MIN_MB).max(DISK_LIMIT_MAX_MB);
 
+/** Extras someone can tick when ordering a Minecraft server. */
+export const ADD_ON_KEYS = ['geyser', 'voice', 'backups'] as const;
+export type AddOnKey = (typeof ADD_ON_KEYS)[number];
+
 export const createServerSchema = z.object({
   name: z.string().trim().min(1).max(NAME_MAX),
   edition: z.enum(EDITIONS),
@@ -290,6 +294,8 @@ export interface ServerLive {
     readonly totalBytes: number;
     readonly bytesPerSecond: number | null;
   } | null;
+  /** Add-ons chosen at the order that the panel is still setting up, in this order. */
+  readonly setup?: readonly AddOnKey[] | null;
 }
 
 export interface CrashInfo {

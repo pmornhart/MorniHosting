@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Mic, RotateCw, Save } from 'lucide-react';
+import { ExternalLink, Loader2, Mic, RotateCw, Save } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
 import { Pill } from '@/components/ui/pill';
 import { Switch } from '@/components/ui/switch';
+import { useAddOnSetup } from './add-on-setup';
 import { api } from '@/lib/api';
 import { useServerAction } from '@/features/dashboard/ServerCard';
 
@@ -43,6 +44,7 @@ export function VoiceChatCard({ server }: { server: ServerDetail }): ReactElemen
   const portValue = publicPort.trim() ? Number(publicPort) : null;
   const portValid =
     portValue === null || (Number.isInteger(portValue) && portValue >= PORT_MIN && portValue <= PORT_MAX);
+  const settingUp = useAddOnSetup(server, 'voice');
   const save = useMutation({
     mutationFn: (enabled: boolean) =>
       api<VoiceChatResult>(`/api/servers/${server.id}/voicechat`, {
@@ -70,14 +72,19 @@ export function VoiceChatCard({ server }: { server: ServerDetail }): ReactElemen
           {t('voiceChat.title')}
         </CardTitle>
         <Switch
-          checked={server.voiceChat}
-          disabled={save.isPending || !portValid}
+          checked={server.voiceChat || settingUp || (save.isPending && save.variables)}
+          disabled={settingUp || save.isPending || !portValid}
           aria-label={t('voiceChat.title')}
           onCheckedChange={(on) => save.mutate(on)}
         />
       </CardHeader>
       <CardDescription>{t('voiceChat.text')}</CardDescription>
-      {save.isPending ? (
+      {settingUp ? (
+        <p className="mt-3 flex items-center gap-2 text-sm font-medium text-primary">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          {t('addOnSetup.running')}
+        </p>
+      ) : save.isPending ? (
         <p className="mt-3 text-sm text-muted-foreground">{t('voiceChat.installing')}</p>
       ) : null}
       {server.voiceChat && server.voicePort ? (

@@ -36,6 +36,9 @@ const MACHINE_HINT = 'mornihosting';
 const SUFFIX: Readonly<Record<NetbirdPurpose, string>> = {
   main: '',
   geyser: '-bedrock',
+  // Its own name so NetBird does not see two services for one domain; players only use the "-bedrock" one, both
+  // point at the same proxy address and the same port.
+  'geyser-signal': '-bedrock-tcp',
   voice: '-voice',
   panel: '',
 };
@@ -68,6 +71,8 @@ interface Wanted {
   readonly domain: string;
   readonly mode: 'http' | 'tcp' | 'udp';
   readonly port: number;
+  /** The outside port this service must get (the TCP half of Geyser uses the same one as the UDP half). */
+  readonly listenPort?: number | null;
 }
 
 type Mapping = typeof netbirdServices.$inferSelect;
@@ -196,7 +201,10 @@ export function createNetbirdAutomation(
     return [
       { purpose: 'main', domain: host('main'), mode: SOFTWARE[row.software].protocol, port: row.port },
       ...(geyserPort
-        ? [{ purpose: 'geyser', domain: host('geyser'), mode: 'udp', port: geyserPort } as const]
+        ? ([
+            { purpose: 'geyser', domain: host('geyser'), mode: 'udp', port: geyserPort },
+            { purpose: 'geyser-signal', domain: host('geyser-signal'), mode: 'tcp', port: geyserPort },
+          ] as const)
         : []),
       ...(voicePort
         ? [{ purpose: 'voice', domain: host('voice'), mode: 'udp', port: voicePort } as const]
@@ -250,7 +258,7 @@ export function createNetbirdAutomation(
       passHostHeader: want.mode === 'http',
     };
     // Fixed ports: the same port outside as on the server. Otherwise NetBird's port stays once assigned.
-    const fixedPort = cfg.customPorts && want.mode !== 'http' ? want.port : null;
+    const fixedPort = want.listenPort ?? (cfg.customPorts && want.mode !== 'http' ? want.port : null);
     const same =
       existing?.domain === want.domain &&
       existing.targetPort === want.port &&
@@ -317,19 +325,25 @@ export function createNetbirdAutomation(
         forget(m.id);
       }),
     );
-    const done = await Promise.all(
-      wants.map((w) =>
-        apply(
-          client,
-          cfg,
-          serverId,
-          w,
-          existing.find((m) => m.purpose === w.purpose),
-          force || (ensured?.changed ?? false),
-          resource,
-        ),
-      ),
+    const applyOne = (w: Wanted): Promise<Mapping> =>
+      apply(
+        client,
+        cfg,
+        serverId,
+        w,
+        existing.find((m) => m.purpose === w.purpose),
+        force || (ensured?.changed ?? false),
+        resource,
+      );
+    const first = await Promise.all(wants.filter((w) => w.purpose !== 'geyser-signal').map(applyOne));
+    // The TCP half of Geyser follows the UDP half, so both answer on the same outside port.
+    const udpListen = first.find((m) => m.purpose === 'geyser')?.listenPort ?? null;
+    const second = await Promise.all(
+      wants
+        .filter((w) => w.purpose === 'geyser-signal')
+        .map((w) => applyOne({ ...w, listenPort: udpListen ?? w.listenPort ?? null })),
     );
+    const done = [...first, ...second];
     if (!wants.length) await dropResource(client, cfg, serverId);
     if (row) servers.setTunnelAddress(serverId, addressOf(done));
     failures.delete(serverId);

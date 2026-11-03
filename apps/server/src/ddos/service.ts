@@ -13,6 +13,7 @@ import type { AppContext } from '../context.js';
 import { servers as serverTable } from '../db/schema.js';
 import { writePropertiesFile } from '../servers/properties-file.js';
 import type { ServerService } from '../servers/service.js';
+import { withSignalingPorts } from '../servers/spec.js';
 import { MS_PER_MINUTE, nowIso } from '../lib/units.js';
 
 /**
@@ -110,7 +111,7 @@ export function createDdosService(ctx: AppContext, servers: ServerService): Ddos
       .all()
       .flatMap((row) => [
         `${SOFTWARE[row.software].protocol} ${row.port}`,
-        ...row.extraPorts.map((p) => `${p.protocol} ${p.port}`),
+        ...withSignalingPorts(row.extraPorts).map((p) => `${p.protocol} ${p.port}`),
       ]);
     return [...new Set(lines)].sort().join('\n') + '\n';
   };

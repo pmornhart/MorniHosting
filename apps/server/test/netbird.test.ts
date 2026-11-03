@@ -447,10 +447,16 @@ describe('NetBird automation', () => {
     const server = await create({ netbirdName: 'survival' });
     await call('PUT', `/api/servers/${server.id}/geyser`, { enabled: true });
     await call('PUT', `/api/servers/${server.id}/voicechat`, { enabled: true });
-    await waitFor(async () => (await detail(server.id)).netbird?.services.length === 3);
+    await waitFor(async () => (await detail(server.id)).netbird?.services.length === 4);
     expect(netbird.byDomain(`survival-bedrock.${BASE}`)).toMatchObject({
       mode: 'udp',
       targets: [expect.objectContaining({ port: 19132 })],
+    });
+    // Bedrock 26.60+ (NetherNet) finds the server over TCP on the same outside port.
+    expect(netbird.byDomain(`survival-bedrock-tcp.${BASE}`)).toMatchObject({
+      mode: 'tcp',
+      targets: [expect.objectContaining({ port: 19132 })],
+      listen_port: netbird.byDomain(`survival-bedrock.${BASE}`)?.listen_port,
     });
     expect(netbird.byDomain(`survival-voice.${BASE}`)).toMatchObject({
       mode: 'udp',
@@ -470,6 +476,7 @@ describe('NetBird automation', () => {
     await waitFor(() => !netbird.byDomain(`survival-voice.${BASE}`));
     expect((await detail(server.id)).netbird?.services.map((x) => x.purpose).sort()).toEqual([
       'geyser',
+      'geyser-signal',
       'main',
     ]);
   });

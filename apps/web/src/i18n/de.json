@@ -1700,16 +1700,16 @@
     "enabled": "Bedrock-Spieler können jetzt über Port {{port}} beitreten",
     "disabled": "Bedrock-Zugang ist aus",
     "portInfo": "Bedrock-Spieler verbinden sich mit derselben Adresse und Port {{port}}.",
-    "routerHint": "Für Freunde außerhalb deines WLANs musst du diesen Port im Router für UDP freigeben.",
+    "routerHint": "Für Freunde außerhalb deines WLANs musst du diesen Port im Router für TCP und UDP freigeben (seit Bedrock 26.60 braucht es beides).",
     "check": "Bedrock-Verbindung prüfen",
     "checking": "Prüfe …",
     "checkNeedsRunning": "Starte den Server, dann kannst du die Verbindung prüfen.",
     "insideOk": "Geyser läuft im Server (Bedrock {{version}})",
     "insideFail": "Geyser antwortet im Server nicht",
-    "insideTip": "Warte nach dem Start ca. 30 Sekunden. Hilft das nicht: Server neu starten. Steht in der Konsole ein Fehler von Geyser, ist meist eine neuere Geyser-Version nötig (Plugins → Updates).",
+    "insideTip": "Warte nach dem Start ca. 30 Sekunden. Hilft das nicht: Server neu starten. Seit Bedrock 26.60 braucht es Geyser 2.12.1 oder neuer – unter Plugins → Updates aktualisieren. Steht in der Konsole ein Fehler von Geyser, schick ihn uns.",
     "outside": "Von außen erreichbar unter {{host}} · Port {{port}}",
     "outsideUnknown": "Von außen ließ sich das gerade nicht prüfen. Probier es in ein paar Minuten noch mal.",
-    "outsideTip": "Im Server klappt es, von außen nicht: Den UDP-Port {{port}} im Router bzw. in NetBird (UDP-Dienst) freigeben. Es muss UDP sein, nicht TCP.",
+    "outsideTip": "Im Server klappt es, von außen nicht: Port {{port}} im Router für TCP und UDP freigeben (bzw. in NetBird – das Panel legt beide Dienste selbst an). Seit Bedrock 26.60 sucht das Spiel den Server über TCP und spielt über UDP.",
     "howToJoin": "So treten Bedrock-Spieler bei: Spielen › Server › Server hinzufügen › Adresse „{{host}}“, Port „{{port}}“ (Adresse ohne :Port eintragen).",
     "outsideAfterInside": "Zuerst muss Geyser im Server antworten (siehe oben) – dann klappt meist auch der Weg von außen."
   },
@@ -2166,7 +2166,7 @@
     "registration": "Registrierung auf der Startseite erlauben",
     "registrationHint": "Neue Leute legen sich selbst ein Konto an und müssen ihre E-Mail-Adresse per Link bestätigen. Sie bekommen nur Standardrechte.",
     "registrationOrders": "Neue Konten dürfen Server bestellen",
-    "registrationOrdersHint": "Ohne diesen Schalter musst du neue Konten erst freigeben (Benutzer → „Darf Server erstellen“).",
+    "registrationOrdersHint": "Gilt nur, wenn neue Konten ohne Freigabe sofort loslegen. Wen du unter Freigaben annimmst, darf immer Server bestellen.",
     "crashMails": "Mail an Admins bei Server-Absturz",
     "crashMailsHint": "Maximal eine Mail pro Server und Viertelstunde, zusätzlich zu den Webhooks.",
     "saved": "E-Mail-Einstellungen gespeichert.",
@@ -2963,5 +2963,8 @@
     "etaSoon": "gleich fertig",
     "etaMinutes": "noch ca. {{minutes}} Min.",
     "etaHours": "noch ca. {{hours}} Std."
+  },
+  "addOnSetup": {
+    "running": "Wird gerade automatisch eingerichtet – du hast es bei der Bestellung gewählt. Dauert meist unter einer Minute, danach startet der Server."
   }
 }
