@@ -28,6 +28,8 @@ import { Checkbox, Skeleton } from '@/components/ui/misc';
 import { Pill, Tag } from '@/components/ui/pill';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { AccessSheetDone } from './access-sheet/AccessSheetDone';
+import type { AccessSheetPerson } from './access-sheet/AccessSheetButton';
 import { api } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
 import { Monogram } from '@/components/art';
@@ -75,8 +77,10 @@ function UserDialog({
     canCreateServers: false,
   };
   const [draft, setDraft] = useState<UserDraft>(empty);
+  const [done, setDone] = useState<{ person: AccessSheetPerson; password: string } | null>(null);
   useEffect(() => {
     if (!open) return;
+    setDone(null);
     setDraft(
       user
         ? {
@@ -117,7 +121,9 @@ function UserDialog({
           }),
     onSuccess: async (saved) => {
       toast.success(t('users.saved', { name: saved.displayName || saved.username }));
-      onOpenChange(false);
+      // While the password is still known, offer the access sheet; otherwise there is nothing left to show.
+      if (draft.password) setDone({ person: saved, password: draft.password });
+      else onOpenChange(false);
       await queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
@@ -130,6 +136,18 @@ function UserDialog({
     e.preventDefault();
     if (valid) save.mutate();
   };
+  if (done)
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <AccessSheetDone
+            person={done.person}
+            password={done.password}
+            onClose={() => onOpenChange(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>

@@ -2729,5 +2729,60 @@
       "moderator": "Moderator",
       "viewer": "Zuschauer"
     }
+  },
+  "accessSheet": {
+    "download": "Zugangsblatt als PDF",
+    "failed": "Das PDF ließ sich nicht erstellen. Bitte versuche es noch einmal.",
+    "doneTitle": "Zugang für {{name}} ist fertig",
+    "doneText": "Das Passwort siehst du nur jetzt. Schick es weiter – am schönsten mit dem Zugangsblatt.",
+    "sheetTitle": "Zugangsblatt mit Kurzanleitung",
+    "sheetText": "Ein schönes PDF mit Adresse, Benutzername, Passwort, QR-Code und den ersten Schritten. Einfach herunterladen und verschicken.",
+    "language": "Sprache des PDFs",
+    "close": "Fertig",
+    "brandTag": "Dein Zugang",
+    "welcome": "Willkommen, {{name}}!",
+    "intro": "Hier ist alles, was du für den Start brauchst. In zwei Minuten bist du drin.",
+    "dataTitle": "Deine Zugangsdaten",
+    "address": "Adresse",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "email": "E-Mail",
+    "qrHint": "Mit dem Handy scannen",
+    "stepsTitle": "In vier Schritten loslegen",
+    "steps": {
+      "open": {
+        "title": "Panel öffnen",
+        "text": "Öffne {{address}} im Browser – am PC oder am Handy. Oder scanne einfach den QR-Code."
+      },
+      "login": {
+        "title": "Anmelden",
+        "text": "Gib deinen Benutzernamen (oder deine E-Mail) und das Passwort von oben ein."
+      },
+      "secure": {
+        "title": "Eigenes Passwort setzen",
+        "text": "Unter „Mein Konto“ änderst du das Passwort. Noch sicherer und bequemer: einen Passkey oder die Zwei-Faktor-Anmeldung einschalten."
+      },
+      "servers": {
+        "admin": {
+          "title": "Alles einrichten",
+          "text": "Du bist Admin: Im Admin-Bereich stellst du Domain, E-Mail, Updates und mehr ein. Unter „Server erstellen“ legst du Server an."
+        },
+        "create": {
+          "title": "Server bestellen",
+          "text": "Unter „Server erstellen“ suchst du Spiel und Paket aus. Nach einem Klick läuft dein Server – Adresse und Konsole findest du auf seiner Seite."
+        },
+        "team": {
+          "title": "Deine Server",
+          "text": "Sobald dich jemand bei einem Server als Mitarbeiter einträgt, erscheint er in deiner Übersicht. Einen eigenen Server kannst du unter „Server erstellen“ anfragen."
+        }
+      }
+    },
+    "javaTitle": "Minecraft Java (PC)",
+    "javaText": "Minecraft starten › Mehrspieler › Server hinzufügen. Als Adresse die aus dem Panel nehmen (Feld „Verbinden“ auf der Server-Seite).",
+    "bedrockTitle": "Minecraft Bedrock (Handy, Konsole, Windows)",
+    "bedrockText": "Spielen › Server › Server hinzufügen. Adresse aus dem Panel eintragen und als Port den Bedrock-Port (meist 19132).",
+    "warning": "Bitte gib dieses Blatt nicht weiter und ändere das Passwort nach der ersten Anmeldung.",
+    "footer": "Erstellt am {{date}} · {{address}}",
+    "fileName": "MorniHosting-Zugang"
   }
 }

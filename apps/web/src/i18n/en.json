@@ -2729,5 +2729,60 @@
       "moderator": "Moderator",
       "viewer": "Viewer"
     }
+  },
+  "accessSheet": {
+    "download": "Access sheet as PDF",
+    "failed": "The PDF could not be created. Please try again.",
+    "doneTitle": "Access for {{name}} is ready",
+    "doneText": "You only see the password now. Pass it on – nicest with the access sheet.",
+    "sheetTitle": "Access sheet with quick start",
+    "sheetText": "A nice PDF with address, username, password, QR code and the first steps. Just download and send it.",
+    "language": "Language of the PDF",
+    "close": "Done",
+    "brandTag": "Your access",
+    "welcome": "Welcome, {{name}}!",
+    "intro": "Here is everything you need to get started. You will be in within two minutes.",
+    "dataTitle": "Your login",
+    "address": "Address",
+    "username": "Username",
+    "password": "Password",
+    "email": "E-mail",
+    "qrHint": "Scan with your phone",
+    "stepsTitle": "Get going in four steps",
+    "steps": {
+      "open": {
+        "title": "Open the panel",
+        "text": "Open {{address}} in your browser – on a computer or phone. Or simply scan the QR code."
+      },
+      "login": {
+        "title": "Sign in",
+        "text": "Enter your username (or e-mail) and the password from above."
+      },
+      "secure": {
+        "title": "Set your own password",
+        "text": "Change the password under “My account”. Safer and easier still: turn on a passkey or two-factor sign-in."
+      },
+      "servers": {
+        "admin": {
+          "title": "Set everything up",
+          "text": "You are an admin: the admin area holds domain, e-mail, updates and more. Create servers under “Create server”."
+        },
+        "create": {
+          "title": "Order a server",
+          "text": "Under “Create server” pick a game and a plan. One click later your server runs – address and console are on its page."
+        },
+        "team": {
+          "title": "Your servers",
+          "text": "As soon as someone adds you to a server's team, it shows up in your overview. You can request your own server under “Create server”."
+        }
+      }
+    },
+    "javaTitle": "Minecraft Java (PC)",
+    "javaText": "Start Minecraft › Multiplayer › Add server. Use the address from the panel (“Connect” on the server page).",
+    "bedrockTitle": "Minecraft Bedrock (phone, console, Windows)",
+    "bedrockText": "Play › Servers › Add server. Enter the address from the panel and the Bedrock port as port (usually 19132).",
+    "warning": "Please keep this sheet to yourself and change the password after your first sign-in.",
+    "footer": "Created {{date}} · {{address}}",
+    "fileName": "MorniHosting-access"
   }
 }
