@@ -58,5 +58,6 @@ export function toUserInfo(row: UserRow): UserInfo {
       row.minecraftName && row.minecraftUuid ? { name: row.minecraftName, uuid: row.minecraftUuid } : null,
     email: row.email,
     approvalPending: row.approvalPending,
+    mustChangePassword: row.mustChangePassword,
   };
 }

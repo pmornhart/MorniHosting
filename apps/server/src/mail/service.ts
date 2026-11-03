@@ -581,7 +581,7 @@ export function createMailService(
     const user = row ? db.select().from(users).where(eq(users.id, row.userId)).get() : undefined;
     if (!row || !user || user.disabled) throw badRequest('link_invalid');
     db.update(users)
-      .set({ passwordHash: await hashPassword(password) })
+      .set({ passwordHash: await hashPassword(password), mustChangePassword: false })
       .where(eq(users.id, user.id))
       .run();
     db.delete(mailTokens).where(eq(mailTokens.userId, user.id)).run();

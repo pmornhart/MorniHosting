@@ -146,6 +146,7 @@ const state = {
     ...u,
     email: u.email ?? null,
     approvalPending: false,
+    mustChangePassword: false,
   })),
   approvals: {
     users: [
@@ -1348,6 +1349,7 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
         lastLoginAt: null,
         disabled: false,
         approvalPending: false,
+        mustChangePassword: false,
         access: [],
       };
       state.users = [...state.users, user];

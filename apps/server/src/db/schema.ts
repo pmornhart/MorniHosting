@@ -61,6 +61,8 @@ export const users = sqliteTable(
     signupPending: integer('signup_pending', { mode: 'boolean' }).notNull().default(false),
     /** Registered and confirmed, but an admin still has to let them in: cannot log in. */
     approvalPending: integer('approval_pending', { mode: 'boolean' }).notNull().default(false),
+    /** Set when an admin chose the password (new account, reset); the person must pick their own after signing in. */
+    mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(false),
     /** Linked Discord account: the bot writes to this person by private message. */
     discordId: text('discord_id'),
     discordName: text('discord_name'),

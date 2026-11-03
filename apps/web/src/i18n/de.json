@@ -66,7 +66,7 @@
     "overview": "Übersicht",
     "createServer": "Server erstellen",
     "administration": "Verwaltung",
-    "users": "Benutzer und Rollen",
+    "users": "Benutzer",
     "notifications": "Benachrichtigungen",
     "settings": "Admin-Bereich",
     "audit": "Protokoll",
@@ -1329,7 +1329,7 @@
     "usernameHint": "Zum Anmelden. 3 bis 32 Zeichen: Buchstaben, Zahlen, Punkt, Minus, Unterstrich.",
     "displayName": "Anzeigename",
     "password": "Passwort",
-    "passwordHint": "Mindestens 10 Zeichen.",
+    "passwordHint": "Mindestens 10 Zeichen – oder einfach „Erzeugen“ drücken.",
     "newPassword": "Neues Passwort",
     "newPasswordHint": "Leer lassen, um das Passwort zu behalten. Ein neues Passwort meldet die Person überall ab.",
     "isAdmin": "Administrator",
@@ -1355,7 +1355,8 @@
     "deleteTitle": "{{name}} löschen?",
     "deleteText": "Das Konto und seine API-Schlüssel werden gelöscht. Server bleiben erhalten.",
     "email": "E-Mail-Adresse (optional)",
-    "emailHint": "Für Willkommens-Mail, „Passwort vergessen“ und Bestätigungen. Jede Adresse nur einmal."
+    "emailHint": "Für Willkommens-Mail, „Passwort vergessen“ und Bestätigungen. Jede Adresse nur einmal.",
+    "generatePassword": "Erzeugen"
   },
   "roles": {
     "new": "Rolle anlegen",
@@ -2729,5 +2730,72 @@
       "moderator": "Moderator",
       "viewer": "Zuschauer"
     }
+  },
+  "accessSheet": {
+    "download": "Zugangsblatt als PDF",
+    "failed": "Das PDF ließ sich nicht erstellen. Bitte versuche es noch einmal.",
+    "doneTitle": "Zugang für {{name}} ist fertig",
+    "doneText": "Das Passwort siehst du nur jetzt. Schick es weiter – am schönsten mit dem Zugangsblatt.",
+    "sheetTitle": "Zugangsblatt mit Kurzanleitung",
+    "sheetText": "Ein schönes PDF mit Adresse, Benutzername, Passwort, QR-Code und den ersten Schritten. Einfach herunterladen und verschicken.",
+    "language": "Sprache des PDFs",
+    "close": "Fertig",
+    "brandTag": "Dein Zugang",
+    "welcome": "Willkommen, {{name}}!",
+    "intro": "Hier ist alles, was du für den Start brauchst. In zwei Minuten bist du drin.",
+    "dataTitle": "Deine Zugangsdaten",
+    "address": "Adresse",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "email": "E-Mail",
+    "qrHint": "Mit dem Handy scannen",
+    "stepsTitle": "In vier Schritten loslegen",
+    "steps": {
+      "open": {
+        "title": "Panel öffnen",
+        "text": "Öffne {{address}} im Browser – am PC oder am Handy. Oder scanne einfach den QR-Code."
+      },
+      "login": {
+        "title": "Anmelden",
+        "text": "Gib deinen Benutzernamen (oder deine E-Mail) und das Passwort von oben ein."
+      },
+      "secure": {
+        "title": "Eigenes Passwort wählen",
+        "text": "Beim ersten Anmelden fragt dich das Panel nach einem eigenen Passwort. Noch sicherer und bequemer: danach unter „Mein Konto“ einen Passkey oder die Zwei-Faktor-Anmeldung einschalten."
+      },
+      "servers": {
+        "admin": {
+          "title": "Alles einrichten",
+          "text": "Du bist Admin: Im Admin-Bereich stellst du Domain, E-Mail, Updates und mehr ein. Unter „Server erstellen“ legst du Server an."
+        },
+        "create": {
+          "title": "Server bestellen",
+          "text": "Unter „Server erstellen“ suchst du Spiel und Paket aus. Nach einem Klick läuft dein Server – Adresse und Konsole findest du auf seiner Seite."
+        },
+        "team": {
+          "title": "Deine Server",
+          "text": "Sobald dich jemand bei einem Server als Mitarbeiter einträgt, erscheint er in deiner Übersicht. Einen eigenen Server kannst du unter „Server erstellen“ anfragen."
+        }
+      }
+    },
+    "javaTitle": "Minecraft Java",
+    "javaText": "Am PC: Minecraft starten › Mehrspieler › Server hinzufügen. Als Adresse die aus dem Panel nehmen (Feld „Verbinden“).",
+    "bedrockTitle": "Minecraft Bedrock",
+    "bedrockText": "Handy, Konsole, Windows: Spielen › Server › Server hinzufügen. Adresse aus dem Panel, Port = Bedrock-Port (meist 19132).",
+    "warning": "Bitte gib dieses Blatt nicht weiter. Das Startpasswort gilt nur bis zu deiner ersten Anmeldung.",
+    "footer": "Erstellt am {{date}} · {{address}}",
+    "fileName": "MorniHosting-Zugang"
+  },
+  "forcePassword": {
+    "title": "Willkommen, {{name}}! Wähle dein eigenes Passwort",
+    "text": "Dein Passwort hat ein Admin für dich erstellt. Damit nur du es kennst, legst du jetzt ein eigenes fest – danach geht es direkt los.",
+    "current": "Startpasswort",
+    "currentHint": "Das Passwort, mit dem du dich gerade angemeldet hast.",
+    "next": "Neues Passwort",
+    "nextHint": "Mindestens 10 Zeichen. Ein Satz aus mehreren Wörtern ist sicher und leicht zu merken.",
+    "same": "Bitte nimm ein anderes als das Startpasswort.",
+    "save": "Passwort speichern",
+    "logout": "Abmelden",
+    "done": "Geschafft! Ab jetzt meldest du dich mit deinem eigenen Passwort an."
   }
 }

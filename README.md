@@ -29,8 +29,8 @@
 </p>
 
 MorniHosting ist ein Web-Panel für deine eigenen Game-Server – auf Proxmox, einem Mini-PC, einem Raspberry
-Pi oder einem gemieteten Server. Es kann so viel wie [Crafty Controller 4](https://craftycontrol.com/) und ist
-so aufgeräumt wie die Panels von GGServers oder Nodecraft. Leitsatz: **Jede häufige Aufgabe in höchstens 3
+Pi oder einem gemieteten Server. Es kann alles, was du für deine Server brauchst, und ist so aufgeräumt
+wie die Panels von GGServers oder Nodecraft. Leitsatz: **Jede häufige Aufgabe in höchstens 3
 Klicks – ohne Anleitung.**
 
 <table>
@@ -562,11 +562,11 @@ Du bekommst ein neues Passwort angezeigt. Handy mit der 2FA-App verloren? Dann `
 </details>
 
 <details>
-<summary><b>Warum nicht einfach Crafty, Pterodactyl oder AMP?</b></summary>
+<summary><b>Warum nicht einfach Pterodactyl oder AMP?</b></summary>
 
 Die können viel, sind aber eher für Admins gemacht. MorniHosting richtet sich an alle, die einfach mit
 Freunden spielen wollen: klare Sprache statt Fachbegriffen, Erklärungen direkt an jeder Einstellung und
-trotzdem alles, was Crafty Controller kann.
+trotzdem alles, was man für eigene Server braucht.
 
 </details>
 

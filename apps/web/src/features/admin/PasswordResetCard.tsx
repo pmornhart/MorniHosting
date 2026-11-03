@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } f
 import { Pill } from '@/components/ui/pill';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
+import { AccessSheetButton } from './access-sheet/AccessSheetButton';
 import { useSession } from '@/features/auth/session';
 
 function ResetDialog({ user, onClose }: { user: UserListEntry; onClose: () => void }): ReactElement {
@@ -38,6 +39,15 @@ function ResetDialog({ user, onClose }: { user: UserListEntry; onClose: () => vo
           <div className="flex items-center gap-2 rounded-[12px] bg-secondary px-4 py-3">
             <code className="min-w-0 flex-1 break-all font-mono text-lg font-semibold">{password}</code>
             <CopyButton text={password} />
+          </div>
+        ) : null}
+        {password ? (
+          <div className="grid gap-2 rounded-[12px] border border-border p-4">
+            <b className="text-sm font-semibold">{t('accessSheet.sheetTitle')}</b>
+            <span className="text-[13px] text-muted-foreground">{t('accessSheet.sheetText')}</span>
+            <div className="pt-1">
+              <AccessSheetButton person={user} password={password} lang={user.locale} />
+            </div>
           </div>
         ) : (
           <label className="flex items-start gap-3 rounded-[12px] border border-border p-3">

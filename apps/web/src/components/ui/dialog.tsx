@@ -10,8 +10,9 @@ export function DialogContent({
   className,
   children,
   wide = false,
+  closable = true,
   ...props
-}: ComponentProps<typeof DialogPrimitive.Content> & { wide?: boolean }): ReactElement {
+}: ComponentProps<typeof DialogPrimitive.Content> & { wide?: boolean; closable?: boolean }): ReactElement {
   const { t } = useTranslation();
   return (
     <DialogPrimitive.Portal>
@@ -25,12 +26,14 @@ export function DialogContent({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close
-          className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-          aria-label={t('common.close')}
-        >
-          <X className="size-4" />
-        </DialogPrimitive.Close>
+        {closable ? (
+          <DialogPrimitive.Close
+            className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label={t('common.close')}
+          >
+            <X className="size-4" />
+          </DialogPrimitive.Close>
+        ) : null}
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   );

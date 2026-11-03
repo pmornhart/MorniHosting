@@ -1,3 +1,4 @@
+import { ForcePasswordDialog } from '@/features/auth/ForcePasswordDialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Inbox,
@@ -367,6 +368,7 @@ export function AppShell(): ReactElement {
           <Outlet />
         </div>
       </main>
+      <ForcePasswordDialog />
     </div>
   );
 }

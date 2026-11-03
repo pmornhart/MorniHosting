@@ -1,15 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { KeyRound, MoreHorizontal, Pencil, Plus, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react';
+import { Dices, KeyRound, MoreHorizontal, Pencil, ShieldCheck, Trash2, UserPlus } from 'lucide-react';
 import { useEffect, useState, type FormEvent, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router';
 import { toast } from 'sonner';
-import {
-  SERVER_PERMISSIONS,
-  type RoleEntry,
-  type ServerPermission,
-  type UserListEntry,
-} from '@mornihosting/shared';
+import type { RoleEntry, UserListEntry } from '@mornihosting/shared';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState, PageHeader } from '@/components/page';
 import { ServerIcon } from '@/components/server-visuals';
@@ -23,12 +17,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Field, Label } from '@/components/ui/label';
-import { Checkbox, Skeleton } from '@/components/ui/misc';
+import { Field } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/misc';
 import { Pill, Tag } from '@/components/ui/pill';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { AccessSheetDone } from './access-sheet/AccessSheetDone';
+import type { AccessSheetPerson } from './access-sheet/AccessSheetButton';
 import { api } from '@/lib/api';
+import { startPassword } from '@/lib/start-password';
 import { formatRelative } from '@/lib/format';
 import { Monogram } from '@/components/art';
 import { cn } from '@/lib/utils';
@@ -37,8 +34,6 @@ import { serversQuery } from '@/features/servers/live';
 
 const NO_ACCESS = 'none';
 const PASSWORD_MIN = 10;
-
-type Tab = 'users' | 'roles';
 
 function roleLabel(role: RoleEntry, t: (key: string) => string): string {
   return role.builtIn ? t(`roles.builtin.${role.name}`) : role.name;
@@ -75,8 +70,12 @@ function UserDialog({
     canCreateServers: false,
   };
   const [draft, setDraft] = useState<UserDraft>(empty);
+  const [shown, setShown] = useState(false);
+  const [done, setDone] = useState<{ person: AccessSheetPerson; password: string } | null>(null);
   useEffect(() => {
     if (!open) return;
+    setDone(null);
+    setShown(false);
     setDraft(
       user
         ? {
@@ -117,7 +116,9 @@ function UserDialog({
           }),
     onSuccess: async (saved) => {
       toast.success(t('users.saved', { name: saved.displayName || saved.username }));
-      onOpenChange(false);
+      // While the password is still known, offer the access sheet; otherwise there is nothing left to show.
+      if (draft.password) setDone({ person: saved, password: draft.password });
+      else onOpenChange(false);
       await queryClient.invalidateQueries({ queryKey: ['users'] });
     },
   });
@@ -130,6 +131,18 @@ function UserDialog({
     e.preventDefault();
     if (valid) save.mutate();
   };
+  if (done)
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <AccessSheetDone
+            person={done.person}
+            password={done.password}
+            onClose={() => onOpenChange(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    );
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -170,13 +183,27 @@ function UserDialog({
             label={user ? t('users.newPassword') : t('users.password')}
             hint={user ? t('users.newPasswordHint') : t('users.passwordHint')}
           >
-            <Input
-              id="u-password"
-              type="password"
-              autoComplete="new-password"
-              value={draft.password}
-              onChange={(e) => set({ password: e.target.value })}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="u-password"
+                type={shown ? 'text' : 'password'}
+                autoComplete="new-password"
+                className={shown ? 'font-mono' : undefined}
+                value={draft.password}
+                onChange={(e) => set({ password: e.target.value })}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  set({ password: startPassword() });
+                  setShown(true);
+                }}
+              >
+                <Dices aria-hidden />
+                {t('users.generatePassword')}
+              </Button>
+            </div>
           </Field>
           <label className="flex items-start gap-3 rounded-[12px] border border-border p-3">
             <Switch
@@ -431,224 +458,21 @@ function UsersList({ roles }: { roles: readonly RoleEntry[] }): ReactElement {
   );
 }
 
-/* ---------- Roles ---------- */
-
-function RoleDialog({
-  open,
-  onOpenChange,
-  role,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  role: RoleEntry | null;
-}): ReactElement {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [permissions, setPermissions] = useState<readonly ServerPermission[]>([]);
-  useEffect(() => {
-    if (!open) return;
-    setName(role?.name ?? '');
-    setDescription(role?.description ?? '');
-    setPermissions(role?.permissions ?? ['console', 'logs']);
-  }, [open, role]);
-  const save = useMutation({
-    mutationFn: () =>
-      api<RoleEntry>(role ? `/api/roles/${role.id}` : '/api/roles', {
-        method: role ? 'PATCH' : 'POST',
-        body: { name: name.trim(), description: description.trim(), permissions },
-      }),
-    onSuccess: async () => {
-      toast.success(t('roles.saved', { name: name.trim() }));
-      onOpenChange(false);
-      await queryClient.invalidateQueries({ queryKey: ['roles'] });
-    },
-  });
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent wide>
-        <DialogTitle>{role ? t('roles.editTitle') : t('roles.newTitle')}</DialogTitle>
-        <DialogDescription>{t('roles.dialogText')}</DialogDescription>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="r-name" label={t('common.name')}>
-            <Input
-              id="r-name"
-              value={name}
-              maxLength={40}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t('roles.namePlaceholder')}
-            />
-          </Field>
-          <Field id="r-desc" label={t('roles.description')}>
-            <Input
-              id="r-desc"
-              value={description}
-              maxLength={200}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </Field>
-        </div>
-        <div className="grid gap-2">
-          <Label>{t('roles.permissions')}</Label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {SERVER_PERMISSIONS.map((p) => (
-              <label
-                key={p}
-                className="flex items-start gap-2.5 rounded-[10px] border border-border px-3 py-2"
-              >
-                <Checkbox
-                  className="mt-0.5"
-                  checked={permissions.includes(p)}
-                  onCheckedChange={(on) =>
-                    setPermissions(on === true ? [...permissions, p] : permissions.filter((x) => x !== p))
-                  }
-                />
-                <span>
-                  <b className="block text-sm font-semibold">{t(`permissions.${p}`)}</b>
-                  <span className="text-[12px] text-muted-foreground">{t(`roles.explain.${p}`)}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
-            {t('common.cancel')}
-          </Button>
-          <Button disabled={!name.trim() || save.isPending} onClick={() => save.mutate()}>
-            {role ? t('common.save') : t('common.create')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function RolesList({ roles }: { roles: readonly RoleEntry[] }): ReactElement {
-  const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<{ role: RoleEntry | null } | null>(null);
-  const [deleting, setDeleting] = useState<RoleEntry | null>(null);
-  const remove = useMutation({
-    mutationFn: (role: RoleEntry) => api(`/api/roles/${role.id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['roles'] }),
-  });
-  return (
-    <>
-      <div className="flex justify-end">
-        <Button onClick={() => setEditing({ role: null })}>
-          <Plus />
-          {t('roles.new')}
-        </Button>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        {roles.map((role) => (
-          <Card key={role.id} className="grid gap-3 p-4">
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <b className="flex items-center gap-2 text-sm font-semibold">
-                  {roleLabel(role, t)}
-                  {role.builtIn ? <Tag>{t('roles.builtInTag')}</Tag> : null}
-                </b>
-                <p className="mt-0.5 text-[13px] text-muted-foreground">
-                  {role.builtIn ? t(`roles.builtinText.${role.name}`) : role.description || '—'}
-                </p>
-              </div>
-              {role.builtIn ? null : (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t('files.actionsFor', { name: role.name })}
-                    >
-                      <MoreHorizontal />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setEditing({ role })}>
-                      <Pencil />
-                      {t('common.edit')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem destructive onSelect={() => setDeleting(role)}>
-                      <Trash2 />
-                      {t('common.delete')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {SERVER_PERMISSIONS.filter((p) => role.permissions.includes(p)).map((p) => (
-                <Tag key={p}>{t(`permissions.${p}`)}</Tag>
-              ))}
-              {role.permissions.length ? null : (
-                <span className="text-[13px] text-muted-foreground">{t('roles.noPermissions')}</span>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-      <RoleDialog
-        open={editing !== null}
-        onOpenChange={(o) => !o && setEditing(null)}
-        role={editing?.role ?? null}
-      />
-      <ConfirmDialog
-        open={deleting !== null}
-        onOpenChange={(o) => !o && setDeleting(null)}
-        title={t('roles.deleteTitle', { name: deleting?.name ?? '' })}
-        description={t('roles.deleteText')}
-        confirmLabel={t('common.delete')}
-        onConfirm={async () => {
-          if (deleting) await remove.mutateAsync(deleting);
-        }}
-      />
-    </>
-  );
-}
-
 /** People and their rights: who may do what on which server. */
 export function UsersPage(): ReactElement {
   const { t } = useTranslation();
   const { me } = useSession();
-  const [params, setParams] = useSearchParams();
-  const tab: Tab = params.get('tab') === 'roles' ? 'roles' : 'users';
   const { data: roles } = useQuery({
     queryKey: ['roles'],
     queryFn: () => api<RoleEntry[]>('/api/roles'),
     enabled: me.user.isAdmin,
   });
   if (!me.user.isAdmin) return <EmptyState title={t('errors.admin_only')} />;
-  const tabs: readonly { id: Tab; icon: typeof Users }[] = [
-    { id: 'users', icon: Users },
-    { id: 'roles', icon: KeyRound },
-  ];
   return (
     <>
       <PageHeader title={t('nav.users')} subtitle={t('users.subtitle')} />
-      <div className="inline-flex w-fit rounded-[12px] border border-border bg-secondary p-1" role="tablist">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.id}
-            onClick={() => setParams(item.id === 'roles' ? { tab: 'roles' } : {})}
-            className={cn(
-              'inline-flex items-center gap-2 rounded-[9px] px-3.5 py-1.5 text-sm font-semibold text-muted-foreground [&_svg]:size-4',
-              tab === item.id && 'bg-card text-foreground shadow-card',
-            )}
-          >
-            <item.icon aria-hidden />
-            {t(`users.tabs.${item.id}`)}
-          </button>
-        ))}
-      </div>
       {!roles ? <Skeleton className="h-64 rounded-[16px]" /> : null}
-      {roles && tab === 'users' ? <UsersList roles={roles} /> : null}
-      {roles && tab === 'roles' ? <RolesList roles={roles} /> : null}
+      {roles ? <UsersList roles={roles} /> : null}
     </>
   );
 }

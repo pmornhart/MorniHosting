@@ -131,6 +131,8 @@ export interface UserInfo {
   readonly email: string | null;
   /** Signed up and waits for an admin (approvals page). */
   readonly approvalPending: boolean;
+  /** The password came from an admin (new account or reset): right after signing in, a new one must be set. */
+  readonly mustChangePassword: boolean;
 }
 
 export interface MinecraftAccount {

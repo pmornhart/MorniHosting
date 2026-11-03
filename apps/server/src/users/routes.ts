@@ -102,6 +102,7 @@ export function registerUserRoutes(app: Api, ctx: AppContext, mail: MailService)
         username: input.username,
         displayName: input.displayName ?? '',
         passwordHash: await hashPassword(input.password),
+        mustChangePassword: true,
         isAdmin: input.isAdmin,
         canCreateServers: input.isAdmin || input.canCreateServers,
         locale: input.locale,
@@ -134,7 +135,7 @@ export function registerUserRoutes(app: Api, ctx: AppContext, mail: MailService)
           ...(input.canCreateServers !== undefined ? { canCreateServers: input.canCreateServers } : {}),
           ...(input.disabled !== undefined ? { disabled: input.disabled } : {}),
           ...(input.email !== undefined ? { email: input.email } : {}),
-          ...(passwordHash ? { passwordHash } : {}),
+          ...(passwordHash ? { passwordHash, mustChangePassword: target.id !== auth.user.id } : {}),
         })
         .where(eq(users.id, target.id))
         .run();
@@ -164,6 +165,7 @@ export function registerUserRoutes(app: Api, ctx: AppContext, mail: MailService)
       db.update(users)
         .set({
           passwordHash: await hashPassword(password),
+          mustChangePassword: true,
           ...(removeSecondFactors ? { totpEnabled: false, totpSecret: null } : {}),
         })
         .where(eq(users.id, target.id))

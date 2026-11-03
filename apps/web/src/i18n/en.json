@@ -66,7 +66,7 @@
     "overview": "Overview",
     "createServer": "Create server",
     "administration": "Administration",
-    "users": "Users and roles",
+    "users": "Users",
     "notifications": "Notifications",
     "settings": "Admin area",
     "audit": "Activity log",
@@ -1329,7 +1329,7 @@
     "usernameHint": "For signing in. 3 to 32 characters: letters, digits, dot, dash, underscore.",
     "displayName": "Display name",
     "password": "Password",
-    "passwordHint": "At least 10 characters.",
+    "passwordHint": "At least 10 characters – or just press “Generate”.",
     "newPassword": "New password",
     "newPasswordHint": "Leave empty to keep the password. A new password signs the person out everywhere.",
     "isAdmin": "Administrator",
@@ -1355,7 +1355,8 @@
     "deleteTitle": "Delete {{name}}?",
     "deleteText": "The account and its API keys are deleted. Servers stay.",
     "email": "E-mail address (optional)",
-    "emailHint": "For the welcome mail, “password forgotten” and confirmations. Each address only once."
+    "emailHint": "For the welcome mail, “password forgotten” and confirmations. Each address only once.",
+    "generatePassword": "Generate"
   },
   "roles": {
     "new": "Add role",
@@ -2729,5 +2730,72 @@
       "moderator": "Moderator",
       "viewer": "Viewer"
     }
+  },
+  "accessSheet": {
+    "download": "Access sheet as PDF",
+    "failed": "The PDF could not be created. Please try again.",
+    "doneTitle": "Access for {{name}} is ready",
+    "doneText": "You only see the password now. Pass it on – nicest with the access sheet.",
+    "sheetTitle": "Access sheet with quick start",
+    "sheetText": "A nice PDF with address, username, password, QR code and the first steps. Just download and send it.",
+    "language": "Language of the PDF",
+    "close": "Done",
+    "brandTag": "Your access",
+    "welcome": "Welcome, {{name}}!",
+    "intro": "Here is everything you need to get started. You will be in within two minutes.",
+    "dataTitle": "Your login",
+    "address": "Address",
+    "username": "Username",
+    "password": "Password",
+    "email": "E-mail",
+    "qrHint": "Scan with your phone",
+    "stepsTitle": "Get going in four steps",
+    "steps": {
+      "open": {
+        "title": "Open the panel",
+        "text": "Open {{address}} in your browser – on a computer or phone. Or simply scan the QR code."
+      },
+      "login": {
+        "title": "Sign in",
+        "text": "Enter your username (or e-mail) and the password from above."
+      },
+      "secure": {
+        "title": "Choose your own password",
+        "text": "On your first sign-in the panel asks you for your own password. Safer and easier still: then turn on a passkey or two-factor sign-in under “My account”."
+      },
+      "servers": {
+        "admin": {
+          "title": "Set everything up",
+          "text": "You are an admin: the admin area holds domain, e-mail, updates and more. Create servers under “Create server”."
+        },
+        "create": {
+          "title": "Order a server",
+          "text": "Under “Create server” pick a game and a plan. One click later your server runs – address and console are on its page."
+        },
+        "team": {
+          "title": "Your servers",
+          "text": "As soon as someone adds you to a server's team, it shows up in your overview. You can request your own server under “Create server”."
+        }
+      }
+    },
+    "javaTitle": "Minecraft Java",
+    "javaText": "On PC: start Minecraft › Multiplayer › Add server. Use the address from the panel (“Connect”).",
+    "bedrockTitle": "Minecraft Bedrock",
+    "bedrockText": "Phone, console, Windows: Play › Servers › Add server. Address from the panel, port = Bedrock port (usually 19132).",
+    "warning": "Please keep this sheet to yourself. The start password only lasts until your first sign-in.",
+    "footer": "Created {{date}} · {{address}}",
+    "fileName": "MorniHosting-access"
+  },
+  "forcePassword": {
+    "title": "Welcome, {{name}}! Choose your own password",
+    "text": "An admin created your password. So that only you know it, set your own now – then you're good to go.",
+    "current": "Start password",
+    "currentHint": "The password you just signed in with.",
+    "next": "New password",
+    "nextHint": "At least 10 characters. A sentence of several words is strong and easy to remember.",
+    "same": "Please choose a different one than the start password.",
+    "save": "Save password",
+    "logout": "Sign out",
+    "done": "Done! From now on you sign in with your own password."
   }
 }
