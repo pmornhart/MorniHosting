@@ -14,3 +14,4 @@ export * from './notify.js';
 export * from './transfer.js';
 export * from './quota.js';
 export * from './stalwart.js';
+export * from './mail-tests.js';

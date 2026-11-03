@@ -81,6 +81,7 @@ import { rememberRawBody } from './lib/raw-body.js';
 import type { MailNetwork } from './mail/check.js';
 import { createMailService, type MailService, type TransportFactory } from './mail/service.js';
 import { registerMailRoutes } from './mail/routes.js';
+import { createMailTests } from './mail/tests.js';
 import { createStalwartService, type StalwartResolver } from './stalwart/service.js';
 import type { StalwartClientFactory } from './stalwart/client.js';
 import { registerStalwartRoutes } from './stalwart/routes.js';
@@ -283,7 +284,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerBackupRoutes(app, ctx, servers, backups);
   registerScheduleRoutes(app, ctx, servers, schedules);
   registerWebhookRoutes(app, webhooks);
-  registerMailRoutes(app, ctx, mail);
+  registerMailRoutes(app, ctx, mail, createMailTests(ctx, mail, stalwart.client));
   registerStalwartRoutes(app, stalwart);
   registerNotifyRoutes(app, ctx, notify, approvals);
   registerUserRoutes(app, ctx, mail);

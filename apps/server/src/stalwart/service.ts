@@ -17,7 +17,12 @@ import { randomToken } from '../lib/crypto.js';
 import { AppError, badRequest, errorMessage } from '../lib/errors.js';
 import { isPrivateAddress } from '../lib/net-guard.js';
 import type { MailService } from '../mail/service.js';
-import { createStalwartClient, type StalwartClientFactory, type StalwartDnsProvider } from './client.js';
+import {
+  createStalwartClient,
+  type StalwartClient,
+  type StalwartClientFactory,
+  type StalwartDnsProvider,
+} from './client.js';
 
 /**
  * "Stalwart verbinden": one form with the address and admin login of a Stalwart mail server. The panel then
@@ -119,6 +124,8 @@ export interface StalwartService {
   /** Loads the records again from Stalwart and checks DNS. */
   readonly check: () => Promise<StalwartView>;
   readonly disconnect: (actor: Actor) => Promise<void>;
+  /** The connected Stalwart (for following test mails), null when none is connected. */
+  readonly client: () => StalwartClient | null;
 }
 
 export function createStalwartService(
@@ -364,6 +371,10 @@ export function createStalwartService(
   return {
     view,
     connect,
+    client: () => {
+      const s = stored();
+      return s ? clientOf(s) : null;
+    },
     check: async () => {
       const s = stored();
       if (!s) return view();

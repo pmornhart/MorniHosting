@@ -580,7 +580,8 @@
     "stalwart_sender_login": "The sender account was created but cannot log in. Check in Stalwart that password logins are allowed.",
     "netbird_exit_peer_missing": "Please choose the machine all internet traffic should leave through.",
     "netbird_exit_same_machine": "The MorniHosting machine cannot be its own exit. Choose the NetBird server.",
-    "netbird_exit_peer_unknown": "NetBird does not know this machine (any more). Reload the page."
+    "netbird_exit_peer_unknown": "NetBird does not know this machine (any more). Reload the page.",
+    "mail_test_empty": "Please enter at least one address or switch on the spam score."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1527,7 +1528,8 @@
       "mail_stalwart": "Stalwart connected",
       "mail_stalwart_removed": "Stalwart disconnected",
       "netbird_exit_on": "Home connection hidden (NetBird exit on)",
-      "netbird_exit_off": "NetBird exit switched off"
+      "netbird_exit_off": "NetBird exit switched off",
+      "mail_test_run": "Mail test started"
     }
   },
   "ddos": {
@@ -2642,5 +2644,42 @@
     "agentText": "Run once on the NetBird server (e.g. at IONOS). You get the setup key in the NetBird dashboard under “Setup Keys”.",
     "agentHint": "Afterwards the server shows up here as exit (reload the page).",
     "dnsAutomation": "The DNS automation under “Own domain” is on and would put your home IP at your DNS provider. Disconnect it there."
+  },
+  "mailTests": {
+    "title": "Mail test",
+    "text": "Send a test mail to up to 5 addresses at once – e.g. Gmail, Outlook and GMX – and see live whether it arrived. With Stalwart connected the panel also shows what the recipient's server answered.",
+    "addresses": "Recipients",
+    "addressesHint": "Type an address and press “Add” (or comma/space). Up to {{max}} addresses.",
+    "add": "Add",
+    "remove": "Remove {{address}}",
+    "spamSwitch": "Spam score from mail-tester.com",
+    "spamHint": "Also sends to a mail-tester.com test address and shows the score from 0 to 10 and what costs points. About 3 tests a day are free there.",
+    "start": "Start test",
+    "sending": "Sending …",
+    "history": "Recent tests",
+    "untracked": "without Stalwart: only followed up to your own mail server",
+    "nextRetry": "Next attempt at {{time}}",
+    "spamTitle": "Spam score",
+    "spamDetails": "Full result on mail-tester.com",
+    "spam": {
+      "waiting": "being checked …",
+      "done": "",
+      "open": "Result not available yet – open it on mail-tester.com"
+    },
+    "states": {
+      "sending": "sending …",
+      "queued": "on its way …",
+      "acceptedOnly": "accepted by the mail server",
+      "retrying": "not yet – will be retried",
+      "delivered": "delivered",
+      "rejected": "rejected",
+      "failed": "not sent",
+      "left": "left the queue – probably delivered"
+    },
+    "tips": {
+      "retrying": "The recipient's server has not taken the mail yet. Stalwart retries on its own. A certificate or connection error usually means the way out is blocked (port 25, forwarding).",
+      "rejected": "The recipient's server refused the mail. The reason is above – often PTR, SPF or DKIM is missing, or the IP is on a block list.",
+      "failed": "Your own mail server did not accept the mail. Check the login data above or “Connect Stalwart”."
+    }
   }
 }

@@ -33,7 +33,7 @@ function urlOf(input: string | URL | Request): string {
 /** Just enough of Cloudflare's API (zones and DNS records) and of api.ipify.org. */
 function createFakeInternet() {
   const records = new Map<string, FakeRecord>();
-  const net = { ip: '93.223.190.172', nextId: 1 };
+  const net = { ip: '198.51.100.7', nextId: 1 };
   const handle = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(urlOf(input));
     if (url.hostname === 'api.ipify.org') return new Response(net.ip);
@@ -115,7 +115,7 @@ describe('own domain without NetBird (DNS)', () => {
       configured: true,
       provider: 'cloudflare',
       domain: ZONE.name,
-      ip: '93.223.190.172',
+      ip: '198.51.100.7',
       netbirdActive: false,
     });
     expect(JSON.stringify(status)).not.toContain(TOKEN);
@@ -124,8 +124,8 @@ describe('own domain without NetBird (DNS)', () => {
   test('the domain and every name below it point here; the parking IPv6 records go', async () => {
     fake.records.set('parking', { id: 'parking', type: 'AAAA', name: ZONE.name, content: '2a00:1:2::3' });
     await connect();
-    expect(fake.byName('A', ZONE.name)?.content).toBe('93.223.190.172');
-    expect(fake.byName('A', `*.${ZONE.name}`)?.content).toBe('93.223.190.172');
+    expect(fake.byName('A', ZONE.name)?.content).toBe('198.51.100.7');
+    expect(fake.byName('A', `*.${ZONE.name}`)?.content).toBe('198.51.100.7');
     expect(fake.records.has('parking')).toBe(false);
     fake.net.ip = '93.223.190.200';
     await t.dns.refreshIp();
@@ -136,7 +136,7 @@ describe('own domain without NetBird (DNS)', () => {
     await connect();
     const java = await create({ netbirdName: 'reich' });
     expect(fake.byName('A', 'reich.mein-minecraft.de')).toMatchObject({
-      content: '93.223.190.172',
+      content: '198.51.100.7',
       proxied: false,
     });
     expect(fake.byName('SRV', '_minecraft._tcp.reich.mein-minecraft.de')?.data).toEqual({
@@ -197,7 +197,7 @@ describe('own domain without NetBird (DNS)', () => {
       content: '1.2.3.4',
     });
     const server = await create({ netbirdName: 'reich' });
-    expect(fake.records.get('by-hand')?.content).toBe('93.223.190.172');
+    expect(fake.records.get('by-hand')?.content).toBe('198.51.100.7');
     expect(fake.serverRecords().filter((r) => r.type === 'A')).toHaveLength(1);
 
     await call('PUT', `/api/servers/${server.id}/netbird`, { name: 'arm' });
@@ -341,7 +341,7 @@ describe('INWX', () => {
       srv: { priority: 0, weight: 5, port: 25566, target: 'reich.mornihosting.de' },
     });
     expect(id).toBe('4711');
-    await client.create('mornihosting.de', { type: 'A', name: 'mornihosting.de', ip: '93.223.190.172' });
+    await client.create('mornihosting.de', { type: 'A', name: 'mornihosting.de', ip: '198.51.100.7' });
     await client.remove('mornihosting.de', '999');
     const after = calls.slice(1);
     expect(after.filter((c) => c.method === 'account.login')).toHaveLength(1);

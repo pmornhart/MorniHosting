@@ -1,6 +1,11 @@
 /* eslint-disable ts-patterns/no-magic-numbers -- tests compare against literal expected values */
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import type { MailSettingsView, StalwartConnectResult, StalwartView } from '@mornihosting/shared';
+import type {
+  MailSettingsView,
+  MailTestRun,
+  StalwartConnectResult,
+  StalwartView,
+} from '@mornihosting/shared';
 import type { MailNetwork } from '../src/mail/check.js';
 import type { OutgoingMail } from '../src/mail/service.js';
 import { dnsServerObject } from '../src/stalwart/client.js';
@@ -11,7 +16,7 @@ const STALWART = 'http://192.168.178.116:8080';
 const ADMIN_PASSWORD = 'stalwart-admin-pw';
 const CF_TOKEN = 'cf-test-token';
 const ZONE = { id: 'zone-1', name: 'mornihosting.de' };
-const PUBLIC_IP = '185.164.228.171';
+const PUBLIC_IP = '203.0.113.171';
 
 type Json = Record<string, unknown>;
 const urlOf = (input: string | URL | Request): string =>
@@ -43,14 +48,17 @@ function createFakeInternet() {
       return basic(`${String(a['name'])}@${String(domain?.['name'])}`, passwordOf(a));
     }),
   ];
+  const queued = new Map<string, Json>();
   const tables: Record<string, Map<string, Json>> = {
     Domain: domains,
     Account: accounts,
     DnsServer: dnsServers,
+    QueuedMessage: queued,
   };
 
   const jmap = (method: string, args: Json): [string, Json, string] => {
     calls.push(method);
+    if (method === 'x:Log/query') return [method, { ids: [] }, 'c1'];
     const [, object = '', fn = ''] = /^x:(\w+)\/(\w+)$/.exec(method) ?? [];
     const table = tables[object];
     if (!table) return ['error', { type: 'unknownMethod' }, 'c1'];
@@ -76,7 +84,12 @@ function createFakeInternet() {
   const handle = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(urlOf(input));
     const auth = new Headers(init?.headers).get('authorization') ?? '';
-    if (url.hostname === 'api.ipify.org') return new Response('93.223.190.172');
+    if (url.hostname === 'api.ipify.org') return new Response('198.51.100.7');
+    if (url.hostname === 'www.mail-tester.com')
+      return Response.json({
+        displayedMark: '9.5/10',
+        spamAssassin: { rules: [{ code: 'NO_UNSUB', description: 'Kein Abmelde-Link', score: 0.5 }] },
+      });
     if (url.origin === STALWART) {
       if (!logins().includes(auth)) return new Response('', { status: 401 });
       if (url.pathname === '/jmap/session') return Response.json({ accounts: {} });
@@ -103,7 +116,7 @@ function createFakeInternet() {
     }
     return Response.json({ success: true, result: {} });
   };
-  return { domains, accounts, dnsServers, cfRecords, calls, handle };
+  return { domains, accounts, dnsServers, queued, cfRecords, calls, handle };
 }
 
 /** DNS as the world sees it after Stalwart published its records (PTR still missing at the hoster). */
@@ -150,7 +163,8 @@ describe('Stalwart connection', () => {
           verify: async () => true,
           sendMail: async (mail) => {
             sent.push(mail);
-            return {};
+            if (mail.to === 'kaputt@example.de') throw new Error('550 5.1.1 Mailbox unbekannt');
+            return { response: `250 2.0.0 Message queued with id q${sent.length}` };
           },
         }),
       },
@@ -238,6 +252,70 @@ describe('Stalwart connection', () => {
     expect(result.view.dnsAutomatic).toBe(false);
     expect((await call('DELETE', '/api/stalwart')).statusCode).toBe(204);
     expect((await call('GET', '/api/stalwart')).json<StalwartView>().connected).toBe(false);
+  });
+
+  test('mail tests: several addresses, followed through the Stalwart queue, mail-tester score, kept as history', async () => {
+    await connect();
+    const started = (
+      await call('POST', '/api/mail/tests', {
+        recipients: ['ich@gmail.com', 'ich@outlook.de', 'kaputt@example.de'],
+        spamScore: true,
+      })
+    ).json<MailTestRun>();
+    expect(started.recipients.map((r) => `${r.to}:${r.state}`)).toEqual([
+      'ich@gmail.com:queued',
+      'ich@outlook.de:queued',
+      'kaputt@example.de:failed',
+      `${started.spam?.address}:queued`,
+    ]);
+    expect(started.spam?.address).toMatch(/^test-[0-9a-f]{9}@srv1\.mail-tester\.com$/);
+    expect(started.recipients[2]?.detail).toContain('550 5.1.1');
+    // Stalwart: Gmail still being retried, Outlook done.
+    fake.queued.set('m1', {
+      id: 'm1',
+      createdAt: new Date().toISOString(),
+      returnPath: 'noreply@mornihosting.de',
+      recipients: {
+        'ich@gmail.com': {
+          retryDue: '2026-11-03T12:26:00Z',
+          status: {
+            '@type': 'TemporaryFailure',
+            errorType: 'TlsError',
+            errorMessage: 'Handshake failed',
+            responseHostname: 'alt1.gmail-smtp-in.l.google.com',
+          },
+        },
+        'ich@outlook.de': {
+          status: {
+            '@type': 'Completed',
+            responseHostname: 'mx.outlook.com',
+            responseCode: 250,
+            responseEnhanced: '2.6.0',
+            responseMessage: 'Queued mail for delivery',
+          },
+        },
+      },
+    });
+    const [run] = (await call('GET', '/api/mail/tests')).json<MailTestRun[]>();
+    const byTo = Object.fromEntries((run?.recipients ?? []).map((r) => [r.to, r]));
+    expect(byTo['ich@gmail.com']).toMatchObject({
+      state: 'retrying',
+      remoteHost: 'alt1.gmail-smtp-in.l.google.com',
+      detail: 'Handshake failed',
+      nextRetry: '2026-11-03T12:26:00Z',
+    });
+    expect(byTo['ich@outlook.de']).toMatchObject({
+      state: 'delivered',
+      detail: '250 2.6.0 Queued mail for delivery',
+    });
+    expect(run?.spam).toMatchObject({ state: 'done', score: 9.5, problems: ['Kein Abmelde-Link (−0.5)'] });
+    expect(run?.tracked).toBe(true);
+    // A second run comes first in the history.
+    await call('POST', '/api/mail/tests', { recipients: ['zwei@gmx.de'] });
+    const history = (await call('GET', '/api/mail/tests')).json<MailTestRun[]>();
+    expect(history.map((r) => r.recipients[0]?.to)).toEqual(['zwei@gmx.de', 'ich@gmail.com']);
+    // Nothing to test is refused.
+    expect((await call('POST', '/api/mail/tests', { recipients: [] })).statusCode).toBe(400);
   });
 
   test('only admins', async () => {

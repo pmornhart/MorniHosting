@@ -86,8 +86,8 @@ export interface MailService {
   readonly status: () => MailStatus;
   readonly configured: () => boolean;
   readonly panelUrl: () => string | null;
-  /** Sends and reports a failure to the caller (admin test). */
-  readonly send: (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>) => Promise<void>;
+  /** Sends and reports a failure to the caller (admin test); resolves with the mail server's answer. */
+  readonly send: (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>) => Promise<string>;
   /** Sends without waiting; a failure is only logged (notifications). */
   readonly deliver: (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>) => void;
   /** Quick start: finds server, port and encryption from address + password, saves them and sends a test mail. */
@@ -246,7 +246,9 @@ export function createMailService(
     });
     try {
       const info = await factory(config).sendMail({ from: config.from, to, ...message });
-      note({ channel: 'mail', to, subject: message.subject, ok: true, detail: answerOf(info) });
+      const answer = answerOf(info);
+      note({ channel: 'mail', to, subject: message.subject, ok: true, detail: answer });
+      return answer;
     } catch (err) {
       note({ channel: 'mail', to, subject: message.subject, ok: false, detail: errorMessage(err) });
       log.warn({ err, kind }, 'mail could not be sent');

@@ -38,8 +38,30 @@ export interface StalwartClient {
   readonly findAccount: (name: string, domainId: string) => Promise<string | null>;
   readonly createAccount: (name: string, domainId: string, password: string) => Promise<string>;
   readonly setAccountPassword: (accountId: string, password: string) => Promise<void>;
+  /** The outgoing queue (messages still being delivered or retried). */
+  readonly queue: () => Promise<StalwartQueuedMessage[]>;
+  /** Log lines containing `text` (needs a log file in Stalwart; empty otherwise). */
+  readonly logs: (text: string) => Promise<StalwartLogLine[]>;
   /** Asks whether a login works (the sender account after creating it). */
   readonly canLogin: (username: string, password: string) => Promise<boolean>;
+}
+
+/** One recipient of a message in Stalwart's outgoing queue. */
+export interface StalwartQueuedRecipient {
+  readonly address: string;
+  readonly status: 'Scheduled' | 'Completed' | 'TemporaryFailure' | 'PermanentFailure';
+  readonly remoteHost: string;
+  readonly message: string;
+  readonly retryDue: string | null;
+}
+export interface StalwartQueuedMessage {
+  readonly createdAt: string;
+  readonly returnPath: string;
+  readonly recipients: readonly StalwartQueuedRecipient[];
+}
+export interface StalwartLogLine {
+  readonly event: string;
+  readonly details: string;
 }
 
 export type StalwartClientFactory = (url: string, username: string, password: string) => StalwartClient;
@@ -64,6 +86,41 @@ const accountSchema = z.object({
   name: z.string().catch(''),
   domainId: z.string().nullish(),
 });
+const responseSchema = z
+  .object({
+    responseHostname: z.string().nullish(),
+    responseCode: z.number().nullish(),
+    responseEnhanced: z.string().nullish(),
+    responseMessage: z.string().nullish(),
+    errorMessage: z.string().nullish(),
+  })
+  .catch({});
+const queuedSchema = z.object({
+  createdAt: z.string().catch(''),
+  returnPath: z.string().catch(''),
+  recipients: z
+    .record(
+      z.string(),
+      z.object({
+        retryDue: z.string().nullish(),
+        status: z
+          .object({ '@type': z.string().catch('Scheduled') })
+          .passthrough()
+          .catch({ '@type': 'Scheduled' }),
+      }),
+    )
+    .catch({}),
+});
+const logSchema = z.object({ event: z.string().catch(''), details: z.string().catch('') });
+const STATUSES = ['Scheduled', 'Completed', 'TemporaryFailure', 'PermanentFailure'] as const;
+const statusOf = (raw: string): StalwartQueuedRecipient['status'] =>
+  STATUSES.find((s) => s === raw) ?? 'Scheduled';
+/** "250 2.0.0 OK …" from the parts Stalwart keeps of the remote server's answer. */
+const answerText = (r: z.infer<typeof responseSchema>): string =>
+  [r.responseCode, r.responseEnhanced, r.responseMessage ?? r.errorMessage]
+    .filter((part) => part !== null && part !== undefined && part !== '')
+    .join(' ');
+
 const dnsServerSchema = z.object({ id: z.string(), description: z.string().catch('') });
 
 const secret = (value: string) => ({ '@type': 'Value', secret: value });
@@ -207,6 +264,37 @@ export const createStalwartClient: StalwartClientFactory = (url, username, passw
       }),
     setAccountPassword: async (accountId, value) => {
       await set('Account', { update: { [accountId]: { credentials: passwordCredential(value) } } });
+    },
+    queue: async () =>
+      (await list('QueuedMessage', queuedSchema)).map((m) => ({
+        createdAt: m.createdAt,
+        returnPath: m.returnPath,
+        recipients: Object.entries(m.recipients).map(([address, r]) => {
+          const response = responseSchema.parse(r.status);
+          return {
+            address: address.toLowerCase(),
+            status: statusOf(r.status['@type']),
+            remoteHost: response.responseHostname ?? '',
+            message: answerText(response),
+            retryDue: r.retryDue ?? null,
+          };
+        }),
+      })),
+    logs: async (text) => {
+      try {
+        const found = await call('x:Log/query', { filter: { text } });
+        const ids = Array.isArray(found['ids']) ? found['ids'] : [];
+        if (!ids.length) return [];
+        const answer = await call('x:Log/get', { ids });
+        const items = Array.isArray(answer['list']) ? answer['list'] : [];
+        return items.flatMap((item) => {
+          const parsed = logSchema.safeParse(item);
+          return parsed.success ? [parsed.data] : [];
+        });
+      } catch {
+        // No log file configured in Stalwart: the queue alone has to do.
+        return [];
+      }
     },
     canLogin: async (user, pass) => (await send('/jmap/session', basic(user, pass))).ok,
   };

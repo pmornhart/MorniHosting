@@ -580,7 +580,8 @@
     "stalwart_sender_login": "Das Absender-Konto wurde angelegt, kann sich aber nicht anmelden. Schau in Stalwart nach, ob Anmelden mit Passwort erlaubt ist.",
     "netbird_exit_peer_missing": "Bitte wähle den Rechner, über den alles ins Internet gehen soll.",
     "netbird_exit_same_machine": "Der MorniHosting-Rechner kann nicht sein eigener Ausgang sein. Wähle den NetBird-Server.",
-    "netbird_exit_peer_unknown": "Diesen Rechner kennt NetBird nicht (mehr). Lade die Seite neu."
+    "netbird_exit_peer_unknown": "Diesen Rechner kennt NetBird nicht (mehr). Lade die Seite neu.",
+    "mail_test_empty": "Bitte gib mindestens eine Adresse an oder schalte die Spam-Punktzahl ein."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1527,7 +1528,8 @@
       "mail_stalwart": "Stalwart verbunden",
       "mail_stalwart_removed": "Stalwart getrennt",
       "netbird_exit_on": "Hausanschluss versteckt (NetBird-Ausgang an)",
-      "netbird_exit_off": "NetBird-Ausgang ausgeschaltet"
+      "netbird_exit_off": "NetBird-Ausgang ausgeschaltet",
+      "mail_test_run": "Mail-Test gestartet"
     }
   },
   "ddos": {
@@ -2642,5 +2644,42 @@
     "agentText": "Auf dem NetBird-Server (z. B. bei IONOS) einmal ausführen. Den Setup-Key bekommst du im NetBird-Dashboard unter „Setup Keys“.",
     "agentHint": "Danach taucht der Server hier als Ausgang auf (Seite neu laden).",
     "dnsAutomation": "Die DNS-Automatik unter „Eigene Domain“ ist an und würde die IP deines Hausanschlusses bei deinem DNS-Anbieter eintragen. Trenne sie dort."
+  },
+  "mailTests": {
+    "title": "Mail-Test",
+    "text": "Schick eine Test-Mail an bis zu 5 Adressen auf einmal – z. B. Gmail, Outlook und GMX – und sieh live, ob sie angekommen ist. Ist Stalwart verbunden, zeigt das Panel auch, was der Server des Empfängers geantwortet hat.",
+    "addresses": "Empfänger",
+    "addressesHint": "Adresse eintippen und „Hinzufügen“ (oder Komma/Leertaste). Bis zu {{max}} Adressen.",
+    "add": "Hinzufügen",
+    "remove": "{{address}} entfernen",
+    "spamSwitch": "Spam-Punktzahl mit mail-tester.com",
+    "spamHint": "Schickt zusätzlich an eine Test-Adresse von mail-tester.com und zeigt die Punktzahl von 0 bis 10 und was Punkte kostet. Kostenlos sind dort etwa 3 Tests am Tag.",
+    "start": "Test starten",
+    "sending": "Wird verschickt …",
+    "history": "Letzte Tests",
+    "untracked": "ohne Stalwart: nur bis zum eigenen Mailserver verfolgbar",
+    "nextRetry": "Nächster Versuch um {{time}}",
+    "spamTitle": "Spam-Punktzahl",
+    "spamDetails": "Ganzes Ergebnis auf mail-tester.com",
+    "spam": {
+      "waiting": "wird geprüft …",
+      "done": "",
+      "open": "Ergebnis noch nicht abrufbar – öffne es direkt bei mail-tester.com"
+    },
+    "states": {
+      "sending": "wird verschickt …",
+      "queued": "unterwegs …",
+      "acceptedOnly": "vom Mailserver angenommen",
+      "retrying": "klappt noch nicht – wird wiederholt",
+      "delivered": "zugestellt",
+      "rejected": "abgelehnt",
+      "failed": "nicht verschickt",
+      "left": "aus der Warteschlange raus – vermutlich zugestellt"
+    },
+    "tips": {
+      "retrying": "Der Server des Empfängers hat die Mail noch nicht genommen. Stalwart versucht es von selbst wieder. Steht hier ein Zertifikats- oder Verbindungsfehler, liegt es meist am Weg nach draußen (Port 25, Weiterleitung).",
+      "rejected": "Der Server des Empfängers hat die Mail abgelehnt. Der Grund steht oben – oft fehlt PTR, SPF oder DKIM, oder die IP steht auf einer Sperrliste.",
+      "failed": "Dein eigener Mailserver hat die Mail nicht angenommen. Prüf oben die Zugangsdaten bzw. „Stalwart verbinden“."
+    }
   }
 }

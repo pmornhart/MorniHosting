@@ -247,7 +247,7 @@ export function StalwartCard(): ReactElement {
               id="st-publicIp"
               value={publicIp}
               onChange={(e) => setPublicIp(e.target.value)}
-              placeholder="185.164.228.171"
+              placeholder="203.0.113.10"
               inputMode="decimal"
             />
           </Field>

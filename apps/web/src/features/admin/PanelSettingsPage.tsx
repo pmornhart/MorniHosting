@@ -33,6 +33,7 @@ import { useSession } from '@/features/auth/session';
 import { MailCard } from './MailCard';
 import { MailOutbox } from './MailOutbox';
 import { StalwartCard } from './StalwartCard';
+import { MailTestsCard } from './MailTestsCard';
 import { NetBirdGuide } from './NetBirdGuide';
 import { DnsDomainCard } from './DnsDomainCard';
 import { NetbirdAutomationCard } from './NetbirdAutomationCard';
@@ -398,6 +399,7 @@ export function PanelSettingsPage(): ReactElement {
       <>
         <StalwartCard />
         <MailCard />
+        <MailTestsCard />
         <MailOutbox />
       </>
     ),
