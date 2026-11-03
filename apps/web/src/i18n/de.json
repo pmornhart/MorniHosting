@@ -569,7 +569,15 @@
     "quota_memory": "Nicht genug Arbeitsspeicher im Kontingent (schon vergeben: {{used}} MB von {{limit}} MB).",
     "quota_cpus": "Nicht genug CPU-Kerne im Kontingent (schon vergeben: {{used}} von {{limit}}).",
     "quota_disk": "Nicht genug Festplatte im Kontingent (schon vergeben: {{used}} MB von {{limit}} MB).",
-    "disk_limit_reached": "Der Server braucht {{used}} MB und darf nur {{limit}} MB haben. Lösch alte Welten oder Backups, oder ein Admin gibt mehr Platz."
+    "disk_limit_reached": "Der Server braucht {{used}} MB und darf nur {{limit}} MB haben. Lösch alte Welten oder Backups, oder ein Admin gibt mehr Platz.",
+    "stalwart_unreachable": "Stalwart antwortet nicht. Stimmt die Adresse, und kommt das Panel dorthin (Heimnetz, Firewall)?",
+    "stalwart_login": "Stalwart hat die Anmeldung abgelehnt: Admin-Benutzer oder Passwort stimmen nicht.",
+    "stalwart_forbidden": "Das Konto darf das nicht. Nimm den Admin von Stalwart.",
+    "stalwart_old_version": "Diese Stalwart-Version ist zu alt. Das Panel braucht Stalwart 1.0 oder neuer (kostenlose Version reicht).",
+    "stalwart_rejected": "Stalwart hat abgelehnt: {{message}}",
+    "stalwart_no_domain": "Bitte gib eine Mail-Domain ein (oder trag zuerst die Domain des Panels ein).",
+    "stalwart_password_missing": "Bitte gib das Admin-Passwort von Stalwart ein.",
+    "stalwart_sender_login": "Das Absender-Konto wurde angelegt, kann sich aber nicht anmelden. Schau in Stalwart nach, ob Anmelden mit Passwort erlaubt ist."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1512,7 +1520,9 @@
       "discord_settings": "Discord-Bot eingerichtet",
       "discord_removed": "Discord-Bot entfernt",
       "quota_defaults": "Kontingent-Standard geändert",
-      "quota_user": "Kontingent einer Person geändert"
+      "quota_user": "Kontingent einer Person geändert",
+      "mail_stalwart": "Stalwart verbunden",
+      "mail_stalwart_removed": "Stalwart getrennt"
     }
   },
   "ddos": {
@@ -2537,5 +2547,75 @@
     "cpu": "CPU-Kerne",
     "disk": "Festplatte (GB)",
     "hint": "Leer = unbegrenzt. Die CPU-Grenze gilt ab dem nächsten Start; über der Festplatten-Grenze startet der Server nicht."
+  },
+  "stalwart": {
+    "title": "Stalwart verbinden",
+    "text": "Hast du einen eigenen Stalwart-Mailserver (kostenlose Version, ab 1.0)? Gib hier seine Adresse und das Admin-Passwort ein. Das Panel legt dann deine Mail-Domain und ein Absender-Konto an, stellt den Mail-Versand ein, schickt eine Test-Mail und prüft deine DNS-Einträge.",
+    "connected": "Verbunden",
+    "url": "Adresse von Stalwart",
+    "urlHint": "Die Seite, auf der du dich bei Stalwart anmeldest, z. B. https://mail.mornihosting.de oder http://192.168.178.116:8080 im Heimnetz.",
+    "username": "Admin-Benutzer",
+    "password": "Admin-Passwort",
+    "passwordKept": "Leer lassen behält das gespeicherte Passwort.",
+    "domain": "Mail-Domain",
+    "domainHint": "Leer = die Domain deines Panels.",
+    "sender": "Absender",
+    "senderHint": "Das Panel schickt seine Mails von {{address}}. Das Konto legt es selbst an, mit einem langen Zufallspasswort.",
+    "publicIp": "Öffentliche IP des Mailservers",
+    "publicIpHint": "Damit zeigt der Name des Mailservers (z. B. mail.mornihosting.de) auf ihn. Leer lassen, wenn der Eintrag schon stimmt.",
+    "publishDns": "DNS-Einträge von Stalwart setzen lassen",
+    "publishDnsHint": "Stalwart bekommt den {{provider}}-Zugang des Panels und trägt MX, SPF, DKIM, DMARC und Co. selbst ein – und hält DKIM-Schlüssel später aktuell.",
+    "publishDnsNone": "Geht nur, wenn deine Domain im Panel unter „Eigene Domain“ mit INWX oder Cloudflare verbunden ist. Sonst zeigt die Karte dir die Einträge zum Abtippen.",
+    "connect": "Verbinden und einrichten",
+    "connecting": "Wird eingerichtet …",
+    "check": "Neu prüfen",
+    "disconnect": "Trennen",
+    "done": "Stalwart ist verbunden, die Test-Mail ist raus.",
+    "found": "Jetzt",
+    "expected": "Soll",
+    "checksTitle": "So sieht die Welt {{host}} und {{domain}}",
+    "recordsAuto": "Einträge, die Stalwart selbst setzt",
+    "recordsManual": "Diese Einträge bei deinem DNS-Anbieter eintragen",
+    "recordName": "Name",
+    "recordType": "Typ",
+    "recordValue": "Wert",
+    "steps": {
+      "login": "Bei Stalwart anmelden",
+      "domain": "Mail-Domain anlegen",
+      "dns": "DNS-Zugang übergeben",
+      "account": "Absender-Konto anlegen",
+      "smtp": "Mail-Versand einstellen",
+      "test": "Test-Mail schicken"
+    },
+    "detail": {
+      "off": "Ausgeschaltet – die Einträge stehen unten zum Abtippen.",
+      "no_provider": "Deine Domain ist im Panel nicht mit INWX oder Cloudflare verbunden. Die Einträge stehen unten zum Abtippen."
+    },
+    "checks": {
+      "a": {
+        "title": "Name des Mailservers (A)",
+        "tip": "Der Name des Mailservers muss auf seine öffentliche IP zeigen. Trag oben die IP ein, dann setzt das Panel den Eintrag."
+      },
+      "ptr": {
+        "title": "Rückwärts-Eintrag (PTR)",
+        "tip": "Ohne ihn lehnen Gmail und Co. deine Mails ab. Den PTR setzt nur der Anbieter der IP (z. B. dein Server-Hoster im Kundenmenü, Stichwort „Reverse DNS“) – nicht INWX."
+      },
+      "mx": {
+        "title": "Posteingang der Domain (MX)",
+        "tip": "Sagt anderen Mailservern, wohin Mails an deine Domain gehen. Setzt Stalwart, wenn der DNS-Zugang übergeben ist."
+      },
+      "spf": {
+        "title": "Erlaubte Absender (SPF)",
+        "tip": "Erlaubt deinem Mailserver, für die Domain zu senden. Nur ein SPF-Eintrag pro Domain."
+      },
+      "dkim": {
+        "title": "Unterschrift (DKIM)",
+        "tip": "Stalwart unterschreibt jede Mail. Der öffentliche Schlüssel muss im DNS stehen. Neue Einträge brauchen ein paar Minuten."
+      },
+      "dmarc": {
+        "title": "Regel bei Fälschungen (DMARC)",
+        "tip": "Sagt Empfängern, was mit gefälschten Mails passieren soll. Zum Start reicht „v=DMARC1; p=none“."
+      }
+    }
   }
 }

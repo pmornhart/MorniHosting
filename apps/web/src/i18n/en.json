@@ -569,7 +569,15 @@
     "quota_memory": "Not enough RAM left in the quota (already given: {{used}} MB of {{limit}} MB).",
     "quota_cpus": "Not enough CPU cores left in the quota (already given: {{used}} of {{limit}}).",
     "quota_disk": "Not enough disk left in the quota (already given: {{used}} MB of {{limit}} MB).",
-    "disk_limit_reached": "The server needs {{used}} MB and may only have {{limit}} MB. Delete old worlds or backups, or an admin gives more space."
+    "disk_limit_reached": "The server needs {{used}} MB and may only have {{limit}} MB. Delete old worlds or backups, or an admin gives more space.",
+    "stalwart_unreachable": "Stalwart does not answer. Is the address right, and can the panel reach it (home network, firewall)?",
+    "stalwart_login": "Stalwart refused the login: admin user or password is wrong.",
+    "stalwart_forbidden": "This account may not do that. Use Stalwart's admin.",
+    "stalwart_old_version": "This Stalwart version is too old. The panel needs Stalwart 1.0 or later (free edition is enough).",
+    "stalwart_rejected": "Stalwart refused: {{message}}",
+    "stalwart_no_domain": "Please enter a mail domain (or set the panel's domain first).",
+    "stalwart_password_missing": "Please enter Stalwart's admin password.",
+    "stalwart_sender_login": "The sender account was created but cannot log in. Check in Stalwart that password logins are allowed."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1512,7 +1520,9 @@
       "discord_settings": "Discord bot set up",
       "discord_removed": "Discord bot removed",
       "quota_defaults": "Quota defaults changed",
-      "quota_user": "Quota of a person changed"
+      "quota_user": "Quota of a person changed",
+      "mail_stalwart": "Stalwart connected",
+      "mail_stalwart_removed": "Stalwart disconnected"
     }
   },
   "ddos": {
@@ -2537,5 +2547,75 @@
     "cpu": "CPU cores",
     "disk": "Disk (GB)",
     "hint": "Empty = no limit. The CPU limit applies from the next start; above the disk limit the server does not start."
+  },
+  "stalwart": {
+    "title": "Connect Stalwart",
+    "text": "Running your own Stalwart mail server (free edition, 1.0 or later)? Enter its address and admin password. The panel then creates your mail domain and a sender account, sets up sending, sends a test mail and checks your DNS records.",
+    "connected": "Connected",
+    "url": "Stalwart address",
+    "urlHint": "The page where you log in to Stalwart, e.g. https://mail.example.com or http://192.168.178.116:8080 at home.",
+    "username": "Admin user",
+    "password": "Admin password",
+    "passwordKept": "Leave empty to keep the saved password.",
+    "domain": "Mail domain",
+    "domainHint": "Empty = your panel's domain.",
+    "sender": "Sender",
+    "senderHint": "The panel sends its mails from {{address}}. It creates the account itself, with a long random password.",
+    "publicIp": "Public IP of the mail server",
+    "publicIpHint": "Makes the mail server's name (e.g. mail.example.com) point to it. Leave empty if that record is already right.",
+    "publishDns": "Let Stalwart set its DNS records",
+    "publishDnsHint": "Stalwart gets the panel's {{provider}} access and adds MX, SPF, DKIM, DMARC and more itself – and keeps DKIM keys up to date later.",
+    "publishDnsNone": "Only works when your domain is connected with INWX or Cloudflare under “Own domain”. Otherwise the card lists the records to add by hand.",
+    "connect": "Connect and set up",
+    "connecting": "Setting up …",
+    "check": "Check again",
+    "disconnect": "Disconnect",
+    "done": "Stalwart is connected, the test mail is on its way.",
+    "found": "Now",
+    "expected": "Should be",
+    "checksTitle": "How the world sees {{host}} and {{domain}}",
+    "recordsAuto": "Records Stalwart sets itself",
+    "recordsManual": "Add these records at your DNS provider",
+    "recordName": "Name",
+    "recordType": "Type",
+    "recordValue": "Value",
+    "steps": {
+      "login": "Log in to Stalwart",
+      "domain": "Create mail domain",
+      "dns": "Hand over DNS access",
+      "account": "Create sender account",
+      "smtp": "Set up sending",
+      "test": "Send test mail"
+    },
+    "detail": {
+      "off": "Switched off – the records are listed below.",
+      "no_provider": "Your domain is not connected with INWX or Cloudflare in the panel. The records are listed below."
+    },
+    "checks": {
+      "a": {
+        "title": "Mail server name (A)",
+        "tip": "The mail server's name must point to its public IP. Enter the IP above and the panel sets the record."
+      },
+      "ptr": {
+        "title": "Reverse record (PTR)",
+        "tip": "Without it Gmail and others reject your mails. Only the owner of the IP can set it (your server host, look for “reverse DNS”) – not INWX."
+      },
+      "mx": {
+        "title": "Domain inbox (MX)",
+        "tip": "Tells other mail servers where mail for your domain goes. Stalwart sets it once DNS access is handed over."
+      },
+      "spf": {
+        "title": "Allowed senders (SPF)",
+        "tip": "Allows your mail server to send for the domain. Only one SPF record per domain."
+      },
+      "dkim": {
+        "title": "Signature (DKIM)",
+        "tip": "Stalwart signs every mail; the public key must be in DNS. New records take a few minutes."
+      },
+      "dmarc": {
+        "title": "Forgery policy (DMARC)",
+        "tip": "Tells receivers what to do with forged mails. “v=DMARC1; p=none” is enough to start."
+      }
+    }
   }
 }

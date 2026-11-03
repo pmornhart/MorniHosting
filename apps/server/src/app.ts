@@ -80,6 +80,9 @@ import { rememberRawBody } from './lib/raw-body.js';
 import type { MailNetwork } from './mail/check.js';
 import { createMailService, type MailService, type TransportFactory } from './mail/service.js';
 import { registerMailRoutes } from './mail/routes.js';
+import { createStalwartService, type StalwartResolver } from './stalwart/service.js';
+import type { StalwartClientFactory } from './stalwart/client.js';
+import { registerStalwartRoutes } from './stalwart/routes.js';
 import { createApprovalService } from './notify/approvals.js';
 import type { DiscordApi } from './notify/discord.js';
 import { registerNotifyRoutes } from './notify/routes.js';
@@ -98,6 +101,9 @@ export interface BuildOptions {
   readonly mailNetwork?: MailNetwork;
   /** Tests answer Discord here. */
   readonly discord?: DiscordApi;
+  /** Tests answer Stalwart's management API and the DNS checks here. */
+  readonly stalwart?: StalwartClientFactory;
+  readonly stalwartResolver?: StalwartResolver;
 }
 
 export interface BuiltApp {
@@ -185,6 +191,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const ddos = createDdosService(ctx, servers);
   const mail = createMailService(ctx, options.mailTransport, options.mailNetwork);
   mail.init(servers);
+  const stalwart = createStalwartService(ctx, mail, dns, options.stalwart, options.stalwartResolver);
   const notify = createNotifyService(ctx, mail, options.discord);
   const approvals = createApprovalService(ctx, mail, notify, servers);
   notify.start();
@@ -276,6 +283,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerScheduleRoutes(app, ctx, servers, schedules);
   registerWebhookRoutes(app, webhooks);
   registerMailRoutes(app, ctx, mail);
+  registerStalwartRoutes(app, stalwart);
   registerNotifyRoutes(app, ctx, notify, approvals);
   registerUserRoutes(app, ctx, mail);
   registerTokenRoutes(app, ctx);
