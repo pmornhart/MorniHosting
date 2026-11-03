@@ -17,6 +17,7 @@ import { ServerLayout } from '@/features/servers/ServerLayout';
 const VersionTab = lazyPage(() => import('@/features/servers/version/VersionTab'));
 const NetworkTab = lazyPage(() => import('@/features/servers/network/NetworkTab'));
 const AdvancedTab = lazyPage(() => import('@/features/servers/advanced/AdvancedTab'));
+const PlayerDetailPage = lazyPage(() => import('@/features/servers/players/PlayerDetailPage'));
 const TeamTab = lazyPage(() => import('@/features/servers/team/TeamTab'));
 const ContentTab = lazyPage(() => import('@/features/servers/content/ContentTab'));
 const BackupsTab = lazyPage(() => import('@/features/servers/backups/BackupsTab'));
@@ -117,6 +118,14 @@ export const appRoutes: RouteObject[] = [
         element: (
           <Lazy>
             <PlayersTab />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'players/:uuid',
+        element: (
+          <Lazy>
+            <PlayerDetailPage />
           </Lazy>
         ),
       },

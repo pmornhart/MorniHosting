@@ -495,7 +495,7 @@
     "invalid_token": "Dieser API-Schlüssel ist ungültig oder abgelaufen.",
     "no_icon": "Kein Server-Bild vorhanden.",
     "not_supported_on_bedrock": "Das geht bei Bedrock-Servern leider nicht.",
-    "player_unknown": "Diesen Minecraft-Namen gibt es nicht. Prüfe die Schreibweise.",
+    "player_unknown": "Diesen Spieler kennt der Server nicht.",
     "world_invalid": "In der ZIP-Datei ist keine Minecraft-Welt (es fehlt level.dat).",
     "missing_permission": "Dafür fehlt dir auf diesem Server das Recht „{{permission}}“.",
     "content_already_installed": "„{{name}}“ ist schon installiert (Datei {{file}}). Zweimal dasselbe Plugin führt zu Fehlern.",
@@ -592,7 +592,9 @@
     "team_self": "Dich selbst kannst du nicht hinzufügen.",
     "team_user_admin": "Admins dürfen sowieso auf jeden Server.",
     "team_user_inactive": "Dieses Konto ist gesperrt oder noch nicht freigegeben.",
-    "team_member_unknown": "Diese Person arbeitet nicht (mehr) an diesem Server mit."
+    "team_member_unknown": "Diese Person arbeitet nicht (mehr) an diesem Server mit.",
+    "player_details_java_only": "Spieler-Details gibt es nur für Minecraft Java.",
+    "player_not_online": "Das geht nur, solange der Spieler online ist."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1544,7 +1546,8 @@
       "mail_test_run": "Mail-Test gestartet",
       "server_team_add": "Mitarbeiter hinzugefügt",
       "server_team_role": "Rolle eines Mitarbeiters geändert",
-      "server_team_remove": "Mitarbeiter entfernt"
+      "server_team_remove": "Mitarbeiter entfernt",
+      "player_adjust": "Spieler geändert (Leben, Level, Modus …)"
     }
   },
   "ddos": {
@@ -2797,5 +2800,91 @@
     "save": "Passwort speichern",
     "logout": "Abmelden",
     "done": "Geschafft! Ab jetzt meldest du dich mit deinem eigenen Passwort an."
+  },
+  "playerDetail": {
+    "listTitle": "Alle Spieler ({{count}})",
+    "listText": "Jeder, der schon mal auf dem Server war. Klick auf einen Namen für Inventar, Tode, Kills und Chat – auch wenn er gerade nicht online ist.",
+    "search": "Spieler suchen …",
+    "noMatch": "Niemand gefunden.",
+    "nobodyYet": "Noch niemand war auf dem Server.",
+    "lastSeen": "Zuletzt gespeichert {{when}}",
+    "back": "Alle Spieler",
+    "refreshed": "Zuletzt aktualisiert: {{time}}",
+    "refresh": "Aktualisieren",
+    "online": "Online",
+    "offline": "Offline",
+    "banned": "Gesperrt",
+    "actions": {
+      "whitelist": "Whitelist",
+      "dewhitelist": "Von Whitelist",
+      "op": "OP geben",
+      "deop": "Deop",
+      "kick": "Kick",
+      "ban": "Bannen",
+      "pardon": "Entbannen"
+    },
+    "done": "Erledigt",
+    "health": "Leben",
+    "food": "Hunger",
+    "level": "Level {{level}}",
+    "onlyOnline": "Geht nur, solange der Spieler online ist.",
+    "noData": "Für diesen Spieler gibt es noch keine Spielerdatei. Sie entsteht, sobald der Server ihn speichert (spätestens beim Verlassen).",
+    "playTime": "Spielzeit",
+    "world": "Welt",
+    "position": "Position",
+    "lastSlept": "Zuletzt geschlafen",
+    "gamemode": "Spielmodus",
+    "lastDeath": "Letzter Tod",
+    "kdr": "K/D",
+    "deathsKills": "Tode / Kills",
+    "worlds": {
+      "overworld": "Oberwelt",
+      "the_nether": "Nether",
+      "the_end": "End"
+    },
+    "gamemodes": {
+      "survival": "Überleben",
+      "creative": "Kreativ",
+      "adventure": "Abenteuer",
+      "spectator": "Zuschauer"
+    },
+    "gamemodeTitle": "Spielmodus ändern",
+    "teleportTitle": "Spieler teleportieren",
+    "teleportText": "Der Spieler wird sofort an diese Koordinaten gebracht.",
+    "teleport": "Teleportieren",
+    "pickedUp": "Aufgesammelt",
+    "used": "Benutzt",
+    "mobsKilled": "Getötete Mobs",
+    "travelled": "Zurückgelegte Blöcke",
+    "none": "Noch nichts.",
+    "travel": {
+      "walk": "Gehen",
+      "sprint": "Sprinten",
+      "crouch": "Schleichen",
+      "swim": "Schwimmen",
+      "ride": "Reiten & Fahren",
+      "fly": "Fliegen"
+    },
+    "tabs": {
+      "inventory": "Inventar",
+      "ender": "Endertruhe"
+    },
+    "mainInventory": "Inventar",
+    "hotbar": "Schnellleiste",
+    "armor": "Rüstung",
+    "emptySlot": "Leer",
+    "armorSlots": {
+      "head": "Kopf",
+      "chest": "Brust",
+      "legs": "Beine",
+      "feet": "Füße",
+      "offhand": "Zweithand"
+    },
+    "chatTitle": "Chat-Archiv",
+    "chatHint": "Letzte 50 Nachrichten und Befehle",
+    "chatEmpty": "In den Logs steht noch keine Nachricht von diesem Spieler.",
+    "command": "Befehl",
+    "confirmBan": "{{name}} wirklich bannen?",
+    "confirmKick": "{{name}} wirklich vom Server werfen?"
   }
 }

@@ -62,6 +62,9 @@ import { createUpdateService } from './system/update.js';
 import { createAccessService } from './users/access.js';
 import { registerUserRoutes } from './users/routes.js';
 import { registerTeamRoutes } from './team/routes.js';
+import { createPlayerDetailService } from './players/detail.js';
+import { registerPlayerDetailRoutes } from './players/routes.js';
+import { registerItemIconRoutes } from './players/item-icons.js';
 import { registerWebhookRoutes } from './webhooks/routes.js';
 import { createWebhookService } from './webhooks/service.js';
 import { registerWebSocket } from './ws.js';
@@ -281,6 +284,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerDnsRoutes(app, dns);
   registerHttpsRoutes(app, https);
   registerGameArtRoutes(app, ctx);
+  registerItemIconRoutes(app, ctx);
   registerMinecraftRoutes(app, minecraftLink);
   registerBackupRoutes(app, ctx, servers, backups);
   registerScheduleRoutes(app, ctx, servers, schedules);
@@ -290,6 +294,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerNotifyRoutes(app, ctx, notify, approvals);
   registerUserRoutes(app, ctx, mail);
   registerTeamRoutes(app, ctx);
+  registerPlayerDetailRoutes(app, ctx, createPlayerDetailService(servers));
   registerTokenRoutes(app, ctx);
   registerAuditRoutes(app, ctx);
   registerSettingsRoutes(app, ctx);

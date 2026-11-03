@@ -495,7 +495,7 @@
     "invalid_token": "This API key is invalid or expired.",
     "no_icon": "No server picture.",
     "not_supported_on_bedrock": "Unfortunately that doesn't work on Bedrock servers.",
-    "player_unknown": "This Minecraft name doesn't exist. Check the spelling.",
+    "player_unknown": "The server doesn't know this player.",
     "world_invalid": "The ZIP file contains no Minecraft world (level.dat is missing).",
     "missing_permission": "You are missing the “{{permission}}” right on this server.",
     "content_already_installed": "“{{name}}” is already installed (file {{file}}). The same plugin twice leads to errors.",
@@ -592,7 +592,9 @@
     "team_self": "You can't add yourself.",
     "team_user_admin": "Admins can reach every server anyway.",
     "team_user_inactive": "This account is locked or not approved yet.",
-    "team_member_unknown": "This person isn't (or no longer) on this server's team."
+    "team_member_unknown": "This person isn't (or no longer) on this server's team.",
+    "player_details_java_only": "Player details are only available for Minecraft Java.",
+    "player_not_online": "This only works while the player is online."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1544,7 +1546,8 @@
       "mail_test_run": "Mail test started",
       "server_team_add": "Team member added",
       "server_team_role": "Team member's role changed",
-      "server_team_remove": "Team member removed"
+      "server_team_remove": "Team member removed",
+      "player_adjust": "Player changed (health, level, mode …)"
     }
   },
   "ddos": {
@@ -2797,5 +2800,91 @@
     "save": "Save password",
     "logout": "Sign out",
     "done": "Done! From now on you sign in with your own password."
+  },
+  "playerDetail": {
+    "listTitle": "All players ({{count}})",
+    "listText": "Everyone who has ever been on the server. Click a name for inventory, deaths, kills and chat – even while they are offline.",
+    "search": "Search players …",
+    "noMatch": "Nobody found.",
+    "nobodyYet": "Nobody has joined the server yet.",
+    "lastSeen": "Last saved {{when}}",
+    "back": "All players",
+    "refreshed": "Last refresh: {{time}}",
+    "refresh": "Refresh",
+    "online": "Online",
+    "offline": "Offline",
+    "banned": "Banned",
+    "actions": {
+      "whitelist": "Whitelist",
+      "dewhitelist": "Dewhitelist",
+      "op": "Op",
+      "deop": "Deop",
+      "kick": "Kick",
+      "ban": "Ban",
+      "pardon": "Pardon"
+    },
+    "done": "Done",
+    "health": "Health",
+    "food": "Food",
+    "level": "Level {{level}}",
+    "onlyOnline": "Only works while the player is online.",
+    "noData": "There is no player file yet. It is written as soon as the server saves the player (at the latest when they leave).",
+    "playTime": "Play time",
+    "world": "World",
+    "position": "Position",
+    "lastSlept": "Last slept",
+    "gamemode": "Game mode",
+    "lastDeath": "Last death",
+    "kdr": "KDR",
+    "deathsKills": "Deaths / kills",
+    "worlds": {
+      "overworld": "Overworld",
+      "the_nether": "Nether",
+      "the_end": "The End"
+    },
+    "gamemodes": {
+      "survival": "Survival",
+      "creative": "Creative",
+      "adventure": "Adventure",
+      "spectator": "Spectator"
+    },
+    "gamemodeTitle": "Change game mode",
+    "teleportTitle": "Teleport player",
+    "teleportText": "The player is moved to these coordinates right away.",
+    "teleport": "Teleport",
+    "pickedUp": "Items picked up",
+    "used": "Items used",
+    "mobsKilled": "Mobs killed",
+    "travelled": "Blocks travelled",
+    "none": "Nothing yet.",
+    "travel": {
+      "walk": "Walk",
+      "sprint": "Sprint",
+      "crouch": "Crouch",
+      "swim": "Swim",
+      "ride": "Ride",
+      "fly": "Fly"
+    },
+    "tabs": {
+      "inventory": "Inventory",
+      "ender": "Ender chest"
+    },
+    "mainInventory": "Main inventory",
+    "hotbar": "Hotbar",
+    "armor": "Armor",
+    "emptySlot": "Empty",
+    "armorSlots": {
+      "head": "Head",
+      "chest": "Chest",
+      "legs": "Legs",
+      "feet": "Feet",
+      "offhand": "Off hand"
+    },
+    "chatTitle": "Chat archive",
+    "chatHint": "Last 50 messages and commands",
+    "chatEmpty": "The logs hold no message from this player yet.",
+    "command": "Command",
+    "confirmBan": "Really ban {{name}}?",
+    "confirmKick": "Really kick {{name}}?"
   }
 }
