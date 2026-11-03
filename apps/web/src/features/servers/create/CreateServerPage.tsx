@@ -43,6 +43,7 @@ import { GameCard } from '@/components/game-card';
 import { McBlock } from '@/components/mc-block';
 import { ProjectLogo } from '@/components/project-logo';
 import { confetti } from '@/lib/confetti';
+import { PriceWithCoupon } from './coupon';
 import { api } from '@/lib/api';
 import { formatMemoryMb } from '@/lib/format';
 import { errorText } from '@/lib/query';
@@ -675,13 +676,7 @@ export function CreateServerPage(): ReactElement {
             ) : null}
           </dl>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('order.price')}
-            </div>
-            <div className="text-3xl font-extrabold">
-              0,00 €{' '}
-              <span className="text-base font-semibold text-muted-foreground">/ {t('order.month')}</span>
-            </div>
+            <PriceWithCoupon />
             <p className="text-xs text-muted-foreground">{t('order.priceNote')}</p>
           </div>
           <label className="flex items-center gap-2.5 text-sm">

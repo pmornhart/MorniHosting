@@ -2044,7 +2044,16 @@
     "pickVersion": "Version wählen",
     "nameIdea": "Namen vorschlagen",
     "pickName": "Gib deinem Server einen Namen – daraus wird seine Adresse unter {{domain}}. Der Würfel schlägt dir einen vor.",
-    "addOnsFailed": "Der Server ist da, aber ein Add-on (Geyser, Voice-Chat oder Backup) konnte nicht eingerichtet werden. Schalte es auf der Server-Seite noch einmal ein."
+    "addOnsFailed": "Der Server ist da, aber ein Add-on (Geyser, Voice-Chat oder Backup) konnte nicht eingerichtet werden. Schalte es auf der Server-Seite noch einmal ein.",
+    "coupon": {
+      "label": "Gutscheincode",
+      "placeholder": "Gutscheincode",
+      "redeem": "Einlösen",
+      "unknown": "Diesen Code kennen wir nicht.",
+      "remove": "Code entfernen",
+      "appliedTitle": "Gutschein „MORNI“ eingelöst!",
+      "appliedText": "Ab jetzt zahlst du großzügige 9.999,99 € im Monat. Danke für deine Unterstützung! 😄 (Keine Sorge: Abgebucht wird nichts.)"
+    }
   },
   "version": {
     "title": "Minecraft-Version",

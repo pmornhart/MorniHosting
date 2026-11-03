@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/misc';
 import { confetti } from '@/lib/confetti';
+import { PriceWithCoupon } from './coupon';
 import { api } from '@/lib/api';
 import { errorText } from '@/lib/query';
 import { placeOrder, RequestSent } from './order-submit';
@@ -349,13 +350,7 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
             ) : null}
           </dl>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('order.price')}
-            </div>
-            <div className="text-3xl font-extrabold">
-              0,00 €{' '}
-              <span className="text-base font-semibold text-muted-foreground">/ {t('order.month')}</span>
-            </div>
+            <PriceWithCoupon />
             <p className="text-xs text-muted-foreground">
               {t('games.downloadNote', { gb: game.downloadGb })}
             </p>
