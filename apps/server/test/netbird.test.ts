@@ -118,7 +118,8 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
     if (net[2] === 'networks' && net[4] === 'resources') {
       const resourceBody = body as unknown as Omit<FakeResource, 'id'> | null;
       const resourceId = net[5] ?? '';
-      if (method === 'GET') return Response.json([...resources.values()]);
+      // Real NetBird (Go) answers an empty list with null.
+      if (method === 'GET') return Response.json(resources.size ? [...resources.values()] : null);
       if (method === 'POST' && resourceBody) {
         const created = { ...resourceBody, id: `res-${next.id++}` };
         resources.set(created.id, created);

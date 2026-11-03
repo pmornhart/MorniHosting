@@ -1839,7 +1839,8 @@
       "fixed": "The NetBird proxy only lets port 443 through by default. Open these ports once – in your NetBird server's docker-compose.yml under the netbird-proxy service, then run “docker compose up -d”. New servers get the next free port (25566, 25567 …); easiest is to open a range right away, e.g. “25565-25575:25565-25575/tcp”.",
       "random": "The NetBird proxy only lets port 443 through by default, and your NetBird assigns its own port per server. Open each of these ports – in your NetBird server's docker-compose.yml under the netbird-proxy service, then run “docker compose up -d”. If your proxy allows custom ports, MorniHosting uses the servers' own ports (25565 …) automatically.",
       "firewall": "If your provider has its own firewall in the customer panel (e.g. IONOS, Hetzner), open the same ports there – no script can reach it. By hand works too: add the ports above to netbird-proxy in docker-compose.yml, or run the proxy with “network_mode: host”.",
-      "auto": "Easiest: run this command once on your NetBird server. It opens 25565–25575/tcp, 19132–19140/udp and 24454–24460/udp on netbird-proxy (and in ufw/firewalld if active) and restarts only the proxy."
+      "auto": "Easiest: run this command once on your NetBird server. It opens 25565–25575/tcp, 19132–19140/udp and 24454–24460/udp on netbird-proxy (and in ufw/firewalld if active) and restarts only the proxy.",
+      "once": "(only needed once – already done? Just leave it closed)"
     },
     "managedDns": "Set up through your own domain.",
     "panelNameHint": "Leave empty to put the panel on {{domain}} itself."
