@@ -155,9 +155,9 @@ export function ServerCard({ server }: { server: ServerSummary }): ReactElement 
   const nobody = live.state === 'starting' ? t('card.nobodyYet') : t('card.nobodyOnline');
 
   return (
-    <Card className="grid grid-rows-[auto_auto_auto_1fr] gap-3.5 p-[18px]">
+    <Card className="mh-lift group grid grid-rows-[auto_auto_auto_1fr] gap-3.5 p-[18px]">
       <div className="flex items-center gap-3">
-        <ServerIcon id={server.id} software={server.software} hasIcon={server.hasIcon} />
+        <ServerIcon id={server.id} software={server.software} hasIcon={server.hasIcon} className="mh-hop" />
         <Link to={`/servers/${server.id}`} className="min-w-0 flex-1 after:absolute">
           <b className="block truncate text-[15px] font-bold hover:underline">{server.name}</b>
           <span className="flex items-center gap-1 text-[13px] text-muted-foreground">

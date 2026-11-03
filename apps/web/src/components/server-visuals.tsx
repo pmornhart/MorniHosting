@@ -19,7 +19,7 @@ const STATE_TONES: Readonly<Record<ServerState, PillTone>> = {
 export function StatePill({ state, className }: { state: ServerState; className?: string }): ReactElement {
   const { t } = useTranslation();
   return (
-    <Pill tone={STATE_TONES[state]} className={className}>
+    <Pill tone={STATE_TONES[state]} ping={state === 'running'} className={className}>
       {t(`states.${state}`)}
     </Pill>
   );

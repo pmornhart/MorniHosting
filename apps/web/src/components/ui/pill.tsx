@@ -16,8 +16,9 @@ export function Pill({
   dot = true,
   className,
   children,
+  ping = false,
   ...props
-}: ComponentProps<'span'> & { tone?: PillTone; dot?: boolean }): ReactElement {
+}: ComponentProps<'span'> & { tone?: PillTone; dot?: boolean; ping?: boolean }): ReactElement {
   return (
     <span
       className={cn(
@@ -27,7 +28,9 @@ export function Pill({
       )}
       {...props}
     >
-      {dot ? <span aria-hidden className="size-[7px] rounded-full bg-current" /> : null}
+      {dot ? (
+        <span aria-hidden className={cn('size-[7px] rounded-full bg-current', ping && 'mh-ping')} />
+      ) : null}
       {children}
     </span>
   );

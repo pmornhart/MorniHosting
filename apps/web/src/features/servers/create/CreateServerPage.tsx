@@ -42,6 +42,7 @@ import { Badge } from '@/components/art';
 import { GameCard } from '@/components/game-card';
 import { McBlock } from '@/components/mc-block';
 import { ProjectLogo } from '@/components/project-logo';
+import { confetti } from '@/lib/confetti';
 import { api } from '@/lib/api';
 import { formatMemoryMb } from '@/lib/format';
 import { errorText } from '@/lib/query';
@@ -261,9 +262,11 @@ export function CreateServerPage(): ReactElement {
     },
     onSuccess: (server) => {
       if (!server) {
+        confetti();
         setRequestSent(true);
         return;
       }
+      confetti();
       void queryClient.invalidateQueries({ queryKey: serversQuery.queryKey });
       void queryClient.invalidateQueries({ queryKey: ['me'] });
       navigate(`/servers/${server.id}`);

@@ -63,8 +63,9 @@ const UNKNOWN = ['..rrr..', '.r...r.', '.....r.', '....r..', '...r...', '.......
 /** Ten hearts for 0 … 20 health points (half hearts included). */
 export function Hearts({ value, max = 20 }: { value: number | null; max?: number }): ReactElement {
   const points = Math.max(0, Math.round(value ?? 0));
+  const LOW = 6;
   return (
-    <span className="flex gap-0.5">
+    <span className={cn('flex gap-0.5', points > 0 && points <= LOW && 'mh-beat')}>
       {Array.from({ length: max / 2 }, (_, i) => {
         const left = points - i * 2;
         const rows = left >= 2 ? HEART : left === 1 ? HEART_HALF : HEART_EMPTY; // eslint-disable-line ts-patterns/no-nested-ternary -- three heart states read best side by side

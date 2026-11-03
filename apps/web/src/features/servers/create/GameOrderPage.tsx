@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/misc';
+import { confetti } from '@/lib/confetti';
 import { api } from '@/lib/api';
 import { errorText } from '@/lib/query';
 import { placeOrder, RequestSent } from './order-submit';
@@ -91,9 +92,11 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
     },
     onSuccess: (server) => {
       if (!server) {
+        confetti();
         setRequestSent(true);
         return;
       }
+      confetti();
       void queryClient.invalidateQueries({ queryKey: serversQuery.queryKey });
       void queryClient.invalidateQueries({ queryKey: ['me'] });
       navigate(`/servers/${server.id}`);

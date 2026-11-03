@@ -1,0 +1,158 @@
+/*
+ * Small movements that make the panel feel alive. Everything here is switched off for people who asked
+ * their system for less motion (see the rule at the end and the global one in panel.css).
+ */
+
+/* Cards rise into place when a page opens, one after the other. */
+@keyframes mh-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+[data-slot='card'] {
+  animation: mh-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+:where(.grid, .flex) > [data-slot='card']:nth-child(2) {
+  animation-delay: 0.05s;
+}
+:where(.grid, .flex) > [data-slot='card']:nth-child(3) {
+  animation-delay: 0.1s;
+}
+:where(.grid, .flex) > [data-slot='card']:nth-child(4) {
+  animation-delay: 0.15s;
+}
+:where(.grid, .flex) > [data-slot='card']:nth-child(5) {
+  animation-delay: 0.2s;
+}
+:where(.grid, .flex) > [data-slot='card']:nth-child(n + 6) {
+  animation-delay: 0.25s;
+}
+
+/* Server cards lift a little under the mouse. */
+.mh-lift {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+.mh-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-float);
+}
+
+/* Minecraft blocks hop when you point at their card – like a jumping block. */
+@keyframes mh-hop {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  30% {
+    transform: translateY(-7px) rotate(-6deg);
+  }
+  55% {
+    transform: translateY(0) rotate(3deg);
+  }
+  75% {
+    transform: translateY(-2px) rotate(0);
+  }
+}
+.group:hover .mh-hop,
+.mh-hop:hover {
+  animation: mh-hop 0.6s ease-out;
+}
+
+/* A running server breathes: its dot sends out a soft ring. */
+@keyframes mh-ping {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, currentColor 55%, transparent);
+  }
+  80%,
+  100% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+.mh-ping {
+  animation: mh-ping 1.8s ease-out infinite;
+}
+
+/* Hearts beat when health runs low. */
+@keyframes mh-beat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.18);
+  }
+  30% {
+    transform: scale(0.96);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+}
+.mh-beat > * {
+  animation: mh-beat 1s ease-in-out infinite;
+}
+.mh-beat > *:nth-child(2n) {
+  animation-delay: 0.06s;
+}
+
+/* Sidebar icons wiggle when pointed at. */
+@keyframes mh-wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-10deg);
+  }
+  60% {
+    transform: rotate(8deg);
+  }
+}
+.mh-wiggle:hover svg {
+  animation: mh-wiggle 0.45s ease-in-out;
+}
+
+/* Pixel confetti for good news (a new server). */
+@keyframes mh-confetti {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--spin));
+    opacity: 0;
+  }
+}
+.mh-confetti {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  width: 9px;
+  height: 9px;
+  animation: mh-confetti var(--time) cubic-bezier(0.15, 0.6, 0.35, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot='card'],
+  .group:hover .mh-hop,
+  .mh-hop:hover,
+  .mh-ping,
+  .mh-beat > *,
+  .mh-wiggle:hover svg {
+    animation: none;
+  }
+  .mh-lift:hover {
+    transform: none;
+  }
+  .mh-confetti {
+    display: none;
+  }
+}
