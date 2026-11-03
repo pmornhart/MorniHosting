@@ -266,28 +266,33 @@ function SelfHostedPorts({ status }: { status: NetbirdStatus }): ReactElement {
   const lines = status.openPorts.map((p) => `      - "${p.port}:${p.port}/${p.protocol}"`);
   const compose = ['  netbird-proxy:', '    ports:', ...lines].join('\n');
   return (
-    <div className="grid min-w-0 gap-2.5 rounded-[12px] border border-warning/40 bg-warning-soft px-3.5 py-3 text-sm">
-      <p className="font-semibold">{t('netbirdAuto.selfHosted.title')}</p>
-      <p>{status.customPorts ? t('netbirdAuto.selfHosted.fixed') : t('netbirdAuto.selfHosted.random')}</p>
-      {status.openPorts.length ? (
-        <>
-          <ul className="grid gap-1">
-            {status.openPorts.map((p) => (
-              <li key={`${p.port}/${p.protocol}`} className="flex flex-wrap gap-x-2 font-mono text-[13px]">
-                <b>
-                  {p.port}/{p.protocol}
-                </b>
-                <span className="text-muted-foreground">{p.domain}</span>
-              </li>
-            ))}
-          </ul>
-          <CommandLine text={compose} block className="bg-background/60" />
-        </>
-      ) : null}
-      <p className="font-semibold">{t('netbirdAuto.selfHosted.auto')}</p>
-      <CommandLine text={PORTS_SCRIPT} className="bg-background/60" />
-      <p className="text-[13px] text-muted-foreground">{t('netbirdAuto.selfHosted.firewall')}</p>
-    </div>
+    <details className="group min-w-0 rounded-[12px] border border-border px-3.5 py-3 text-sm">
+      <summary className="cursor-pointer font-semibold">
+        {t('netbirdAuto.selfHosted.title')}
+        <span className="ml-1 font-normal text-muted-foreground">{t('netbirdAuto.selfHosted.once')}</span>
+      </summary>
+      <div className="mt-2.5 grid min-w-0 gap-2.5">
+        <p>{status.customPorts ? t('netbirdAuto.selfHosted.fixed') : t('netbirdAuto.selfHosted.random')}</p>
+        {status.openPorts.length ? (
+          <>
+            <ul className="grid gap-1">
+              {status.openPorts.map((p) => (
+                <li key={`${p.port}/${p.protocol}`} className="flex flex-wrap gap-x-2 font-mono text-[13px]">
+                  <b>
+                    {p.port}/{p.protocol}
+                  </b>
+                  <span className="text-muted-foreground">{p.domain}</span>
+                </li>
+              ))}
+            </ul>
+            <CommandLine text={compose} block className="bg-background/60" />
+          </>
+        ) : null}
+        <p className="font-semibold">{t('netbirdAuto.selfHosted.auto')}</p>
+        <CommandLine text={PORTS_SCRIPT} className="bg-background/60" />
+        <p className="text-[13px] text-muted-foreground">{t('netbirdAuto.selfHosted.firewall')}</p>
+      </div>
+    </details>
   );
 }
 

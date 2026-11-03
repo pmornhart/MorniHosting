@@ -41,6 +41,12 @@ const resourceSchema = z.object({
   address: z.string().catch(''),
 });
 const routerSchema = z.object({ id: z.string(), peer: z.string().nullable().catch(null) });
+/** NetBird is written in Go and sends an empty list as `null`; both mean "nothing there". */
+const listOf = <TItem extends z.ZodType>(item: TItem) =>
+  z
+    .array(item)
+    .nullable()
+    .transform((items) => items ?? []);
 
 export type NetbirdDomain = z.infer<typeof domainSchema>;
 export type NetbirdPeer = z.infer<typeof peerSchema>;
@@ -164,12 +170,17 @@ export const createNetbirdClient: NetbirdClientFactory = (apiUrl, token) => {
   const json = async <TValue>(schema: z.ZodType<TValue>, method: string, path: string, body?: unknown) => {
     const response = await call(method, path, body);
     if (!response.ok) throw await rejection(response, host);
-    return schema.parse(await response.json());
+    const parsed = schema.safeParse(await response.json().catch(() => undefined));
+    if (!parsed.success)
+      throw new AppError(HTTP_BAD_GATEWAY, 'netbird_rejected', {
+        message: `${method} ${path}: unerwartete Antwort`.slice(0, MESSAGE_MAX),
+      });
+    return parsed.data;
   };
   return {
-    domains: () => json(z.array(domainSchema), 'GET', '/reverse-proxies/domains'),
-    peers: () => json(z.array(peerSchema), 'GET', '/peers'),
-    services: () => json(z.array(serviceSchema), 'GET', '/reverse-proxies/services'),
+    domains: () => json(listOf(domainSchema), 'GET', '/reverse-proxies/domains'),
+    peers: () => json(listOf(peerSchema), 'GET', '/peers'),
+    services: () => json(listOf(serviceSchema), 'GET', '/reverse-proxies/services'),
     createService: (request) =>
       json(serviceSchema, 'POST', '/reverse-proxies/services', serviceBody(request)),
     updateService: (id, request) =>
@@ -178,12 +189,12 @@ export const createNetbirdClient: NetbirdClientFactory = (apiUrl, token) => {
       const response = await call('DELETE', `/reverse-proxies/services/${encodeURIComponent(id)}`);
       if (!response.ok && response.status !== HTTP_NOT_FOUND) throw await rejection(response, host);
     },
-    groups: () => json(z.array(namedSchema), 'GET', '/groups'),
+    groups: () => json(listOf(namedSchema), 'GET', '/groups'),
     createGroup: (name) => json(namedSchema, 'POST', '/groups', { name }),
-    networks: () => json(z.array(namedSchema), 'GET', '/networks'),
+    networks: () => json(listOf(namedSchema), 'GET', '/networks'),
     createNetwork: (name, description) => json(namedSchema, 'POST', '/networks', { name, description }),
     routers: (networkId) =>
-      json(z.array(routerSchema), 'GET', `/networks/${encodeURIComponent(networkId)}/routers`),
+      json(listOf(routerSchema), 'GET', `/networks/${encodeURIComponent(networkId)}/routers`),
     createRouter: async (networkId, peerId) => {
       await json(routerSchema, 'POST', `/networks/${encodeURIComponent(networkId)}/routers`, {
         peer: peerId,
@@ -193,7 +204,7 @@ export const createNetbirdClient: NetbirdClientFactory = (apiUrl, token) => {
       });
     },
     resources: (networkId) =>
-      json(z.array(resourceSchema), 'GET', `/networks/${encodeURIComponent(networkId)}/resources`),
+      json(listOf(resourceSchema), 'GET', `/networks/${encodeURIComponent(networkId)}/resources`),
     createResource: (networkId, request) =>
       json(
         resourceSchema,
