@@ -2594,7 +2594,7 @@
     "checks": {
       "a": {
         "title": "Name des Mailservers (A)",
-        "tip": "Der Name des Mailservers muss auf seine öffentliche IP zeigen. Trag oben die IP ein, dann setzt das Panel den Eintrag."
+        "tip": "Der Name des Mailservers muss auf seine öffentliche IP zeigen. Ist deine Domain im Panel unter „Eigene Domain“ verbunden, setzt das Panel den Eintrag mit der IP von oben selbst – sonst trag ihn bei deinem DNS-Anbieter ein."
       },
       "ptr": {
         "title": "Rückwärts-Eintrag (PTR)",

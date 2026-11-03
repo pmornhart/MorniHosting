@@ -2594,7 +2594,7 @@
     "checks": {
       "a": {
         "title": "Mail server name (A)",
-        "tip": "The mail server's name must point to its public IP. Enter the IP above and the panel sets the record."
+        "tip": "The mail server's name must point to its public IP. If your domain is connected under “Own domain”, the panel sets the record with the IP above – otherwise add it at your DNS provider."
       },
       "ptr": {
         "title": "Reverse record (PTR)",

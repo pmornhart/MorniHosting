@@ -59,10 +59,10 @@ function Steps(props: { readonly steps: readonly StalwartStep[] }): ReactElement
               <span className={step.state === 'skipped' ? 'text-muted-foreground' : 'font-medium'}>
                 {t(`stalwart.steps.${step.key}`)}
               </span>
-              {detail.raw && step.state === 'ok' ? (
-                <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">{detail.raw}</span>
-              ) : null}
             </span>
+            {step.state === 'ok' && detail.raw ? (
+              <span className="ml-6 break-all font-mono text-xs text-muted-foreground">{detail.raw}</span>
+            ) : null}
             {step.state !== 'ok' && (detail.text || detail.raw) ? (
               <span className="ml-6 grid gap-0.5">
                 {detail.text ? <span>{detail.text}</span> : null}
