@@ -39,7 +39,7 @@ function ProfileCard(): ReactElement {
     },
   });
   return (
-    <Card className="grid gap-4 p-5 sm:p-6">
+    <Card fold="account-1" foldOpen className="grid gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle>{t('account.profile')}</CardTitle>
       </CardHeader>
@@ -91,7 +91,7 @@ function PasswordCard(): ReactElement {
     if (current && next.length >= PASSWORD_MIN && next === repeat) change.mutate();
   };
   return (
-    <Card className="grid gap-4 p-5 sm:p-6">
+    <Card fold="account-2" className="grid gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle>{t('account.password')}</CardTitle>
       </CardHeader>
@@ -259,7 +259,7 @@ function TwoFactorCard(): ReactElement {
   };
 
   return (
-    <Card className="grid gap-4 p-5 sm:p-6">
+    <Card fold="account-3" className="grid gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex items-center gap-2">
           {t('account.twoFactor')}

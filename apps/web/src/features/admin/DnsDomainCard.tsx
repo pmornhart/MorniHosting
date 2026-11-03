@@ -281,7 +281,7 @@ export function DnsDomainCard(): ReactElement | null {
     : null;
 
   return (
-    <Card id="own-domain" className="grid min-w-0 scroll-mt-4 gap-4 p-5 sm:p-6">
+    <Card fold="own-domain" foldOpen id="own-domain" className="grid min-w-0 scroll-mt-4 gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex flex-wrap items-center gap-2">
           <Globe className="size-4 text-primary" aria-hidden />

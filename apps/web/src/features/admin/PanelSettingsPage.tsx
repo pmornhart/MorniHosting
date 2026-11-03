@@ -186,7 +186,7 @@ export function PanelSettingsPage(): ReactElement {
 
   const settingsForm = (
     <form onSubmit={submit} className="grid min-w-0 gap-5">
-      <Card className="grid min-w-0 gap-4 p-5 sm:p-6">
+      <Card fold="settings-1" foldOpen className="grid min-w-0 gap-4 p-5 sm:p-6">
         <CardHeader className="mb-0">
           <CardTitle>{t('panelSettings.addressTitle')}</CardTitle>
         </CardHeader>
@@ -215,7 +215,7 @@ export function PanelSettingsPage(): ReactElement {
         />
       </Card>
 
-      <Card className="grid min-w-0 gap-4 p-5 sm:p-6">
+      <Card fold="settings-2" className="grid min-w-0 gap-4 p-5 sm:p-6">
         <CardHeader className="mb-0">
           <CardTitle className="flex items-center gap-2">
             CurseForge
@@ -242,7 +242,7 @@ export function PanelSettingsPage(): ReactElement {
         </Field>
       </Card>
 
-      <Card className="grid min-w-0 gap-4 p-5 sm:p-6">
+      <Card fold="settings-3" className="grid min-w-0 gap-4 p-5 sm:p-6">
         <CardHeader className="mb-0">
           <CardTitle>{t('panelSettings.generalTitle')}</CardTitle>
         </CardHeader>
@@ -307,7 +307,7 @@ export function PanelSettingsPage(): ReactElement {
 
   const manualDomain = (
     <form onSubmit={submit} className="grid min-w-0 gap-5">
-      <Card className="grid min-w-0 gap-4 p-5 sm:p-6">
+      <Card fold="settings-4" className="grid min-w-0 gap-4 p-5 sm:p-6">
         <CardHeader className="mb-0">
           <CardTitle className="flex flex-wrap items-center gap-2">
             {t('admin.domainTitle')}

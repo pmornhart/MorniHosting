@@ -85,7 +85,7 @@ export function PasswordResetCard(): ReactElement {
   const [target, setTarget] = useState<UserListEntry | null>(null);
   const others = users.filter((u) => u.id !== me.user.id);
   return (
-    <Card id="passwords" className="grid min-w-0 scroll-mt-4 gap-4 p-5 sm:p-6">
+    <Card fold="passwords" foldOpen id="passwords" className="grid min-w-0 scroll-mt-4 gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex items-center gap-2">
           <KeyRound className="size-4 text-primary" aria-hidden />

@@ -186,7 +186,7 @@ export function MailTestsCard(): ReactElement {
     start.mutate(add());
   };
   return (
-    <Card className="grid gap-4 p-5">
+    <Card fold="mail-tests" className="grid gap-4 p-5">
       <div className="grid gap-1.5">
         <CardTitle className="flex items-center gap-2">
           <FlaskConical className="size-5 shrink-0 text-primary" aria-hidden />
@@ -270,10 +270,22 @@ export function MailTestsCard(): ReactElement {
         <div className="grid gap-2">
           <h3 className="text-sm font-semibold">{t('mailTests.history')}</h3>
           <ul className="grid gap-2">
-            {runs.map((run) => (
+            {runs.slice(0, 1).map((run) => (
               <RunCard key={run.id} run={run} />
             ))}
           </ul>
+          {runs.length > 1 ? (
+            <details className="rounded-[12px] border border-border px-3 py-2">
+              <summary className="cursor-pointer text-sm font-semibold">
+                {t('mailTests.older', { count: runs.length - 1 })}
+              </summary>
+              <ul className="mt-2 grid gap-2">
+                {runs.slice(1).map((run) => (
+                  <RunCard key={run.id} run={run} />
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </div>
       ) : null}
     </Card>

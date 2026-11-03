@@ -80,7 +80,7 @@ export function NotifyCard(): ReactElement {
   const command = code.data ? `/verbinden ${code.data.code}` : '';
 
   return (
-    <Card className="grid min-w-0 gap-5 p-5 sm:p-6">
+    <Card fold="account-notify" className="grid min-w-0 gap-5 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex items-center gap-2">
           <Bell className="size-4 text-primary" aria-hidden />

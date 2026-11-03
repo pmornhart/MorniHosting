@@ -295,7 +295,7 @@ export function MailCard(): ReactElement {
   const error = save.error ?? remove.error ?? test.error;
 
   return (
-    <Card className="grid min-w-0 gap-5 p-5 sm:p-6">
+    <Card fold="mail-smtp" className="grid min-w-0 gap-5 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex flex-wrap items-center gap-2">
           <Mail className="size-4 text-primary" aria-hidden />

@@ -63,7 +63,7 @@ export function DiscordBotCard(): ReactElement {
       : t('discordBot.connecting');
 
   return (
-    <Card className="grid min-w-0 gap-4 p-5 sm:p-6">
+    <Card fold="discord-bot" className="grid min-w-0 gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex flex-wrap items-center gap-2">
           <Bot className="size-4 text-primary" aria-hidden />

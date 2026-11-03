@@ -155,7 +155,7 @@ function RateLimitCard({
   const save = (): void => onSave({ rateLimit: on ? number : DDOS_RATE_LIMIT_OFF });
 
   return (
-    <Card className="grid min-w-0 gap-4 p-5 sm:p-6">
+    <Card fold="ddos-main" foldOpen className="grid min-w-0 gap-4 p-5 sm:p-6">
       <CardHeader className="mb-0">
         <CardTitle className="flex flex-wrap items-center gap-2">
           <Gauge className="size-5 text-primary" aria-hidden />
@@ -225,7 +225,7 @@ export function DdosSection(): ReactElement {
 
   return (
     <>
-      <Card className="grid min-w-0 gap-4 p-5 sm:p-6">
+      <Card fold="ddos-status" className="grid min-w-0 gap-4 p-5 sm:p-6">
         <div className="flex items-start gap-4">
           <span
             className={cn(
@@ -279,7 +279,7 @@ export function DdosSection(): ReactElement {
         <HostDetails data={data} />
       </Card>
 
-      <Card className="grid min-w-0 gap-3 p-5 sm:p-6">
+      <Card fold="ddos-more" className="grid min-w-0 gap-3 p-5 sm:p-6">
         <CardHeader className="mb-0">
           <CardTitle>{t('ddos.honestTitle')}</CardTitle>
         </CardHeader>
