@@ -203,3 +203,169 @@
     animation: none;
   }
 }
+
+/*
+ * Menus (sidebar, admin area): under the mouse an item slides a little to the right, a green bar grows in on the
+ * left and the icon pops; the open item keeps the bar and a soft green glow.
+ */
+.mh-nav {
+  position: relative;
+  isolation: isolate;
+  transition:
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.25s ease;
+}
+.mh-nav::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--primary);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--primary) 70%, transparent);
+  transform: scaleY(0);
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.mh-nav svg {
+  transition:
+    transform 0.25s cubic-bezier(0.3, 1.6, 0.4, 1),
+    color 0.2s ease,
+    filter 0.25s ease;
+}
+.mh-nav:hover {
+  transform: translateX(3px);
+}
+.mh-nav:hover::before,
+.mh-nav[aria-current='page']::before {
+  transform: scaleY(1);
+}
+.mh-nav:hover svg {
+  transform: scale(1.15);
+  color: var(--primary);
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--primary) 60%, transparent));
+}
+.mh-nav[aria-current='page'] {
+  background: linear-gradient(90deg, color-mix(in oklab, var(--primary) 18%, transparent), var(--accent) 70%);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 22%, transparent);
+}
+.mh-nav[aria-current='page'] svg {
+  color: var(--primary);
+}
+
+/* Server tabs: the green line under a tab grows out from the middle. */
+.mh-tab {
+  position: relative;
+}
+.mh-tab::after {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--primary);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--primary) 60%, transparent);
+  transform: scaleX(0);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.mh-tab:hover::after {
+  transform: scaleX(0.45);
+}
+.mh-tab[aria-current='page']::after {
+  left: 0;
+  right: 0;
+  transform: scaleX(1);
+}
+.mh-tab svg {
+  transition: transform 0.25s cubic-bezier(0.3, 1.6, 0.4, 1);
+}
+.mh-tab:hover svg {
+  transform: translateY(-2px) scale(1.12);
+}
+
+/* Main buttons get a light sweep and glow under the mouse. */
+[data-slot='button'][data-variant='default'] {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.25s ease,
+    filter 0.2s ease;
+}
+[data-slot='button'][data-variant='default']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.28) 50%, transparent 70%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+[data-slot='button'][data-variant='default']:hover {
+  box-shadow: 0 6px 22px -6px color-mix(in oklab, var(--primary) 75%, transparent);
+  filter: brightness(1.06);
+}
+[data-slot='button'][data-variant='default']:hover::after {
+  transform: translateX(120%);
+  transition: transform 0.7s ease;
+}
+
+/* Cards you can click glow at the edge under the mouse. */
+.mh-lift:hover {
+  border-color: color-mix(in oklab, var(--primary) 45%, var(--border));
+  box-shadow:
+    var(--shadow-float),
+    0 0 0 1px color-mix(in oklab, var(--primary) 25%, transparent),
+    0 10px 40px -18px color-mix(in oklab, var(--primary) 60%, transparent);
+}
+
+/* A new section (admin tabs) fades in instead of jumping. */
+@keyframes mh-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mh-fade {
+  animation: mh-fade 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Progress bars shimmer while something is still loading. */
+@keyframes mh-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.mh-shimmer [data-slot='progress-indicator'] {
+  background-image: linear-gradient(90deg, transparent 0%, rgb(255 255 255 / 0.25) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: mh-shimmer 1.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mh-nav,
+  .mh-nav:hover,
+  .mh-nav:hover svg,
+  .mh-tab:hover svg,
+  .mh-lift:hover {
+    transform: none;
+  }
+  .mh-fade,
+  .mh-shimmer [data-slot='progress-indicator'] {
+    animation: none;
+  }
+  [data-slot='button'][data-variant='default']:hover::after {
+    transition: none;
+  }
+}

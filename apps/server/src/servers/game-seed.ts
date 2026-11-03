@@ -60,3 +60,57 @@ export async function seedGameFiles(source: string, target: string): Promise<num
   });
   return bytes;
 }
+
+/**
+ * Minecraft: a new server of the same software and version takes the finished server program from one that has
+ * already run – the downloaded jar, the Mojang jar, the patched version and all libraries. That skips the
+ * downloads and Paper's patching (or Forge's installer) and is the slow part of a first start. Worlds, plugins,
+ * mods, settings and player lists are never copied.
+ */
+const RUNTIME_DIRS: ReadonlySet<string> = new Set(['libraries', 'cache', 'versions', '.fabric']);
+// Top-level files that belong to the server program: jars and the image helper's manifests.
+// "paper-1.21.4-232.jar", ".paper-manifest.json", "user_jvm_args.txt" match; "ops.json", ".rcon-cli.env" do not.
+// https://regex101.com/?flavor=javascript&regex=%5E(.%2B%5C.jar%7C%5C..%2B-manifest%5C.json%7Cuser_jvm_args%5C.txt%7Crun%5C.sh)%24&testString=paper-1.21.4-232.jar%0A.paper-manifest.json%0Auser_jvm_args.txt%0Aops.json%0A.rcon-cli.env
+const RUNTIME_FILE = /^(.+\.jar|\..+-manifest\.json|user_jvm_args\.txt|run\.sh)$/;
+/** Paper remaps its own program for plugins once per folder (about 10 s); the result depends only on the version. */
+const RUNTIME_NESTED: readonly string[] = [
+  path.join('plugins', '.paper-remapped', 'mappings'),
+  path.join('plugins', '.paper-remapped', 'remap-classpath'),
+];
+
+/** True when the folder does not have a server program yet (a brand-new server). */
+export function needsRuntime(target: string): boolean {
+  return !entries(target).some((name) => RUNTIME_DIRS.has(name) || RUNTIME_FILE.test(name));
+}
+
+/** Copies the server program of `source` into `target`; returns the bytes copied. */
+export async function seedRuntime(source: string, target: string): Promise<number> {
+  const wanted = [
+    ...entries(source).filter((name) => RUNTIME_DIRS.has(name) || RUNTIME_FILE.test(name)),
+    ...RUNTIME_NESTED.filter((nested) => fs.existsSync(path.join(source, nested))),
+  ];
+  fs.mkdirSync(target, { recursive: true });
+  const sizes = await Promise.all(
+    wanted.map(async (name) => {
+      const from = path.join(source, name);
+      await fs.promises.cp(from, path.join(target, name), {
+        recursive: true,
+        force: false,
+        errorOnExist: false,
+        preserveTimestamps: true,
+      });
+      return folderBytes(from);
+    }),
+  );
+  return sizes.reduce((sum, n) => sum + n, 0);
+}
+
+function folderBytes(file: string): number {
+  try {
+    const stat = fs.statSync(file);
+    if (!stat.isDirectory()) return stat.size;
+    return entries(file).reduce((sum, name) => sum + folderBytes(path.join(file, name)), 0);
+  } catch {
+    return 0;
+  }
+}

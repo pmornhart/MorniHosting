@@ -1957,7 +1957,7 @@
     "netbirdActive": "NetBird hands out your servers' addresses. If you also connect your DNS provider here (e.g. INWX), the panel only tidies up: it deletes old records under server names that would block the NetBird wildcard (*). It never publishes your IP.",
     "inwxUser": "INWX user name",
     "inwxPass": "INWX password",
-    "inwxOtp": "2FA secret (only if 2FA is on)"
+    "inwxOtp": "2FA secret (optional)"
   },
   "https": {
     "title": "HTTPS for the panel",

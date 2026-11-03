@@ -30,7 +30,7 @@ export function ConsoleHome(): ReactElement {
             <b>{t('card.downloading')}</b>
             <span className="tabular font-bold">{server.live.progress} %</span>
           </div>
-          <Progress value={server.live.progress} tone="warning" />
+          <Progress value={server.live.progress} tone="warning" className="mh-shimmer" />
           <DownloadInfo download={server.live.download} />
         </section>
       ) : null}

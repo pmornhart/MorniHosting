@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp, LifeBuoy } from 'lucide-react';
+import { ChevronDown, LifeBuoy } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
@@ -11,7 +11,8 @@ import { useSession } from '@/features/auth/session';
 import { useCrashFix } from '@/features/servers/overview/CrashCard';
 import { serversQuery } from '@/features/servers/live';
 
-const SHOWN_MAX = 3;
+/** One card at a time, so the popup never covers half the page; the pill counts the rest. */
+const SHOWN_MAX = 1;
 
 function CrashAlert({ server }: { server: ServerSummary }): ReactElement {
   const { t } = useTranslation();
@@ -71,7 +72,7 @@ export function CrashAlerts(): ReactElement | null {
   if (crashed.length === 0) return null;
   return (
     <div
-      className="fixed z-40 grid w-[min(22rem,calc(100vw-2rem))] gap-2 max-sm:[&>*:nth-child(n+3)]:hidden"
+      className="fixed z-40 grid w-[min(22rem,calc(100vw-2rem))] gap-2"
       style={{
         right: 'max(1rem, env(safe-area-inset-right, 0px))',
         bottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
@@ -88,9 +89,27 @@ export function CrashAlerts(): ReactElement | null {
       >
         <LifeBuoy className="size-4" aria-hidden />
         {t('crash.popupCount', { count: crashed.length })}
-        {folded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        <ChevronDown
+          className={cn('size-4 transition-transform duration-300', folded && 'rotate-180')}
+          aria-hidden
+        />
       </button>
-      {folded ? null : crashed.slice(0, SHOWN_MAX).map((s) => <CrashAlert key={s.id} server={s} />)}
+      {/* Folding slides the card down and up again instead of jumping (grid rows 0fr ↔ 1fr). */}
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
+          folded
+            ? 'pointer-events-none translate-y-3 grid-rows-[0fr] opacity-0'
+            : 'grid-rows-[1fr] opacity-100',
+        )}
+        aria-hidden={folded}
+      >
+        <div className="grid min-h-0 gap-2 overflow-hidden">
+          {crashed.slice(0, SHOWN_MAX).map((s) => (
+            <CrashAlert key={s.id} server={s} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

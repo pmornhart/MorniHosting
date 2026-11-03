@@ -28,6 +28,8 @@ export function openDatabase(file: string): DbHandle {
   if (file !== ':memory:') fs.mkdirSync(path.dirname(file), { recursive: true });
   const sqlite = new Database(file);
   sqlite.pragma('journal_mode = WAL');
+  // Safe together with WAL and much faster for the many small writes (stats, logs, audit).
+  sqlite.pragma('synchronous = NORMAL');
   sqlite.pragma('foreign_keys = ON');
   sqlite.pragma('busy_timeout = 5000');
   const db = drizzle(sqlite, { schema });

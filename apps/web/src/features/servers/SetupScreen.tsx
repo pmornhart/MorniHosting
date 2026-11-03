@@ -40,7 +40,7 @@ export function SetupScreen({ server }: { server: ServerDetail }): ReactElement 
           <b>{current ? t(`orderSetup.steps.${current}`) : t('orderSetup.almost')}</b>
           <span className="tabular font-bold">{percent} %</span>
         </div>
-        <Progress value={percent} />
+        <Progress value={percent} className="mh-shimmer" />
         {current === START_STEP && server.live.download ? (
           <DownloadInfo download={server.live.download} />
         ) : null}
