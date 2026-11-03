@@ -38,18 +38,22 @@ export function createOrderService(
       readonly on: boolean;
       readonly label: string;
       readonly run: () => Promise<unknown>;
+      /** Takes the tick back when setting it up did not work. */
+      readonly undo?: () => void;
     }[] = [
       {
         key: 'geyser',
         on: addOns?.geyser === true,
         label: 'Geyser (Bedrock-Spieler) + ViaVersion',
         run: () => geyser.set(serverId, true, actor),
+        undo: () => servers.setGeyser(serverId, false),
       },
       {
         key: 'voice',
         on: addOns?.voice === true,
         label: 'Simple Voice Chat',
         run: () => voice.set(serverId, { enabled: true }, actor),
+        undo: () => servers.setVoiceChat(serverId, false, null),
       },
       {
         key: 'backups',
@@ -97,6 +101,9 @@ export function createOrderService(
     const wanted = input.addOns && (input.addOns.geyser || input.addOns.voice || input.addOns.backups);
     if (!wanted) return servers.create(input, actor, creator);
     const summary = await servers.create({ ...input, startNow: false }, actor, creator);
+    // Ticked at the order = switched on right away; the setup below fills in plugins and ports.
+    if (input.addOns?.geyser) servers.setGeyser(summary.id, true);
+    if (input.addOns?.voice) servers.setVoiceChat(summary.id, true, null);
     void setUp(summary.id, input, actor).catch((err: unknown) =>
       ctx.log.error({ err, serverId: summary.id }, 'setting up the order failed'),
     );
