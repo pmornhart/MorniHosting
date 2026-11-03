@@ -79,7 +79,7 @@ export function PriceWithCoupon(): ReactElement {
               onKeyDown={onKey}
               placeholder={t('order.coupon.placeholder')}
               aria-label={t('order.coupon.label')}
-              className="h-9 uppercase placeholder:normal-case"
+              className="h-9"
               autoComplete="off"
               spellCheck={false}
             />
