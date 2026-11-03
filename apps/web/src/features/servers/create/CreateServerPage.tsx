@@ -43,6 +43,7 @@ import { GameCard } from '@/components/game-card';
 import { McBlock } from '@/components/mc-block';
 import { ProjectLogo } from '@/components/project-logo';
 import { confetti } from '@/lib/confetti';
+import { PriceWithCoupon } from './coupon';
 import { api } from '@/lib/api';
 import { formatMemoryMb } from '@/lib/format';
 import { errorText } from '@/lib/query';
@@ -175,6 +176,7 @@ export function CreateServerPage(): ReactElement {
   const [portPick, setPortPick] = useState<number | null>(null);
   const [addOns, setAddOns] = useState({ geyser: false, voice: false, backups: false });
   const [startNow, setStartNow] = useState(false);
+  const [coupon, setCoupon] = useState<string | null>(null);
   const [eula, setEula] = useState(false);
 
   const geyserPossible = edition === 'java' && software !== null && GEYSER_SOFTWARE.includes(software);
@@ -236,6 +238,7 @@ export function CreateServerPage(): ReactElement {
         autoStart: true,
         startNow,
         ...(address && addressName ? { netbirdName: addressName } : {}),
+        ...(coupon ? { coupon } : {}),
       };
       const server = await placeOrder(body, me.user.canCreateServers);
       if (!server) return null;
@@ -645,7 +648,7 @@ export function CreateServerPage(): ReactElement {
                 <b className="block">{t(`order.title.${game}`)}</b>
                 <span className="font-mono text-xs uppercase text-muted-foreground">{name || '–'}</span>
               </dt>
-              <dd className="font-semibold">{t('landing.free')}</dd>
+              <dd className="font-semibold">{coupon ? t('order.coupon.paid') : t('landing.free')}</dd>
             </div>
             <div className="flex justify-between gap-3 border-b border-border pb-3">
               <dt className="text-muted-foreground">{t('order.performance')}</dt>
@@ -675,14 +678,8 @@ export function CreateServerPage(): ReactElement {
             ) : null}
           </dl>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('order.price')}
-            </div>
-            <div className="text-3xl font-extrabold">
-              0,00 €{' '}
-              <span className="text-base font-semibold text-muted-foreground">/ {t('order.month')}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">{t('order.priceNote')}</p>
+            <PriceWithCoupon onChange={setCoupon} />
+            {coupon ? null : <p className="text-xs text-muted-foreground">{t('order.priceNote')}</p>}
           </div>
           <label className="flex items-center gap-2.5 text-sm">
             <Checkbox id="start-now" checked={startNow} onCheckedChange={(v) => setStartNow(v === true)} />

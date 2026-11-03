@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Gauge,
-  PackageOpen,
   ArrowUpCircle,
+  CircleDollarSign,
   ExternalLink,
+  Gauge,
   Globe,
   KeyRound,
   Mail,
   Network,
+  PackageOpen,
   Save,
   Shield,
   SlidersHorizontal,
@@ -42,6 +43,7 @@ import { UpdateSection } from './UpdateSection';
 import { DdosSection } from './DdosSection';
 import { QuotaSection } from './QuotaSection';
 import { TransferSection } from './TransferCard';
+import { PaymentsSection } from './PaymentsSection';
 
 const LANGUAGE_NAMES: Readonly<Record<Locale, string>> = { de: 'Deutsch', en: 'English' };
 /** The admin area's tabs; the address bar (#update …) opens one directly. */
@@ -51,6 +53,7 @@ const TABS = [
   { key: 'update', icon: ArrowUpCircle },
   { key: 'ddos', icon: Shield },
   { key: 'quotas', icon: Gauge },
+  { key: 'payments', icon: CircleDollarSign },
   { key: 'mail', icon: Mail },
   { key: 'passwords', icon: KeyRound },
   { key: 'move', icon: PackageOpen },
@@ -405,6 +408,7 @@ export function PanelSettingsPage(): ReactElement {
     ),
     passwords: <PasswordResetCard />,
     move: <TransferSection />,
+    payments: <PaymentsSection />,
     settings: settingsForm,
   };
 

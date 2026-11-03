@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { couponOf, couponSchema } from './payments.js';
 import { SERVER_PERMISSIONS, type ServerPermission } from './permissions.js';
 import { scheduleSpecSchema, SCHEDULE_ACTIONS, type ScheduleAction, type ScheduleSpec } from './schedule.js';
 import {
@@ -218,6 +219,8 @@ export const createServerSchema = z.object({
   /** Limits for the server (admins); people with a quota get what is left of it when empty. */
   cpuLimit: cpuLimitSchema.nullable().optional(),
   diskLimitMb: diskLimitSchema.nullable().optional(),
+  /** Voucher from the order page ("MORNI"); unknown codes are refused. */
+  coupon: couponSchema.optional().refine((code) => !code || couponOf(code) !== null, 'coupon_unknown'),
 });
 export type CreateServerInput = z.infer<typeof createServerSchema>;
 

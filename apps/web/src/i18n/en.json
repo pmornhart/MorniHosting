@@ -594,7 +594,9 @@
     "team_user_inactive": "This account is locked or not approved yet.",
     "team_member_unknown": "This person isn't (or no longer) on this server's team.",
     "player_details_java_only": "Player details are only available for Minecraft Java.",
-    "player_not_online": "This only works while the player is online."
+    "player_not_online": "This only works while the player is online.",
+    "coupon_unknown": "We don't know this code.",
+    "charge_unknown": "This payment doesn't exist."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1547,7 +1549,9 @@
       "server_team_add": "Team member added",
       "server_team_role": "Team member's role changed",
       "server_team_remove": "Team member removed",
-      "player_adjust": "Player changed (health, level, mode …)"
+      "player_adjust": "Player changed (health, level, mode …)",
+      "payment_paid": "Month marked as paid",
+      "payment_unpaid": "Month marked as open again"
     }
   },
   "ddos": {
@@ -1705,7 +1709,8 @@
       "ddos": "DDoS protection",
       "mail": "E-mail",
       "move": "Move",
-      "quotas": "Quotas"
+      "quotas": "Quotas",
+      "payments": "Payments"
     },
     "domainTitle": "Panel address by hand",
     "domainSet": "Set",
@@ -1732,7 +1737,8 @@
       "ddos": "Protects your servers and the panel from flood attacks, as far as that is possible at home.",
       "mail": "Mails to your people: welcome, sign-up, “password forgotten” and orders.",
       "move": "Move settings and connections to another MorniHosting with a code.",
-      "quotas": "How much RAM, disk, CPU and how many servers each person may have. Admins have no limits."
+      "quotas": "How much RAM, disk, CPU and how many servers each person may have. Admins have no limits.",
+      "payments": "Who owes you how much for a server ordered with the voucher “MORNI” – and which months are paid."
     },
     "netbirdManual": "Set up NetBird by hand",
     "netbirdManualHint": "Only needed if you don't use the automation above. Tap to open."
@@ -2044,7 +2050,17 @@
     "pickVersion": "Pick a version",
     "nameIdea": "Suggest a name",
     "pickName": "Give your server a name – it becomes its address under {{domain}}. The dice suggests one.",
-    "addOnsFailed": "The server is there, but an add-on (Geyser, voice chat or backup) could not be set up. Switch it on again on the server page."
+    "addOnsFailed": "The server is there, but an add-on (Geyser, voice chat or backup) could not be set up. Switch it on again on the server page.",
+    "coupon": {
+      "label": "Voucher code",
+      "placeholder": "Voucher code",
+      "redeem": "Redeem",
+      "unknown": "We don't know this code.",
+      "remove": "Remove code",
+      "appliedTitle": "Voucher “{{code}}” redeemed!",
+      "appliedText": "From now on you pay {{payee}} {{price}} a month for this server, directly to {{payee}}.",
+      "paid": "€9,999.99 / month"
+    }
   },
   "version": {
     "title": "Minecraft version",
@@ -2886,5 +2902,21 @@
     "command": "Command",
     "confirmBan": "Really ban {{name}}?",
     "confirmKick": "Really kick {{name}}?"
+  },
+  "payments": {
+    "open": "Still open",
+    "paid": "Already paid",
+    "emptyTitle": "Nobody pays yet",
+    "emptyText": "As soon as someone redeems the voucher “MORNI” when ordering, you see here who owes you how much a month.",
+    "who": "{{name}} · {{price}} a month (voucher {{code}}) · since {{since}}",
+    "ended": "Server deleted",
+    "owes": "Open: {{amount}}",
+    "allPaid": "All paid",
+    "markPaid": "open – mark as paid",
+    "markedPaid": "paid",
+    "note": "The panel only remembers who owes what and which months you marked as paid. No money goes through the panel. Remember to declare income to the tax office.",
+    "mineTitle": "You pay {{price}} a month for your server.",
+    "mineOpen": "Still open: {{amount}}. Pay it directly to whoever runs this panel.",
+    "mineAllPaid": "All paid – thank you!"
   }
 }

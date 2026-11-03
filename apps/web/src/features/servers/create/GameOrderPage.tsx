@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/misc';
 import { confetti } from '@/lib/confetti';
+import { PriceWithCoupon } from './coupon';
 import { api } from '@/lib/api';
 import { errorText } from '@/lib/query';
 import { placeOrder, RequestSent } from './order-submit';
@@ -45,6 +46,7 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [backups, setBackups] = useState(false);
   const [startNow, setStartNow] = useState(false);
+  const [coupon, setCoupon] = useState<string | null>(null);
   const [terms, setTerms] = useState(false);
   const [portPick, setPortPick] = useState<number | null>(null);
 
@@ -74,6 +76,7 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
         startNow,
         gameSettings: settings,
         ...(address && addressName ? { netbirdName: addressName } : {}),
+        ...(coupon ? { coupon } : {}),
       };
       const server = await placeOrder(body, me.user.canCreateServers);
       if (!server) return null;
@@ -323,7 +326,7 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
                 <b className="block">{t('games.orderTitle', { game: game.label })}</b>
                 <span className="font-mono text-xs uppercase text-muted-foreground">{name || '–'}</span>
               </dt>
-              <dd className="font-semibold">{t('landing.free')}</dd>
+              <dd className="font-semibold">{coupon ? t('order.coupon.paid') : t('landing.free')}</dd>
             </div>
             <div className="flex justify-between gap-3 border-b border-border pb-3">
               <dt className="text-muted-foreground">{t('order.performance')}</dt>
@@ -349,13 +352,7 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
             ) : null}
           </dl>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('order.price')}
-            </div>
-            <div className="text-3xl font-extrabold">
-              0,00 €{' '}
-              <span className="text-base font-semibold text-muted-foreground">/ {t('order.month')}</span>
-            </div>
+            <PriceWithCoupon onChange={setCoupon} />
             <p className="text-xs text-muted-foreground">
               {t('games.downloadNote', { gb: game.downloadGb })}
             </p>

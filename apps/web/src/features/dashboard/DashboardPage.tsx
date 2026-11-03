@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/misc';
 import { useSession } from '@/features/auth/session';
 import { useServers } from '@/features/servers/live';
 import { HostStrip } from './HostStrip';
+import { MyPaymentsHint } from '@/features/admin/PaymentsSection';
 import { ServerCard } from './ServerCard';
 
 const SKELETON_CARDS = 3;
@@ -60,6 +61,7 @@ export function DashboardPage(): ReactElement {
         actions={createButtons}
       />
       {me.user.isAdmin ? <HostStrip /> : null}
+      <MyPaymentsHint />
       {canCreate ? null : <MyRequests />}
       {isPending ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

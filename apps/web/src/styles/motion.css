@@ -156,3 +156,30 @@
     display: none;
   }
 }
+
+/* Easter egg on the order page: the price jumps in like a jackpot. */
+@keyframes mh-jackpot {
+  0% {
+    transform: scale(0.6) rotate(-6deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.18) rotate(3deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(0.96) rotate(-1deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+.mh-jackpot {
+  display: inline-block;
+  animation: mh-jackpot 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-jackpot {
+    animation: none;
+  }
+}

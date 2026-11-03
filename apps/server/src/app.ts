@@ -91,6 +91,8 @@ import { registerStalwartRoutes } from './stalwart/routes.js';
 import { createApprovalService } from './notify/approvals.js';
 import type { DiscordApi } from './notify/discord.js';
 import { registerNotifyRoutes } from './notify/routes.js';
+import { createPaymentsService } from './payments/service.js';
+import { registerPaymentRoutes } from './payments/routes.js';
 import { createNotifyService } from './notify/service.js';
 
 export interface BuildOptions {
@@ -290,6 +292,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerMailRoutes(app, ctx, mail, createMailTests(ctx, mail, stalwart.client));
   registerStalwartRoutes(app, stalwart);
   registerNotifyRoutes(app, ctx, notify, approvals);
+  registerPaymentRoutes(app, ctx, createPaymentsService(ctx, notify));
   registerUserRoutes(app, ctx, mail);
   registerTeamRoutes(app, ctx);
   registerPlayerDetailRoutes(app, ctx, createPlayerDetailService(servers));

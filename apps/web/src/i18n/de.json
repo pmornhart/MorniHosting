@@ -594,7 +594,9 @@
     "team_user_inactive": "Dieses Konto ist gesperrt oder noch nicht freigegeben.",
     "team_member_unknown": "Diese Person arbeitet nicht (mehr) an diesem Server mit.",
     "player_details_java_only": "Spieler-Details gibt es nur für Minecraft Java.",
-    "player_not_online": "Das geht nur, solange der Spieler online ist."
+    "player_not_online": "Das geht nur, solange der Spieler online ist.",
+    "coupon_unknown": "Diesen Code kennen wir nicht.",
+    "charge_unknown": "Diese Zahlung gibt es nicht."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1547,7 +1549,9 @@
       "server_team_add": "Mitarbeiter hinzugefügt",
       "server_team_role": "Rolle eines Mitarbeiters geändert",
       "server_team_remove": "Mitarbeiter entfernt",
-      "player_adjust": "Spieler geändert (Leben, Level, Modus …)"
+      "player_adjust": "Spieler geändert (Leben, Level, Modus …)",
+      "payment_paid": "Monat als bezahlt markiert",
+      "payment_unpaid": "Monat wieder offen"
     }
   },
   "ddos": {
@@ -1705,7 +1709,8 @@
       "ddos": "DDoS-Schutz",
       "mail": "E-Mail",
       "move": "Umzug",
-      "quotas": "Kontingente"
+      "quotas": "Kontingente",
+      "payments": "Zahlungen"
     },
     "domainTitle": "Panel-Adresse von Hand",
     "domainSet": "Eingetragen",
@@ -1732,7 +1737,8 @@
       "ddos": "Schützt deine Server und das Panel vor Flut-Angriffen, so gut das zu Hause geht.",
       "mail": "Mails an deine Leute: Willkommen, Registrierung, „Passwort vergessen“ und Bestellungen.",
       "move": "Einstellungen und Verbindungen per Code auf ein anderes MorniHosting übertragen.",
-      "quotas": "Wie viel Arbeitsspeicher, Festplatte, CPU und wie viele Server jede Person haben darf. Admins sind ausgenommen."
+      "quotas": "Wie viel Arbeitsspeicher, Festplatte, CPU und wie viele Server jede Person haben darf. Admins sind ausgenommen.",
+      "payments": "Wer dir für einen Server mit Gutschein „MORNI“ wie viel schuldet – und welche Monate bezahlt sind."
     },
     "netbirdManual": "NetBird von Hand einrichten",
     "netbirdManualHint": "Nur nötig, wenn du die Automatik oben nicht nutzt. Zum Aufklappen tippen."
@@ -2044,7 +2050,17 @@
     "pickVersion": "Version wählen",
     "nameIdea": "Namen vorschlagen",
     "pickName": "Gib deinem Server einen Namen – daraus wird seine Adresse unter {{domain}}. Der Würfel schlägt dir einen vor.",
-    "addOnsFailed": "Der Server ist da, aber ein Add-on (Geyser, Voice-Chat oder Backup) konnte nicht eingerichtet werden. Schalte es auf der Server-Seite noch einmal ein."
+    "addOnsFailed": "Der Server ist da, aber ein Add-on (Geyser, Voice-Chat oder Backup) konnte nicht eingerichtet werden. Schalte es auf der Server-Seite noch einmal ein.",
+    "coupon": {
+      "label": "Gutscheincode",
+      "placeholder": "Gutscheincode",
+      "redeem": "Einlösen",
+      "unknown": "Diesen Code kennen wir nicht.",
+      "remove": "Code entfernen",
+      "appliedTitle": "Gutschein „{{code}}“ eingelöst!",
+      "appliedText": "Ab jetzt zahlst du {{payee}} {{price}} im Monat für diesen Server. Bezahlt wird direkt bei {{payee}}.",
+      "paid": "9.999,99 € / Monat"
+    }
   },
   "version": {
     "title": "Minecraft-Version",
@@ -2886,5 +2902,21 @@
     "command": "Befehl",
     "confirmBan": "{{name}} wirklich bannen?",
     "confirmKick": "{{name}} wirklich vom Server werfen?"
+  },
+  "payments": {
+    "open": "Noch offen",
+    "paid": "Schon bezahlt",
+    "emptyTitle": "Noch niemand zahlt",
+    "emptyText": "Sobald jemand beim Bestellen den Gutscheincode „MORNI“ einlöst, steht hier, wer dir wie viel im Monat schuldet.",
+    "who": "{{name}} · {{price}} im Monat (Gutschein {{code}}) · seit {{since}}",
+    "ended": "Server gelöscht",
+    "owes": "Offen: {{amount}}",
+    "allPaid": "Alles bezahlt",
+    "markPaid": "offen – als bezahlt markieren",
+    "markedPaid": "bezahlt",
+    "note": "Das Panel merkt sich nur, wer was schuldet und welche Monate du als bezahlt markiert hast. Geld läuft nicht über das Panel. Denk daran, Einnahmen beim Finanzamt anzugeben.",
+    "mineTitle": "Du zahlst {{price}} im Monat für deinen Server.",
+    "mineOpen": "Noch offen: {{amount}}. Bezahl es direkt an den Betreiber dieses Panels.",
+    "mineAllPaid": "Alles bezahlt – danke!"
   }
 }

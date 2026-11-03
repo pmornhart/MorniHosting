@@ -17,3 +17,4 @@ export * from './stalwart.js';
 export * from './mail-tests.js';
 export * from './team.js';
 export * from './player-detail.js';
+export * from './payments.js';
