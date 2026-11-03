@@ -175,7 +175,7 @@ export function LandingLayout({ children }: { children: ReactNode }): ReactEleme
       </section>
 
       <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
-        MorniHosting · {t('landing.footer')} · Verfasst mit Claude 🤖
+        MorniHosting · {t('landing.footer')}
       </footer>
     </div>
   );
