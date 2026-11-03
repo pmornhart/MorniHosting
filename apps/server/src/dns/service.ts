@@ -31,6 +31,8 @@ const SRV_PRIORITY = 0;
 const SRV_WEIGHT = 5;
 /** Records of the domain itself (example.de and *.example.de) are kept under this key instead of a server id. */
 const DOMAIN_KEY = '_domain';
+/** The A record of the mail server's own name (e.g. mail.example.de), set for the Stalwart connection. */
+const MAIL_KEY = '_mail';
 
 interface StoredConfig {
   readonly provider: DnsProvider;
@@ -60,6 +62,10 @@ export interface DnsAutomation {
   /** Asks for the public IP and moves all records if it changed; runs on its own every few minutes. */
   readonly refreshIp: () => Promise<void>;
   readonly shutdown: () => void;
+  /** The provider, its access and the domain, to hand to a mail server that publishes its own records. */
+  readonly access: () => { provider: DnsProvider; token: string; zone: string } | null;
+  /** Points `host` (a name in the domain) at `ip`; null removes the record again. */
+  readonly setMailHost: (host: string | null, ip: string | null) => Promise<void>;
 }
 
 const failureOf = (err: unknown): Failure =>
@@ -313,7 +319,8 @@ export function createDnsAutomation(
       const moved =
         previous !== null && (previous.zone !== zone.name || previous.provider !== input.provider);
       // Records at the old domain or provider are removed first, so nothing is left behind.
-      if (moved) await Promise.allSettled([DOMAIN_KEY, ...namedServers().map((r) => r.id)].map(clearServer));
+      if (moved)
+        await Promise.allSettled([DOMAIN_KEY, MAIL_KEY, ...namedServers().map((r) => r.id)].map(clearServer));
       save({
         provider: input.provider,
         token: ctx.secrets.encrypt(token),
@@ -332,7 +339,7 @@ export function createDnsAutomation(
       return status();
     },
     disconnect: async (actor) => {
-      await Promise.allSettled([DOMAIN_KEY, ...namedServers().map((r) => r.id)].map(clearServer));
+      await Promise.allSettled([DOMAIN_KEY, MAIL_KEY, ...namedServers().map((r) => r.id)].map(clearServer));
       ctx.db.delete(dnsRecords).run();
       namedServers().forEach((r) =>
         servers.setTunnelAddress(r.id, {
@@ -376,6 +383,17 @@ export function createDnsAutomation(
     },
     refreshIp,
     shutdown: () => clearInterval(timer),
+    access: () => {
+      const cfg = config();
+      return cfg ? { provider: cfg.provider, token: ctx.secrets.decrypt(cfg.token), zone: cfg.zone } : null;
+    },
+    setMailHost: async (host, ip) => {
+      const cfg = config();
+      if (!cfg) return;
+      const inZone = host !== null && ip !== null && (host === cfg.zone || host.endsWith(`.${cfg.zone}`));
+      const wants: Wanted[] = inZone ? [{ type: 'A', name: host, ip, content: ip }] : [];
+      await lock(MAIL_KEY, () => syncRecords(cfg, MAIL_KEY, wants));
+    },
   };
 
   /** Removes a server's records at the provider (used when the domain changes or DNS is turned off). */

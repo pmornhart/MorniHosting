@@ -92,7 +92,7 @@ export interface MailService {
   readonly deliver: (to: string, kind: MailKind, locale: Locale, vars: Partial<MailVars>) => void;
   /** Quick start: finds server, port and encryption from address + password, saves them and sends a test mail. */
   readonly quick: (
-    input: MailQuickInput,
+    input: MailQuickInput & { readonly host?: string; readonly from?: string },
     to: string,
     locale: Locale,
     vars: Partial<MailVars>,
@@ -302,7 +302,8 @@ export function createMailService(
   };
 
   const quick: MailService['quick'] = async (input, to, locale, vars) => {
-    const hosts = await candidateHosts(input.email, input.internalHost, network);
+    // A known server name (from a connected Stalwart) is tried alone; otherwise guess from the address.
+    const hosts = input.host ? [input.host] : await candidateHosts(input.email, input.internalHost, network);
     const configs: SmtpConfig[] = hosts.flatMap((host) =>
       FALLBACKS.map((endpoint) => ({
         host,
@@ -310,7 +311,7 @@ export function createMailService(
         ...endpoint,
         user: input.email,
         password: input.password,
-        from: `MorniHosting <${input.email}>`,
+        from: input.from ?? `MorniHosting <${input.email}>`,
       })),
     );
     const outcomes = await Promise.all(
@@ -354,7 +355,7 @@ export function createMailService(
       security: winner.security,
       user: winner.user,
       passwordSealed: secrets.encrypt(input.password),
-      from: previous.configured ? previous.from : winner.from,
+      from: previous.configured && !input.from ? previous.from : winner.from,
       registration: previous.registration,
       registrationOrders: previous.registrationOrders,
       registrationApproval: previous.registrationApproval,

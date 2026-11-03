@@ -15,7 +15,10 @@ const TEST_SECRET = 'test-secret-test-secret-test-secret-123';
 /** A panel with a fresh data folder and the fake Docker driver, for HTTP-level tests. */
 export async function createTestApp(
   env: Record<string, string> = {},
-  options: Pick<BuildOptions, 'resolver' | 'mailTransport' | 'mailNetwork' | 'discord'> = {},
+  options: Pick<
+    BuildOptions,
+    'resolver' | 'mailTransport' | 'mailNetwork' | 'discord' | 'stalwart' | 'stalwartResolver'
+  > = {},
 ): Promise<TestApp> {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-test-'));
   const config = loadConfig(
