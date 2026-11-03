@@ -132,8 +132,8 @@ footer { color: var(--muted); font-size: 13px; }
 <script type="application/json" id="data">
 {
   "goal": "Ein selbst gehostetes Panel für Minecraft-Server: so viel wie Crafty Controller 4, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-11-02T20:31:52+00:00",
-  "now": "Kontingente: wer wie viel RAM, Festplatte, CPU und Server haben darf.",
+  "updated": "2026-11-03T07:11:31+00:00",
+  "now": "Stalwart verbinden: Code fertig und hochgeladen, als Nächstes Screenshots und Freigabe.",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -459,6 +459,16 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "Kontingente",
       "status": "fertig",
       "detail": "Admin-Bereich → Kontingente: Standard für alle und eigene Grenzen pro Person (Server, RAM, Festplatte, CPU-Kerne). Neue Server bekommen einen fairen Anteil; CPU-Grenze geht an Docker, über der Festplatten-Grenze startet ein Server nicht."
+    },
+    {
+      "title": "Anmelden mit E-Mail",
+      "status": "fertig",
+      "detail": "Beim Anmelden geht statt des Benutzernamens auch die E-Mail-Adresse. Die Registrierungs-Mail geht auch ohne Panel-Domain raus (dann ohne Bestätigungslink)."
+    },
+    {
+      "title": "Stalwart verbinden",
+      "status": "läuft",
+      "detail": "Admin → E-Mail: Adresse und Admin-Passwort von Stalwart eingeben (kostenlose Version ab 1.0). Das Panel legt Domain und noreply-Konto an, stellt den Mail-Versand ein, schickt eine Test-Mail, gibt den INWX-Zugang an Stalwart weiter (MX, SPF, DKIM, DMARC setzt Stalwart selbst) und prüft A, PTR, MX, SPF, DKIM, DMARC. Code fertig, 287 Tests grün, hochgeladen. Offen: Screenshots, Freigabe nach main."
     }
   ],
   "shots": [
@@ -564,14 +574,13 @@ footer { color: var(--muted); font-size: 13px; }
     }
   ],
   "files": [
-    "apps/web/src/features/admin/DiscordLinkPage.tsx, apps/web/src/features/auth/session.tsx, apps/server/src/notify/routes.ts",
     {
       "tag": "neu",
-      "path": "apps/server/src/notify/ (Discord-Bot, Benachrichtigungen, Freigaben), Migration 0008, features/approvals/ApprovalsPage.tsx, DiscordBotCard.tsx, NotifyCard.tsx, MyRequests.tsx, docs/discord.md"
+      "path": "apps/server/src/stalwart/ (client.ts, service.ts, routes.ts), apps/web/src/features/admin/StalwartCard.tsx, packages/shared/src/stalwart.ts, apps/server/test/stalwart.test.ts"
     },
     {
       "tag": "geändert",
-      "path": "Bestellseiten (Anfrage statt Bestellung), Menü (Freigaben mit Zähler), Mail-Einstellungen (Freigabe-Schalter), README"
+      "path": "DNS-Automatik (A-Eintrag für den Mailserver), Mail-Schnellstart (fester Servername), Texte de/en"
     }
   ],
   "eta": null,
