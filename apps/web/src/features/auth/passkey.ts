@@ -11,7 +11,7 @@ import { api } from '@/lib/api';
 const HTTPS = 'https:';
 
 /** Passkeys need WebAuthn and a secure page (HTTPS or localhost). */
-export function passkeysInBrowser(): boolean {
+function passkeysInBrowser(): boolean {
   return window.isSecureContext && browserSupportsWebAuthn();
 }
 

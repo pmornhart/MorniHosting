@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, type ReactElement, type ReactNode } from 'react';
 import type { MeResponse, ServerPermission, SystemStatus } from '@mornihosting/shared';
 import { api, ApiError, onUnauthorized, setCsrfToken } from '@/lib/api';
@@ -64,8 +64,4 @@ export function SessionProvider({ me, children }: { me: MeResponse; children: Re
     hasAny: (serverId) => Boolean(me.access[serverId]?.length),
   };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
-}
-
-export function useMe(): ReturnType<typeof useQuery<MeResponse | null>> {
-  return useQuery(meQuery);
 }

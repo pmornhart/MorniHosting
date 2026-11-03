@@ -298,7 +298,12 @@ function ServerHead({ server, can, children }: ServerOutletContext & { children:
               online ? 'text-success' : 'text-muted-foreground',
             )}
           >
-            <span className={cn('size-2 rounded-full', online ? 'bg-success' : 'bg-muted-foreground')} />
+            <span
+              className={cn(
+                'size-2 rounded-full',
+                online ? 'mh-ping bg-success text-success' : 'bg-muted-foreground',
+              )}
+            />
             {t(`states.${state}`)}
           </span>
         </div>

@@ -94,7 +94,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }): ReactElement {
       onClick={onNavigate}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground [&_svg]:size-[18px]',
+          'mh-wiggle flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground [&_svg]:size-[18px]',
           isActive && 'bg-accent text-foreground [&_svg]:text-primary',
         )
       }

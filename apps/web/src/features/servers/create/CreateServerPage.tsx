@@ -42,6 +42,7 @@ import { Badge } from '@/components/art';
 import { GameCard } from '@/components/game-card';
 import { McBlock } from '@/components/mc-block';
 import { ProjectLogo } from '@/components/project-logo';
+import { confetti } from '@/lib/confetti';
 import { api } from '@/lib/api';
 import { formatMemoryMb } from '@/lib/format';
 import { errorText } from '@/lib/query';
@@ -63,8 +64,6 @@ import {
   nextFreePort,
   suggestName,
 } from './order-parts';
-
-export { OWN_TEXT_COLOUR } from './order-parts';
 
 /** What can be ordered, like at a hoster: Java, Bedrock, or a Java server Bedrock players can join (Geyser). */
 const GAMES = ['java', 'bedrock', 'crossplay'] as const;
@@ -263,9 +262,11 @@ export function CreateServerPage(): ReactElement {
     },
     onSuccess: (server) => {
       if (!server) {
+        confetti();
         setRequestSent(true);
         return;
       }
+      confetti();
       void queryClient.invalidateQueries({ queryKey: serversQuery.queryKey });
       void queryClient.invalidateQueries({ queryKey: ['me'] });
       navigate(`/servers/${server.id}`);
