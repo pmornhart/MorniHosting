@@ -6,6 +6,10 @@ import type { GameId, GameInfo } from './games.js';
  */
 
 const TIME_LENGTH = 19;
+const PERCENT = 100;
+/** About the size of the CS2 server files. */
+const CS2_BYTES = 61_203_284_377;
+const DEMO_DOWNLOAD_STEPS = [0.02, 0.09, 0.18, 0.31, 0.47, 0.62, 0.78, 0.91, 1];
 
 export function demoClock(): string {
   return new Date().toISOString().replace('T', ' ').slice(0, TIME_LENGTH);
@@ -33,6 +37,11 @@ const BOOT: Readonly<Record<GameId, (input: DemoBootInput) => readonly string[]>
   ],
   cs2: ({ port }) => [
     'Redirecting stderr to /home/steam/cs2-dedicated/steamcmd.log',
+    // steamcmd reports the download like this; the panel turns it into progress, speed and time left.
+    ...DEMO_DOWNLOAD_STEPS.map(
+      (share) =>
+        ` Update state (0x61) downloading, progress: ${(share * PERCENT).toFixed(2)} (${Math.round(share * CS2_BYTES)} / ${CS2_BYTES})`,
+    ),
     "Success! App '730' fully installed.",
     `Starting CS2 Dedicated Server on port ${port}`,
     'Network: IP 0.0.0.0, mode MP, dedicated Yes, ports 27015 SV / 27005 CL',

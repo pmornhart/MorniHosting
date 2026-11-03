@@ -10,7 +10,7 @@ import {
 import type { UserRow } from '../auth/context.js';
 import type { Actor } from '../audit/service.js';
 import type { AppContext } from '../context.js';
-import { serverAccess, serverRequests, servers, users } from '../db/schema.js';
+import { serverRequests, users } from '../db/schema.js';
 import { conflict, forbidden, notFound } from '../lib/errors.js';
 import type { MailService } from '../mail/service.js';
 import type { ServerService } from '../servers/service.js';
@@ -276,30 +276,6 @@ export function createApprovalService(
           { label: 'Ablehnen', id: notify.actionId('reject-req', row.id), style: 'reject' },
           ...(linkButton('/approvals') ?? []),
         ],
-      },
-    }));
-  });
-
-  // Crashes: Discord only (the crash mail for admins has its own switch in the mail settings).
-  ctx.events.on('server.crashed', ({ serverId }) => {
-    const server = db.select().from(servers).where(eq(servers.id, serverId)).get();
-    if (!server) return;
-    const members = db
-      .select({ user: users })
-      .from(serverAccess)
-      .innerJoin(users, eq(users.id, serverAccess.userId))
-      .where(eq(serverAccess.serverId, serverId))
-      .all()
-      .map((r) => r.user);
-    const people = [...notify.admins(), ...members].filter(
-      (u, i, all) => all.findIndex((x) => x.id === u.id) === i,
-    );
-    notify.tell(people, 'crashes', () => ({
-      discord: {
-        title: '⚠️ Server abgestürzt',
-        text: `Der Server „${server.name}“ ist abgestürzt. Der Absturz-Helfer im Panel zeigt die Ursache.`,
-        colour: COLOUR_DECLINED,
-        buttons: linkButton(`/servers/${serverId}`),
       },
     }));
   });

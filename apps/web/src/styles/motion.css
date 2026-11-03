@@ -183,3 +183,23 @@
     animation: none;
   }
 }
+
+/* The crash popup slides in from the corner. */
+@keyframes mh-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mh-alert-in {
+  animation: mh-alert-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mh-alert-in {
+    animation: none;
+  }
+}

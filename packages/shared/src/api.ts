@@ -219,6 +219,14 @@ export const createServerSchema = z.object({
   /** Limits for the server (admins); people with a quota get what is left of it when empty. */
   cpuLimit: cpuLimitSchema.nullable().optional(),
   diskLimitMb: diskLimitSchema.nullable().optional(),
+  /** Add-ons from the order page: set up by the panel one after another, before the first start. */
+  addOns: z
+    .object({
+      geyser: z.boolean().default(false),
+      voice: z.boolean().default(false),
+      backups: z.boolean().default(false),
+    })
+    .optional(),
   /** Voucher from the order page ("MORNI"); unknown codes are refused. */
   coupon: couponSchema.optional().refine((code) => !code || couponOf(code) !== null, 'coupon_unknown'),
 });
@@ -276,6 +284,12 @@ export interface ServerLive {
   readonly startedAt: string | null;
   /** 0 to 100 while a server installs or starts, if known. */
   readonly progress: number | null;
+  /** While a game downloads its files (steamcmd): how much, how fast. */
+  readonly download?: {
+    readonly doneBytes: number;
+    readonly totalBytes: number;
+    readonly bytesPerSecond: number | null;
+  } | null;
 }
 
 export interface CrashInfo {

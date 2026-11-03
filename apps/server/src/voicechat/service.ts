@@ -7,6 +7,7 @@ import { AppError, badRequest } from '../lib/errors.js';
 import type { MarketService } from '../market/service.js';
 import { parseProperties, serialiseProperties } from '../servers/properties-file.js';
 import { VOICE_PURPOSE, type ServerService } from '../servers/service.js';
+import { serial } from '../lib/serial.js';
 
 /**
  * Simple Voice Chat with one switch: installs the plugin (Paper and friends) or the mod (Fabric, Forge,
@@ -127,8 +128,10 @@ export function createVoiceChatService(
   });
 
   return {
-    set: async (serverId, input, actor) =>
-      input.enabled ? enable(serverId, input.publicPort ?? null, actor) : disable(serverId, actor),
+    set: (serverId, input, actor) =>
+      serial(serverId, async () =>
+        input.enabled ? enable(serverId, input.publicPort ?? null, actor) : disable(serverId, actor),
+      ),
     writeConfig,
   };
 }

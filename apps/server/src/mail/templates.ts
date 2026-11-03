@@ -306,10 +306,14 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
       heading: 'Ein Server ist abgestürzt',
       paragraphs: [
         hi.de(v.name),
-        `Der Server „${v['server'] ?? ''}“ ist abgestürzt.`,
-        v['reason'] ?? '',
+        `Der Server „${v['server'] ?? ''}“ ist abgestürzt. Kurz zusammengefasst:`,
       ].filter(Boolean),
-      rows: [['Zeitpunkt', v['when'] ?? '']],
+      rows: [
+        ['Was', v['reason'] ?? ''],
+        ['Ursache', v['explain'] ?? ''],
+        ['Lösung', v['fix'] ?? ''],
+        ['Zeitpunkt', v['when'] ?? ''],
+      ].filter(([, value]) => value) as [string, string][],
       ...(v.link ? { button: { label: 'Server ansehen', url: v.link } } : {}),
     }),
     approval_needed: (v) => ({
@@ -455,10 +459,13 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
     server_crashed: (v) => ({
       subject: `Server “${v['server'] ?? ''}” crashed`,
       heading: 'A server crashed',
-      paragraphs: [hi.en(v.name), `The server “${v['server'] ?? ''}” crashed.`, v['reason'] ?? ''].filter(
-        Boolean,
-      ),
-      rows: [['Time', v['when'] ?? '']],
+      paragraphs: [hi.en(v.name), `The server “${v['server'] ?? ''}” crashed. In short:`].filter(Boolean),
+      rows: [
+        ['What', v['reason'] ?? ''],
+        ['Cause', v['explain'] ?? ''],
+        ['Fix', v['fix'] ?? ''],
+        ['Time', v['when'] ?? ''],
+      ].filter(([, value]) => value) as [string, string][],
       ...(v.link ? { button: { label: 'View server', url: v.link } } : {}),
     }),
     approval_needed: (v) => ({

@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Clock, Play, Square, SquareTerminal, TriangleAlert } from 'lucide-react';
+import { ArrowUpCircle, Clock, Play, Square, SquareTerminal, TriangleAlert } from 'lucide-react';
 import type { ReactElement, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useContentUpdates } from '@/features/servers/content/updates';
+import { DownloadInfo } from '@/components/download-info';
 import { Link, useNavigate } from 'react-router';
 import { SOFTWARE, isGameId, type ServerAction, type ServerSummary } from '@mornihosting/shared';
 import { CopyButton } from '@/components/copy-button';
@@ -79,6 +81,7 @@ function Body({ server }: { server: ServerSummary }): ReactElement {
           tone="warning"
           className={live.progress === null ? 'animate-pulse' : undefined}
         />
+        <DownloadInfo download={live.download ?? null} />
         {MODDED.includes(server.software) ? (
           <p className="flex gap-2 rounded-[10px] bg-warning-soft px-3 py-2.5 text-[13px]">
             <Clock className="mt-0.5 size-4 shrink-0" />
@@ -153,6 +156,7 @@ export function ServerCard({ server }: { server: ServerSummary }): ReactElement 
     );
   })();
   const nobody = live.state === 'starting' ? t('card.nobodyYet') : t('card.nobodyOnline');
+  const updateCount = useContentUpdates()[server.id] ?? 0;
 
   return (
     <Card className="mh-lift group grid grid-rows-[auto_auto_auto_1fr] gap-3.5 p-[18px]">
@@ -168,6 +172,15 @@ export function ServerCard({ server }: { server: ServerSummary }): ReactElement 
         </Link>
         <StatePill state={live.state} />
       </div>
+      {updateCount ? (
+        <Link
+          to={`/servers/${server.id}/content?view=installed`}
+          className="relative z-10 -mt-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-1 text-[12px] font-semibold text-primary hover:bg-primary/25"
+        >
+          <ArrowUpCircle className="size-3.5" aria-hidden />
+          {t('content.updatesBadge', { count: updateCount })}
+        </Link>
+      ) : null}
       <div className="flex items-center gap-2 rounded-[8px] border border-border bg-secondary py-1 pl-2.5 pr-1 font-mono text-[13px] font-medium">
         <span className="min-w-0 flex-1 truncate">{server.address}</span>
         <CopyButton

@@ -2,6 +2,7 @@ import { and, eq, lt, sql } from 'drizzle-orm';
 import nodemailer from 'nodemailer';
 import {
   SOFTWARE,
+  crashText,
   type ConfirmResult,
   type Locale,
   type MailAttempt,
@@ -29,7 +30,6 @@ import { badRequest, conflict, errorMessage, forbidden } from '../lib/errors.js'
 import { MS_PER_DAY, MS_PER_HOUR, MS_PER_MINUTE, MS_PER_SECOND } from '../lib/units.js';
 import { connectionInfo } from '../servers/connectivity.js';
 import type { ServerService } from '../servers/service.js';
-import { CRASH_REASONS } from '../webhooks/messages.js';
 import { realNetwork, runMailCheck, SMTP_CONNECT_TIMEOUT_MS, type MailNetwork } from './check.js';
 import { candidateHosts, closeness } from './quick.js';
 import { formatWhen, oneLine, renderMail, type MailKind, type MailVars } from './templates.js';
@@ -650,7 +650,9 @@ export function createMailService(
           sendQuietly(admin.email ?? '', 'server_crashed', localeOf(admin), {
             name: nameOf(admin),
             server: row.name,
-            reason: CRASH_REASONS[localeOf(admin)][crash.ruleId] ?? crash.ruleId,
+            reason: crashText(localeOf(admin), crash.ruleId, crash.params).title,
+            explain: crashText(localeOf(admin), crash.ruleId, crash.params).text,
+            fix: crashText(localeOf(admin), crash.ruleId, crash.params).fix,
             when: formatWhen(localeOf(admin), new Date()),
             link: linkTo(`/servers/${serverId}`),
           }),

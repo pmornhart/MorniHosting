@@ -6,8 +6,9 @@ import { toast } from 'sonner';
 import type { PanelSettings } from '@mornihosting/shared';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { ensureLanguage } from '@/i18n';
 import { formatDateTime } from '@/lib/format';
-import { buildAccessSheet, downloadPdf, type AccessSheetTexts } from './build';
+import type { AccessSheetTexts } from './build';
 
 export interface AccessSheetPerson {
   readonly username: string;
@@ -47,6 +48,7 @@ export function AccessSheetButton({
   const address = usePanelAddress();
   const [busy, setBusy] = useState(false);
   const make = async (): Promise<void> => {
+    await ensureLanguage(lang === 'en' ? 'en' : 'de');
     const t = i18n.getFixedT(lang);
     const name = person.displayName || person.username;
     const serversKey = serversStep(person);
@@ -79,6 +81,8 @@ export function AccessSheetButton({
     };
     setBusy(true);
     try {
+      // The PDF tools are big: loaded only when someone actually makes a sheet.
+      const { buildAccessSheet, downloadPdf } = await import('./build');
       const bytes = await buildAccessSheet({
         address,
         username: person.username,

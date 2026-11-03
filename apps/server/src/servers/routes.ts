@@ -35,7 +35,12 @@ const STATS_RANGES = {
   '7d': { span: DAYS_IN_WEEK * MS_PER_DAY, bucket: MS_PER_HOUR },
 } as const;
 
-export function registerServerRoutes(app: Api, ctx: AppContext, servers: ServerService): void {
+export function registerServerRoutes(
+  app: Api,
+  ctx: AppContext,
+  servers: ServerService,
+  orders: Pick<ServerService, 'create'>,
+): void {
   const { access } = ctx;
 
   app.get('/api/servers', async (request) => servers.list(requireAuth(request).user));
@@ -43,7 +48,7 @@ export function registerServerRoutes(app: Api, ctx: AppContext, servers: ServerS
   app.post('/api/servers', { schema: { body: createServerSchema } }, async (request) => {
     const auth = requireAuth(request);
     if (!auth.user.isAdmin && !auth.user.canCreateServers) throw forbidden('cannot_create_servers');
-    return servers.create(request.body, actorOf(request), auth.user);
+    return orders.create(request.body, actorOf(request), auth.user);
   });
 
   app.get('/api/servers/:id', { schema: { params: idParams } }, async (request) => {

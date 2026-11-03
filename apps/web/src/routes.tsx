@@ -1,19 +1,39 @@
-import { DiscordLinkPage } from '@/features/admin/DiscordLinkPage';
-import { ApprovalsPage } from '@/features/approvals/ApprovalsPage';
-import { Suspense, type ReactElement } from 'react';
+import { Suspense, type ComponentType, type ReactElement } from 'react';
 import { Navigate, type RouteObject } from 'react-router';
 import { Skeleton } from '@/components/ui/misc';
 import { lazyPage } from '@/lib/lazy-page';
-import { AccountPage } from '@/features/admin/AccountPage';
-import { AuditPage } from '@/features/admin/AuditPage';
-import { NotificationsPage } from '@/features/admin/NotificationsPage';
-import { PanelSettingsPage } from '@/features/admin/PanelSettingsPage';
-import { UsersPage } from '@/features/admin/UsersPage';
-import { CreateServerPage } from '@/features/servers/create/CreateServerPage';
-import { ImportServerPage } from '@/features/servers/create/ImportServerPage';
-import { ConsoleHome } from '@/features/servers/ConsoleHome';
 import { ServerLayout } from '@/features/servers/ServerLayout';
 
+/** A page module without a default export, loaded only when it is opened. */
+function namedPage<K extends string>(
+  load: () => Promise<Record<K, unknown>>,
+  key: K,
+): ReturnType<typeof lazyPage<object>> {
+  return lazyPage<object>(async () => ({ default: (await load())[key] as ComponentType<object> }));
+}
+
+const DiscordLinkPageLazy = namedPage(() => import('@/features/admin/DiscordLinkPage'), 'DiscordLinkPage');
+const ApprovalsPageLazy = namedPage(() => import('@/features/approvals/ApprovalsPage'), 'ApprovalsPage');
+const AccountPageLazy = namedPage(() => import('@/features/admin/AccountPage'), 'AccountPage');
+const AuditPageLazy = namedPage(() => import('@/features/admin/AuditPage'), 'AuditPage');
+const NotificationsPageLazy = namedPage(
+  () => import('@/features/admin/NotificationsPage'),
+  'NotificationsPage',
+);
+const PanelSettingsPageLazy = namedPage(
+  () => import('@/features/admin/PanelSettingsPage'),
+  'PanelSettingsPage',
+);
+const UsersPageLazy = namedPage(() => import('@/features/admin/UsersPage'), 'UsersPage');
+const CreateServerPageLazy = namedPage(
+  () => import('@/features/servers/create/CreateServerPage'),
+  'CreateServerPage',
+);
+const ImportServerPageLazy = namedPage(
+  () => import('@/features/servers/create/ImportServerPage'),
+  'ImportServerPage',
+);
+const ConsoleHomeLazy = namedPage(() => import('@/features/servers/ConsoleHome'), 'ConsoleHome');
 const VersionTab = lazyPage(() => import('@/features/servers/version/VersionTab'));
 const NetworkTab = lazyPage(() => import('@/features/servers/network/NetworkTab'));
 const AdvancedTab = lazyPage(() => import('@/features/servers/advanced/AdvancedTab'));
@@ -32,21 +52,91 @@ function Lazy({ children }: { children: ReactElement }): ReactElement {
 
 /** Feature pages inside the app shell. */
 export const appRoutes: RouteObject[] = [
-  { path: 'servers/new', element: <CreateServerPage /> },
-  { path: 'notifications', element: <NotificationsPage /> },
-  { path: 'users', element: <UsersPage /> },
-  { path: 'approvals', element: <ApprovalsPage /> },
-  { path: 'settings', element: <PanelSettingsPage /> },
+  {
+    path: 'servers/new',
+    element: (
+      <Lazy>
+        <CreateServerPageLazy />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'notifications',
+    element: (
+      <Lazy>
+        <NotificationsPageLazy />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'users',
+    element: (
+      <Lazy>
+        <UsersPageLazy />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'approvals',
+    element: (
+      <Lazy>
+        <ApprovalsPageLazy />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'settings',
+    element: (
+      <Lazy>
+        <PanelSettingsPageLazy />
+      </Lazy>
+    ),
+  },
   { path: 'admin', element: <Navigate to="/settings" replace /> },
-  { path: 'audit', element: <AuditPage /> },
-  { path: 'account', element: <AccountPage /> },
-  { path: 'discord-link', element: <DiscordLinkPage /> },
-  { path: 'servers/import', element: <ImportServerPage /> },
+  {
+    path: 'audit',
+    element: (
+      <Lazy>
+        <AuditPageLazy />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'account',
+    element: (
+      <Lazy>
+        <AccountPageLazy />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'discord-link',
+    element: (
+      <Lazy>
+        <DiscordLinkPageLazy />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'servers/import',
+    element: (
+      <Lazy>
+        <ImportServerPageLazy />
+      </Lazy>
+    ),
+  },
   {
     path: 'servers/:serverId',
     element: <ServerLayout />,
     children: [
-      { index: true, element: <ConsoleHome /> },
+      {
+        index: true,
+        element: (
+          <Lazy>
+            <ConsoleHomeLazy />
+          </Lazy>
+        ),
+      },
       // The console used to be its own tab; old links land on the first tab, where it is now.
       { path: 'console', element: <Navigate to=".." replace /> },
       {

@@ -9,7 +9,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { useRef, useState, type DragEvent, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { SOFTWARE, type InstalledContent, type InstallResult, type ServerDetail } from '@mornihosting/shared';
@@ -61,6 +61,8 @@ function ContentIcon({ entry }: { entry: InstalledContent }): ReactElement {
   );
 }
 
+const AUTO_CHECK_MS = 10 * 60 * 1000;
+
 /** Everything in the plugins/mods folder: on/off, updates, delete, and own .jar files by drag and drop. */
 export function InstalledList({
   server,
@@ -79,6 +81,18 @@ export function InstalledList({
   const [deleting, setDeleting] = useState<InstalledContent | null>(null);
   const key = contentQuery(server.id).queryKey;
   const { data } = useQuery(contentQuery(server.id));
+  // Opening the tab looks for updates by itself (at most every 10 minutes per server and browser tab).
+  useEffect(() => {
+    const mark = `mh:content-check:${server.id}`;
+    try {
+      if (Date.now() - Number(sessionStorage.getItem(mark) ?? 0) < AUTO_CHECK_MS) return;
+      sessionStorage.setItem(mark, String(Date.now()));
+    } catch {
+      // No storage (private window): just check.
+    }
+    check.mutate(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once when the tab opens
+  }, [server.id]);
   const base = `/api/servers/${server.id}/content`;
   const kind = t(`content.kind.${SOFTWARE[server.software].content === 'mods' ? 'mods' : 'plugins'}`);
 
@@ -92,11 +106,16 @@ export function InstalledList({
   };
 
   const check = useMutation({
-    mutationFn: () => api<InstalledContent[]>(`${base}/check-updates`, { method: 'POST' }),
-    onSuccess: (list) => {
+    mutationFn: (_quiet: boolean) => api<InstalledContent[]>(`${base}/check-updates`, { method: 'POST' }),
+    onSuccess: (list, quiet) => {
       setList(list);
+      void queryClient.invalidateQueries({ queryKey: ['content-updates'] });
       const count = list.filter((e) => e.update).length;
-      toast.success(count ? t('content.updatesFound', { count }) : t('content.allUpToDate'));
+      if (!quiet || count)
+        toast.success(count ? t('content.updatesFound', { count }) : t('content.allUpToDate'));
+    },
+    onError: (_err, quiet) => {
+      if (!quiet) toast.error(t('content.checkFailed'));
     },
   });
   const updateOne = useMutation({
@@ -279,7 +298,7 @@ export function InstalledList({
         <Button
           variant="secondary"
           disabled={check.isPending || !data?.length}
-          onClick={() => check.mutate()}
+          onClick={() => check.mutate(false)}
         >
           <RefreshCw className={cn(check.isPending && 'animate-spin')} />
           {t('content.checkUpdates')}

@@ -11,7 +11,6 @@ import { Field } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/misc';
 import { confetti } from '@/lib/confetti';
 import { PriceWithCoupon } from './coupon';
-import { api } from '@/lib/api';
 import { errorText } from '@/lib/query';
 import { placeOrder, RequestSent } from './order-submit';
 import { useSession } from '@/features/auth/session';
@@ -77,20 +76,10 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
         gameSettings: settings,
         ...(address && addressName ? { netbirdName: addressName } : {}),
         ...(coupon ? { coupon } : {}),
+        addOns: { geyser: false, voice: false, backups },
       };
       const server = await placeOrder(body, me.user.canCreateServers);
       if (!server) return null;
-      if (backups) {
-        await api(`/api/servers/${server.id}/schedules`, {
-          method: 'POST',
-          body: {
-            name: t('order.backupName'),
-            action: 'backup',
-            spec: { kind: 'daily', time: BACKUP_TIME },
-            enabled: true,
-          },
-        }).catch(() => undefined);
-      }
       return server;
     },
     onSuccess: (server) => {

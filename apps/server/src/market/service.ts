@@ -1,3 +1,5 @@
+import { MS_PER_MINUTE } from '../lib/units.js';
+import { SYSTEM_ACTOR } from '../audit/service.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -55,6 +57,13 @@ interface Planned {
   readonly dependencyOf: string | null;
 }
 
+// Plugins that make crossplay work and are kept up to date automatically.
+// Matches "Geyser-Spigot.jar", "floodgate-spigot.jar", "ViaVersion-5.5.1.jar", "ViaBackwards-5.5.1.jar"; rejects "EssentialsX.jar".
+// https://regex101.com/?flavor=javascript&regex=%5E(geyser%7Cfloodgate%7Cvia(version%7Cbackwards%7Cfabric))&flags=i&testString=Geyser-Spigot.jar%0Afloodgate-spigot.jar%0AViaVersion-5.5.1.jar%0AViaBackwards-5.5.1.jar%0AEssentialsX.jar
+const CROSSPLAY_FILE = /^(geyser|floodgate|via(version|backwards|fabric))/i;
+/** Plugins and mods are compared with the marketplaces again after this long (dashboard, plugins tab). */
+const UPDATE_RECHECK_MS = 30 * MS_PER_MINUTE;
+
 export interface MarketService {
   readonly search: (
     serverId: string,
@@ -72,6 +81,11 @@ export interface MarketService {
   ) => Promise<InstallResult>;
   readonly list: (serverId: string) => InstalledContent[];
   readonly checkUpdates: (serverId: string) => Promise<InstalledContent[]>;
+  /**
+   * How many updates each server has, from the last check; servers not checked for a while are checked in the
+   * background (one at a time), so the dashboard and the plugins tab stay quick.
+   */
+  readonly updateCounts: (serverIds: readonly string[]) => Record<string, number>;
   readonly update: (serverId: string, fileName: string, actor: Actor) => Promise<InstallResult>;
   readonly setEnabled: (serverId: string, fileName: string, enabled: boolean, actor: Actor) => void;
   readonly remove: (serverId: string, fileName: string, actor: Actor) => void;
@@ -118,6 +132,9 @@ export function createMarketService(
     curseforge: createCurseForge(() => ctx.settings.curseforgeKey()),
   };
   const updates = new Map<string, Map<string, { versionId: string; versionName: string }>>();
+  /** When each server's plugins/mods were last compared with the marketplaces. */
+  const checkedAt = new Map<string, number>();
+  let backgroundChecks: Promise<unknown> = Promise.resolve();
 
   const withLock = createKeyedLock();
 
@@ -361,7 +378,34 @@ export function createMarketService(
     }
   };
 
-  return {
+  /**
+   * After a check: Geyser, Floodgate and ViaVersion are updated right away – an old Geyser is the most common
+   * reason why Bedrock players on a new game version cannot join. It takes effect with the next restart.
+   */
+  const checkAndKeepCrossplayFresh = async (serverId: string): Promise<void> => {
+    try {
+      const found = await service.checkUpdates(serverId);
+      await found
+        .filter((entry) => entry.update && CROSSPLAY_FILE.test(entry.fileName))
+        .reduce(async (previous, entry) => {
+          await previous;
+          await service.update(serverId, entry.fileName, SYSTEM_ACTOR);
+          servers.note(
+            serverId,
+            `${entry.name} auf ${entry.update?.versionName ?? 'die neueste Version'} aktualisiert – aktiv nach dem nächsten Neustart.`,
+          );
+        }, Promise.resolve());
+    } catch (err) {
+      ctx.log.debug({ err, serverId }, 'update check failed');
+    }
+  };
+
+  // Every start is a good moment to look again (at most every half hour per server).
+  ctx.events.on('server.state', ({ serverId, state }) => {
+    if (state === 'running') service.updateCounts([serverId]);
+  });
+
+  const service: MarketService = {
     search: (serverId, source, query) =>
       wrapUpstream(async () => {
         const target = targetOf(serverId);
@@ -433,6 +477,7 @@ export function createMarketService(
               : [],
           );
           updates.set(serverId, new Map(found));
+          checkedAt.set(serverId, Date.now());
           return list(serverId);
         }),
       ),
@@ -487,5 +532,19 @@ export function createMarketService(
       await files.upload(serverId, relativeDir, name, stream);
       ctx.audit.record(actor, 'content.upload', serverId, { file: name });
     },
+    updateCounts: (serverIds) => {
+      const now = Date.now();
+      const stale = serverIds.filter(
+        (id) => now - (checkedAt.get(id) ?? 0) > UPDATE_RECHECK_MS && rowsOf(id).some((r) => r.projectId),
+      );
+      // Mark them first, so a second request does not queue the same check again.
+      stale.forEach((id) => checkedAt.set(id, now));
+      backgroundChecks = stale.reduce(
+        (previous, id) => previous.then(() => checkAndKeepCrossplayFresh(id)),
+        backgroundChecks,
+      );
+      return Object.fromEntries(serverIds.map((id) => [id, updates.get(id)?.size ?? 0]));
+    },
   };
+  return service;
 }
