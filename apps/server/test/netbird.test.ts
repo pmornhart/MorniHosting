@@ -389,6 +389,9 @@ describe('NetBird automation', () => {
     netbird = createFakeNetbird({ customPorts: true });
     await configure();
     const server = await create({ netbirdName: 'reich' });
+    // Creating does not wait for NetBird; the address follows a moment later.
+    await waitFor(() => netbird.byDomain(`reich.${BASE}`) !== undefined);
+    await waitFor(async () => (await detail(server.id)).publicPort === 25565);
     expect(netbird.byDomain(`reich.${BASE}`)).toMatchObject({ mode: 'tcp', listen_port: 25565 });
     expect((await detail(server.id)).publicPort).toBe(25565);
     const status = (await call('GET', '/api/netbird')).json<NetbirdStatus>();
@@ -408,9 +411,11 @@ describe('NetBird automation', () => {
     expect((await detail(server.id)).publicPort).toBe(25565);
   });
 
-  test('a new server with a name gets its address in NetBird right away', async () => {
+  test('a new server with a name gets its address in NetBird right after creating', async () => {
     await configure();
     const server = await create({ netbirdName: 'Survival' });
+    // Creating answers at once; NetBird follows in the background.
+    await waitFor(async () => (await detail(server.id)).address === `survival.${BASE}:31000`);
     const main = netbird.byDomain(`survival.${BASE}`);
     expect(main).toMatchObject({ mode: 'tcp', listen_port: 31000, pass_host_header: false });
     expect(main?.targets).toEqual([

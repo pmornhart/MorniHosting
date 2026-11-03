@@ -183,6 +183,7 @@ export function createMarketService(
       item.resolved.file,
       dir,
       ctx.config.pluginUploadBytes * MAX_DOWNLOAD_FACTOR,
+      path.join(ctx.config.dataDir, 'cache', 'downloads'),
     );
     const existing = ctx.db
       .select()
