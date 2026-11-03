@@ -133,6 +133,15 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
     }
     if (url.pathname === '/api/reverse-proxies/services' && method === 'GET')
       return Response.json([...services.values()]);
+    // Like NetBird: a service may only point at a resource that exists.
+    const missing = (body?.targets ?? []).find(
+      (target) => target.target_type === 'host' && !resources.has(String(target.target_id)),
+    );
+    if (missing && (method === 'POST' || method === 'PUT'))
+      return Response.json(
+        { message: `resource target "${String(missing.target_id)}" not found in account`, code: 422 },
+        { status: 422 },
+      );
     if (method === 'POST' && body) {
       if ([...services.values()].some((s) => s.domain === body.domain))
         return Response.json({ message: 'domain already in use' }, { status: 409 });
@@ -554,5 +563,13 @@ describe('NetBird automation', () => {
     await waitFor(() => [...netbird.resources.values()].every((r) => r.name !== 'MorniHosting survival'));
     expect([...netbird.resources.values()].map((r) => r.name)).toEqual(['MorniHosting Panel']);
     expect(netbird.networks).toHaveLength(1);
+
+    // Someone deletes the panel's resource in NetBird: setting the panel up again creates a new one.
+    netbird.resources.clear();
+    const again = await call('POST', '/api/netbird/panel', { name: '', port: 8080 });
+    expect(again.statusCode).toBe(200);
+    const fresh = [...netbird.resources.values()].find((r) => r.name === 'MorniHosting Panel');
+    expect(fresh).toBeDefined();
+    expect(netbird.byDomain(BASE)?.targets[0]).toMatchObject({ target_type: 'host', target_id: fresh?.id });
   });
 });
