@@ -102,7 +102,7 @@ export function buildContainerSpec(config: Config, row: ServerRow, timezone: str
     env: { ...env, ...row.extraEnv },
     ports: [
       { containerPort: info.defaultPort, hostPort: row.port, protocol: info.protocol },
-      ...row.extraPorts.map((p) => ({
+      ...withSignalingPorts(row.extraPorts).map((p) => ({
         containerPort: p.containerPort ?? p.port,
         hostPort: p.port,
         protocol: p.protocol,
@@ -236,4 +236,16 @@ export function assertMinecraft(row: Pick<ServerRow, 'software'>): void {
 /** What players type into Minecraft: domain or IP, plus the port unless it is the default. */
 export function displayAddress(host: string, port: number, defaultPort: number): string {
   return port === defaultPort ? host : `${host}:${port}`;
+}
+
+type ExtraPort = (typeof servers.$inferSelect)['extraPorts'][number];
+
+/**
+ * Since Bedrock 26.60 Geyser speaks NetherNet: players find the server over TCP ("signaling") and then play over
+ * UDP, both on the same port. So the Geyser port is opened for TCP as well; older entries only stored UDP.
+ */
+export function withSignalingPorts(ports: readonly ExtraPort[]): ExtraPort[] {
+  return ports.flatMap((p) =>
+    p.purpose === 'geyser' && p.protocol === 'udp' ? [p, { ...p, protocol: 'tcp' as const }] : [p],
+  );
 }

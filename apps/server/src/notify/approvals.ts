@@ -96,7 +96,11 @@ export function createApprovalService(
     const user = pendingUser(userId);
     if (!user)
       return done('Schon erledigt', 'Über diese Registrierung wurde schon entschieden.', COLOUR_INFO);
-    db.update(users).set({ approvalPending: false }).where(eq(users.id, user.id)).run();
+    // Whoever an admin lets in may order servers right away (Philip's rule), whatever the sign-up switch says.
+    db.update(users)
+      .set({ approvalPending: false, canCreateServers: true })
+      .where(eq(users.id, user.id))
+      .run();
     ctx.events.emit('approvals.changed', { userId: user.id });
     ctx.audit.record(by, 'user.approved', null, { username: user.username });
     notify.tell([user], 'decisions', () => ({

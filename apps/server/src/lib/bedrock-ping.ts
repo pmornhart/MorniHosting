@@ -1,4 +1,5 @@
 import dgram from 'node:dgram';
+import http from 'node:http';
 
 /**
  * Asks a Bedrock server (or Geyser) whether it is there, the same way the game's server list does: one
@@ -59,5 +60,24 @@ export function bedrockPing(
     socket.send(pingPacket(), port, host, (err) => {
       if (err) done(null);
     });
+  });
+}
+
+/**
+ * Since Bedrock 26.60 players find a Geyser server through NetherNet "signaling": plain HTTP over TCP on the
+ * Bedrock port. Any HTTP answer (Geyser says 404 to "/") means Geyser is there.
+ */
+export function signalingAnswers(
+  host: string,
+  port: number,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const request = http.get({ host, port, path: '/', timeout: timeoutMs }, (response) => {
+      response.resume();
+      resolve(true);
+    });
+    request.on('timeout', () => request.destroy());
+    request.on('error', () => resolve(false));
   });
 }

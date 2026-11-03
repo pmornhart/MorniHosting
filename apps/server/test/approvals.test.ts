@@ -227,9 +227,13 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
 
     discord.interact(INTERACTION_COMPONENT, approve);
     await waitFor(() => discord.replies.some((r) => r.message?.title.includes('Freigegeben')));
-    expect(
-      (await as(null, 'POST', '/api/auth/login', { username: 'lena', password: 'longenough1' })).statusCode,
-    ).toBe(200);
+    const login = await as(null, 'POST', '/api/auth/login', { username: 'lena', password: 'longenough1' });
+    expect(login.statusCode).toBe(200);
+    // Accepted by an admin = may order servers straight away.
+    const people = (await as(admin, 'GET', '/api/users')).json<
+      { username: string; canCreateServers: boolean }[]
+    >();
+    expect(people.find((u) => u.username === 'lena')?.canCreateServers).toBe(true);
     expect(sent.at(-1)).toMatchObject({ to: 'lena@example.test' });
     // Clicking again (or deciding in the panel too) only reports that it is done.
     discord.interact(INTERACTION_COMPONENT, approve);

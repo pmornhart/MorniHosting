@@ -6,6 +6,7 @@ import {
   BUILTIN_ROLES,
   CREATABLE_SOFTWARE,
   gameOf,
+  type AddOnKey,
   type GameInfo,
   PORT_VOICE_CHAT,
   SOFTWARE,
@@ -49,6 +50,7 @@ import {
   gamePorts,
   imageFor,
   serverDir,
+  withSignalingPorts,
   type ServerRow,
 } from './spec.js';
 
@@ -87,6 +89,8 @@ export interface ServerService {
   readonly logs: (id: string) => readonly string[];
   /** A line from the panel itself in the server's console ("[MorniHosting] …"). */
   readonly note: (id: string, text: string) => void;
+  /** Add-ons the panel is still setting up from the order (the switches show them as on and busy). */
+  readonly setSetup: (id: string, addOns: readonly AddOnKey[]) => void;
   readonly dir: (id: string) => string;
   /** The next free port after the server's own one (for the crash helper when the port is taken). */
   readonly nextFreePort: (id: string) => number;
@@ -96,6 +100,8 @@ export interface ServerService {
   readonly setVoiceChat: (id: string, enabled: boolean, voicePublicPort: number | null) => void;
   /** Runs right before a container starts; the listener must not throw. */
   readonly onBeforeStart: (prepare: (id: string) => void) => () => void;
+  /** Extra environment for the container, worked out just before each start (e.g. Geyser's public address). */
+  readonly onStartEnv: (provide: (id: string) => Promise<Readonly<Record<string, string>>>) => void;
   /** Awaited after a server was created, before the answer goes out (e.g. NetBird sets up its address). */
   readonly onCreated: (listener: (id: string) => Promise<void>) => void;
   /** Called after a server's host ports changed (server port, Geyser, voice chat). */
@@ -147,6 +153,7 @@ interface Runtime {
   startedAt: string | null;
   progress: number | null;
   download: DownloadProgress | null;
+  setup: readonly AddOnKey[];
   meter: (line: string) => DownloadProgress | null;
   stopRequested: boolean;
   /** Log lines that arrive before this time are history; they must not fire webhooks again. */
@@ -204,6 +211,7 @@ function emptyRuntime(): Runtime {
     startedAt: null,
     progress: null,
     download: null,
+    setup: [],
     meter: createDownloadMeter(),
     stopRequested: false,
     quietUntil: 0,
@@ -275,6 +283,7 @@ export function createServerService(ctx: AppContext): ServerService {
             bytesPerSecond: r.download.bytesPerSecond,
           }
         : null,
+      setup: r.setup.length > 0 ? r.setup : null,
     };
   };
 
@@ -352,6 +361,7 @@ export function createServerService(ctx: AppContext): ServerService {
   const withLock = createKeyedLock();
   /** Features that keep files in sync with the panel (e.g. voice chat) refresh them here. */
   const beforeStart = new Set<(id: string) => void>();
+  const startEnv = new Set<(id: string) => Promise<Readonly<Record<string, string>>>>();
   let quota: QuotaGuard | null = null;
   const portListeners = new Set<(id: string) => void>();
   const createdListeners = new Set<(id: string) => Promise<void>>();
@@ -411,7 +421,7 @@ export function createServerService(ctx: AppContext): ServerService {
     const taken = others.find(
       (o) =>
         (o.port === port && SOFTWARE[o.software].protocol === protocol) ||
-        o.extraPorts.some((p) => p.port === port && p.protocol === protocol) ||
+        withSignalingPorts(o.extraPorts).some((p) => p.port === port && p.protocol === protocol) ||
         sameAsMainPorts(o).some((p) => p.port === port && p.protocol === protocol),
     );
     if (taken) throw conflict('port_taken', { port, server: taken.name });
@@ -540,7 +550,16 @@ export function createServerService(ctx: AppContext): ServerService {
     const missing = missingGameFiles(serverDir(config, id), r.software);
     if (missing.length) throw new Error(`Es fehlen Dateien: ${missing.join(', ')}`);
     prepareGameFiles(serverDir(config, id), r);
-    const spec = buildContainerSpec(config, r, settings.get().timezone);
+    const built = buildContainerSpec(config, r, settings.get().timezone);
+    const extra = await Promise.all(
+      [...startEnv].map((provide) =>
+        provide(id).catch((err: unknown) => {
+          log.warn({ err, serverId: id }, 'start environment not added');
+          return {};
+        }),
+      ),
+    );
+    const spec = { ...built, env: Object.assign({}, built.env, ...extra) as Record<string, string> };
     const containerId = await docker.createContainer(spec);
     db.update(servers)
       .set({ containerId, crash: null, desiredRunning: true, updatedAt: nowIso() })
@@ -1107,6 +1126,10 @@ export function createServerService(ctx: AppContext): ServerService {
     logs: (id) => rt(id).logs,
     dir: (id) => serverDir(config, id),
     note: (id, text) => panelLog(id, text),
+    setSetup: (id, addOns) => {
+      rt(id).setup = addOns;
+      publishLive(id);
+    },
     nextFreePort: (id) => {
       const current = row(id);
       const protocol = SOFTWARE[current.software].protocol;
@@ -1152,6 +1175,9 @@ export function createServerService(ctx: AppContext): ServerService {
         memoryMb,
         ...quota.limitsFor(owner, { cpuLimit: null, diskLimitMb: null, memoryMb }),
       });
+    },
+    onStartEnv: (provide) => {
+      startEnv.add(provide);
     },
     onBeforeStart: (prepare) => {
       beforeStart.add(prepare);

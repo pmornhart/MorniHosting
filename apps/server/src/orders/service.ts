@@ -1,4 +1,4 @@
-import type { CreateServerInput, ServerSummary } from '@mornihosting/shared';
+import type { AddOnKey, CreateServerInput, ServerSummary } from '@mornihosting/shared';
 import type { Actor } from '../audit/service.js';
 import type { UserRow } from '../auth/context.js';
 import type { AppContext } from '../context.js';
@@ -34,21 +34,25 @@ export function createOrderService(
   const setUp = async (serverId: string, input: CreateServerInput, actor: Actor): Promise<void> => {
     const addOns = input.addOns;
     const steps: readonly {
+      readonly key: AddOnKey;
       readonly on: boolean;
       readonly label: string;
       readonly run: () => Promise<unknown>;
     }[] = [
       {
+        key: 'geyser',
         on: addOns?.geyser === true,
         label: 'Geyser (Bedrock-Spieler) + ViaVersion',
         run: () => geyser.set(serverId, true, actor),
       },
       {
+        key: 'voice',
         on: addOns?.voice === true,
         label: 'Simple Voice Chat',
         run: () => voice.set(serverId, { enabled: true }, actor),
       },
       {
+        key: 'backups',
         on: addOns?.backups === true,
         label: `Tägliches Backup um ${BACKUP_TIME}`,
         run: async () =>
@@ -65,19 +69,27 @@ export function createOrderService(
           ),
       },
     ];
-    await steps
-      .filter((step) => step.on)
-      .reduce(async (previous, step) => {
-        await previous;
-        servers.note(serverId, `Richte ${step.label} ein …`);
-        try {
-          await step.run();
-          servers.note(serverId, `✓ ${step.label} ist fertig.`);
-        } catch (err) {
-          ctx.log.warn({ err, serverId }, 'add-on from the order failed');
-          servers.note(serverId, `✗ ${step.label} hat nicht geklappt: ${errorMessage(err)}`);
-        }
-      }, Promise.resolve());
+    const chosen = steps.filter((step) => step.on);
+    // The switches on the server page show these as on and busy until each one is done.
+    servers.setSetup(
+      serverId,
+      chosen.map((step) => step.key),
+    );
+    await chosen.reduce(async (previous, step, index) => {
+      await previous;
+      servers.note(serverId, `Richte ${step.label} ein …`);
+      try {
+        await step.run();
+        servers.note(serverId, `✓ ${step.label} ist fertig.`);
+      } catch (err) {
+        ctx.log.warn({ err, serverId }, 'add-on from the order failed');
+        servers.note(serverId, `✗ ${step.label} hat nicht geklappt: ${errorMessage(err)}`);
+      }
+      servers.setSetup(
+        serverId,
+        chosen.slice(index + 1).map((later) => later.key),
+      );
+    }, Promise.resolve());
     if (input.startNow) await servers.start(serverId, actor);
   };
 

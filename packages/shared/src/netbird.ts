@@ -41,7 +41,8 @@ export const netbirdPanelSchema = z.object({
 });
 
 /** What a NetBird service is for: the server itself, Bedrock players via Geyser, voice chat, the panel. */
-export type NetbirdPurpose = 'main' | 'geyser' | 'voice' | 'panel';
+/** "geyser-signal": the TCP half of Geyser's port (NetherNet finds the server over TCP, plays over UDP). */
+export type NetbirdPurpose = 'main' | 'geyser' | 'geyser-signal' | 'voice' | 'panel';
 
 export interface NetbirdStatus {
   readonly configured: boolean;

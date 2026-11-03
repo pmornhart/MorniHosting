@@ -75,6 +75,7 @@ services:
     ports:
       - "${MC_TCP}:${MC_TCP}/tcp" # Java-Server
       - "${MC_UDP}:${MC_UDP}/udp" # Bedrock und Geyser
+      - "${MC_UDP}:${MC_UDP}/tcp" # Geyser seit Bedrock 26.60 (NetherNet sucht den Server über TCP)
       - "${MC_VOICE}:${MC_VOICE}/udp" # Voice-Chat
 YAML
   msg_ok "Ports eingetragen in ${OVERRIDE}"
@@ -107,15 +108,16 @@ ufw_range() { echo "${1/-/:}"; }
 if command -v ufw >/dev/null && ufw status 2>/dev/null | grep -q "Status: active"; then
   ufw allow "$(ufw_range "${MC_TCP}")/tcp" >/dev/null
   ufw allow "$(ufw_range "${MC_UDP}")/udp" >/dev/null
+  ufw allow "$(ufw_range "${MC_UDP}")/tcp" >/dev/null
   ufw allow "$(ufw_range "${MC_VOICE}")/udp" >/dev/null
   msg_ok "ufw: Ports geöffnet"
 elif command -v firewall-cmd >/dev/null && firewall-cmd --state >/dev/null 2>&1; then
-  firewall-cmd -q --permanent --add-port="${MC_TCP}/tcp" --add-port="${MC_UDP}/udp" --add-port="${MC_VOICE}/udp"
+  firewall-cmd -q --permanent --add-port="${MC_TCP}/tcp" --add-port="${MC_UDP}/udp" --add-port="${MC_UDP}/tcp" --add-port="${MC_VOICE}/udp"
   firewall-cmd -q --reload
   msg_ok "firewalld: Ports geöffnet"
 else
   msg_ok "Keine aktive Firewall auf dem Server"
 fi
 
-printf '\n %s🎉 Fertig.%s TCP %s, UDP %s und %s sind freigegeben.\n' "${GN}" "${CL}" "${MC_TCP}" "${MC_UDP}" "${MC_VOICE}"
+printf '\n %s🎉 Fertig.%s TCP %s, TCP+UDP %s und UDP %s sind freigegeben.\n' "${GN}" "${CL}" "${MC_TCP}" "${MC_UDP}" "${MC_VOICE}"
 printf '    Hat dein Anbieter eine eigene Firewall im Kundenmenü (z. B. IONOS, Hetzner), dort dieselben Ports öffnen.\n\n'
