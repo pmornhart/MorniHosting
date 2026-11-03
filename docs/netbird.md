@@ -229,3 +229,18 @@ Eintragen den Server einmal neu starten, damit Simple Voice Chat die neue Adress
 ---
 
 Mehr zu NetBird: [docs.netbird.io – Reverse Proxy](https://docs.netbird.io/manage/reverse-proxy).
+
+## Hausanschluss verstecken (Exit-Node)
+
+Ziel: Weder Besucher noch Dienste, die MorniHosting aufruft (Modrinth, Mojang, Mailserver …), sehen die IP deines Hausanschlusses.
+
+1. Auf dem NetBird-Server (z. B. bei IONOS) einmal den NetBird-Agent installieren und verbinden. Den Setup-Key gibt es im NetBird-Dashboard unter „Setup Keys“:
+   ```bash
+   curl -fsSL https://pkgs.netbird.io/install.sh | sh
+   netbird up --management-url https://netbird.example.de --setup-key DEIN-SETUP-KEY
+   ```
+2. Im Panel: Admin → NetBird → **Hausanschluss verstecken** → den NetBird-Server als „Ausgang über“ wählen → **Anschluss verstecken**.
+3. Das Panel legt in NetBird die Gruppe „MorniHosting Ausgang“ (nur der MorniHosting-Rechner) und die Route `0.0.0.0/0` über den NetBird-Server an (Exit-Node). Danach prüft es, mit welcher IP es ins Internet geht. Grün heißt: Es kommt beim NetBird-Server heraus.
+4. Zeigt die Karte Adressen an, die noch auf deinen Hausanschluss zeigen, lösch die alten A-Einträge bei deinem DNS-Anbieter.
+
+Die Heim-IP merkt sich das Panel einmal verschlüsselt, nur für diese Prüfung. Angezeigt oder verschickt wird sie nie. Am Router zu Hause sind danach keine Portfreigaben mehr nötig.

@@ -16,6 +16,7 @@ import { api, ApiError } from '@/lib/api';
 import { errorText } from '@/lib/query';
 import { NetbirdNameInput } from '@/features/netbird/NetbirdNameInput';
 import { netbirdStatusQuery } from '@/features/netbird/netbird';
+import { NetbirdExitCard } from './NetbirdExitCard';
 
 const PANEL_NAME = 'panel';
 const DEFAULT_PANEL_PORT = 8080;
@@ -351,6 +352,7 @@ export function NetbirdAutomationCard({ panelDomain }: { panelDomain: string }):
             <SelfHostedPorts status={status} />
           ) : null}
           <PanelAddress status={status} domain={domain} panelDomain={panelDomain} />
+          <NetbirdExitCard apiUrl={status.apiUrl} />
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
               {t('netbirdAuto.change')}

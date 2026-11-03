@@ -27,6 +27,8 @@ const peerSchema = z.object({
   ip: z.string().catch(''),
   connected: z.boolean().catch(false),
   hostname: z.string().catch(''),
+  /** The public address NetBird sees the machine connect from (its internet IP). */
+  connection_ip: z.string().catch(''),
 });
 const serviceSchema = z.object({
   id: z.string(),
@@ -39,6 +41,14 @@ const resourceSchema = z.object({
   id: z.string(),
   name: z.string().catch(''),
   address: z.string().catch(''),
+});
+const routeSchema = z.object({
+  id: z.string(),
+  network_id: z.string().catch(''),
+  network: z.string().catch(''),
+  peer: z.string().nullable().catch(null),
+  groups: z.array(z.string()).nullable().catch([]),
+  enabled: z.boolean().catch(true),
 });
 const routerSchema = z.object({ id: z.string(), peer: z.string().nullable().catch(null) });
 /** NetBird is written in Go and sends an empty list as `null`; both mean "nothing there". */
@@ -53,6 +63,14 @@ export type NetbirdPeer = z.infer<typeof peerSchema>;
 export type NetbirdService = z.infer<typeof serviceSchema>;
 
 export type NetbirdNamed = z.infer<typeof namedSchema>;
+export type NetbirdRoute = z.infer<typeof routeSchema>;
+
+/** A route that sends all internet traffic of `groupId`'s machines out through `peerId` (an exit node). */
+export interface NetbirdExitRouteRequest {
+  readonly name: string;
+  readonly peerId: string;
+  readonly groupId: string;
+}
 export type NetbirdResource = z.infer<typeof resourceSchema>;
 
 /** A network resource: one address in the home network that NetBird reaches through a routing peer. */
@@ -85,7 +103,14 @@ export interface NetbirdClient {
   /** Deleting a service that is already gone counts as done. */
   readonly deleteService: (id: string) => Promise<void>;
   readonly groups: () => Promise<NetbirdNamed[]>;
-  readonly createGroup: (name: string) => Promise<NetbirdNamed>;
+  readonly createGroup: (name: string, peers?: readonly string[]) => Promise<NetbirdNamed>;
+  readonly updateGroup: (id: string, name: string, peers: readonly string[]) => Promise<NetbirdNamed>;
+  readonly deleteGroup: (id: string) => Promise<void>;
+  readonly routes: () => Promise<NetbirdRoute[]>;
+  readonly createRoute: (request: NetbirdExitRouteRequest) => Promise<NetbirdRoute>;
+  readonly updateRoute: (id: string, request: NetbirdExitRouteRequest) => Promise<NetbirdRoute>;
+  /** Deleting a route that is already gone counts as done. */
+  readonly deleteRoute: (id: string) => Promise<void>;
   readonly networks: () => Promise<NetbirdNamed[]>;
   readonly createNetwork: (name: string, description: string) => Promise<NetbirdNamed>;
   readonly routers: (networkId: string) => Promise<{ id: string; peer: string | null }[]>;
@@ -105,6 +130,27 @@ export type NetbirdClientFactory = (apiUrl: string, token: string) => NetbirdCli
 
 /** NetBird's default priority for a route; only one router per network here, so the value hardly matters. */
 const ROUTER_METRIC = 9999;
+
+/** All IPv4 addresses: a route for it makes the routing peer an exit node. */
+const EVERYTHING_V4 = '0.0.0.0/0';
+/** Exit routes win against nothing else here; the lowest priority is fine. */
+const EXIT_METRIC = 9999;
+
+function exitRouteBody(request: NetbirdExitRouteRequest): Record<string, unknown> {
+  return {
+    description: 'Angelegt von MorniHosting: Internet über diesen Rechner',
+    network_id: request.name,
+    network: EVERYTHING_V4,
+    peer: request.peerId,
+    groups: [request.groupId],
+    metric: EXIT_METRIC,
+    masquerade: true,
+    enabled: true,
+    keep_route: true,
+    // Exit nodes are otherwise only offered to the machine, not switched on.
+    skip_auto_apply: false,
+  };
+}
 
 function resourceBody(request: NetbirdResourceRequest): Record<string, unknown> {
   return {
@@ -190,7 +236,22 @@ export const createNetbirdClient: NetbirdClientFactory = (apiUrl, token) => {
       if (!response.ok && response.status !== HTTP_NOT_FOUND) throw await rejection(response, host);
     },
     groups: () => json(listOf(namedSchema), 'GET', '/groups'),
-    createGroup: (name) => json(namedSchema, 'POST', '/groups', { name }),
+    createGroup: (name, peers) =>
+      json(namedSchema, 'POST', '/groups', { name, ...(peers ? { peers: [...peers] } : {}) }),
+    updateGroup: (id, name, peers) =>
+      json(namedSchema, 'PUT', `/groups/${encodeURIComponent(id)}`, { name, peers: [...peers] }),
+    deleteGroup: async (id) => {
+      const response = await call('DELETE', `/groups/${encodeURIComponent(id)}`);
+      if (!response.ok && response.status !== HTTP_NOT_FOUND) throw await rejection(response, host);
+    },
+    routes: () => json(listOf(routeSchema), 'GET', '/routes'),
+    createRoute: (request) => json(routeSchema, 'POST', '/routes', exitRouteBody(request)),
+    updateRoute: (id, request) =>
+      json(routeSchema, 'PUT', `/routes/${encodeURIComponent(id)}`, exitRouteBody(request)),
+    deleteRoute: async (id) => {
+      const response = await call('DELETE', `/routes/${encodeURIComponent(id)}`);
+      if (!response.ok && response.status !== HTTP_NOT_FOUND) throw await rejection(response, host);
+    },
     networks: () => json(listOf(namedSchema), 'GET', '/networks'),
     createNetwork: (name, description) => json(namedSchema, 'POST', '/networks', { name, description }),
     routers: (networkId) =>

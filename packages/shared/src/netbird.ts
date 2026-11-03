@@ -100,3 +100,42 @@ export interface NetbirdServerInfo {
     readonly params: Readonly<Record<string, string | number>>;
   } | null;
 }
+
+/**
+ * "Hausanschluss verstecken": the panel's machine sends all its internet traffic through another NetBird machine
+ * (an exit node, e.g. the NetBird server), so the home connection's IP shows up nowhere.
+ */
+export const netbirdExitSchema = z.object({
+  enabled: z.boolean(),
+  /** The machine traffic leaves through; needed when switching on. */
+  exitPeerId: z.string().trim().max(ID_MAX).default(''),
+});
+export type NetbirdExitInput = z.input<typeof netbirdExitSchema>;
+
+export interface NetbirdExitCandidate {
+  readonly id: string;
+  readonly name: string;
+  readonly connected: boolean;
+  /** The internet IP NetBird sees this machine connect from. */
+  readonly publicIp: string;
+}
+
+export interface NetbirdExitStatus {
+  readonly enabled: boolean;
+  readonly exitPeerId: string | null;
+  readonly exitPeerName: string | null;
+  /** Internet IP of the exit machine: what the world should see. */
+  readonly exitIp: string | null;
+  /** true: the panel's traffic leaves through the exit machine; false: still through the home connection. */
+  readonly hidden: boolean | null;
+  /** Addresses whose DNS still points at the home connection. */
+  readonly leaks: readonly string[];
+  /** The own-domain DNS automation would publish the home IP. */
+  readonly dnsAutomation: boolean;
+  readonly candidates: readonly NetbirdExitCandidate[];
+  readonly checkedAt: string | null;
+  readonly error: {
+    readonly code: string;
+    readonly params: Readonly<Record<string, string | number>>;
+  } | null;
+}

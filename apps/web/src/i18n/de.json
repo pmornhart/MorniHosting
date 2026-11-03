@@ -577,7 +577,10 @@
     "stalwart_rejected": "Stalwart hat abgelehnt: {{message}}",
     "stalwart_no_domain": "Bitte gib eine Mail-Domain ein (oder trag zuerst die Domain des Panels ein).",
     "stalwart_password_missing": "Bitte gib das Admin-Passwort von Stalwart ein.",
-    "stalwart_sender_login": "Das Absender-Konto wurde angelegt, kann sich aber nicht anmelden. Schau in Stalwart nach, ob Anmelden mit Passwort erlaubt ist."
+    "stalwart_sender_login": "Das Absender-Konto wurde angelegt, kann sich aber nicht anmelden. Schau in Stalwart nach, ob Anmelden mit Passwort erlaubt ist.",
+    "netbird_exit_peer_missing": "Bitte wähle den Rechner, über den alles ins Internet gehen soll.",
+    "netbird_exit_same_machine": "Der MorniHosting-Rechner kann nicht sein eigener Ausgang sein. Wähle den NetBird-Server.",
+    "netbird_exit_peer_unknown": "Diesen Rechner kennt NetBird nicht (mehr). Lade die Seite neu."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1522,7 +1525,9 @@
       "quota_defaults": "Kontingent-Standard geändert",
       "quota_user": "Kontingent einer Person geändert",
       "mail_stalwart": "Stalwart verbunden",
-      "mail_stalwart_removed": "Stalwart getrennt"
+      "mail_stalwart_removed": "Stalwart getrennt",
+      "netbird_exit_on": "Hausanschluss versteckt (NetBird-Ausgang an)",
+      "netbird_exit_off": "NetBird-Ausgang ausgeschaltet"
     }
   },
   "ddos": {
@@ -2618,5 +2623,24 @@
         "tip": "Sagt Empfängern, was mit gefälschten Mails passieren soll. Zum Start reicht „v=DMARC1; p=none“."
       }
     }
+  },
+  "netbirdExit": {
+    "title": "Hausanschluss verstecken",
+    "text": "Alles, was der MorniHosting-Rechner ins Internet schickt (Downloads, Mails, Updates, die Game-Server selbst), geht dann durch NetBird und kommt erst bei einem anderen NetBird-Rechner heraus – meist dem NetBird-Server. Besucher kommen sowieso über NetBird herein. So taucht die IP deines Hausanschlusses nirgends auf.",
+    "machine": "Ausgang über",
+    "machineHint": "Der Rechner, über den alles ins Internet geht. Dahinter steht seine öffentliche IP.",
+    "offline": "gerade offline",
+    "on": "Anschluss verstecken",
+    "off": "Ausschalten",
+    "check": "Neu prüfen",
+    "hidden": "Dein Hausanschluss ist versteckt. Das Panel geht über {{name}} ({{ip}}) ins Internet.",
+    "notYet": "Das Panel geht noch über deinen Hausanschluss ins Internet. NetBird braucht ein paar Sekunden zum Umschalten – die Karte prüft von selbst weiter. Bleibt es so, läuft auf {{name}} der NetBird-Agent nicht oder der Rechner darf nicht weiterleiten.",
+    "unknown": "Noch nicht geprüft.",
+    "leaksTitle": "Diese Adressen zeigen noch auf deinen Hausanschluss:",
+    "leaksTip": "Lösch bei deinem DNS-Anbieter (z. B. INWX) die alten A-Einträge dafür. Die Adressen sollen nur auf deinen NetBird-Server zeigen.",
+    "agentTitle": "Kein Ausgang zur Auswahl? NetBird-Agent auf dem NetBird-Server installieren",
+    "agentText": "Auf dem NetBird-Server (z. B. bei IONOS) einmal ausführen. Den Setup-Key bekommst du im NetBird-Dashboard unter „Setup Keys“.",
+    "agentHint": "Danach taucht der Server hier als Ausgang auf (Seite neu laden).",
+    "dnsAutomation": "Die DNS-Automatik unter „Eigene Domain“ ist an und würde die IP deines Hausanschlusses bei deinem DNS-Anbieter eintragen. Trenne sie dort."
   }
 }
