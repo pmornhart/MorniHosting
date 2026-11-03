@@ -65,6 +65,7 @@ import { registerWebhookRoutes } from './webhooks/routes.js';
 import { createWebhookService } from './webhooks/service.js';
 import { registerWebSocket } from './ws.js';
 import { createNetbirdAutomation } from './netbird/service.js';
+import { createNetbirdExit } from './netbird/exit.js';
 import { createDnsAutomation, type DnsAutomation } from './dns/service.js';
 import { registerDnsRoutes } from './dns/routes.js';
 import { createHttpsGateway } from './https/gateway.js';
@@ -274,7 +275,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerMarketRoutes(app, ctx, servers, market);
   registerGeyserRoutes(app, ctx, createGeyserService(ctx, servers, market));
   registerVoiceChatRoutes(app, ctx, createVoiceChatService(ctx, servers, market));
-  registerNetbirdRoutes(app, netbird, dns);
+  registerNetbirdRoutes(app, netbird, dns, createNetbirdExit(ctx, undefined, options.resolver));
   registerDnsRoutes(app, dns);
   registerHttpsRoutes(app, https);
   registerGameArtRoutes(app, ctx);

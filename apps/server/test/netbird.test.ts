@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type {
   NetbirdDiscovery,
+  NetbirdExitStatus,
   NetbirdServerInfo,
   NetbirdStatus,
   ServerDetail,
@@ -31,6 +32,10 @@ const PEER = {
   hostname: 'mornihosting',
 };
 const BASE = 'moinmornhart.de';
+/** The home connection (must never show up) and the NetBird server used as exit. */
+const HOME_IP = '93.223.190.172';
+const EXIT_IP = '85.215.54.143';
+const EXIT_PEER = { ...PEER, id: 'peer-exit', name: 'netbird-server', ip: '100.92.0.1', hostname: 'netbird' };
 /** A self-hosted NetBird that the panel's machine is connected to. */
 const OWN_NETBIRD = 'netbird.moinmornhart.de';
 
@@ -57,7 +62,8 @@ interface FakeResource {
 function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } = {}) {
   const services = new Map<string, FakeService>();
   const networks: { id: string; name: string }[] = [];
-  const groups: { id: string; name: string }[] = [];
+  const groups: { id: string; name: string; peers?: string[] }[] = [];
+  const routes = new Map<string, Record<string, unknown> & { id: string }>();
   const routers: { network: string; peer: string }[] = [];
   const resources = new Map<string, FakeResource>();
   const calls: { method: string; host: string; path: string; auth: string | null }[] = [];
@@ -77,8 +83,40 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
     if (auth !== `Token ${TOKEN}`) return Response.json({ message: 'token invalid' }, { status: 401 });
     const body = init?.body ? (JSON.parse(String(init.body)) as Omit<FakeService, 'id'>) : null;
     const id = url.pathname.split('/')[4] ?? '';
+    const net = url.pathname.split('/');
     if (url.pathname === '/api/peers')
-      return Response.json([PEER, { ...PEER, id: 'peer-laptop', name: 'laptop' }]);
+      return Response.json([
+        { ...PEER, connection_ip: HOME_IP },
+        { ...PEER, id: 'peer-laptop', name: 'laptop' },
+        { ...EXIT_PEER, connection_ip: EXIT_IP },
+      ]);
+    // Exit routes: /api/routes(/<id>)
+    if (net[2] === 'routes') {
+      const routeId = net[3] ?? '';
+      if (method === 'GET') return Response.json(routes.size ? [...routes.values()] : null);
+      if (method === 'POST') {
+        const route = { ...(body as unknown as Record<string, unknown>), id: `route-${next.id++}` };
+        routes.set(route.id, route);
+        return Response.json(route);
+      }
+      if (method === 'PUT' && routes.has(routeId)) {
+        routes.set(routeId, { ...(body as unknown as Record<string, unknown>), id: routeId });
+        return Response.json(routes.get(routeId));
+      }
+      if (method === 'DELETE') return new Response(null, { status: routes.delete(routeId) ? 200 : 404 });
+    }
+    const groupId = net[2] === 'groups' ? (net[3] ?? '') : '';
+    if (groupId && method === 'PUT') {
+      const group = groups.find((g) => g.id === groupId);
+      if (!group) return Response.json({ message: 'not found' }, { status: 404 });
+      group.peers = (body as { peers?: string[] } | null)?.peers ?? [];
+      return Response.json(group);
+    }
+    if (groupId && method === 'DELETE') {
+      const at = groups.findIndex((g) => g.id === groupId);
+      if (at >= 0) groups.splice(at, 1);
+      return new Response(null, { status: at >= 0 ? 200 : 404 });
+    }
     if (url.pathname === '/api/reverse-proxies/domains') {
       return Response.json([
         {
@@ -92,10 +130,10 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
       ]);
     }
     // Networks, groups, routing peers and resources: /api/networks/<net>/(routers|resources)/<id>
-    const net = url.pathname.split('/');
     if (url.pathname === '/api/groups' && method === 'GET') return Response.json(groups);
     if (url.pathname === '/api/groups' && method === 'POST') {
-      const group = { id: `grp-${next.id++}`, name: String((body as { name?: string } | null)?.name) };
+      const groupBody = body as { name?: string; peers?: string[] } | null;
+      const group = { id: `grp-${next.id++}`, name: String(groupBody?.name), peers: groupBody?.peers };
       groups.push(group);
       return Response.json(group);
     }
@@ -167,6 +205,7 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
   };
   return {
     services,
+    routes,
     networks,
     groups,
     routers,
@@ -323,7 +362,7 @@ describe('NetBird automation', () => {
       peerId: 'peer-mh',
     });
     expect(moved.json()).toMatchObject({ error: 'netbird_token_missing' });
-    expect((await call('POST', '/api/netbird/discover', {})).json<NetbirdDiscovery>().peers).toHaveLength(2);
+    expect((await call('POST', '/api/netbird/discover', {})).json<NetbirdDiscovery>().peers).toHaveLength(3);
   });
 
   test('the NetBird server this machine is connected to is the default address', async () => {
@@ -572,5 +611,63 @@ describe('NetBird automation', () => {
     const fresh = [...netbird.resources.values()].find((r) => r.name === 'MorniHosting Panel');
     expect(fresh).toBeDefined();
     expect(netbird.byDomain(BASE)?.targets[0]).toMatchObject({ target_type: 'host', target_id: fresh?.id });
+  });
+
+  test('hiding the home connection: all traffic leaves through the NetBird server, the home IP shows up nowhere', async () => {
+    await t.cleanup();
+    // The internet sees the home IP until the exit route exists, then the NetBird server's.
+    vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(urlOf(input));
+      if (url.hostname === 'api.ipify.org') return new Response(netbird.routes.size ? EXIT_IP : HOME_IP);
+      return ['api.netbird.io', OWN_NETBIRD].includes(url.hostname)
+        ? netbird.handle(url, init)
+        : fakePluginSites(url);
+    });
+    // An old A record of one server still points at home.
+    const dnsAnswers: Record<string, string[]> = { [BASE]: [EXIT_IP], [`survival.${BASE}`]: [HOME_IP] };
+    t = await createTestApp({}, { resolver: async (name) => dnsAnswers[name] ?? [] });
+    s = await setupAdmin(t);
+    await configure();
+    const server = await create();
+    await call('PUT', `/api/servers/${server.id}/netbird`, { name: 'survival' });
+
+    const before = (await call('GET', '/api/netbird/exit')).json<NetbirdExitStatus>();
+    expect(before.enabled).toBe(false);
+    expect(before.candidates.map((c) => c.id)).toEqual(['peer-laptop', 'peer-exit']);
+    // The panel's own machine cannot be its own exit.
+    expect(
+      (await call('PUT', '/api/netbird/exit', { enabled: true, exitPeerId: 'peer-mh' })).statusCode,
+    ).toBe(400);
+
+    const on = await call('PUT', '/api/netbird/exit', { enabled: true, exitPeerId: 'peer-exit' });
+    expect(on.statusCode).toBe(200);
+    const route = [...netbird.routes.values()][0];
+    const group = netbird.groups.find((g) => g.name === 'MorniHosting Ausgang');
+    expect(group?.peers).toEqual(['peer-mh']);
+    expect(route).toMatchObject({
+      network: '0.0.0.0/0',
+      peer: 'peer-exit',
+      groups: [group?.id],
+      masquerade: true,
+      enabled: true,
+      skip_auto_apply: false,
+    });
+    const status = on.json<NetbirdExitStatus>();
+    expect(status).toMatchObject({
+      enabled: true,
+      exitPeerName: 'netbird-server',
+      exitIp: EXIT_IP,
+      hidden: true,
+    });
+    expect(status.leaks).toEqual([`survival.${BASE}`]);
+    // The home IP itself is never sent to the browser.
+    expect(JSON.stringify(status)).not.toContain(HOME_IP);
+
+    // Switching on again keeps one route; switching off removes route and group.
+    await call('PUT', '/api/netbird/exit', { enabled: true, exitPeerId: 'peer-exit' });
+    expect(netbird.routes.size).toBe(1);
+    await call('PUT', '/api/netbird/exit', { enabled: false });
+    expect(netbird.routes.size).toBe(0);
+    expect(netbird.groups.some((g) => g.name === 'MorniHosting Ausgang')).toBe(false);
   });
 });

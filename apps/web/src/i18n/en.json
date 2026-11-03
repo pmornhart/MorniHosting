@@ -577,7 +577,10 @@
     "stalwart_rejected": "Stalwart refused: {{message}}",
     "stalwart_no_domain": "Please enter a mail domain (or set the panel's domain first).",
     "stalwart_password_missing": "Please enter Stalwart's admin password.",
-    "stalwart_sender_login": "The sender account was created but cannot log in. Check in Stalwart that password logins are allowed."
+    "stalwart_sender_login": "The sender account was created but cannot log in. Check in Stalwart that password logins are allowed.",
+    "netbird_exit_peer_missing": "Please choose the machine all internet traffic should leave through.",
+    "netbird_exit_same_machine": "The MorniHosting machine cannot be its own exit. Choose the NetBird server.",
+    "netbird_exit_peer_unknown": "NetBird does not know this machine (any more). Reload the page."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1522,7 +1525,9 @@
       "quota_defaults": "Quota defaults changed",
       "quota_user": "Quota of a person changed",
       "mail_stalwart": "Stalwart connected",
-      "mail_stalwart_removed": "Stalwart disconnected"
+      "mail_stalwart_removed": "Stalwart disconnected",
+      "netbird_exit_on": "Home connection hidden (NetBird exit on)",
+      "netbird_exit_off": "NetBird exit switched off"
     }
   },
   "ddos": {
@@ -2618,5 +2623,24 @@
         "tip": "Tells receivers what to do with forged mails. “v=DMARC1; p=none” is enough to start."
       }
     }
+  },
+  "netbirdExit": {
+    "title": "Hide the home connection",
+    "text": "Everything the MorniHosting machine sends to the internet (downloads, mails, updates, the game servers themselves) then goes through NetBird and leaves at another NetBird machine – usually the NetBird server. Visitors come in through NetBird anyway. So your home connection's IP shows up nowhere.",
+    "machine": "Leave through",
+    "machineHint": "The machine all internet traffic goes through, with its public IP.",
+    "offline": "offline right now",
+    "on": "Hide connection",
+    "off": "Switch off",
+    "check": "Check again",
+    "hidden": "Your home connection is hidden. The panel reaches the internet through {{name}} ({{ip}}).",
+    "notYet": "The panel still reaches the internet through your home connection. NetBird needs a few seconds to switch – this card keeps checking. If it stays like this, the NetBird agent is not running on {{name}} or it may not forward traffic.",
+    "unknown": "Not checked yet.",
+    "leaksTitle": "These addresses still point at your home connection:",
+    "leaksTip": "Delete their old A records at your DNS provider (e.g. INWX). The addresses should only point at your NetBird server.",
+    "agentTitle": "No exit to choose? Install the NetBird agent on the NetBird server",
+    "agentText": "Run once on the NetBird server (e.g. at IONOS). You get the setup key in the NetBird dashboard under “Setup Keys”.",
+    "agentHint": "Afterwards the server shows up here as exit (reload the page).",
+    "dnsAutomation": "The DNS automation under “Own domain” is on and would put your home IP at your DNS provider. Disconnect it there."
   }
 }
