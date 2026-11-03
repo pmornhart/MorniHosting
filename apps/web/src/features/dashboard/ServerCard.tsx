@@ -169,8 +169,11 @@ export function ServerCard({ server }: { server: ServerSummary }): ReactElement 
             <span className="whitespace-nowrap">
               {server.software === 'bedrock' ? 'Bedrock' : SOFTWARE[server.software].label}
             </span>
-            <Tag>{versionLabel(server.software, server.version)}</Tag>
-            {isGameId(server.edition) ? null : `· ${server.edition === 'java' ? 'Java' : 'Bedrock'}`}
+            {/* Version and edition stay together, so "· Java" never sits alone in a line. */}
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
+              <Tag>{versionLabel(server.software, server.version)}</Tag>
+              {isGameId(server.edition) ? null : `· ${server.edition === 'java' ? 'Java' : 'Bedrock'}`}
+            </span>
           </span>
         </Link>
         <StatePill state={live.state} className="shrink-0 self-start" />

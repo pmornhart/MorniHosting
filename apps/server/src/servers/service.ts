@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { eq, lt, ne } from 'drizzle-orm';
+import { and, eq, lt, ne } from 'drizzle-orm';
 import {
   BUILTIN_ROLES,
   CREATABLE_SOFTWARE,
@@ -40,7 +40,15 @@ import {
 } from '../games/settings.js';
 import { analyseCrash } from './crash.js';
 import { createDownloadMeter, type DownloadProgress } from './steam-progress.js';
-import { SHARED_GAME_FILES, markInstalled, seedGameFiles, seedSource } from './game-seed.js';
+import {
+  INSTALLED_MARK,
+  SHARED_GAME_FILES,
+  markInstalled,
+  needsRuntime,
+  seedGameFiles,
+  seedRuntime,
+  seedSource,
+} from './game-seed.js';
 import { isPanelNoise, isStartFinished, parseListAnswer, parseTps, playerEventOf } from './log-parse.js';
 import {
   GAME_PORT_PURPOSE,
@@ -304,7 +312,8 @@ export function createServerService(ctx: AppContext): ServerService {
     if (state === 'running') {
       r.progress = null;
       r.download = null;
-      if (r.game) markInstalled(serverDir(config, id));
+      // Its files are complete now: other servers of the same kind may copy them (games and Minecraft alike).
+      markInstalled(serverDir(config, id));
     }
     events.emit('server.state', { serverId: id, state, previous });
     publishLive(id);
@@ -492,6 +501,31 @@ export function createServerService(ctx: AppContext): ServerService {
   };
 
   /** A second CS2/GMod server copies the game from the first one instead of downloading 60 GB again. */
+  /** A new Minecraft server takes the finished server program of one with the same software and version. */
+  const seedRuntimeFromSibling = async (id: string, row: ServerRow): Promise<void> => {
+    if (gameOf(row.software) || row.software === 'bedrock') return;
+    const target = serverDir(config, id);
+    if (!needsRuntime(target)) return;
+    const twin = db
+      .select({ id: servers.id, name: servers.name })
+      .from(servers)
+      .where(and(eq(servers.software, row.software), eq(servers.version, row.version)))
+      .all()
+      .find((s) => s.id !== id && fs.existsSync(path.join(serverDir(config, s.id), INSTALLED_MARK)));
+    if (!twin) return;
+    const started = Date.now();
+    try {
+      const bytes = await seedRuntime(serverDir(config, twin.id), target);
+      const seconds = ((Date.now() - started) / MS_PER_SECOND).toFixed(1);
+      panelLog(
+        id,
+        `⚡ Server-Programm von „${twin.name}“ übernommen (${Math.round(bytes / BYTES_PER_MB)} MB in ${seconds} s) – kein Download nötig.`,
+      );
+    } catch (err) {
+      log.warn({ err, serverId: id }, 'server program not copied');
+    }
+  };
+
   const seedFromSibling = async (id: string, software: ServerRow['software']): Promise<void> => {
     if (!SHARED_GAME_FILES.has(software)) return;
     const others = db
@@ -548,6 +582,7 @@ export function createServerService(ctx: AppContext): ServerService {
     if (r.containerId) await docker.removeContainer(r.containerId);
     fs.mkdirSync(serverDir(config, id), { recursive: true });
     await seedFromSibling(id, r.software);
+    await seedRuntimeFromSibling(id, r);
     const missing = missingGameFiles(serverDir(config, id), r.software);
     if (missing.length) throw new Error(`Es fehlen Dateien: ${missing.join(', ')}`);
     prepareGameFiles(serverDir(config, id), r);

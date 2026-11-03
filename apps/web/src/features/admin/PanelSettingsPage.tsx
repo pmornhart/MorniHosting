@@ -425,7 +425,7 @@ export function PanelSettingsPage(): ReactElement {
               aria-current={tab === key ? 'page' : undefined}
               onClick={() => open(key)}
               className={cn(
-                'flex shrink-0 items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-sm font-semibold text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground',
+                'mh-nav flex shrink-0 items-center gap-2.5 rounded-[10px] px-3 py-2 text-left text-sm font-semibold text-muted-foreground hover:bg-secondary hover:text-foreground',
                 tab === key && 'bg-accent text-foreground',
               )}
             >
@@ -435,7 +435,11 @@ export function PanelSettingsPage(): ReactElement {
             </button>
           ))}
         </nav>
-        <section className="grid min-w-0 max-w-3xl gap-5" aria-label={t(`admin.sections.${tab}`)}>
+        <section
+          key={tab}
+          className="mh-fade grid min-w-0 max-w-3xl gap-5"
+          aria-label={t(`admin.sections.${tab}`)}
+        >
           <p className="text-sm text-muted-foreground">{t(`admin.sectionText.${tab}`)}</p>
           {panels[tab]}
         </section>

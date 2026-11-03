@@ -354,8 +354,8 @@ export function ServerLayout(): ReactElement {
               end={tab.to === ''}
               className={({ isActive }) =>
                 cn(
-                  '-mb-px inline-flex items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-2.5 py-3 text-[14px] font-semibold text-muted-foreground transition-colors hover:text-foreground [&_svg]:size-4',
-                  isActive && 'border-primary text-foreground',
+                  'mh-tab -mb-px inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-3 text-[14px] font-semibold text-muted-foreground transition-colors hover:text-foreground [&_svg]:size-4',
+                  isActive && 'text-foreground [&_svg]:text-primary',
                 )
               }
             >

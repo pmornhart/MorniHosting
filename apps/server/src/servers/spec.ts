@@ -61,6 +61,10 @@ function javaEnv(row: ServerRow, timezone: string): Record<string, string> {
     RCON_PORT: String(PORT_RCON),
     CREATE_CONSOLE_IN_PIPE: 'true',
     ENABLE_AUTOPAUSE: 'false',
+    // Smooth play: Aikar's garbage-collector settings (the standard for Minecraft servers, no lag spikes from
+    // memory clean-up) and chunk saving that does not stop the game while it writes.
+    USE_AIKAR_FLAGS: 'true',
+    SYNC_CHUNK_WRITES: 'false',
     TZ: timezone,
     UID: RUN_UID,
     GID: RUN_UID,

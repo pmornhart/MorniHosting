@@ -29,6 +29,7 @@ export function Progress({
       className={cn('relative h-1.5 w-full overflow-hidden rounded-full bg-muted', className)}
     >
       <ProgressPrimitive.Indicator
+        data-slot="progress-indicator"
         className={cn(
           'h-full rounded-full transition-[width] duration-500',
           tone === 'warning' ? 'bg-warning' : 'bg-primary',

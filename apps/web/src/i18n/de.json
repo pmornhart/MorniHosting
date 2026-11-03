@@ -1957,7 +1957,7 @@
     "netbirdActive": "NetBird verteilt die Adressen deiner Server. Verbindest du hier zusätzlich deinen DNS-Anbieter (z. B. INWX), räumt das Panel nur auf: Es löscht alte Einträge unter den Server-Namen, die die NetBird-Weiterleitung (*) blockieren würden. Es trägt dabei keine IP von dir ein.",
     "inwxUser": "INWX-Benutzername",
     "inwxPass": "INWX-Passwort",
-    "inwxOtp": "2FA-Schlüssel (nur wenn 2FA an ist)"
+    "inwxOtp": "2FA-Schlüssel (optional)"
   },
   "https": {
     "title": "HTTPS für das Panel",
