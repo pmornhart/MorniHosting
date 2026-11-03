@@ -207,6 +207,7 @@
       "settings": "Settings",
       "version": "Version",
       "network": "Network",
+      "team": "Team",
       "advanced": "Advanced"
     },
     "meta": "{{software}} {{version}} · {{edition}} · Port {{port}}",
@@ -214,7 +215,9 @@
     "noPermission": "You do not have the rights for this on this server.",
     "connect": "Connect",
     "portLabel": "Port",
-    "geyserPortLabel": "Geyser port"
+    "javaPortLabel": "Java port",
+    "bedrockPortLabel": "Bedrock port",
+    "bedrockPortHint": "phone, Xbox, PlayStation, Switch, Windows"
   },
   "connection": {
     "title": "Connection",
@@ -581,7 +584,15 @@
     "netbird_exit_peer_missing": "Please choose the machine all internet traffic should leave through.",
     "netbird_exit_same_machine": "The MorniHosting machine cannot be its own exit. Choose the NetBird server.",
     "netbird_exit_peer_unknown": "NetBird does not know this machine (any more). Reload the page.",
-    "mail_test_empty": "Please enter at least one address or switch on the spam score."
+    "mail_test_empty": "Please enter at least one address or switch on the spam score.",
+    "team_user_unknown": "Nobody found for “{{who}}”. They need an account first (start page → “Request account”).",
+    "team_no_permission": "Only the server's owners and admins can manage the team.",
+    "team_owner_admin_only": "Only admins can give or take away the owner role.",
+    "team_last_owner": "The server needs at least one owner.",
+    "team_self": "You can't add yourself.",
+    "team_user_admin": "Admins can reach every server anyway.",
+    "team_user_inactive": "This account is locked or not approved yet.",
+    "team_member_unknown": "This person isn't (or no longer) on this server's team."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1529,7 +1540,10 @@
       "mail_stalwart_removed": "Stalwart disconnected",
       "netbird_exit_on": "Home connection hidden (NetBird exit on)",
       "netbird_exit_off": "NetBird exit switched off",
-      "mail_test_run": "Mail test started"
+      "mail_test_run": "Mail test started",
+      "server_team_add": "Team member added",
+      "server_team_role": "Team member's role changed",
+      "server_team_remove": "Team member removed"
     }
   },
   "ddos": {
@@ -2687,5 +2701,33 @@
   "fold": {
     "open": "Expand",
     "close": "Collapse"
+  },
+  "team": {
+    "title": "Team",
+    "text": "Give others access to this server – by username or e-mail. The role decides what they may do.",
+    "members": "Who works on this server ({{count}})",
+    "empty": "Nobody added yet.",
+    "you": "You",
+    "addTitle": "Add a team member",
+    "addText": "The person needs a panel account. If they don't have one yet, they can request it on the start page with “Request account”.",
+    "who": "Username or e-mail",
+    "whoHint": "Upper and lower case don't matter.",
+    "whoPlaceholder": "e.g. lena or lena@example.com",
+    "role": "Role",
+    "roleHint": "Moderator: start, stop, console, players. Viewer: look only. Owner: everything (only admins can give it).",
+    "add": "Add",
+    "added": "{{who}} is now on the team",
+    "remove": "Remove {{name}}",
+    "removeShort": "Remove",
+    "removeTitle": "Remove {{name}}?",
+    "removeText": "They can no longer reach this server. Their account stays.",
+    "leave": "Leave server",
+    "leaveTitle": "Leave this server?",
+    "leaveText": "You will no longer see this server. You only get back in if someone adds you again.",
+    "roles": {
+      "owner": "Owner",
+      "moderator": "Moderator",
+      "viewer": "Viewer"
+    }
   }
 }

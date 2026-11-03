@@ -17,6 +17,7 @@ import { ServerLayout } from '@/features/servers/ServerLayout';
 const VersionTab = lazyPage(() => import('@/features/servers/version/VersionTab'));
 const NetworkTab = lazyPage(() => import('@/features/servers/network/NetworkTab'));
 const AdvancedTab = lazyPage(() => import('@/features/servers/advanced/AdvancedTab'));
+const TeamTab = lazyPage(() => import('@/features/servers/team/TeamTab'));
 const ContentTab = lazyPage(() => import('@/features/servers/content/ContentTab'));
 const BackupsTab = lazyPage(() => import('@/features/servers/backups/BackupsTab'));
 const SchedulesTab = lazyPage(() => import('@/features/servers/schedules/SchedulesTab'));
@@ -60,6 +61,14 @@ export const appRoutes: RouteObject[] = [
         element: (
           <Lazy>
             <NetworkTab />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'team',
+        element: (
+          <Lazy>
+            <TeamTab />
           </Lazy>
         ),
       },

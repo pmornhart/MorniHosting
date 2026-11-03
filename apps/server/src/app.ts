@@ -61,6 +61,7 @@ import { createQuotaService } from './quota/service.js';
 import { createUpdateService } from './system/update.js';
 import { createAccessService } from './users/access.js';
 import { registerUserRoutes } from './users/routes.js';
+import { registerTeamRoutes } from './team/routes.js';
 import { registerWebhookRoutes } from './webhooks/routes.js';
 import { createWebhookService } from './webhooks/service.js';
 import { registerWebSocket } from './ws.js';
@@ -288,6 +289,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerStalwartRoutes(app, stalwart);
   registerNotifyRoutes(app, ctx, notify, approvals);
   registerUserRoutes(app, ctx, mail);
+  registerTeamRoutes(app, ctx);
   registerTokenRoutes(app, ctx);
   registerAuditRoutes(app, ctx);
   registerSettingsRoutes(app, ctx);

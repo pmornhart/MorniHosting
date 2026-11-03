@@ -207,6 +207,7 @@
       "settings": "Einstellungen",
       "version": "Version",
       "network": "Netzwerk",
+      "team": "Mitarbeiter",
       "advanced": "Erweitert"
     },
     "meta": "{{software}} {{version}} · {{edition}} · Port {{port}}",
@@ -214,7 +215,9 @@
     "noPermission": "Dafür fehlen dir die Rechte auf diesem Server.",
     "connect": "Verbinden",
     "portLabel": "Port",
-    "geyserPortLabel": "Geyser-Port"
+    "javaPortLabel": "Java-Port",
+    "bedrockPortLabel": "Bedrock-Port",
+    "bedrockPortHint": "Handy, Xbox, PlayStation, Switch, Windows"
   },
   "connection": {
     "title": "Verbindung",
@@ -581,7 +584,15 @@
     "netbird_exit_peer_missing": "Bitte wähle den Rechner, über den alles ins Internet gehen soll.",
     "netbird_exit_same_machine": "Der MorniHosting-Rechner kann nicht sein eigener Ausgang sein. Wähle den NetBird-Server.",
     "netbird_exit_peer_unknown": "Diesen Rechner kennt NetBird nicht (mehr). Lade die Seite neu.",
-    "mail_test_empty": "Bitte gib mindestens eine Adresse an oder schalte die Spam-Punktzahl ein."
+    "mail_test_empty": "Bitte gib mindestens eine Adresse an oder schalte die Spam-Punktzahl ein.",
+    "team_user_unknown": "Niemand mit „{{who}}“ gefunden. Die Person braucht zuerst ein Konto (Startseite → „Konto anfragen“).",
+    "team_no_permission": "Mitarbeiter verwalten dürfen nur Besitzer des Servers und Admins.",
+    "team_owner_admin_only": "Die Rolle „Besitzer“ vergeben oder wegnehmen dürfen nur Admins.",
+    "team_last_owner": "Der Server braucht mindestens einen Besitzer.",
+    "team_self": "Dich selbst kannst du nicht hinzufügen.",
+    "team_user_admin": "Admins dürfen sowieso auf jeden Server.",
+    "team_user_inactive": "Dieses Konto ist gesperrt oder noch nicht freigegeben.",
+    "team_member_unknown": "Diese Person arbeitet nicht (mehr) an diesem Server mit."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1529,7 +1540,10 @@
       "mail_stalwart_removed": "Stalwart getrennt",
       "netbird_exit_on": "Hausanschluss versteckt (NetBird-Ausgang an)",
       "netbird_exit_off": "NetBird-Ausgang ausgeschaltet",
-      "mail_test_run": "Mail-Test gestartet"
+      "mail_test_run": "Mail-Test gestartet",
+      "server_team_add": "Mitarbeiter hinzugefügt",
+      "server_team_role": "Rolle eines Mitarbeiters geändert",
+      "server_team_remove": "Mitarbeiter entfernt"
     }
   },
   "ddos": {
@@ -2687,5 +2701,33 @@
   "fold": {
     "open": "Aufklappen",
     "close": "Zuklappen"
+  },
+  "team": {
+    "title": "Mitarbeiter",
+    "text": "Gib anderen Zugriff auf diesen Server – mit Benutzername oder E-Mail. Die Rolle legt fest, was sie dürfen.",
+    "members": "Wer darf hier mitarbeiten ({{count}})",
+    "empty": "Noch niemand eingetragen.",
+    "you": "Du",
+    "addTitle": "Mitarbeiter hinzufügen",
+    "addText": "Die Person braucht ein Konto im Panel. Hat sie noch keins, kann sie es auf der Startseite mit „Konto anfragen“ beantragen.",
+    "who": "Benutzername oder E-Mail",
+    "whoHint": "Groß- und Kleinschreibung ist egal.",
+    "whoPlaceholder": "z. B. lena oder lena@beispiel.de",
+    "role": "Rolle",
+    "roleHint": "Moderator: starten, stoppen, Konsole, Spieler. Zuschauer: nur ansehen. Besitzer: alles (nur Admins vergeben das).",
+    "add": "Hinzufügen",
+    "added": "{{who}} arbeitet jetzt mit",
+    "remove": "{{name}} entfernen",
+    "removeShort": "Entfernen",
+    "removeTitle": "{{name}} entfernen?",
+    "removeText": "Die Person kommt danach nicht mehr auf diesen Server. Ihr Konto bleibt.",
+    "leave": "Server verlassen",
+    "leaveTitle": "Diesen Server verlassen?",
+    "leaveText": "Du siehst den Server danach nicht mehr. Wieder rein kommst du nur, wenn dich jemand einträgt.",
+    "roles": {
+      "owner": "Besitzer",
+      "moderator": "Moderator",
+      "viewer": "Zuschauer"
+    }
   }
 }

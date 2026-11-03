@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   Square,
   SquareTerminal,
+  UserPlus,
   UsersRound,
   Zap,
 } from 'lucide-react';
@@ -87,6 +88,7 @@ const TABS: readonly TabDef[] = [
   { to: 'backups', key: 'backups', icon: Archive, permission: 'backups', show: () => true },
   { to: 'network', key: 'network', icon: Network, permission: null, show: () => true },
   { to: 'schedules', key: 'schedules', icon: CalendarClock, permission: 'schedules', show: () => true },
+  { to: 'team', key: 'team', icon: UserPlus, permission: null, show: () => true },
   { to: 'advanced', key: 'advanced', icon: ShieldCheck, permission: 'config', show: () => true },
 ];
 
@@ -149,14 +151,25 @@ function ServerActions({ server, can }: ServerOutletContext): ReactElement | nul
   );
 }
 
+/** "Java-Port" when the server also takes Bedrock players, "Bedrock-Port" on Bedrock servers, else just "Port". */
+function portLabelKey(server: ServerDetail): string {
+  if (server.edition === 'bedrock') return 'server.bedrockPortLabel';
+  return server.geyser ? 'server.javaPortLabel' : 'server.portLabel';
+}
+
 /** A label and value side by side, as in "PORT: 25565". */
-function InfoChip({ label, value }: { label: string; value: string }): ReactElement {
+function InfoChip({ label, value, hint }: { label: string; value: string; hint?: string }): ReactElement {
   return (
-    <span className="inline-flex items-center gap-2 text-[14px] font-bold uppercase tracking-wide">
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[14px] font-bold uppercase tracking-wide">
       {label}:
       <span className="rounded-[6px] bg-background/70 px-2 py-0.5 font-mono text-[14px] font-medium normal-case tracking-normal">
         {value}
       </span>
+      {hint ? (
+        <span className="text-[12px] font-medium normal-case tracking-normal text-muted-foreground">
+          {hint}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -219,7 +232,7 @@ function ServerHead({ server, can, children }: ServerOutletContext & { children:
             hasIcon={server.hasIcon}
             className="relative z-10 -mt-12 size-24 shrink-0 rounded-[16px] shadow-float ring-4 ring-card lg:-mt-16 lg:size-28"
           />
-          <div className="grid min-w-0 flex-1 gap-2">
+          <div className="grid min-w-0 flex-1 basis-64 gap-2">
             <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[22px] font-bold leading-tight tracking-[-0.02em]">
               <span className="min-w-0 truncate">{server.name}</span>
               <span className="text-[13px] font-medium text-muted-foreground">
@@ -259,7 +272,11 @@ function ServerHead({ server, can, children }: ServerOutletContext & { children:
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           {ip ? <InfoChip label="IP" value={ip} /> : null}
-          <InfoChip label={t('server.portLabel')} value={String(share?.sharePort ?? server.port)} />
+          <InfoChip
+            label={t(portLabelKey(server))}
+            value={String(share?.sharePort ?? server.port)}
+            hint={server.edition === 'bedrock' ? t('server.bedrockPortHint') : undefined}
+          />
           {server.gamePorts.slice(1).map((p) => (
             <InfoChip
               key={`${p.key}-${p.protocol}`}
@@ -268,7 +285,11 @@ function ServerHead({ server, can, children }: ServerOutletContext & { children:
             />
           ))}
           {server.geyser && share?.bedrockPort ? (
-            <InfoChip label={t('server.geyserPortLabel')} value={String(share.bedrockPort)} />
+            <InfoChip
+              label={t('server.bedrockPortLabel')}
+              value={String(share.bedrockPort)}
+              hint={t('server.bedrockPortHint')}
+            />
           ) : null}
           <span
             data-testid="server-state"
