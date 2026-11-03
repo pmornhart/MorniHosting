@@ -16,3 +16,4 @@ export * from './quota.js';
 export * from './stalwart.js';
 export * from './mail-tests.js';
 export * from './team.js';
+export * from './player-detail.js';

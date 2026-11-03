@@ -3,7 +3,13 @@ import { Ban, Crown, DoorOpen, ListChecks, Plus, ShieldOff, UserMinus, UsersRoun
 import { useState, type FormEvent, type ReactElement, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { SOFTWARE, type PlayerAction, type PlayerEntry, type PlayersResponse } from '@mornihosting/shared';
+import {
+  SOFTWARE,
+  gameOf,
+  type PlayerAction,
+  type PlayerEntry,
+  type PlayersResponse,
+} from '@mornihosting/shared';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState } from '@/components/page';
 import { PlayerHead } from '@/components/server-visuals';
@@ -15,6 +21,7 @@ import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { useServer } from '../ServerLayout';
 import { TabIntro } from '@/components/tab-intro';
+import { KnownPlayersCard } from './KnownPlayersCard';
 
 interface ActionInput {
   readonly action: PlayerAction;
@@ -220,6 +227,9 @@ export default function PlayersTab(): ReactElement {
           {t(bedrock ? 'playersTab.offlineBedrock' : 'playersTab.offline')}
         </p>
       ) : null}
+      {bedrock || gameOf(server.software) ? null : (
+        <KnownPlayersCard serverId={server.id} live={server.live.players.join(',')} />
+      )}
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <ListCard
           icon={<UsersRound />}
