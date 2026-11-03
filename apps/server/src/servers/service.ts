@@ -537,6 +537,7 @@ export function createServerService(ctx: AppContext): ServerService {
     panelLog(id, `Server wird gestartet (${what}) …`);
     beforeStart.forEach((prepare) => prepare(id));
     await docker.ensureNetwork(config.mcNetwork);
+    panelLog(id, 'Prüfe, ob es eine neuere Version des Server-Programms gibt (höchstens 2 Minuten) …');
     await docker.ensureImage(r.image, (percent) => {
       const current = rt(id);
       if (percent !== null && percent !== current.progress) {

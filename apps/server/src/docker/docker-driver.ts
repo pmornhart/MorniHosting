@@ -25,6 +25,8 @@ const EVENT_ACTIONS: readonly ContainerEvent['action'][] = ['start', 'die', 'oom
 const MANAGED_LABEL = 'mornihosting.server';
 /** How often an image that is already there gets checked for a newer version (when a server starts). */
 const IMAGE_REFRESH_MS = 24 * 60 * 60 * 1000;
+/** Longest wait for that check before starting with the image that is there. */
+const IMAGE_REFRESH_WAIT_MS = 2 * 60 * 1000;
 
 interface DockerApiError {
   readonly statusCode?: number;
@@ -142,7 +144,15 @@ export function createDockerDriver(config: Config): DockerDriver {
       // (e.g. PaperMC's API v2 is gone, old itzg images then hang at "Resolving type given PAPER").
       if (present && Date.now() - (pulledAt.get(image) ?? 0) < IMAGE_REFRESH_MS) return;
       try {
-        await pullImage(image, onProgress);
+        // A refresh never blocks a start for long: on a slow line the image we have is good enough.
+        await (present
+          ? Promise.race([
+              pullImage(image, onProgress),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('image refresh took too long')), IMAGE_REFRESH_WAIT_MS),
+              ),
+            ])
+          : pullImage(image, onProgress));
         pulledAt.set(image, Date.now());
       } catch (err) {
         // Offline or a locally built image: the one we have still works.
