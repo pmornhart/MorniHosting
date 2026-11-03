@@ -372,7 +372,9 @@ export const GAMES: Readonly<Record<GameId, GameInfo>> = Object.freeze({
     ],
     // No RCON and no stdin: the server is claimed and managed in the game (Server Manager).
     console: 'none',
-    env: { PUID: RUN_UID, PGID: RUN_UID },
+    // IPv4 only: the image listens on "::" by default, which fails where IPv6 is switched off (many Proxmox
+    // containers) – "Server API failed to bind to any of the local addresses" (found in the real test).
+    env: { PUID: RUN_UID, PGID: RUN_UID, MULTIHOME: '0.0.0.0' },
     fields: [
       { key: 'maxPlayers', env: 'MAXPLAYERS', kind: 'number', fallback: '4', onOrder: true },
       { key: 'autosaves', env: 'AUTOSAVENUM', kind: 'number', fallback: '5' },
