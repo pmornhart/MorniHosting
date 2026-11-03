@@ -42,6 +42,8 @@ export interface VoiceChatService {
   ) => Promise<VoiceChatResult>;
   /** Writes port and voice_host again, e.g. before a start after the address changed. */
   readonly writeConfig: (serverId: string) => void;
+  /** Loads the plugin or mod into the download cache (before `set`, alongside other downloads). */
+  readonly prefetch: (serverId: string) => Promise<void>;
 }
 
 export function createVoiceChatService(
@@ -133,5 +135,6 @@ export function createVoiceChatService(
         input.enabled ? enable(serverId, input.publicPort ?? null, actor) : disable(serverId, actor),
       ),
     writeConfig,
+    prefetch: (serverId) => market.prefetch(serverId, SOURCE, PROJECT_ID),
   };
 }

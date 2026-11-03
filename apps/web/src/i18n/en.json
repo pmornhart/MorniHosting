@@ -2966,5 +2966,18 @@
   },
   "addOnSetup": {
     "running": "Being set up automatically right now – you picked it when ordering. Usually takes less than a minute, then the server starts."
+  },
+  "orderSetup": {
+    "title": "Setting up {{name}}",
+    "text": "Almost there – the panel opens by itself as soon as everything is ready.",
+    "almost": "Almost done …",
+    "hint": "You can close this page, the setup keeps going.",
+    "steps": {
+      "download": "Downloading plugins",
+      "geyser": "Geyser for Bedrock players + ViaVersion",
+      "voice": "Simple Voice Chat",
+      "backups": "Daily backup at 04:00",
+      "start": "First start (creating the world)"
+    }
   }
 }

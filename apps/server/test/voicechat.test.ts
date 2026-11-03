@@ -117,7 +117,10 @@ describe('Simple Voice Chat and public ports', () => {
   test('ordering with Geyser and voice chat sets both up before the first start', async () => {
     const server = await create({ startNow: true, addOns: { geyser: true, voice: true, backups: true } });
     // Right after the order the page already knows what is being set up (switches show "busy").
-    expect((await detail(server.id)).live.setup?.length).toBeGreaterThan(0);
+    const right = await detail(server.id);
+    expect(right.live.setup?.pending.length).toBeGreaterThan(0);
+    // Ticked at the order = on at once, not only after the setup.
+    expect(right).toMatchObject({ geyser: true, voiceChat: true });
     await waitFor(async () => (await detail(server.id)).live.state === 'running');
     const ready = await detail(server.id);
     expect(ready).toMatchObject({ geyser: true, geyserPort: 19132, voiceChat: true, voicePort: 24454 });

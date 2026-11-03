@@ -8,7 +8,7 @@ import { useEffect, useRef } from 'react';
  */
 export function useAddOnSetup(server: ServerDetail, key: AddOnKey): boolean {
   const queryClient = useQueryClient();
-  const busy = server.live.setup?.includes(key) ?? false;
+  const busy = server.live.setup?.pending.includes(key) ?? false;
   const wasBusy = useRef(busy);
   useEffect(() => {
     if (wasBusy.current && !busy) {

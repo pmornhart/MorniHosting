@@ -2966,5 +2966,18 @@
   },
   "addOnSetup": {
     "running": "Wird gerade automatisch eingerichtet – du hast es bei der Bestellung gewählt. Dauert meist unter einer Minute, danach startet der Server."
+  },
+  "orderSetup": {
+    "title": "{{name}} wird eingerichtet",
+    "text": "Gleich geht’s los – das Panel öffnet sich von selbst, sobald alles fertig ist.",
+    "almost": "Fast fertig …",
+    "hint": "Du kannst diese Seite schließen, die Einrichtung läuft weiter.",
+    "steps": {
+      "download": "Plugins herunterladen",
+      "geyser": "Geyser für Bedrock-Spieler + ViaVersion",
+      "voice": "Simple Voice Chat",
+      "backups": "Tägliches Backup um 04:00",
+      "start": "Erster Start (Welt wird erstellt)"
+    }
   }
 }

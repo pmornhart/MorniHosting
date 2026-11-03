@@ -6,7 +6,7 @@ import {
   BUILTIN_ROLES,
   CREATABLE_SOFTWARE,
   gameOf,
-  type AddOnKey,
+  type SetupProgress,
   type GameInfo,
   PORT_VOICE_CHAT,
   SOFTWARE,
@@ -89,8 +89,8 @@ export interface ServerService {
   readonly logs: (id: string) => readonly string[];
   /** A line from the panel itself in the server's console ("[MorniHosting] …"). */
   readonly note: (id: string, text: string) => void;
-  /** Add-ons the panel is still setting up from the order (the switches show them as on and busy). */
-  readonly setSetup: (id: string, addOns: readonly AddOnKey[]) => void;
+  /** How far the setup after an order is (the server page shows a setup screen until it is null). */
+  readonly setSetup: (id: string, progress: SetupProgress | null) => void;
   readonly dir: (id: string) => string;
   /** The next free port after the server's own one (for the crash helper when the port is taken). */
   readonly nextFreePort: (id: string) => number;
@@ -153,7 +153,7 @@ interface Runtime {
   startedAt: string | null;
   progress: number | null;
   download: DownloadProgress | null;
-  setup: readonly AddOnKey[];
+  setup: SetupProgress | null;
   meter: (line: string) => DownloadProgress | null;
   stopRequested: boolean;
   /** Log lines that arrive before this time are history; they must not fire webhooks again. */
@@ -211,7 +211,7 @@ function emptyRuntime(): Runtime {
     startedAt: null,
     progress: null,
     download: null,
-    setup: [],
+    setup: null,
     meter: createDownloadMeter(),
     stopRequested: false,
     quietUntil: 0,
@@ -283,7 +283,7 @@ export function createServerService(ctx: AppContext): ServerService {
             bytesPerSecond: r.download.bytesPerSecond,
           }
         : null,
-      setup: r.setup.length > 0 ? r.setup : null,
+      setup: r.setup,
     };
   };
 
@@ -1126,8 +1126,8 @@ export function createServerService(ctx: AppContext): ServerService {
     logs: (id) => rt(id).logs,
     dir: (id) => serverDir(config, id),
     note: (id, text) => panelLog(id, text),
-    setSetup: (id, addOns) => {
-      rt(id).setup = addOns;
+    setSetup: (id, progress) => {
+      rt(id).setup = progress;
       publishLive(id);
     },
     nextFreePort: (id) => {
