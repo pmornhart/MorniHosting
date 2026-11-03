@@ -72,6 +72,7 @@ export const realNetwork: MailNetwork = {
   certificateNames: (address, port) =>
     new Promise((resolve, reject) => {
       // Reading only: nothing is sent over this connection, and the name is checked properly before logging in.
+      // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
       const socket = tls.connect({
         host: address,
         port,

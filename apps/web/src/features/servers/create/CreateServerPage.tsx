@@ -64,8 +64,6 @@ import {
   suggestName,
 } from './order-parts';
 
-export { OWN_TEXT_COLOUR } from './order-parts';
-
 /** What can be ordered, like at a hoster: Java, Bedrock, or a Java server Bedrock players can join (Geyser). */
 const GAMES = ['java', 'bedrock', 'crossplay'] as const;
 type Game = (typeof GAMES)[number];

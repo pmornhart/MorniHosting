@@ -69,7 +69,7 @@ const BINARY = new Set([
 ]);
 
 /** Files above this size open as download instead of in the editor (matches the server limit). */
-export const EDITOR_MAX_BYTES = 5 * 1024 * 1024; // eslint-disable-line ts-patterns/no-magic-numbers -- 5 MB
+const EDITOR_MAX_BYTES = 5 * 1024 * 1024; // eslint-disable-line ts-patterns/no-magic-numbers -- 5 MB
 
 export function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.');

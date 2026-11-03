@@ -57,7 +57,7 @@ function initialName(action: NameAction | null, serverName: string): string {
   return '';
 }
 
-export const filesQuery = (serverId: string, dir: string) =>
+const filesQuery = (serverId: string, dir: string) =>
   ({
     queryKey: ['files', serverId, dir],
     queryFn: () => api<FileEntry[]>(`/api/servers/${serverId}/files?path=${encodeURIComponent(dir)}`),

@@ -35,7 +35,7 @@ import { api } from '@/lib/api';
 import { formatCompact, formatRelative } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
-export const ddosQuery = { queryKey: ['ddos'], queryFn: () => api<DdosStatus>('/api/ddos') } as const;
+const ddosQuery = { queryKey: ['ddos'], queryFn: () => api<DdosStatus>('/api/ddos') } as const;
 
 /** While the host has not answered, ask again every few seconds; otherwise once a minute (counters). */
 const POLL_WAITING_MS = 3000;

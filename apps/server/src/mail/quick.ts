@@ -45,7 +45,7 @@ const CLOSENESS: readonly MailProblem[] = [
 export const closeness = (problem: MailProblem | null): number =>
   problem === null ? -1 : CLOSENESS.indexOf(problem);
 
-export const domainOf = (email: string): string => email.slice(email.lastIndexOf('@') + 1).toLowerCase();
+const domainOf = (email: string): string => email.slice(email.lastIndexOf('@') + 1).toLowerCase();
 
 const belongsTo = (name: string, domain: string): boolean => name === domain || name.endsWith(`.${domain}`);
 

@@ -107,7 +107,7 @@ const HTML_SPECIAL = /[&<>"']/g;
 // https://regex101.com/?flavor=javascript&regex=%5B%5Cx00-%5Cx1f%5Cx7f%5D%2B&flags=gm&testString=ab%0Aa%09b
 const CONTROL = /[\x00-\x1f\x7f]+/g; // eslint-disable-line no-control-regex -- the point is to strip them
 
-export const escapeHtml = (value: string): string => value.replace(HTML_SPECIAL, (c) => ESCAPES[c] ?? c);
+const escapeHtml = (value: string): string => value.replace(HTML_SPECIAL, (c) => ESCAPES[c] ?? c);
 /** One line of plain text: no line breaks, so a name can never add a header. */
 export const oneLine = (value: string): string => value.replace(CONTROL, ' ').trim();
 

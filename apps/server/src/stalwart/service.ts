@@ -81,7 +81,7 @@ const quietly = async (lookup: () => Promise<string[]>): Promise<string[]> => {
 };
 const bare = (name: string): string => name.toLowerCase().replace(TRAILING_DOT, '');
 
-export const systemStalwartResolver: StalwartResolver = {
+const systemStalwartResolver: StalwartResolver = {
   a: (name) => quietly(() => dnsPromises.resolve4(name)),
   ptr: (ip) => quietly(async () => (await dnsPromises.reverse(ip)).map(bare)),
   mx: (name) => quietly(async () => (await dnsPromises.resolveMx(name)).map((m) => bare(m.exchange))),

@@ -12,7 +12,7 @@ import { Pill } from '@/components/ui/pill';
 import { api } from '@/lib/api';
 import { errorText } from '@/lib/query';
 
-export const discordQuery = {
+const discordQuery = {
   queryKey: ['discord'],
   queryFn: () => api<DiscordSettingsView>('/api/discord'),
   refetchInterval: 15_000,
