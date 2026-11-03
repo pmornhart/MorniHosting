@@ -2025,7 +2025,8 @@
     "pickSoftware": "Wähle eine Server-Software, danach die Version.",
     "pickVersion": "Version wählen",
     "nameIdea": "Namen vorschlagen",
-    "pickName": "Gib deinem Server einen Namen – daraus wird seine Adresse unter {{domain}}. Der Würfel schlägt dir einen vor."
+    "pickName": "Gib deinem Server einen Namen – daraus wird seine Adresse unter {{domain}}. Der Würfel schlägt dir einen vor.",
+    "addOnsFailed": "Der Server ist da, aber ein Add-on (Geyser, Voice-Chat oder Backup) konnte nicht eingerichtet werden. Schalte es auf der Server-Seite noch einmal ein."
   },
   "version": {
     "title": "Minecraft-Version",

@@ -33,6 +33,9 @@ const SRV_WEIGHT = 5;
 const DOMAIN_KEY = '_domain';
 /** The A record of the mail server's own name (e.g. mail.example.de), set for the Stalwart connection. */
 const MAIL_KEY = '_mail';
+/** INWX sessions last longer; a few minutes are enough for one burst of syncs. */
+const CLIENT_REUSE_MINUTES = 5;
+const CLIENT_REUSE_MS = CLIENT_REUSE_MINUTES * MS_PER_MINUTE;
 
 interface StoredConfig {
   readonly provider: DnsProvider;
@@ -93,8 +96,22 @@ export function createDnsAutomation(
   const netbirdOn = (): boolean => ctx.settings.getValue(NETBIRD_KEY) !== undefined;
   const config = (): StoredConfig | null => ctx.settings.getValue<StoredConfig>(SETTINGS_KEY) ?? null;
   const save = (cfg: StoredConfig): void => ctx.settings.setValue(SETTINGS_KEY, cfg);
-  const clientFor = (cfg: StoredConfig): DnsClient =>
-    clientFactory(cfg.provider, ctx.secrets.decrypt(cfg.token));
+  /**
+   * One client per stored access, reused for a while: INWX logs in once per client, and a sync makes several
+   * calls – a fresh login for each cost seconds when creating a server.
+   */
+  const clientCache: { key: string; client: DnsClient; until: number } = {
+    key: '',
+    client: null as never,
+    until: 0,
+  };
+  const clientFor = (cfg: StoredConfig): DnsClient => {
+    const key = `${cfg.provider}:${cfg.token}`;
+    if (clientCache.key === key && clientCache.until > Date.now()) return clientCache.client;
+    const client = clientFactory(cfg.provider, ctx.secrets.decrypt(cfg.token));
+    Object.assign(clientCache, { key, client, until: Date.now() + CLIENT_REUSE_MS });
+    return client;
+  };
   const recordsOf = (serverId: string): RecordRow[] =>
     ctx.db.select().from(dnsRecords).where(eq(dnsRecords.serverId, serverId)).all();
   const serverRow = (serverId: string): ServerRow | undefined =>
@@ -310,7 +327,11 @@ export function createDnsAutomation(
   };
   servers.describeNetbird(describe);
 
-  servers.onCreated((id) => (config() && serverRow(id)?.netbirdName ? syncQuietly(id) : Promise.resolve()));
+  // Not awaited, like NetBird: creating a server does not wait for the DNS provider.
+  servers.onCreated((id) => {
+    if (config() && serverRow(id)?.netbirdName) void syncQuietly(id);
+    return Promise.resolve();
+  });
   servers.onPortsChanged((id) => {
     if (config() && (serverRow(id)?.netbirdName || recordsOf(id).length)) void syncQuietly(id);
   });

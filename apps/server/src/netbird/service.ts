@@ -403,7 +403,11 @@ export function createNetbirdAutomation(
     clientFactory(input.apiUrl ?? config()?.apiUrl ?? ctx.config.netbirdApi, tokenFor(input));
 
   // A server gets its address before the answer to "create" goes out, later changes follow on their own.
-  servers.onCreated((id) => (serverRow(id)?.netbirdName ? syncQuietly(id) : Promise.resolve()));
+  // Not awaited: the new server is there at once; its NetBird address follows a few seconds later (live update).
+  servers.onCreated((id) => {
+    if (serverRow(id)?.netbirdName) void syncQuietly(id);
+    return Promise.resolve();
+  });
   servers.onPortsChanged((id) => {
     if (serverRow(id)?.netbirdName || mappings(id).length) void syncQuietly(id);
   });

@@ -58,8 +58,42 @@ async function follow(url: string, hops: number): Promise<Response> {
   return response;
 }
 
-/** Streams the file into `dir` under a temporary name and returns that path once size and hash are fine. */
-export async function downloadVerified(file: FileToDownload, dir: string, maxBytes: number): Promise<string> {
+/** Files with a known hash are kept here once, so the next server with the same plugin needs no download. */
+const cacheName = (file: FileToDownload): string | null =>
+  file.hash ? `${file.hash.algorithm}-${file.hash.value.toLowerCase()}` : null;
+
+/**
+ * Streams the file into `dir` under a temporary name and returns that path once size and hash are fine.
+ * With `cacheDir`, a file whose hash the API gave is taken from (and stored in) that folder: the hash proves
+ * it is the same file, so the second Geyser or Voice-Chat install is a local copy.
+ */
+export async function downloadVerified(
+  file: FileToDownload,
+  dir: string,
+  maxBytes: number,
+  cacheDir?: string,
+): Promise<string> {
+  const cached = cacheDir && cacheName(file) ? path.join(cacheDir, cacheName(file) ?? '') : null;
+  if (cached && fs.existsSync(cached) && fs.statSync(cached).size <= maxBytes) {
+    const copy = path.join(dir, `.${crypto.randomBytes(TEMP_ID_BYTES).toString('hex')}.download`);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(cached, copy);
+    return copy;
+  }
+  const temp = await fetchVerified(file, dir, maxBytes);
+  if (cached) {
+    try {
+      fs.mkdirSync(path.dirname(cached), { recursive: true });
+      fs.copyFileSync(temp, `${cached}.part`);
+      fs.renameSync(`${cached}.part`, cached);
+    } catch {
+      // A full disk only costs the next download; the file itself is fine.
+    }
+  }
+  return temp;
+}
+
+async function fetchVerified(file: FileToDownload, dir: string, maxBytes: number): Promise<string> {
   const response = await (async () => {
     try {
       return await follow(file.url, 0);
