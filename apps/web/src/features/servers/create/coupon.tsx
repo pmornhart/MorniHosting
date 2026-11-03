@@ -1,29 +1,34 @@
+import { useMutation } from '@tanstack/react-query';
 import { Ticket, X } from 'lucide-react';
 import { useState, type KeyboardEvent, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatEuro, type CouponCheck } from '@mornihosting/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { api } from '@/lib/api';
 import { confetti } from '@/lib/confetti';
 import { cn } from '@/lib/utils';
 
 /**
- * Easter egg: the order summary takes a voucher code. Servers are free – but "MORNI" makes it 9.999,99 € a
- * month. Only the display changes; nothing is ever charged or stored.
+ * Voucher field in the order summary. Servers are free – but the code "MORNI" (any case) makes the order cost
+ * 9.999,99 € a month, owed to the panel's owner. The panel checks the code and records it with the server;
+ * paying happens between the people, the owner ticks off paid months in the admin area.
  */
-const SECRET = 'MORNI';
-
-export function PriceWithCoupon(): ReactElement {
-  const { t } = useTranslation();
+export function PriceWithCoupon({ onChange }: { onChange: (code: string | null) => void }): ReactElement {
+  const { t, i18n } = useTranslation();
   const [draft, setDraft] = useState('');
-  const [applied, setApplied] = useState(false);
-  const [wrong, setWrong] = useState(false);
+  const [applied, setApplied] = useState<CouponCheck | null>(null);
+  const check = useMutation({
+    mutationFn: (code: string) => api<CouponCheck>('/api/coupons/check', { method: 'POST', body: { code } }),
+    onSuccess: (found) => {
+      setApplied(found);
+      onChange(found.code);
+      confetti();
+    },
+    onError: () => undefined,
+  });
   const redeem = (): void => {
-    const code = draft.trim().toUpperCase();
-    if (!code) return;
-    const hit = code === SECRET;
-    setApplied(hit);
-    setWrong(!hit);
-    if (hit) confetti();
+    if (draft.trim()) check.mutate(draft.trim());
   };
   // Enter must redeem the code, not send the whole order form.
   const onKey = (e: KeyboardEvent<HTMLInputElement>): void => {
@@ -31,6 +36,8 @@ export function PriceWithCoupon(): ReactElement {
     e.preventDefault();
     redeem();
   };
+  const locale = i18n.resolvedLanguage === 'en' ? 'en-GB' : 'de-DE';
+  const price = applied ? formatEuro(applied.monthlyCents, locale) : formatEuro(0, locale);
   return (
     <div className="grid gap-2">
       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -38,13 +45,15 @@ export function PriceWithCoupon(): ReactElement {
       </div>
       <div className="flex flex-wrap items-baseline gap-x-2">
         {applied ? (
-          <span className="text-lg font-bold text-muted-foreground line-through">0,00 €</span>
+          <span className="text-lg font-bold text-muted-foreground line-through">
+            {formatEuro(0, locale)}
+          </span>
         ) : null}
         <span
-          key={String(applied)}
+          key={applied?.code ?? 'free'}
           className={cn('text-3xl font-extrabold', applied && 'mh-jackpot text-warning')}
         >
-          {applied ? '9.999,99 €' : '0,00 €'}
+          {price}
         </span>
         <span className="text-base font-semibold text-muted-foreground">/ {t('order.month')}</span>
       </div>
@@ -52,16 +61,17 @@ export function PriceWithCoupon(): ReactElement {
         <div className="flex items-start gap-2 rounded-[10px] bg-warning-soft px-3 py-2 text-[13px]">
           <Ticket className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
           <span className="flex-1">
-            <b className="block">{t('order.coupon.appliedTitle')}</b>
-            {t('order.coupon.appliedText')}
+            <b className="block">{t('order.coupon.appliedTitle', { code: applied.code })}</b>
+            {t('order.coupon.appliedText', { price, payee: applied.payee })}
           </span>
           <button
             type="button"
             className="rounded-md p-0.5 hover:bg-background/60"
             aria-label={t('order.coupon.remove')}
             onClick={() => {
-              setApplied(false);
+              setApplied(null);
               setDraft('');
+              onChange(null);
             }}
           >
             <X className="size-4" />
@@ -74,7 +84,7 @@ export function PriceWithCoupon(): ReactElement {
               value={draft}
               onChange={(e) => {
                 setDraft(e.target.value);
-                setWrong(false);
+                check.reset();
               }}
               onKeyDown={onKey}
               placeholder={t('order.coupon.placeholder')}
@@ -83,11 +93,19 @@ export function PriceWithCoupon(): ReactElement {
               autoComplete="off"
               spellCheck={false}
             />
-            <Button type="button" variant="outline" className="h-9" onClick={redeem} disabled={!draft.trim()}>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-9"
+              onClick={redeem}
+              disabled={!draft.trim() || check.isPending}
+            >
               {t('order.coupon.redeem')}
             </Button>
           </div>
-          {wrong ? <span className="text-[12px] text-destructive">{t('order.coupon.unknown')}</span> : null}
+          {check.isError ? (
+            <span className="text-[12px] text-destructive">{t('order.coupon.unknown')}</span>
+          ) : null}
         </div>
       )}
     </div>

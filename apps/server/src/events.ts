@@ -6,7 +6,8 @@ export interface PanelEvents {
   'server.live': { serverId: string; live: ServerLive };
   'server.log': { serverId: string; line: string };
   'server.crashed': { serverId: string; crash: CrashInfo };
-  'server.created': { serverId: string; userId: number };
+  /** `coupon` is the voucher code from the order page, if any. */
+  'server.created': { serverId: string; userId: number; coupon?: string | null };
   'server.deleted': { serverId: string };
   /** Who may do what changed: roles, admin rights, a user locked, deleted or a Minecraft account linked. */
   'access.changed': { userId: number | null };

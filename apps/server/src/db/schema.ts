@@ -381,3 +381,35 @@ export const serverRequests = sqliteTable(
   },
   (t) => [index('server_requests_status').on(t.status)],
 );
+
+/** Servers ordered with a voucher that costs money ("MORNI"): who owes the panel's owner how much a month. */
+export const charges = sqliteTable('charges', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  // No foreign keys: the record stays after the server or the person is deleted.
+  serverId: text('server_id').notNull(),
+  serverName: text('server_name').notNull(),
+  userId: integer('user_id'),
+  userName: text('user_name').notNull(),
+  code: text('code').notNull(),
+  monthlyCents: integer('monthly_cents').notNull(),
+  startedAt: text('started_at')
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  endedAt: text('ended_at'),
+});
+
+/** Months the owner marked as paid. */
+export const chargePayments = sqliteTable(
+  'charge_payments',
+  {
+    chargeId: integer('charge_id')
+      .notNull()
+      .references(() => charges.id, { onDelete: 'cascade' }),
+    month: text('month').notNull(),
+    paidAt: text('paid_at')
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+    markedBy: text('marked_by').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.chargeId, t.month] })],
+);

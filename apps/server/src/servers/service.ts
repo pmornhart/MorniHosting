@@ -856,7 +856,7 @@ export function createServerService(ctx: AppContext): ServerService {
         void withLock(id, () => startInternal(id));
       }
       await Promise.allSettled(Array.from(createdListeners, (listener) => listener(id)));
-      events.emit('server.created', { serverId: id, userId: creator.id });
+      events.emit('server.created', { serverId: id, userId: creator.id, coupon: input.coupon ?? null });
       return summaryOf(row(id));
     },
     createFromImport: (input, actor, creator) => {
