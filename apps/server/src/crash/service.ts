@@ -12,7 +12,7 @@ import {
   type JavaTag,
   type ServerPermission,
 } from '@mornihosting/shared';
-import type { Actor } from '../audit/service.js';
+import { SYSTEM_ACTOR, type Actor } from '../audit/service.js';
 import type { UserRow } from '../auth/context.js';
 import type { BackupService } from '../backups/service.js';
 import type { AppContext } from '../context.js';
@@ -32,6 +32,13 @@ import type { ServerService } from '../servers/service.js';
 const MB_PER_GB = 1024;
 const MEMORY_STEP_MB = 512;
 const DISCORD_RED = 0xe5484d;
+// steamcmd's well-known first-run error: "ERROR! Failed to install app '1690800' (Missing configuration)" matches,
+// "Missing configuration file server.cfg" does not.
+// https://regex101.com/?flavor=javascript&regex=Failed%20to%20install%20app%20'%5Cd%2B'%20%5C(Missing%20configuration%5C)&testString=ERROR!%20Failed%20to%20install%20app%20'1690800'%20(Missing%20configuration)%0AMissing%20configuration%20file%20server.cfg
+const STEAM_MISSING_CONFIG = /Failed to install app '\d+' \(Missing configuration\)/;
+/** One quiet retry per server in this time; a second failure is a real problem and shown as one. */
+const STEAM_RETRY_MINUTES = 15;
+const STEAM_RETRY_WINDOW_MS = STEAM_RETRY_MINUTES * 60_000;
 const PLUGIN_DIRS = ['plugins', 'mods'] as const;
 const JAR = '.jar';
 const WORLD_SUFFIXES = ['', '_nether', '_the_end'] as const;
@@ -246,9 +253,34 @@ export function createCrashHelpService(
 
   const label = fillLabel;
 
+  // steamcmd's first run of a new game often stops with "Missing configuration"; the second run installs fine
+  // (seen with Satisfactory). So the panel quietly tries once more instead of calling it a crash.
+  const steamRetries = new Map<string, number>();
+  const steamHiccup = (serverId: string, excerpt: readonly string[] | undefined): boolean => {
+    if (!excerpt?.some((line) => STEAM_MISSING_CONFIG.test(line))) return false;
+    const last = steamRetries.get(serverId) ?? 0;
+    if (Date.now() - last < STEAM_RETRY_WINDOW_MS) return false;
+    steamRetries.set(serverId, Date.now());
+    return true;
+  };
+
   ctx.events.on('server.crashed', ({ serverId, crash }) => {
     const row = db.select().from(servers).where(eq(servers.id, serverId)).get();
     if (!row) return;
+    if (steamHiccup(serverId, crash.excerpt)) {
+      serverService.note(
+        serverId,
+        'Steam hat sich beim ersten Laden verschluckt („Missing configuration“) – starte gleich noch einmal …',
+      );
+      void (async () => {
+        try {
+          await serverService.start(serverId, SYSTEM_ACTOR);
+        } catch (err) {
+          ctx.log.warn({ err, serverId }, 'steam retry failed');
+        }
+      })();
+      return;
+    }
     const text = crashText('de', crash.ruleId, crash.params);
     // In the console, so whoever looks there sees the cause and what to do.
     serverService.note(serverId, `⚠ Absturz erkannt: ${text.title}`);

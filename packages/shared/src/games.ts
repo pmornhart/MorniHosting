@@ -358,7 +358,12 @@ export const GAMES: Readonly<Record<GameId, GameInfo>> = Object.freeze({
     label: 'Satisfactory',
     image: 'wolveix/satisfactory-server',
     versions: STEAM_VERSIONS,
-    mounts: [{ subdir: '', path: '/config' }],
+    mounts: [
+      { subdir: '', path: '/config' },
+      // steamcmd's own state survives a new container: its first download of Satisfactory often stops with
+      // "Missing configuration", the panel's automatic second try then has what it needs (tested for real).
+      { subdir: '.steam-client', path: '/home/steam/.local/share/Steam' },
+    ],
     // Game traffic over UDP, the server API (joining, admin) over TCP on the same port, plus messaging (1.1+).
     ports: [
       { key: 'main', defaultPort: SATISFACTORY_PORT, protocol: 'udp', env: 'SERVERGAMEPORT' },
@@ -367,7 +372,9 @@ export const GAMES: Readonly<Record<GameId, GameInfo>> = Object.freeze({
     ],
     // No RCON and no stdin: the server is claimed and managed in the game (Server Manager).
     console: 'none',
-    env: { PUID: RUN_UID, PGID: RUN_UID },
+    // IPv4 only: the image listens on "::" by default, which fails where IPv6 is switched off (many Proxmox
+    // containers) – "Server API failed to bind to any of the local addresses" (found in the real test).
+    env: { PUID: RUN_UID, PGID: RUN_UID, MULTIHOME: '0.0.0.0' },
     fields: [
       { key: 'maxPlayers', env: 'MAXPLAYERS', kind: 'number', fallback: '4', onOrder: true },
       { key: 'autosaves', env: 'AUTOSAVENUM', kind: 'number', fallback: '5' },

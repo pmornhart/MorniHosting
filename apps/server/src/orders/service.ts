@@ -2,7 +2,7 @@ import type { CreateServerInput, ServerState, ServerSummary, SetupStep } from '@
 import type { Actor } from '../audit/service.js';
 import type { UserRow } from '../auth/context.js';
 import type { AppContext } from '../context.js';
-import { errorMessage } from '../lib/errors.js';
+import { AppError, errorMessage } from '../lib/errors.js';
 import type { GeyserService } from '../geyser/service.js';
 import type { ScheduleService } from '../schedules/service.js';
 import type { ServerService } from '../servers/service.js';
@@ -20,6 +20,17 @@ const BACKUP_TIME = '04:00';
 const FIRST_START_LIMIT_HOURS = 6;
 const FIRST_START_LIMIT_MS = FIRST_START_LIMIT_HOURS * MS_PER_HOUR;
 const START_ENDS: readonly ServerState[] = ['running', 'crashed', 'stopped'];
+
+/** Reasons people can act on, in words instead of error codes. */
+const PLAIN_REASONS: Readonly<Record<string, (params: Readonly<Record<string, unknown>>) => string>> = {
+  game_files_missing: (p) =>
+    `Es fehlen noch Dateien aus dem Spiel (${String(p.files ?? '')}). Lade sie unter Einstellungen hoch, dann starte den Server.`,
+  disk_limit_reached: () => 'Der Speicherplatz des Servers ist voll.',
+};
+const plainReason = (err: unknown): string =>
+  err instanceof AppError && PLAIN_REASONS[err.code]
+    ? (PLAIN_REASONS[err.code]?.(err.params ?? {}) ?? errorMessage(err))
+    : errorMessage(err);
 
 export interface OrderService {
   readonly create: (input: CreateServerInput, actor: Actor, creator: UserRow) => Promise<ServerSummary>;
@@ -132,7 +143,7 @@ export function createOrderService(
       } catch (err) {
         ctx.log.warn({ err, serverId, step: step.key }, 'step of the order failed');
         step.undo?.();
-        servers.note(serverId, `✗ ${step.label} hat nicht geklappt: ${errorMessage(err)}`);
+        servers.note(serverId, `✗ ${step.label} hat nicht geklappt: ${plainReason(err)}`);
       }
       show(index + 1);
     }, Promise.resolve());
