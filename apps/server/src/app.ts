@@ -92,6 +92,8 @@ import { createApprovalService } from './notify/approvals.js';
 import type { DiscordApi } from './notify/discord.js';
 import { registerNotifyRoutes } from './notify/routes.js';
 import { createPaymentsService } from './payments/service.js';
+import { createCrashHelpService } from './crash/service.js';
+import { registerCrashRoutes } from './crash/routes.js';
 import { registerPaymentRoutes } from './payments/routes.js';
 import { createNotifyService } from './notify/service.js';
 
@@ -293,6 +295,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerStalwartRoutes(app, stalwart);
   registerNotifyRoutes(app, ctx, notify, approvals);
   registerPaymentRoutes(app, ctx, createPaymentsService(ctx, notify));
+  registerCrashRoutes(app, ctx, createCrashHelpService(ctx, { servers, backups, files, notify }));
   registerUserRoutes(app, ctx, mail);
   registerTeamRoutes(app, ctx);
   registerPlayerDetailRoutes(app, ctx, createPlayerDetailService(servers));

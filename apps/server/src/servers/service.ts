@@ -83,7 +83,11 @@ export interface ServerService {
   readonly quietCommand: (id: string, command: string) => Promise<string>;
   readonly live: (id: string) => ServerLive;
   readonly logs: (id: string) => readonly string[];
+  /** A line from the panel itself in the server's console ("[MorniHosting] …"). */
+  readonly note: (id: string, text: string) => void;
   readonly dir: (id: string) => string;
+  /** The next free port after the server's own one (for the crash helper when the port is taken). */
+  readonly nextFreePort: (id: string) => number;
   readonly isRunning: (id: string) => boolean;
   readonly setExtraPorts: (id: string, ports: ServerRow['extraPorts']) => void;
   readonly setGeyser: (id: string, enabled: boolean) => void;
@@ -1043,6 +1047,16 @@ export function createServerService(ctx: AppContext): ServerService {
     live,
     logs: (id) => rt(id).logs,
     dir: (id) => serverDir(config, id),
+    note: (id, text) => panelLog(id, text),
+    nextFreePort: (id) => {
+      const current = row(id);
+      const protocol = SOFTWARE[current.software].protocol;
+      const found = Array.from({ length: PORT_SEARCH_LIMIT }, (_, i) => current.port + 1 + i).find((port) =>
+        portFree(port, protocol, id),
+      );
+      if (found === undefined) throw conflict('port_taken', { port: current.port, server: '' });
+      return found;
+    },
     isRunning: (id) => ACTIVE_STATES.includes(rt(id).state),
     setExtraPorts: (id, ports) => {
       db.update(servers).set({ extraPorts: ports }).where(eq(servers.id, id)).run();

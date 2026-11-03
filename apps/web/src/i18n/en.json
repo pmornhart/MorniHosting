@@ -356,6 +356,28 @@
       "title": "Game files could not be downloaded",
       "text": "On its first start the server downloads the game files from the internet. That failed.",
       "fix": "Check the server's internet connection (DNS, firewall) and start it again."
+    },
+    "repairTitle": "Fix it with one click",
+    "startAfter": "Start it again right afterwards",
+    "fixed": "Fixed.",
+    "fixedStarting": "Fixed – the server is starting again.",
+    "popupTitle": "“{{name}}” crashed",
+    "popupOpen": "View",
+    "popupCount_one": "1 server crashed",
+    "popupCount_other": "{{count}} servers crashed",
+    "fixes": {
+      "raise-memory": "Raise memory to {{toGb}} GB",
+      "set-java": "Use Java {{java}}",
+      "free-port": "Use free port {{port}}",
+      "accept-eula": "Accept the EULA",
+      "disable-plugin": "Switch off {{file}}",
+      "restore-backup": "Restore the backup from {{when}}",
+      "reset-world": "Create a new world",
+      "retry": "Start again"
+    },
+    "danger": {
+      "restore-backup": "The world and all files go back to the backup. The panel makes a safety backup first.",
+      "reset-world": "The broken world is deleted (it goes to the bin, with a backup made first). On the next start the server creates a new world."
     }
   },
   "create": {
@@ -596,7 +618,10 @@
     "player_details_java_only": "Player details are only available for Minecraft Java.",
     "player_not_online": "This only works while the player is online.",
     "coupon_unknown": "We don't know this code.",
-    "charge_unknown": "This payment doesn't exist."
+    "charge_unknown": "This payment doesn't exist.",
+    "crash_gone": "This crash is already solved.",
+    "crash_fix_unknown": "This repair no longer fits.",
+    "crash_fix_panel_only": "This only works in the panel because data is deleted."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1551,7 +1576,8 @@
       "server_team_remove": "Team member removed",
       "player_adjust": "Player changed (health, level, mode …)",
       "payment_paid": "Month marked as paid",
-      "payment_unpaid": "Month marked as open again"
+      "payment_unpaid": "Month marked as open again",
+      "server_crash_fix": "Crash fixed"
     }
   },
   "ddos": {

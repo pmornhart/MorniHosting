@@ -308,6 +308,8 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
         hi.de(v.name),
         `Der Server „${v['server'] ?? ''}“ ist abgestürzt.`,
         v['reason'] ?? '',
+        v['explain'] ?? '',
+        v['fix'] ? `So behebst du es: ${v['fix']}` : '',
       ].filter(Boolean),
       rows: [['Zeitpunkt', v['when'] ?? '']],
       ...(v.link ? { button: { label: 'Server ansehen', url: v.link } } : {}),
@@ -455,9 +457,13 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
     server_crashed: (v) => ({
       subject: `Server “${v['server'] ?? ''}” crashed`,
       heading: 'A server crashed',
-      paragraphs: [hi.en(v.name), `The server “${v['server'] ?? ''}” crashed.`, v['reason'] ?? ''].filter(
-        Boolean,
-      ),
+      paragraphs: [
+        hi.en(v.name),
+        `The server “${v['server'] ?? ''}” crashed.`,
+        v['reason'] ?? '',
+        v['explain'] ?? '',
+        v['fix'] ? `How to fix it: ${v['fix']}` : '',
+      ].filter(Boolean),
       rows: [['Time', v['when'] ?? '']],
       ...(v.link ? { button: { label: 'View server', url: v.link } } : {}),
     }),

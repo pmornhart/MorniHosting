@@ -356,6 +356,28 @@
       "title": "Spieldateien konnten nicht geladen werden",
       "text": "Beim ersten Start lädt der Server die Spieldateien aus dem Internet. Das hat nicht geklappt.",
       "fix": "Prüfe die Internetverbindung des Servers (DNS, Firewall) und starte ihn erneut."
+    },
+    "repairTitle": "Mit einem Klick beheben",
+    "startAfter": "Danach gleich wieder starten",
+    "fixed": "Behoben.",
+    "fixedStarting": "Behoben – der Server startet neu.",
+    "popupTitle": "„{{name}}“ ist abgestürzt",
+    "popupOpen": "Ansehen",
+    "popupCount_one": "1 Server abgestürzt",
+    "popupCount_other": "{{count}} Server abgestürzt",
+    "fixes": {
+      "raise-memory": "Arbeitsspeicher auf {{toGb}} GB erhöhen",
+      "set-java": "Java {{java}} einstellen",
+      "free-port": "Freien Port {{port}} nehmen",
+      "accept-eula": "EULA akzeptieren",
+      "disable-plugin": "{{file}} ausschalten",
+      "restore-backup": "Backup vom {{when}} zurückspielen",
+      "reset-world": "Welt neu erstellen",
+      "retry": "Nochmal starten"
+    },
+    "danger": {
+      "restore-backup": "Die Welt und alle Dateien werden auf den Stand des Backups gesetzt. Vorher legt das Panel ein Sicherheits-Backup an.",
+      "reset-world": "Die kaputte Welt wird gelöscht (sie landet im Papierkorb, dazu gibt es vorher ein Backup). Beim nächsten Start erzeugt der Server eine neue Welt."
     }
   },
   "create": {
@@ -596,7 +618,10 @@
     "player_details_java_only": "Spieler-Details gibt es nur für Minecraft Java.",
     "player_not_online": "Das geht nur, solange der Spieler online ist.",
     "coupon_unknown": "Diesen Code kennen wir nicht.",
-    "charge_unknown": "Diese Zahlung gibt es nicht."
+    "charge_unknown": "Diese Zahlung gibt es nicht.",
+    "crash_gone": "Dieser Absturz ist schon erledigt.",
+    "crash_fix_unknown": "Diese Reparatur passt nicht mehr.",
+    "crash_fix_panel_only": "Das geht nur im Panel, weil Daten gelöscht werden."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1551,7 +1576,8 @@
       "server_team_remove": "Mitarbeiter entfernt",
       "player_adjust": "Spieler geändert (Leben, Level, Modus …)",
       "payment_paid": "Monat als bezahlt markiert",
-      "payment_unpaid": "Monat wieder offen"
+      "payment_unpaid": "Monat wieder offen",
+      "server_crash_fix": "Absturz behoben"
     }
   },
   "ddos": {
