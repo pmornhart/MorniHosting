@@ -27,6 +27,19 @@ import { createNetbirdClient, type NetbirdClient, type NetbirdClientFactory } fr
 
 const SETTINGS_KEY = 'netbird';
 const RESOURCES_KEY = 'netbird_resources';
+/** How often a service may move on to another outside port, and how far it looks. */
+const PORT_RETRIES = 5;
+const PORT_SEARCH = 50;
+// NetBird's refusal for a taken outside port, e.g. "tcp port 25565 is already in use by service abc on cluster
+// netbird.example.org" → 25565; "domain already in use" does not match.
+// https://regex101.com/?flavor=javascript&regex=port%20(%5Cd%2B)%20is%20already%20in%20use&flags=i&testString=tcp%20port%2025565%20is%20already%20in%20use%20by%20service%20abc%20on%20cluster%20netbird.example.org%0Adomain%20already%20in%20use
+const PORT_IN_USE = /port (\d+) is already in use/i;
+const portTaken = (err: unknown): number | null => {
+  if (!(err instanceof AppError)) return null;
+  const match = PORT_IN_USE.exec(String(err.params.message ?? ''));
+  return match ? Number(match[1]) : null;
+};
+
 /** Name of the NetBird network, its group and the resources the panel makes. */
 const NETWORK_NAME = 'MorniHosting';
 const PANEL_KEY = 'panel';
@@ -238,6 +251,57 @@ export function createNetbirdAutomation(
     ctx.db.delete(netbirdServices).where(eq(netbirdServices.id, id)).run();
   };
 
+  /**
+   * NetBird refuses an outside port that another service already has ("tcp port 25565 is already in use by service
+   * … on cluster …"). Left-overs of the panel itself (its domain, but no longer in its list – e.g. after the machine
+   * was removed and added to NetBird again) are deleted and the port is used after all; a port that belongs to
+   * someone else makes the service take the next free one.
+   */
+  const withFreeListenPort = async <TResult>(
+    client: NetbirdClient,
+    cfg: StoredConfig,
+    wanted: number | null,
+    domain: string,
+    attempt: (listenPort: number | null) => Promise<TResult>,
+  ): Promise<TResult> => {
+    const tryPort = async (listenPort: number | null, left: number): Promise<TResult> => {
+      try {
+        return await attempt(listenPort);
+      } catch (err) {
+        const taken = portTaken(err);
+        if (taken === null || left <= 0) throw err;
+        const all = await client.services();
+        const known = new Set(
+          ctx.db
+            .select({ id: netbirdServices.id })
+            .from(netbirdServices)
+            .all()
+            .map((m) => m.id),
+        );
+        const leftover = all.find(
+          (svc) =>
+            svc.listen_port === taken &&
+            svc.domain !== domain &&
+            !known.has(svc.id) &&
+            (svc.domain === cfg.domain || svc.domain.endsWith(`.${cfg.domain}`)),
+        );
+        if (leftover) {
+          ctx.log.info(
+            { service: leftover.domain, port: taken },
+            'removing a left-over NetBird service of the panel',
+          );
+          await client.deleteService(leftover.id);
+          return tryPort(listenPort, left - 1);
+        }
+        const used = new Set(all.map((svc) => svc.listen_port));
+        const next = Array.from({ length: PORT_SEARCH }, (_, i) => taken + 1 + i).find((p) => !used.has(p));
+        if (next === undefined) throw err;
+        return tryPort(next, left - 1);
+      }
+    };
+    return tryPort(wanted, PORT_RETRIES);
+  };
+
   /** Creates, changes or keeps one service so that it matches what the server needs. */
   const apply = async (
     client: NetbirdClient,
@@ -265,17 +329,22 @@ export function createNetbirdAutomation(
       (fixedPort === null || existing.listenPort === fixedPort);
     if (existing && existing.mode === want.mode && same && !force) return existing;
     if (existing && existing.mode === want.mode) {
-      const updated = await client.updateService(existing.id, {
-        ...request,
-        listenPort: fixedPort ?? existing.listenPort,
-      });
+      const updated = await withFreeListenPort(
+        client,
+        cfg,
+        fixedPort ?? existing.listenPort,
+        want.domain,
+        (listenPort) => client.updateService(existing.id, { ...request, listenPort }),
+      );
       return remember(serverId, want, existing.id, updated.listen_port ?? fixedPort ?? existing.listenPort);
     }
     if (existing) {
       await client.deleteService(existing.id);
       forget(existing.id);
     }
-    const created = await client.createService({ ...request, listenPort: fixedPort });
+    const created = await withFreeListenPort(client, cfg, fixedPort, want.domain, (listenPort) =>
+      client.createService({ ...request, listenPort }),
+    );
     return remember(serverId, want, created.id, created.listen_port ?? fixedPort);
   };
 
