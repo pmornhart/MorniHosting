@@ -34,6 +34,8 @@ const IMAGE_ONLY: ReadonlySet<SoftwareId> = new Set(['bedrock', 'factorio', 'ets
 const SETTINGS_KEY = 'preload';
 /** How often preloaded games are checked for updates. */
 const UPDATE_CHECK_MS = MS_PER_HOUR;
+/** The "new version" hints are looked up at most this often. */
+const LATEST_RECHECK_MS = MS_PER_HOUR / 2;
 const MINECRAFT_TEMPLATE_MB = 2048;
 const MB_PER_GB = 1024;
 /** Template servers listen far away from the ports players use. */
@@ -71,6 +73,8 @@ export interface PreloadService {
   readonly start: (software: SoftwareId, admin: UserRow) => void;
   /** Queues every game that is not downloaded yet; they load one after another. */
   readonly startAll: (admin: UserRow) => void;
+  /** Loads every downloaded game again that has a newer version; returns how many were queued. */
+  readonly updateAll: (admin: UserRow) => number;
   readonly remove: (software: SoftwareId) => Promise<void>;
 }
 
@@ -107,7 +111,41 @@ export function createPreloadService(ctx: AppContext, servers: ServerService): P
     return MINECRAFT_SIZE_GB;
   };
 
-  const list: PreloadService['list'] = () =>
+  /** Newest version per Minecraft software, looked up now and then (the list stays quick). */
+  const latest = new Map<SoftwareId, string>();
+  const latestState: { at: number; running: boolean } = { at: 0, running: false };
+  const refreshLatest = (): void => {
+    if (latestState.running || Date.now() - latestState.at < LATEST_RECHECK_MS) return;
+    latestState.running = true;
+    void (async () => {
+      try {
+        await Promise.all(
+          candidates()
+            .filter((software) => !gameOf(software) && modeOf(software) === 'template')
+            .map(async (software) => {
+              try {
+                latest.set(software, await versionToUse(software));
+              } catch {
+                // Version list not reachable right now: no hint this time.
+              }
+            }),
+        );
+      } finally {
+        latestState.at = Date.now();
+        latestState.running = false;
+      }
+    })();
+  };
+  const newVersionOf = (software: SoftwareId, have: string | null, ready: boolean): string | null => {
+    const newest = latest.get(software);
+    return ready && have && newest && newest !== have ? newest : null;
+  };
+
+  const list: PreloadService['list'] = () => {
+    refreshLatest();
+    return listNow();
+  };
+  const listNow = (): PreloadItem[] =>
     candidates().map((software) => {
       const job = jobs.get(software);
       const template = templateOf(software);
@@ -135,6 +173,7 @@ export function createPreloadService(ctx: AppContext, servers: ServerService): P
         error: job?.error ?? null,
         doneAt: ready ? (stored?.doneAt ?? template?.updatedAt ?? null) : null,
         checkedAt: lastCheck,
+        newVersion: newVersionOf(software, template?.version ?? stored?.version ?? null, ready),
       };
     });
 
@@ -251,6 +290,7 @@ export function createPreloadService(ctx: AppContext, servers: ServerService): P
         .map(async (software) => {
           try {
             const newest = await versionToUse(software);
+            if (!gameOf(software)) latest.set(software, newest);
             const steamGame = gameOf(software)?.steamAppId !== undefined;
             const changed = newest !== (templateOf(software)?.version ?? stored[software]?.version ?? null);
             if (changed || steamGame || modeOf(software) === 'image') enqueue(software, admin);
@@ -269,6 +309,11 @@ export function createPreloadService(ctx: AppContext, servers: ServerService): P
       if (!candidates().includes(software)) throw badRequest('preload_unknown');
       if (jobs.get(software)?.running) throw conflict('preload_running');
       enqueue(software, admin);
+    },
+    updateAll: (admin) => {
+      const outdated = listNow().filter((item) => item.newVersion !== null);
+      outdated.forEach((item) => enqueue(item.software, admin));
+      return outdated.length;
     },
     startAll: (admin) => {
       list()

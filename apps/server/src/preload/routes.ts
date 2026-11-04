@@ -20,6 +20,12 @@ export function registerPreloadRoutes(app: Api, preload: PreloadService): void {
     return reply.code(HTTP_ACCEPTED).send(preload.list());
   });
 
+  app.post('/api/preload/update-all', async (request, reply) => {
+    const auth = requireAdmin(request);
+    preload.updateAll(auth.user);
+    return reply.code(HTTP_ACCEPTED).send(preload.list());
+  });
+
   app.post('/api/preload/:software', { schema: { params } }, async (request, reply) => {
     const auth = requireAdmin(request);
     preload.start(request.params.software, auth.user);

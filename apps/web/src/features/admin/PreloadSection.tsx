@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  ArrowUpCircle,
   CheckCircle2,
   Clock,
   Download,
@@ -74,6 +75,12 @@ function PreloadCard({ item }: { item: PreloadItem }): ReactElement {
               .join(' · ')}
           </p>
         </div>
+        {item.newVersion ? (
+          <Pill tone="accent" className="shrink-0">
+            <ArrowUpCircle className="size-3.5" aria-hidden />
+            {t('preload.newVersion', { version: item.newVersion })}
+          </Pill>
+        ) : null}
         <Pill tone={TONES[item.state]} className="shrink-0">
           <Icon className={item.state === 'loading' ? 'size-3.5 animate-spin' : 'size-3.5'} aria-hidden />
           {t(`preload.states.${item.state}`)}
@@ -135,6 +142,12 @@ export function PreloadSection(): ReactElement {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
     onError: (err) => toast.error(errorText(err)),
   });
+  const update = useMutation({
+    mutationFn: () => api('/api/preload/update-all', { method: 'POST' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+    onError: (err) => toast.error(errorText(err)),
+  });
+  const outdated = data?.filter((i) => i.newVersion !== null).length ?? 0;
   const missing = data?.filter((i) => i.state === 'none' || i.state === 'failed').length ?? 0;
   const busy = data?.filter((i) => i.state === 'loading' || i.state === 'queued').length ?? 0;
   const allLabel = (): string => {
@@ -154,6 +167,12 @@ export function PreloadSection(): ReactElement {
               })
             : t('preload.auto')}
         </p>
+        {outdated ? (
+          <Button variant="secondary" onClick={() => update.mutate()} disabled={update.isPending}>
+            <RotateCw aria-hidden />
+            {t('preload.updateAll', { count: outdated })}
+          </Button>
+        ) : null}
         <Button onClick={() => all.mutate()} disabled={!missing || all.isPending}>
           <DownloadCloud aria-hidden />
           {allLabel()}

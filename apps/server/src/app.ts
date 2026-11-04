@@ -215,7 +215,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const market = createMarketService(ctx, servers, files);
   const geyser = createGeyserService(ctx, servers, market);
   const voiceChat = createVoiceChatService(ctx, servers, market);
-  const orders = createOrderService(ctx, { servers, geyser, voice: voiceChat, schedules });
+  const orders = createOrderService(ctx, { servers, geyser, voice: voiceChat, schedules, notify });
   // Approved server requests are orders too: same add-ons, same order of things.
   const approvals = createApprovalService(ctx, mail, notify, { ...servers, create: orders.create });
   notify.start();

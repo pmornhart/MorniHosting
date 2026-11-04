@@ -7,6 +7,7 @@ import type { GeyserService } from '../geyser/service.js';
 import type { ScheduleService } from '../schedules/service.js';
 import type { ServerService } from '../servers/service.js';
 import type { VoiceChatService } from '../voicechat/service.js';
+import type { NotifyService } from '../notify/service.js';
 import { MS_PER_HOUR } from '../lib/units.js';
 
 /**
@@ -20,6 +21,7 @@ const BACKUP_TIME = '04:00';
 const FIRST_START_LIMIT_HOURS = 6;
 const FIRST_START_LIMIT_MS = FIRST_START_LIMIT_HOURS * MS_PER_HOUR;
 const START_ENDS: readonly ServerState[] = ['running', 'crashed', 'stopped'];
+const ONLINE_GREEN = 0x10b981;
 
 /** Reasons people can act on, in words instead of error codes. */
 const PLAIN_REASONS: Readonly<Record<string, (params: Readonly<Record<string, unknown>>) => string>> = {
@@ -52,9 +54,29 @@ export function createOrderService(
     readonly geyser: GeyserService;
     readonly voice: VoiceChatService;
     readonly schedules: ScheduleService;
+    readonly notify?: NotifyService;
   },
 ): OrderService {
-  const { servers, geyser, voice, schedules } = deps;
+  const { servers, geyser, voice, schedules, notify } = deps;
+
+  /** The person who ordered hears on Discord (and by mail, if wished) as soon as the new server is online. */
+  const tellOnline = (serverId: string, creator: UserRow): void => {
+    if (!notify || servers.live(serverId).state !== 'running') return;
+    const summary = servers.summary(serverId);
+    notify.tell([creator], 'decisions', () => ({
+      discord: {
+        title: `🎉 „${summary.name}“ ist online!`,
+        text: [
+          'Dein neuer Server ist fertig eingerichtet und läuft.',
+          summary.address ? `**Adresse:** \`${summary.address}\`` : '',
+          'Viel Spaß beim Spielen!',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        colour: ONLINE_GREEN,
+      },
+    }));
+  };
 
   /** Resolves once the first start is over: running, crashed or stopped (or after the time limit). */
   const firstStartOver = (serverId: string): Promise<void> =>
@@ -70,7 +92,12 @@ export function createOrderService(
       });
     });
 
-  const setUp = async (serverId: string, input: CreateServerInput, actor: Actor): Promise<void> => {
+  const setUp = async (
+    serverId: string,
+    input: CreateServerInput,
+    actor: Actor,
+    creator: UserRow,
+  ): Promise<void> => {
     const addOns = input.addOns;
     const steps: readonly Step[] = [
       {
@@ -148,6 +175,7 @@ export function createOrderService(
       show(index + 1);
     }, Promise.resolve());
     servers.setSetup(serverId, null);
+    tellOnline(serverId, creator);
   };
 
   const create: OrderService['create'] = async (input, actor, creator) => {
@@ -159,7 +187,7 @@ export function createOrderService(
     if (input.addOns?.voice) servers.setVoiceChat(summary.id, true, null);
     void (async () => {
       try {
-        await setUp(summary.id, input, actor);
+        await setUp(summary.id, input, actor, creator);
       } catch (err) {
         servers.setSetup(summary.id, null);
         ctx.log.error({ err, serverId: summary.id }, 'setting up the order failed');
