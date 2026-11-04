@@ -406,12 +406,7 @@ describe('NetBird automation', () => {
     // Creating does not wait for NetBird; the address follows a moment later.
     await waitFor(() => netbird.byDomain(`reich.${BASE}`) !== undefined);
     await waitFor(async () => (await detail(server.id)).publicPort === 25565);
-    expect(netbird.byDomain(`reich.${BASE}`)).toMatchObject({
-      mode: 'tcp',
-      listen_port: 25565,
-      pass_host_header: false,
-      targets: [],
-    });
+    expect(netbird.byDomain(`reich.${BASE}`)).toMatchObject({ mode: 'tcp', listen_port: 25565 });
     expect((await detail(server.id)).publicPort).toBe(25565);
     const status = (await call('GET', '/api/netbird')).json<NetbirdStatus>();
     expect(status).toMatchObject({
@@ -448,6 +443,8 @@ describe('NetBird automation', () => {
       domain: 'mail.other.example',
       mode: 'tcp',
       listen_port: 25566,
+      pass_host_header: false,
+      targets: [],
     });
     const first = await create({ netbirdName: 'eins' });
     await waitFor(async () => (await detail(first.id)).publicPort === 25565);
