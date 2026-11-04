@@ -753,4 +753,16 @@ describe('NetBird automation', () => {
     expect(await t.netbird.heal()).toBeNull();
     expect(server.id).toBeTruthy();
   });
+  test('hiding the home connection: only the MorniHosting container goes out, not the chosen routing machine', async () => {
+    // The addresses run over another machine (like the Proxmox host routing into the LAN).
+    await call('PUT', '/api/netbird', {
+      apiUrl: 'https://api.netbird.io',
+      token: TOKEN,
+      domain: BASE,
+      peerId: 'peer-laptop',
+    });
+    const on = await call('PUT', '/api/netbird/exit', { enabled: true, exitPeerId: 'peer-exit' });
+    expect(on.statusCode).toBe(200);
+    expect(netbird.groups.find((g) => g.name === 'MorniHosting Ausgang')?.peers).toEqual(['peer-mh']);
+  });
 });
