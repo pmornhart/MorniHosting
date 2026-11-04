@@ -17,6 +17,8 @@
 #
 # Befehle: (ohne) einrichten · status · guard (läuft per Timer) · hostguard (nur Host-Teil) · uninstall
 # Anderer Container: CTID=105 bash -c "$(curl …)"
+# Host ohne Internet? Über den Container holen:
+#   pct exec 100 -- curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/main/proxmox/dauerbetrieb.sh > /root/dauerbetrieb.sh && bash /root/dauerbetrieb.sh
 set -euo pipefail
 
 COMMAND="${1:-setup}"
@@ -184,8 +186,14 @@ guard() {
 
 install_host_guard() {
   local ctid="$1"
-  curl -fsSL "${REPO_RAW}/proxmox/dauerbetrieb.sh" -o "${HOST_GUARD}.new"
-  install -m 755 "${HOST_GUARD}.new" "${HOST_GUARD}"
+  # Das Skript selbst holen: als Datei gestartet → kopieren; sonst von GitHub, und hat der Host kein Internet,
+  # über den Container (der hat meist welches).
+  if [[ -f "${BASH_SOURCE[0]:-}" && "$(readlink -f "${BASH_SOURCE[0]}")" != "${HOST_GUARD}" ]]; then
+    install -m 755 "${BASH_SOURCE[0]}" "${HOST_GUARD}"
+  elif curl -fsSL -m 20 "${REPO_RAW}/proxmox/dauerbetrieb.sh" -o "${HOST_GUARD}.new" ||
+    pct exec "${ctid}" -- curl -fsSL -m 20 "${REPO_RAW}/proxmox/dauerbetrieb.sh" >"${HOST_GUARD}.new"; then
+    install -m 755 "${HOST_GUARD}.new" "${HOST_GUARD}"
+  fi
   rm -f "${HOST_GUARD}.new"
   printf 'CTID=%s\n' "${ctid}" >"${CONF_FILE}"
   cat >"${UNIT_DIR}/mornihosting-host-guard.service" <<UNIT
