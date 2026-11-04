@@ -49,8 +49,9 @@ test('order a Factorio server and use its console', async ({ page }) => {
 
   await page.waitForURL(SERVER_PAGE);
   await expect(page.getByRole('heading', { name: 'e2e-fabrik' })).toBeVisible();
-  // Minecraft-only tabs are gone.
-  await expect(page.getByRole('link', { name: 'Spieler', exact: true })).toHaveCount(0);
+  // Minecraft-only tabs are gone; who is online shows for every game.
+  await expect(page.getByRole('link', { name: 'Version', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Spieler', exact: true })).toHaveCount(1);
   await page.getByRole('button', { name: 'Starten' }).first().click();
   await waitForState(page, 'Läuft');
   await expect(page.locator('.xterm-rows')).toContainText('to(InGame)', { timeout: 10_000 });
