@@ -2629,7 +2629,95 @@
     "lastError": "Last error from Discord: {{message}}",
     "stepServer": "Add the bot to one of your Discord servers (any, even an empty one). Without a shared server Discord does not let it write to you privately. It writes nothing on the server.",
     "stepCommand": "In Discord, type /verbinden in any chat, pick the command from the list and press Enter. Then click “Jetzt verbinden” – done, the bot writes to you.",
-    "step2Code": "In Discord, type /verbinden, pick the command from the list and enter this code in the “code” field:"
+    "step2Code": "In Discord, type /verbinden, pick the command from the list and enter this code in the “code” field:",
+    "kindsTitle": "Switch off one by one",
+    "kindsText": "Every message the panel can send you. What you switch off no longer comes – neither by mail nor by Discord.",
+    "selfFixing": "fixes itself",
+    "kindsShow": "Show list ({{count}} off)",
+    "kindsHide": "Hide list",
+    "topicOff": "Switched off above",
+    "kinds": {
+      "server-crash": {
+        "title": "Server crashed",
+        "text": "Cause, fix and repair buttons when a server crashes."
+      },
+      "server-restart": {
+        "title": "Server does not come back",
+        "text": "Always-on tries to restart a server and it does not work right away."
+      },
+      "backup-failed": {
+        "title": "Backup failed",
+        "text": "A backup could not be saved."
+      },
+      "disk": {
+        "title": "Disk almost full",
+        "text": "The MorniHosting container is running out of space."
+      },
+      "panel-restart": {
+        "title": "Panel restarted",
+        "text": "The panel was gone for a moment and the watchdog restarted it."
+      },
+      "docker": {
+        "title": "Docker restarted",
+        "text": "Docker did not answer and was restarted."
+      },
+      "container-restart": {
+        "title": "Container restarted",
+        "text": "The Proxmox host restarted the MorniHosting container."
+      },
+      "host-offline": {
+        "title": "Proxmox host offline",
+        "text": "The Proxmox host had no internet."
+      },
+      "host-storage": {
+        "title": "Proxmox storage almost full",
+        "text": "Storage on the Proxmox host is running out."
+      },
+      "netbird": {
+        "title": "NetBird disconnected",
+        "text": "NetBird lost its connection and reconnects."
+      },
+      "netbird-exit": {
+        "title": "Home connection not hidden",
+        "text": "The NetBird exit does not work, your home IP may be visible."
+      },
+      "netbird-heal": {
+        "title": "NetBird repaired",
+        "text": "The panel repaired NetBird itself (new machine id, old entries)."
+      },
+      "dns": {
+        "title": "DNS repaired",
+        "text": "The container could not resolve addresses; the watchdog fixed it."
+      },
+      "mail-failed": {
+        "title": "Mail not sent",
+        "text": "The panel could not hand over a mail."
+      },
+      "registration": {
+        "title": "New registration",
+        "text": "Someone wants an account and waits for approval."
+      },
+      "server-request": {
+        "title": "New server request",
+        "text": "Someone wants a server and waits for approval."
+      },
+      "payment": {
+        "title": "New paid order",
+        "text": "A server with a price was ordered."
+      },
+      "decision": {
+        "title": "Answer to your request",
+        "text": "Your account or server request was approved or declined."
+      },
+      "server-online": {
+        "title": "New server is online",
+        "text": "Your ordered server is ready and running."
+      },
+      "other": {
+        "title": "Other warnings",
+        "text": "Everything else that can go wrong."
+      }
+    }
   },
   "discordLink": {
     "title": "Link Discord",

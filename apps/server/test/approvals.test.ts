@@ -27,6 +27,7 @@ import {
   type TestApp,
 } from './helpers.js';
 
+const PREFS_ON = { approvals: true, crashes: true, decisions: true, email: true, discord: true };
 const SMTP = {
   host: 'smtp.example.test',
   port: 465,
@@ -309,6 +310,37 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
     await as(lena, 'POST', '/api/server-requests', PAPER);
     expect(discord.dms.length).toBe(before.dms);
     expect(sent.length).toBe(before.mails);
+  });
+
+  test('single kinds can be switched off: a muted server request reaches nobody, the rest still comes', async () => {
+    const saved = await as(admin, 'PUT', '/api/account/notifications', {
+      approvals: true,
+      crashes: true,
+      decisions: true,
+      email: true,
+      discord: true,
+      muted: ['server-request', 'panel-restart'],
+    });
+    expect(saved.json<{ prefs: { muted: string[] } }>().prefs.muted).toEqual([
+      'server-request',
+      'panel-restart',
+    ]);
+    expect(
+      (await as(admin, 'PUT', '/api/account/notifications', { ...PREFS_ON, muted: ['erfunden'] })).statusCode,
+    ).toBe(400);
+    await as(admin, 'POST', '/api/users', {
+      username: 'lena',
+      password: 'lena-passwort-1',
+      canCreateServers: false,
+    });
+    const lena = await login(t, 'lena', 'lena-passwort-1');
+    const before = { dms: discord.dms.length, mails: sent.length };
+    await as(lena, 'POST', '/api/server-requests', PAPER);
+    expect(discord.dms.length).toBe(before.dms);
+    expect(sent.length).toBe(before.mails);
+    // Everything not muted still arrives.
+    expect((await as(admin, 'POST', '/api/account/discord/test')).statusCode).toBe(204);
+    expect(discord.dms.length).toBe(before.dms + 1);
   });
 
   test('test message: arrives as DM; blocked DMs are explained; without link a clear error', async () => {

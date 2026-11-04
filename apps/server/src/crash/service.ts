@@ -304,39 +304,44 @@ export function createCrashHelpService(
       }
     })();
     serverService.note(serverId, 'Im Panel: Absturz-Helfer oben auf der Konsole – ein Klick behebt es.');
-    notify.tell(peopleFor(serverId), 'crashes', () => ({
-      discord: {
-        title: `⚠️ „${row.name}“ ist abgestürzt: ${text.title}`,
-        text: [
-          `• **Was:** ${text.title}`,
-          text.text ? `• **Ursache:** ${text.text}` : '',
-          text.fix ? `• **Lösung:** ${text.fix}` : '',
-          restarting ? '• **Dauerbetrieb:** Der Server startet gleich von selbst neu.' : '',
-          fixes.some((f) => DISCORD_SAFE.has(f.id))
-            ? '• **Schnell:** Knopf unten drücken – der Server startet danach neu.'
-            : '',
-        ]
-          .filter(Boolean)
-          .join('\n'),
-        colour: DISCORD_RED,
-        fields: crash.excerpt?.length
-          ? [
-              {
-                name: 'Letzte Zeilen',
-                value: `\`\`\`\n${crash.excerpt.slice(-6).join('\n').slice(0, 900)}\n\`\`\``,
-              },
-            ]
-          : [],
-        buttons: fixes
-          .filter((f) => DISCORD_SAFE.has(f.id))
-          .slice(0, 3)
-          .map((f) => ({
-            label: label(f),
-            id: notify.actionId('crashfix', `${serverId}~${f.id}`),
-            style: 'approve' as const,
-          })),
-      },
-    }));
+    notify.tell(
+      peopleFor(serverId),
+      'crashes',
+      () => ({
+        discord: {
+          title: `⚠️ „${row.name}“ ist abgestürzt: ${text.title}`,
+          text: [
+            `• **Was:** ${text.title}`,
+            text.text ? `• **Ursache:** ${text.text}` : '',
+            text.fix ? `• **Lösung:** ${text.fix}` : '',
+            restarting ? '• **Dauerbetrieb:** Der Server startet gleich von selbst neu.' : '',
+            fixes.some((f) => DISCORD_SAFE.has(f.id))
+              ? '• **Schnell:** Knopf unten drücken – der Server startet danach neu.'
+              : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+          colour: DISCORD_RED,
+          fields: crash.excerpt?.length
+            ? [
+                {
+                  name: 'Letzte Zeilen',
+                  value: `\`\`\`\n${crash.excerpt.slice(-6).join('\n').slice(0, 900)}\n\`\`\``,
+                },
+              ]
+            : [],
+          buttons: fixes
+            .filter((f) => DISCORD_SAFE.has(f.id))
+            .slice(0, 3)
+            .map((f) => ({
+              label: label(f),
+              id: notify.actionId('crashfix', `${serverId}~${f.id}`),
+              style: 'approve' as const,
+            })),
+        },
+      }),
+      'server-crash',
+    );
   });
 
   notify.onAction('crashfix', async (target, by) => {

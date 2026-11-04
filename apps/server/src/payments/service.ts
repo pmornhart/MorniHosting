@@ -107,13 +107,18 @@ export function createPaymentsService(ctx: AppContext, notify: NotifyService): P
       .values({ serverId, serverName, userId, userName, code: found.code, monthlyCents: found.monthlyCents })
       .run();
     const price = formatEuro(found.monthlyCents);
-    notify.tell(notify.admins(), 'approvals', () => ({
-      discord: {
-        title: `💸 Gutschein ${found.code} eingelöst`,
-        text: `${userName} zahlt dir ab jetzt ${price} im Monat für „${serverName}“. Unter Admin-Bereich → Zahlungen hakst du bezahlte Monate ab.`,
-        colour: DISCORD_GOLD,
-      },
-    }));
+    notify.tell(
+      notify.admins(),
+      'approvals',
+      () => ({
+        discord: {
+          title: `💸 Gutschein ${found.code} eingelöst`,
+          text: `${userName} zahlt dir ab jetzt ${price} im Monat für „${serverName}“. Unter Admin-Bereich → Zahlungen hakst du bezahlte Monate ab.`,
+          colour: DISCORD_GOLD,
+        },
+      }),
+      'payment',
+    );
   });
   ctx.events.on('server.deleted', ({ serverId }) => {
     db.update(charges)

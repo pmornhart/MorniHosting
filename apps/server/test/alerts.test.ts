@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
+import { alertKind } from '@mornihosting/shared';
 import { createAlertService } from '../src/alerts/service.js';
 import type { Notice, NotifyService } from '../src/notify/service.js';
 import { createTestApp, setupAdmin, type TestApp } from './helpers.js';
@@ -65,4 +66,12 @@ test('watchdog events reach Discord and mail once, with what to do; the all-clea
   );
   alerts.readEvents();
   expect(sent[2]?.discord.text).toContain('schon behoben');
+});
+
+test('every watchdog key belongs to a kind one can switch off', () => {
+  expect(alertKind('panel')).toBe('panel-restart');
+  expect(alertKind('server:abc123')).toBe('server-restart');
+  expect(alertKind('host-exit')).toBe('host-offline');
+  expect(alertKind('netbird-exit')).toBe('netbird-exit');
+  expect(alertKind('unbekannt')).toBe('other');
 });

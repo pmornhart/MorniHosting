@@ -9,18 +9,94 @@ export type NotifyTopic = (typeof NOTIFY_TOPICS)[number];
 export const NOTIFY_CHANNELS = ['email', 'discord'] as const;
 export type NotifyChannel = (typeof NOTIFY_CHANNELS)[number];
 
-/** Saved per person; anything missing counts as "on". */
-export type NotifyPrefs = Partial<Record<NotifyTopic | NotifyChannel, boolean>>;
-export const notifyPrefsSchema = z.object(
-  Object.fromEntries([...NOTIFY_TOPICS, ...NOTIFY_CHANNELS].map((key) => [key, z.boolean()])) as Record<
+/**
+ * Every single reason the panel writes to someone, each one can be switched off on its own ("Mein Konto" →
+ * Benachrichtigungen). `selfFixing`: it repairs itself, a message is only for information.
+ */
+export const NOTIFY_KINDS = [
+  'server-crash',
+  'server-restart',
+  'backup-failed',
+  'disk',
+  'panel-restart',
+  'docker',
+  'container-restart',
+  'host-offline',
+  'host-storage',
+  'netbird',
+  'netbird-exit',
+  'netbird-heal',
+  'dns',
+  'mail-failed',
+  'registration',
+  'server-request',
+  'payment',
+  'decision',
+  'server-online',
+  'other',
+] as const;
+export type NotifyKind = (typeof NOTIFY_KINDS)[number];
+
+export const NOTIFY_KIND_INFO: Readonly<
+  Record<NotifyKind, { readonly topic: NotifyTopic; readonly selfFixing: boolean }>
+> = {
+  'server-crash': { topic: 'crashes', selfFixing: false },
+  'server-restart': { topic: 'crashes', selfFixing: true },
+  'backup-failed': { topic: 'crashes', selfFixing: false },
+  disk: { topic: 'crashes', selfFixing: false },
+  'panel-restart': { topic: 'crashes', selfFixing: true },
+  docker: { topic: 'crashes', selfFixing: true },
+  'container-restart': { topic: 'crashes', selfFixing: true },
+  'host-offline': { topic: 'crashes', selfFixing: false },
+  'host-storage': { topic: 'crashes', selfFixing: false },
+  netbird: { topic: 'crashes', selfFixing: true },
+  'netbird-exit': { topic: 'crashes', selfFixing: true },
+  'netbird-heal': { topic: 'crashes', selfFixing: true },
+  dns: { topic: 'crashes', selfFixing: true },
+  'mail-failed': { topic: 'crashes', selfFixing: false },
+  registration: { topic: 'approvals', selfFixing: false },
+  'server-request': { topic: 'approvals', selfFixing: false },
+  payment: { topic: 'approvals', selfFixing: false },
+  decision: { topic: 'decisions', selfFixing: false },
+  'server-online': { topic: 'decisions', selfFixing: false },
+  other: { topic: 'crashes', selfFixing: false },
+};
+
+/** Alert keys of the panel and its watchdogs (guard.sh, dauerbetrieb.sh) → kind; "server:<id>" uses the part before ":". */
+const ALERT_KEY_KINDS: Readonly<Record<string, NotifyKind>> = {
+  server: 'server-restart',
+  backup: 'backup-failed',
+  mail: 'mail-failed',
+  'netbird-exit': 'netbird-exit',
+  'netbird-heal': 'netbird-heal',
+  netbird: 'netbird',
+  dns: 'dns',
+  docker: 'docker',
+  panel: 'panel-restart',
+  disk: 'disk',
+  'host-exit': 'host-offline',
+  storage: 'host-storage',
+  container: 'container-restart',
+};
+export const alertKind = (key: string): NotifyKind => ALERT_KEY_KINDS[key.split(':')[0] ?? ''] ?? 'other';
+
+/** Saved per person; anything missing counts as "on", `muted` lists the single kinds switched off. */
+export type NotifyPrefs = Partial<Record<NotifyTopic | NotifyChannel, boolean>> & {
+  readonly muted?: readonly NotifyKind[];
+};
+export const notifyPrefsSchema = z.object({
+  ...(Object.fromEntries([...NOTIFY_TOPICS, ...NOTIFY_CHANNELS].map((key) => [key, z.boolean()])) as Record<
     NotifyTopic | NotifyChannel,
     z.ZodBoolean
-  >,
-);
+  >),
+  muted: z.array(z.enum(NOTIFY_KINDS)).max(NOTIFY_KINDS.length).default([]),
+});
 export type NotifyPrefsInput = z.infer<typeof notifyPrefsSchema>;
 
 export const wantsNotice = (prefs: NotifyPrefs, key: NotifyTopic | NotifyChannel): boolean =>
   prefs[key] !== false;
+export const wantsKind = (prefs: NotifyPrefs, kind: NotifyKind): boolean =>
+  !(prefs.muted ?? []).includes(kind);
 
 export interface NotifySettingsView {
   readonly prefs: NotifyPrefsInput;

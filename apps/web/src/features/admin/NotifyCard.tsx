@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, ExternalLink, Send, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
-import type { ReactElement, ReactNode } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   NOTIFY_CHANNELS,
+  NOTIFY_KIND_INFO,
+  NOTIFY_KINDS,
   NOTIFY_TOPICS,
+  type NotifyKind,
   type DiscordLinkCode,
   type NotifyPrefsInput,
   type NotifySettingsView,
@@ -48,6 +51,7 @@ export function NotifyCard(): ReactElement {
   const { me } = useSession();
   const queryClient = useQueryClient();
   const { data } = useQuery(settingsQuery);
+  const [showKinds, setShowKinds] = useState(false);
   const panelDomain = useQuery(statusQuery).data?.panelDomain;
   const linked = Boolean(data?.discord.linked);
   // While a code is shown, look every few seconds whether /verbinden arrived.
@@ -75,8 +79,17 @@ export function NotifyCard(): ReactElement {
   });
   if (!data) return <Card className="h-48 animate-pulse p-6" aria-busy />;
   const topics = NOTIFY_TOPICS.filter((topic) => topic !== 'approvals' || me.user.isAdmin);
-  const toggle = (key: keyof NotifyPrefsInput, value: boolean): void =>
+  const toggle = (key: Exclude<keyof NotifyPrefsInput, 'muted'>, value: boolean): void =>
     save.mutate({ ...data.prefs, [key]: value });
+  const muted = data.prefs.muted;
+  const toggleKind = (kind: NotifyKind, on: boolean): void =>
+    save.mutate({
+      ...data.prefs,
+      muted: on ? muted.filter((k) => k !== kind) : [...muted, kind],
+    });
+  // People who are not admins only ever get these.
+  const ownKinds: readonly NotifyKind[] = ['server-crash', 'decision', 'server-online'];
+  const kinds = NOTIFY_KINDS.filter((kind) => me.user.isAdmin || ownKinds.includes(kind));
   const command = code.data ? `/verbinden ${code.data.code}` : '';
 
   return (
@@ -121,6 +134,49 @@ export function NotifyCard(): ReactElement {
             </span>
           </label>
         ))}
+      </div>
+
+      <div className="grid gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <b className="text-sm">{t('notifyCard.kindsTitle')}</b>
+          <Button variant="outline" size="sm" onClick={() => setShowKinds((v) => !v)}>
+            {showKinds ? t('notifyCard.kindsHide') : t('notifyCard.kindsShow', { count: muted.length })}
+          </Button>
+        </div>
+        <p className="text-[13px] text-muted-foreground">{t('notifyCard.kindsText')}</p>
+        {showKinds ? (
+          <ul className="grid gap-1.5">
+            {kinds.map((kind) => {
+              const info = NOTIFY_KIND_INFO[kind];
+              const topicOn = data.prefs[info.topic];
+              return (
+                <li key={kind}>
+                  <label className="flex items-start gap-3 rounded-[10px] px-2 py-1.5 text-sm even:bg-secondary/40">
+                    <Switch
+                      checked={topicOn && !muted.includes(kind)}
+                      disabled={!topicOn}
+                      onCheckedChange={(v) => toggleKind(kind, v)}
+                      className="mt-0.5"
+                    />
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-center gap-2">
+                        {t(`notifyCard.kinds.${kind}.title`)}
+                        {info.selfFixing ? (
+                          <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                            {t('notifyCard.selfFixing')}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="block text-[13px] text-muted-foreground">
+                        {topicOn ? t(`notifyCard.kinds.${kind}.text`) : t('notifyCard.topicOff')}
+                      </span>
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
       </div>
 
       <div className="grid gap-3 rounded-[12px] border border-border p-4">

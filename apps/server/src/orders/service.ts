@@ -65,19 +65,24 @@ export function createOrderService(
   const tellOnline = (serverId: string, creator: UserRow): void => {
     if (!notify || servers.live(serverId).state !== 'running') return;
     const summary = servers.summary(serverId);
-    notify.tell([creator], 'decisions', () => ({
-      discord: {
-        title: `🎉 „${summary.name}“ ist online!`,
-        text: [
-          'Dein neuer Server ist fertig eingerichtet und läuft.',
-          summary.address ? `**Adresse:** \`${summary.address}\`` : '',
-          'Viel Spaß beim Spielen!',
-        ]
-          .filter(Boolean)
-          .join('\n'),
-        colour: ONLINE_GREEN,
-      },
-    }));
+    notify.tell(
+      [creator],
+      'decisions',
+      () => ({
+        discord: {
+          title: `🎉 „${summary.name}“ ist online!`,
+          text: [
+            'Dein neuer Server ist fertig eingerichtet und läuft.',
+            summary.address ? `**Adresse:** \`${summary.address}\`` : '',
+            'Viel Spaß beim Spielen!',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+          colour: ONLINE_GREEN,
+        },
+      }),
+      'server-online',
+    );
   };
 
   /** Resolves once the first start is over: running, crashed or stopped (or after the time limit). */

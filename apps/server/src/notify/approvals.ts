@@ -103,13 +103,18 @@ export function createApprovalService(
       .run();
     ctx.events.emit('approvals.changed', { userId: user.id });
     ctx.audit.record(by, 'user.approved', null, { username: user.username });
-    notify.tell([user], 'decisions', () => ({
-      mail: { kind: 'account_approved', vars: { link: link('/login') } },
-      discord: {
-        title: '✅ Du bist freigeschaltet',
-        text: 'Du kannst dich jetzt bei MorniHosting anmelden.',
-      },
-    }));
+    notify.tell(
+      [user],
+      'decisions',
+      () => ({
+        mail: { kind: 'account_approved', vars: { link: link('/login') } },
+        discord: {
+          title: '✅ Du bist freigeschaltet',
+          text: 'Du kannst dich jetzt bei MorniHosting anmelden.',
+        },
+      }),
+      'decision',
+    );
     return done(
       '✅ Freigegeben',
       `${user.username} kann sich jetzt anmelden (freigegeben von ${by.username ?? '?'}).`,
@@ -179,14 +184,19 @@ export function createApprovalService(
     decide(id, 'approved', '', by, summary.id);
     ctx.audit.record(by, 'server.request_approved', summary.id, { name: row.input.name });
     // The order mail (server.created) tells the person by mail; Discord gets its own message.
-    notify.tell([owner], 'decisions', () => ({
-      discord: {
-        title: '🚀 Server freigegeben',
-        text: `Dein Server „${row.input.name}“ wurde freigegeben und wird jetzt angelegt.`,
-        colour: COLOUR_DONE,
-        buttons: linkButton(`/servers/${summary.id}`),
-      },
-    }));
+    notify.tell(
+      [owner],
+      'decisions',
+      () => ({
+        discord: {
+          title: '🚀 Server freigegeben',
+          text: `Dein Server „${row.input.name}“ wurde freigegeben und wird jetzt angelegt.`,
+          colour: COLOUR_DONE,
+          buttons: linkButton(`/servers/${summary.id}`),
+        },
+      }),
+      'decision',
+    );
     return done(
       '✅ Angenommen',
       `„${row.input.name}“ für ${owner.username} wird angelegt (von ${by.username ?? '?'}).`,
@@ -200,14 +210,19 @@ export function createApprovalService(
     ctx.audit.record(by, 'server.request_rejected', null, { name: row.input.name });
     const owner = userRow(row.userId);
     if (owner)
-      notify.tell([owner], 'decisions', () => ({
-        mail: { kind: 'request_rejected', vars: { server: row.input.name, note } },
-        discord: {
-          title: 'Anfrage abgelehnt',
-          text: `Deine Anfrage für „${row.input.name}“ wurde abgelehnt.${note ? ` Begründung: ${note}` : ''}`,
-          colour: COLOUR_DECLINED,
-        },
-      }));
+      notify.tell(
+        [owner],
+        'decisions',
+        () => ({
+          mail: { kind: 'request_rejected', vars: { server: row.input.name, note } },
+          discord: {
+            title: 'Anfrage abgelehnt',
+            text: `Deine Anfrage für „${row.input.name}“ wurde abgelehnt.${note ? ` Begründung: ${note}` : ''}`,
+            colour: COLOUR_DECLINED,
+          },
+        }),
+        'decision',
+      );
     return done(
       '❌ Abgelehnt',
       `Die Anfrage „${row.input.name}“ von ${owner?.username ?? '?'} wurde abgelehnt.`,
@@ -220,28 +235,33 @@ export function createApprovalService(
   ctx.events.on('user.awaiting_approval', ({ userId }) => {
     const user = userRow(userId);
     if (!user) return;
-    notify.tell(notify.admins(), 'approvals', () => ({
-      mail: {
-        kind: 'approval_needed',
-        vars: { who: user.username, email: user.email, link: link('/approvals') },
-      },
-      discord: {
-        title: '🙋 Neue Registrierung',
-        text: `**${user.username}** möchte bei MorniHosting mitmachen. Erst nach deiner Freigabe kann sich die Person anmelden.`,
-        colour: COLOUR_INFO,
-        fields: [
-          {
-            name: 'E-Mail',
-            value: `${user.email ?? '–'}${user.signupPending ? ' (noch nicht bestätigt)' : ''}`,
-          },
-        ],
-        buttons: [
-          { label: 'Freigeben', id: notify.actionId('approve-user', String(user.id)), style: 'approve' },
-          { label: 'Ablehnen', id: notify.actionId('reject-user', String(user.id)), style: 'reject' },
-          ...(linkButton('/approvals') ?? []),
-        ],
-      },
-    }));
+    notify.tell(
+      notify.admins(),
+      'approvals',
+      () => ({
+        mail: {
+          kind: 'approval_needed',
+          vars: { who: user.username, email: user.email, link: link('/approvals') },
+        },
+        discord: {
+          title: '🙋 Neue Registrierung',
+          text: `**${user.username}** möchte bei MorniHosting mitmachen. Erst nach deiner Freigabe kann sich die Person anmelden.`,
+          colour: COLOUR_INFO,
+          fields: [
+            {
+              name: 'E-Mail',
+              value: `${user.email ?? '–'}${user.signupPending ? ' (noch nicht bestätigt)' : ''}`,
+            },
+          ],
+          buttons: [
+            { label: 'Freigeben', id: notify.actionId('approve-user', String(user.id)), style: 'approve' },
+            { label: 'Ablehnen', id: notify.actionId('reject-user', String(user.id)), style: 'reject' },
+            ...(linkButton('/approvals') ?? []),
+          ],
+        },
+      }),
+      'registration',
+    );
   });
 
   ctx.events.on('server.requested', ({ requestId }) => {
@@ -253,35 +273,40 @@ export function createApprovalService(
     const software = minecraft
       ? `${game} · ${SOFTWARE[row.input.software].label} ${row.input.version}`
       : `${game} ${row.input.version}`;
-    notify.tell(notify.admins(), 'approvals', () => ({
-      mail: {
-        kind: 'request_new',
-        vars: {
-          who: owner.username,
-          server: row.input.name,
-          software,
-          plan: plan(row.input.memoryMb),
-          link: link('/approvals'),
+    notify.tell(
+      notify.admins(),
+      'approvals',
+      () => ({
+        mail: {
+          kind: 'request_new',
+          vars: {
+            who: owner.username,
+            server: row.input.name,
+            software,
+            plan: plan(row.input.memoryMb),
+            link: link('/approvals'),
+          },
         },
-      },
-      discord: {
-        title: '🖥️ Neue Server-Anfrage',
-        text: `**${owner.username}** möchte einen Server.`,
-        colour: COLOUR_INFO,
-        fields: [
-          { name: 'Name', value: row.input.name },
-          { name: 'Spiel', value: game },
-          ...(minecraft ? [{ name: 'Software', value: SOFTWARE[row.input.software].label }] : []),
-          { name: 'Version', value: row.input.version },
-          { name: 'Paket', value: plan(row.input.memoryMb) },
-        ],
-        buttons: [
-          { label: 'Freigeben', id: notify.actionId('approve-req', row.id), style: 'approve' },
-          { label: 'Ablehnen', id: notify.actionId('reject-req', row.id), style: 'reject' },
-          ...(linkButton('/approvals') ?? []),
-        ],
-      },
-    }));
+        discord: {
+          title: '🖥️ Neue Server-Anfrage',
+          text: `**${owner.username}** möchte einen Server.`,
+          colour: COLOUR_INFO,
+          fields: [
+            { name: 'Name', value: row.input.name },
+            { name: 'Spiel', value: game },
+            ...(minecraft ? [{ name: 'Software', value: SOFTWARE[row.input.software].label }] : []),
+            { name: 'Version', value: row.input.version },
+            { name: 'Paket', value: plan(row.input.memoryMb) },
+          ],
+          buttons: [
+            { label: 'Freigeben', id: notify.actionId('approve-req', row.id), style: 'approve' },
+            { label: 'Ablehnen', id: notify.actionId('reject-req', row.id), style: 'reject' },
+            ...(linkButton('/approvals') ?? []),
+          ],
+        },
+      }),
+      'server-request',
+    );
   });
 
   const actorFor = (user: UserRow): Actor => ({ userId: user.id, username: user.username, ip: null });

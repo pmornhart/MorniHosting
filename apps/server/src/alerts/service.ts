@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { alertKind } from '@mornihosting/shared';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import { formatWhen } from '../mail/templates.js';
@@ -84,40 +85,50 @@ export function createAlertService(ctx: AppContext, notify: NotifyService): Aler
     if (Date.now() - last < QUIET_MS) return;
     sentAt.set(a.key, Date.now());
     ctx.log.warn({ key: a.key, title: a.title, status: a.status }, 'alert');
-    notify.tell(notify.admins(), 'crashes', (person) => ({
-      mail: {
-        kind: 'alert',
-        vars: {
-          title: a.title,
-          what: a.what,
-          status: STATUS_TEXT[a.status],
-          action: a.action ?? null,
-          command: a.command ?? null,
-          when: formatWhen(person.locale === 'en' ? 'en' : 'de', new Date()),
+    notify.tell(
+      notify.admins(),
+      'crashes',
+      (person) => ({
+        mail: {
+          kind: 'alert',
+          vars: {
+            title: a.title,
+            what: a.what,
+            status: STATUS_TEXT[a.status],
+            action: a.action ?? null,
+            command: a.command ?? null,
+            when: formatWhen(person.locale === 'en' ? 'en' : 'de', new Date()),
+          },
         },
-      },
-      discord: {
-        title: `${ICON[a.status]} ${a.title}`,
-        text: [
-          `**Was ist los:** ${a.what}`,
-          `**Behebt sich selbst?** ${STATUS_TEXT[a.status]}`,
-          a.action ? `**Du musst:** ${a.action}` : '',
-          a.command ? `\`\`\`\n${a.command}\n\`\`\`` : '',
-        ]
-          .filter(Boolean)
-          .join('\n'),
-        colour: COLOUR[a.status],
-      },
-    }));
+        discord: {
+          title: `${ICON[a.status]} ${a.title}`,
+          text: [
+            `**Was ist los:** ${a.what}`,
+            `**Behebt sich selbst?** ${STATUS_TEXT[a.status]}`,
+            a.action ? `**Du musst:** ${a.action}` : '',
+            a.command ? `\`\`\`\n${a.command}\n\`\`\`` : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+          colour: COLOUR[a.status],
+        },
+      }),
+      alertKind(a.key),
+    );
   };
 
   const resolved: AlertService['resolved'] = (key, title, what) => {
     if (!open.delete(key)) return;
     sentAt.delete(key);
-    notify.tell(notify.admins(), 'crashes', () => ({
-      mail: { kind: 'alert_ok', vars: { title, what } },
-      discord: { title: `✅ ${title}`, text: what, colour: DISCORD_GREEN },
-    }));
+    notify.tell(
+      notify.admins(),
+      'crashes',
+      () => ({
+        mail: { kind: 'alert_ok', vars: { title, what } },
+        discord: { title: `✅ ${title}`, text: what, colour: DISCORD_GREEN },
+      }),
+      alertKind(key),
+    );
   };
 
   /** New lines since the last read; a smaller file means the watchdog started a new one. */
