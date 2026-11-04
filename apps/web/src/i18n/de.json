@@ -621,7 +621,9 @@
     "charge_unknown": "Diese Zahlung gibt es nicht.",
     "crash_gone": "Dieser Absturz ist schon erledigt.",
     "crash_fix_unknown": "Diese Reparatur passt nicht mehr.",
-    "crash_fix_panel_only": "Das geht nur im Panel, weil Daten gelöscht werden."
+    "crash_fix_panel_only": "Das geht nur im Panel, weil Daten gelöscht werden.",
+    "preload_running": "Wird gerade schon geladen.",
+    "preload_unknown": "Dieses Spiel lässt sich nicht vorladen."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1750,7 +1752,8 @@
       "mail": "E-Mail",
       "move": "Umzug",
       "quotas": "Kontingente",
-      "payments": "Zahlungen"
+      "payments": "Zahlungen",
+      "preload": "Spiele vorladen"
     },
     "domainTitle": "Panel-Adresse von Hand",
     "domainSet": "Eingetragen",
@@ -1778,7 +1781,8 @@
       "mail": "Mails an deine Leute: Willkommen, Registrierung, „Passwort vergessen“ und Bestellungen.",
       "move": "Einstellungen und Verbindungen per Code auf ein anderes MorniHosting übertragen.",
       "quotas": "Wie viel Arbeitsspeicher, Festplatte, CPU und wie viele Server jede Person haben darf. Admins sind ausgenommen.",
-      "payments": "Wer dir für einen Server mit Gutschein „MORNI“ wie viel schuldet – und welche Monate bezahlt sind."
+      "payments": "Wer dir für einen Server mit Gutschein „MORNI“ wie viel schuldet – und welche Monate bezahlt sind.",
+      "preload": "Lädt ein Spiel schon herunter, bevor jemand einen Server dafür bestellt. Neue Server kopieren es dann nur noch – das geht in Sekunden statt Minuten oder Stunden (CS2: rund 60 GB)."
     },
     "netbirdManual": "NetBird von Hand einrichten",
     "netbirdManualHint": "Nur nötig, wenn du die Automatik oben nicht nutzt. Zum Aufklappen tippen."
@@ -2979,5 +2983,31 @@
       "backups": "Tägliches Backup um 04:00",
       "start": "Erster Start (Welt wird erstellt)"
     }
+  },
+  "preload": {
+    "title": "Spiele vorladen",
+    "text": "Lädt ein Spiel schon herunter, bevor jemand einen Server dafür bestellt. Neue Server kopieren es dann nur noch – das geht in Sekunden statt Minuten oder Stunden (CS2: rund 60 GB).",
+    "size": "ca. {{gb}} GB",
+    "download": "Herunterladen",
+    "retry": "Nochmal versuchen",
+    "refresh": "Aktualisieren",
+    "remove": "Entfernen",
+    "removed": "Vorgeladene Dateien entfernt.",
+    "states": {
+      "none": "Nicht geladen",
+      "loading": "Lädt …",
+      "ready": "Bereit",
+      "failed": "Fehlgeschlagen",
+      "queued": "Wartet …"
+    },
+    "modes": {
+      "template": "Lädt Server-Programm bzw. Spieldateien einmal herunter; neue Server kopieren sie.",
+      "image": "Das Spiel steckt schon im Programm-Paket – es wird nur das Paket geladen."
+    },
+    "auto": "Bleibt automatisch aktuell: Das Panel schaut jede Stunde nach Updates und spielt sie selbst ein.",
+    "autoChecked": "Bleibt automatisch aktuell – zuletzt um {{time}} nach Updates geschaut (jede Stunde).",
+    "all": "Alle herunterladen ({{count}})",
+    "allDone": "Alles geladen",
+    "allBusy": "Lädt … (noch {{count}})"
   }
 }

@@ -205,6 +205,7 @@ export function ServerCard({ server }: { server: ServerSummary }): ReactElement 
               <PlayerHead
                 key={name}
                 name={name}
+                game={server.edition}
                 className={i ? '-ml-1.5 border-2 border-card' : 'border-2 border-card'}
               />
             ))}

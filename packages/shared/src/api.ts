@@ -911,3 +911,22 @@ export interface ImportDetectionResult {
   readonly plugins: number;
   readonly mods: number;
 }
+
+/** "Preload" in the admin area: download a game before anyone orders a server of it. */
+export type PreloadState = 'none' | 'queued' | 'loading' | 'ready' | 'failed';
+export interface PreloadItem {
+  readonly software: SoftwareId;
+  readonly version: string | null;
+  /** "template": a hidden server downloads everything once; "image": only the program image (game comes inside). */
+  readonly mode: 'template' | 'image';
+  readonly state: PreloadState;
+  /** 0–100 while loading, if known. */
+  readonly progress: number | null;
+  readonly download: ServerLive['download'];
+  /** Rough size of the download in GB, from the catalog. */
+  readonly sizeGb: number | null;
+  readonly error: string | null;
+  readonly doneAt: string | null;
+  /** Last hourly look for updates (they install by themselves). */
+  readonly checkedAt: string | null;
+}

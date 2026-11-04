@@ -1,0 +1,1 @@
+ALTER TABLE `servers` ADD `template` integer DEFAULT false NOT NULL;

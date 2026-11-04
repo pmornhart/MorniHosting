@@ -49,9 +49,10 @@ function PlayerRow({
   onAction: (action: RowAction) => void;
   busy: boolean;
 }): ReactElement {
+  const { server } = useServer();
   return (
     <li className="flex items-center gap-3 rounded-[10px] px-2 py-1.5 hover:bg-secondary/60">
-      <PlayerHead name={player.name} className="size-8 rounded-[7px]" />
+      <PlayerHead name={player.name} game={server.edition} className="size-8 rounded-[7px]" />
       <div className="min-w-0 flex-1">
         <b className="block truncate text-sm font-semibold">{player.name}</b>
         {sub ? <span className="block truncate text-[12px] text-muted-foreground">{sub}</span> : null}

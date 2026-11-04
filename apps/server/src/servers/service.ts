@@ -74,7 +74,12 @@ export interface ServerService {
   readonly rowWithSecrets: (id: string) => ServerRow;
   readonly summary: (id: string) => ServerSummary;
   readonly detail: (id: string, user: UserRow) => ServerDetail;
-  readonly create: (input: CreateServerInput, actor: Actor, creator: UserRow) => Promise<ServerSummary>;
+  readonly create: (
+    input: CreateServerInput,
+    actor: Actor,
+    creator: UserRow,
+    options?: { readonly template?: boolean },
+  ) => Promise<ServerSummary>;
   readonly createFromImport: (
     input: Omit<CreateServerInput, 'eula' | 'startNow'> & { id: string },
     actor: Actor,
@@ -527,13 +532,17 @@ export function createServerService(ctx: AppContext): ServerService {
   };
 
   const seedFromSibling = async (id: string, software: ServerRow['software']): Promise<void> => {
-    if (!SHARED_GAME_FILES.has(software)) return;
+    if (!gameOf(software)) return;
+    // Preloaded templates hold nothing but the game, so every game may copy from them; real servers only
+    // for games whose folder holds nothing but game files.
+    const shared = SHARED_GAME_FILES.has(software);
     const others = db
-      .select({ id: servers.id, name: servers.name })
+      .select({ id: servers.id, name: servers.name, template: servers.template })
       .from(servers)
       .where(eq(servers.software, software))
       .all()
-      .filter((s) => s.id !== id);
+      .filter((s) => s.id !== id && (shared || s.template))
+      .sort((a, b) => Number(b.template) - Number(a.template));
     const source = seedSource(
       serverDir(config, id),
       others.map((s) => serverDir(config, s.id)),
@@ -883,7 +892,7 @@ export function createServerService(ctx: AppContext): ServerService {
         .select()
         .from(servers)
         .all()
-        .filter((r) => visible === 'all' || visible.has(r.id))
+        .filter((r) => !r.template && (visible === 'all' || visible.has(r.id)))
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
         .map(summaryOf);
     },
@@ -917,7 +926,8 @@ export function createServerService(ctx: AppContext): ServerService {
           : [],
       };
     },
-    create: async (input, actor, creator) => {
+    create: async (input, actor, creator, options) => {
+      const template = options?.template === true;
       const info = SOFTWARE[input.software];
       if (!CREATABLE_SOFTWARE[input.edition].includes(input.software))
         throw badRequest('software_edition_mismatch');
@@ -957,9 +967,10 @@ export function createServerService(ctx: AppContext): ServerService {
           ...base,
           rconPassword: secrets.encrypt(randomToken(RCON_PASSWORD_BYTES)),
           image: imageFor(config, base),
-          netbirdName,
+          netbirdName: template ? null : netbirdName,
           extraPorts,
           gameSettings,
+          template,
         })
         .run();
       fs.mkdirSync(serverDir(config, id), { recursive: true });
@@ -973,8 +984,11 @@ export function createServerService(ctx: AppContext): ServerService {
         rt(id).state = 'starting';
         void withLock(id, () => startInternal(id));
       }
-      await Promise.allSettled(Array.from(createdListeners, (listener) => listener(id)));
-      events.emit('server.created', { serverId: id, userId: creator.id, coupon: input.coupon ?? null });
+      // A preload template is no real server: no address, no OP, no "server ordered" mail.
+      if (!template) {
+        await Promise.allSettled(Array.from(createdListeners, (listener) => listener(id)));
+        events.emit('server.created', { serverId: id, userId: creator.id, coupon: input.coupon ?? null });
+      }
       return summaryOf(row(id));
     },
     createFromImport: (input, actor, creator) => {

@@ -176,6 +176,8 @@ export const servers = sqliteTable('servers', {
   geyserPublicPort: integer('geyser_public_port'),
   /** Name in front of the NetBird domain ("survival" → survival.example.de); the panel keeps NetBird in sync. */
   netbirdName: text('netbird_name'),
+  /** A hidden server that only holds a downloaded game or server program for new servers to copy (preload). */
+  template: integer('template', { mode: 'boolean' }).notNull().default(false),
   backupSettings: text('backup_settings', { mode: 'json' })
     .$type<BackupSettings>()
     .notNull()

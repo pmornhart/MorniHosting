@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowUpCircle,
   CircleDollarSign,
+  Download,
   ExternalLink,
   Gauge,
   Globe,
@@ -42,6 +43,7 @@ import { PasswordResetCard } from './PasswordResetCard';
 import { UpdateSection } from './UpdateSection';
 import { DdosSection } from './DdosSection';
 import { QuotaSection } from './QuotaSection';
+import { PreloadSection } from './PreloadSection';
 import { TransferSection } from './TransferCard';
 import { PaymentsSection } from './PaymentsSection';
 
@@ -53,6 +55,7 @@ const TABS = [
   { key: 'update', icon: ArrowUpCircle },
   { key: 'ddos', icon: Shield },
   { key: 'quotas', icon: Gauge },
+  { key: 'preload', icon: Download },
   { key: 'payments', icon: CircleDollarSign },
   { key: 'mail', icon: Mail },
   { key: 'passwords', icon: KeyRound },
@@ -398,6 +401,7 @@ export function PanelSettingsPage(): ReactElement {
     update: <UpdateSection />,
     ddos: <DdosSection />,
     quotas: <QuotaSection />,
+    preload: <PreloadSection />,
     mail: (
       <>
         <StalwartCard />
