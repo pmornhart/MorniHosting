@@ -108,6 +108,15 @@ if [[ -f scripts/ddos-guard.sh ]]; then
     msg_error "DDoS-Schutz ließ sich nicht einrichten (Details: sudo ${INSTALL_DIR}/scripts/ddos-guard.sh install)"
   fi
 fi
+# MorniHosting-Wächter: prüft jede Minute NetBird, DNS, Docker, Panel und Platz und repariert selbst.
+if [[ -f scripts/guard.sh ]]; then
+  chmod +x scripts/guard.sh
+  if scripts/guard.sh install >/dev/null; then
+    msg_ok "Wächter eingerichtet (prüft jede Minute)"
+  else
+    msg_error "Wächter ließ sich nicht einrichten (Details: sudo ${INSTALL_DIR}/scripts/guard.sh install)"
+  fi
+fi
 STEP="null"
 write_status "done"
 msg_ok "Fertig. Deine Minecraft-Server sind die ganze Zeit weitergelaufen."

@@ -142,6 +142,10 @@ chmod +x "${INSTALL_DIR}/scripts/ddos-guard.sh"
 "${INSTALL_DIR}/scripts/ddos-guard.sh" install >/dev/null
 msg_ok "DDoS-Schutz bereit: Admin-Bereich → DDoS-Schutz"
 
+# MorniHosting-Wächter: prüft jede Minute NetBird, DNS, Docker, Panel und Platz und repariert selbst.
+chmod +x "${INSTALL_DIR}/scripts/guard.sh"
+"${INSTALL_DIR}/scripts/guard.sh" install >/dev/null && msg_ok "Wächter läuft (prüft jede Minute)"
+
 PORT="$(grep -E '^MH_PANEL_PORT=' .env | cut -d= -f2)"
 printf '\n %s🎉 Fertig!%s Öffne im Browser: %shttp://%s:%s%s\n' "${GN}" "${CL}" "${BL}" "${LAN_IP:-<IP>}" "${PORT:-8080}" "${CL}"
 printf '    Der Einrichtungs-Assistent führt dich durch die ersten Schritte.\n\n'

@@ -1,0 +1,280 @@
+#!/usr/bin/env bash
+# MorniHosting Dauerbetrieb – einmal auf dem PROXMOX-HOST ausführen, danach läuft alles von selbst:
+#
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/main/proxmox/dauerbetrieb.sh)"
+#
+# Was passiert:
+#   Proxmox-Host
+#     • Der MorniHosting-Container startet mit dem Host (onboot, als Erster)
+#     • Genug RAM: wird auf bis zu 32 GB angehoben (höchstens die Hälfte des Hosts), dazu 4 GB Swap
+#     • Host-Wächter (jede Minute): Ist der Container aus, OHNE dass du ihn gestoppt hast → sofort wieder starten.
+#       Hängt er (antwortet 3 Minuten nicht) → neu starten. Stoppst du ihn über Proxmox, bleibt er aus.
+#   Im Container
+#     • Panel auf den neuesten Stand (update)
+#     • Wächter (jede Minute): NetBird, DNS, toter NetBird-Ausgang, Docker, Panel, Speicherplatz
+#     • Docker live-restore: startet Docker neu, laufen die Spielserver weiter
+#     • Panel: Spielserver, die abstürzen, starten von selbst wieder (Dauerbetrieb)
+#
+# Befehle: (ohne) einrichten · status · guard (läuft per Timer) · hostguard (nur Host-Teil) · uninstall
+# Anderer Container: CTID=105 bash -c "$(curl …)"
+set -euo pipefail
+
+COMMAND="${1:-setup}"
+REPO_RAW="https://raw.githubusercontent.com/pmornhart/MorniHosting/main"
+HOST_GUARD="/usr/local/sbin/mornihosting-host-guard"
+UNIT_DIR="/etc/systemd/system"
+CONF_FILE="/etc/mornihosting-host-guard.conf"
+STATE_DIR="/var/lib/mornihosting-host-guard"
+LOG_FILE="/var/log/mornihosting-host-guard.log"
+LOG_KEEP_LINES=500
+TASK_FILES=("/var/log/pve/tasks/active" "/var/log/pve/tasks/index")
+INSTALL_DIR="/opt/mornihosting"
+MAX_MEMORY_MB=32768
+SWAP_MB=4096
+HUNG_RESTART_AFTER=3
+EXEC_TIMEOUT_SECONDS=30
+
+GN=$'\033[1;92m'
+RD=$'\033[01;31m'
+YW=$'\033[33m'
+CL=$'\033[m'
+msg_ok() { printf ' %s✔%s %s\n' "${GN}" "${CL}" "$1"; }
+msg_info() { printf ' %s…%s %s\n' "${YW}" "${CL}" "$1"; }
+msg_error() { printf ' %s✖%s %s\n' "${RD}" "${CL}" "$1"; }
+
+log() {
+  mkdir -p "$(dirname "${LOG_FILE}")"
+  printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >>"${LOG_FILE}"
+  local lines
+  lines="$(wc -l <"${LOG_FILE}")"
+  if ((lines > LOG_KEEP_LINES * 2)); then
+    tail -n "${LOG_KEEP_LINES}" "${LOG_FILE}" >"${LOG_FILE}.tmp" && mv "${LOG_FILE}.tmp" "${LOG_FILE}"
+  fi
+}
+
+need_root_on_proxmox() {
+  [[ ${EUID} -eq 0 ]] || {
+    msg_error "Bitte als root auf dem Proxmox-Host ausführen."
+    exit 1
+  }
+  command -v pct >/dev/null 2>&1 || {
+    msg_error "Kein Proxmox gefunden (pct fehlt). Das Skript gehört auf den Proxmox-Host, nicht in den Container."
+    exit 1
+  }
+}
+
+# Der MorniHosting-Container: CTID aus der Umgebung, sonst der mit dem Namen "mornihosting", sonst 100.
+find_ctid() {
+  if [[ -n "${CTID:-}" ]]; then
+    echo "${CTID}"
+    return
+  fi
+  if [[ -f "${CONF_FILE}" ]]; then
+    # shellcheck disable=SC1090 # eigene Konfigurationsdatei
+    source "${CONF_FILE}"
+    [[ -n "${CTID:-}" ]] && {
+      echo "${CTID}"
+      return
+    }
+  fi
+  local found
+  found="$(pct list 2>/dev/null | awk 'NR > 1 && $NF ~ /^mornihosting/ { print $1; exit }')"
+  echo "${found:-100}"
+}
+
+ct_running() { [[ "$(pct status "$1" 2>/dev/null)" == "status: running" ]]; }
+
+# Hat zuletzt ein Mensch (oder Proxmox auf Wunsch) den Container gestoppt? Dann bleibt er aus.
+# Proxmox schreibt jeden Start/Stopp als Aufgabe: "UPID:knoten:pid:pstart:STARTZEIT:vzstop:100:root@pam: …".
+stopped_on_purpose() {
+  local ctid="$1" newest=0 newest_type="" line type start_hex start
+  for file in "${TASK_FILES[@]}"; do
+    [[ -f "${file}" ]] || continue
+    while IFS= read -r line; do
+      IFS=':' read -r _ _ _ _ start_hex type _ <<<"${line}"
+      start=$((16#${start_hex}))
+      if ((start >= newest)); then
+        newest="${start}"
+        newest_type="${type}"
+      fi
+    done < <(grep -E ":vz(start|stop|shutdown|reboot):${ctid}:" "${file}" 2>/dev/null || true)
+  done
+  # Ein Stopp vor dem letzten Hochfahren des Hosts war das Herunterfahren des Hosts: danach soll er wieder laufen.
+  local boot
+  boot="$(awk '/^btime/ { print $2 }' /proc/stat)"
+  ((newest >= boot)) && [[ "${newest_type}" == "vzstop" || "${newest_type}" == "vzshutdown" ]]
+}
+
+guard() {
+  local ctid
+  ctid="$(find_ctid)"
+  mkdir -p "${STATE_DIR}"
+  local hung_file="${STATE_DIR}/hung-${ctid}"
+  if ! ct_running "${ctid}"; then
+    echo 0 >"${hung_file}"
+    if stopped_on_purpose "${ctid}"; then
+      return 0
+    fi
+    log "Container ${ctid} ist aus, ohne dass ihn jemand gestoppt hat – starte ihn"
+    pct start "${ctid}" >/dev/null 2>&1 || log "Start von ${ctid} ging nicht – nächster Versuch in einer Minute"
+    return 0
+  fi
+  # Läuft er, antwortet aber nicht mehr (hängt)? Nach 3 Minuten wird er neu gestartet.
+  if timeout "${EXEC_TIMEOUT_SECONDS}" pct exec "${ctid}" -- true >/dev/null 2>&1; then
+    echo 0 >"${hung_file}"
+  else
+    local n=0
+    [[ -f "${hung_file}" ]] && n="$(cat "${hung_file}")"
+    n=$((n + 1))
+    echo "${n}" >"${hung_file}"
+    if ((n >= HUNG_RESTART_AFTER)); then
+      log "Container ${ctid} hängt seit ${n} Minuten – starte ihn neu"
+      echo 0 >"${hung_file}"
+      timeout 120 pct reboot "${ctid}" >/dev/null 2>&1 || {
+        pct stop "${ctid}" --skiplock 1 >/dev/null 2>&1 || true
+        pct start "${ctid}" >/dev/null 2>&1 || true
+      }
+    fi
+    return 0
+  fi
+  # Der Wächter im Container muss laufen; fehlt er (alte Installation), wird er eingerichtet.
+  if ! pct exec "${ctid}" -- systemctl is-active --quiet mornihosting-guard.timer 2>/dev/null; then
+    if pct exec "${ctid}" -- test -f "${INSTALL_DIR}/scripts/guard.sh" 2>/dev/null; then
+      log "Wächter im Container ${ctid} lief nicht – eingerichtet"
+      pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" install >/dev/null 2>&1 || true
+    fi
+  fi
+}
+
+install_host_guard() {
+  local ctid="$1"
+  curl -fsSL "${REPO_RAW}/proxmox/dauerbetrieb.sh" -o "${HOST_GUARD}.new"
+  install -m 755 "${HOST_GUARD}.new" "${HOST_GUARD}"
+  rm -f "${HOST_GUARD}.new"
+  printf 'CTID=%s\n' "${ctid}" >"${CONF_FILE}"
+  cat >"${UNIT_DIR}/mornihosting-host-guard.service" <<UNIT
+[Unit]
+Description=MorniHosting: Container ${ctid} am Laufen halten
+After=pve-guests.service
+
+[Service]
+Type=oneshot
+ExecStart=${HOST_GUARD} guard
+UNIT
+  cat >"${UNIT_DIR}/mornihosting-host-guard.timer" <<UNIT
+[Unit]
+Description=MorniHosting Host-Wächter jede Minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=60s
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
+UNIT
+  systemctl daemon-reload
+  systemctl enable --now mornihosting-host-guard.timer >/dev/null
+}
+
+raise_resources() {
+  local ctid="$1" host_mb current target swap
+  host_mb="$(awk '/^MemTotal:/ { print int($2 / 1024) }' /proc/meminfo)"
+  current="$(pct config "${ctid}" | awk '/^memory:/ { print $2 }')"
+  swap="$(pct config "${ctid}" | awk '/^swap:/ { print $2 }')"
+  target=$((host_mb / 2))
+  ((target > MAX_MEMORY_MB)) && target="${MAX_MEMORY_MB}"
+  if [[ -n "${current}" ]] && ((current < target)); then
+    pct set "${ctid}" --memory "${target}" >/dev/null
+    msg_ok "RAM des Containers: ${current} MB → ${target} MB"
+  else
+    msg_ok "RAM des Containers: ${current:-?} MB (passt)"
+  fi
+  if [[ -z "${swap}" ]] || ((swap < SWAP_MB)); then
+    pct set "${ctid}" --swap "${SWAP_MB}" >/dev/null
+    msg_ok "Swap: ${SWAP_MB} MB"
+  fi
+}
+
+setup() {
+  need_root_on_proxmox
+  local ctid
+  ctid="$(find_ctid)"
+  pct config "${ctid}" >/dev/null 2>&1 || {
+    msg_error "Container ${ctid} gibt es nicht. Mit anderer Nummer: CTID=<Nummer> bash -c \"\$(curl …)\""
+    exit 1
+  }
+  printf '\n %sMorniHosting Dauerbetrieb%s für Container %s\n\n' "${GN}" "${CL}" "${ctid}"
+
+  pct set "${ctid}" --onboot 1 --startup order=1,up=30 >/dev/null
+  msg_ok "Startet mit dem Proxmox-Host (als Erster)"
+  raise_resources "${ctid}"
+
+  ct_running "${ctid}" || {
+    msg_info "Container ist aus – starte ihn"
+    pct start "${ctid}"
+    sleep 10
+  }
+
+  msg_info "Panel wird aktualisiert und der Wächter im Container eingerichtet (dauert ein paar Minuten) …"
+  if pct exec "${ctid}" -- bash -c "cd ${INSTALL_DIR} && bash update.sh" >/tmp/mornihosting-update.log 2>&1; then
+    msg_ok "Panel aktuell, Wächter im Container läuft"
+  else
+    msg_error "Update im Container hat nicht geklappt (Protokoll: /tmp/mornihosting-update.log) – der Wächter wird trotzdem eingerichtet"
+    pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" install >/dev/null 2>&1 || true
+  fi
+  pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" check >/dev/null 2>&1 || true
+
+  install_host_guard "${ctid}"
+  msg_ok "Host-Wächter läuft (jede Minute)"
+
+  printf '\n'
+  status_report "${ctid}"
+  printf '\n %sFertig.%s Ab jetzt hält sich alles selbst am Laufen. Stoppst du den Container über Proxmox, bleibt er aus.\n' "${GN}" "${CL}"
+  printf ' Status jederzeit: %s status\n\n' "${HOST_GUARD}"
+}
+
+status_report() {
+  local ctid="$1"
+  printf ' Container %s:  %s\n' "${ctid}" "$(pct status "${ctid}" 2>/dev/null | cut -d' ' -f2)"
+  printf ' Host-Wächter:  %s\n' "$(systemctl is-active mornihosting-host-guard.timer 2>/dev/null || echo aus)"
+  printf ' Mit Host starten: %s\n' "$(pct config "${ctid}" | awk '/^onboot:/ { print ($2 == 1 ? "ja" : "nein") }')"
+  if ct_running "${ctid}"; then
+    printf '\n Im Container:\n'
+    timeout "${EXEC_TIMEOUT_SECONDS}" pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" status 2>/dev/null |
+      sed 's/^/   /' || true
+  fi
+  if [[ -f "${LOG_FILE}" ]]; then
+    printf '\n Letzte Eingriffe auf dem Host:\n'
+    tail -n 5 "${LOG_FILE}" | sed 's/^/   /'
+  fi
+}
+
+case "${COMMAND}" in
+  setup) setup ;;
+  guard)
+    need_root_on_proxmox
+    guard
+    ;;
+  hostguard)
+    # Nur den Host-Teil (vom Proxmox-Installationsskript direkt nach dem Anlegen aufgerufen).
+    need_root_on_proxmox
+    pct set "$(find_ctid)" --onboot 1 --startup order=1,up=30 >/dev/null
+    install_host_guard "$(find_ctid)"
+    msg_ok "Host-Wächter läuft (jede Minute)"
+    ;;
+  status)
+    need_root_on_proxmox
+    status_report "$(find_ctid)"
+    ;;
+  uninstall)
+    systemctl disable --now mornihosting-host-guard.timer >/dev/null 2>&1 || true
+    rm -f "${UNIT_DIR}/mornihosting-host-guard.service" "${UNIT_DIR}/mornihosting-host-guard.timer" "${HOST_GUARD}"
+    systemctl daemon-reload
+    msg_ok "Host-Wächter entfernt"
+    ;;
+  *)
+    msg_error "Unbekannter Befehl: ${COMMAND} (ohne Befehl einrichten, status, guard, uninstall)"
+    exit 2
+    ;;
+esac
