@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import type { ReactElement } from 'react';
+import { Suspense, type ReactElement } from 'react';
 import { createBrowserRouter, createMemoryRouter, RouterProvider } from 'react-router';
 import { Toaster } from 'sonner';
 import { TooltipProvider } from '@/components/ui/misc';
@@ -11,6 +11,11 @@ import { SetupPage } from '@/features/auth/SetupPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { AppShell } from '@/features/shell/AppShell';
 import { appRoutes } from './routes';
+import { lazyPage } from '@/lib/lazy-page';
+
+const PublicStatsPage = lazyPage(async () => ({
+  default: (await import('@/features/public/PublicStatsPage')).PublicStatsPage,
+}));
 
 /** The demo runs inside a frame where the address bar cannot change, so it keeps its route in memory. */
 const createRouter = import.meta.env.MODE === 'demo' ? createMemoryRouter : createBrowserRouter;
@@ -22,6 +27,15 @@ const router = createRouter([
   { path: '/forgot', element: <ForgotPage /> },
   { path: '/reset', element: <ResetPage /> },
   { path: '/verify', element: <VerifyPage /> },
+  // Public statistics page of a server (Craft Attack): no login.
+  {
+    path: '/stats/:slug',
+    element: (
+      <Suspense fallback={null}>
+        <PublicStatsPage />
+      </Suspense>
+    ),
+  },
   {
     element: <AuthGate />,
     children: [

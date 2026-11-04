@@ -135,7 +135,7 @@ const topCounts = (group: Readonly<Record<string, number>> | undefined): StatCou
     .sort((a, b) => b.count - a.count)
     .slice(0, TOP_STATS);
 
-function travelOf(custom: Readonly<Record<string, number>>): PlayerTravel {
+export function travelOf(custom: Readonly<Record<string, number>>): PlayerTravel {
   const blocks = (...keys: string[]): number =>
     Math.round(keys.reduce((sum, k) => sum + (custom[`minecraft:${k}`] ?? 0), 0) / CM_PER_BLOCK);
   const walk = blocks('walk_one_cm', 'walk_on_water_one_cm', 'walk_under_water_one_cm', 'climb_one_cm');
@@ -155,7 +155,7 @@ function travelOf(custom: Readonly<Record<string, number>>): PlayerTravel {
 }
 
 /** Log files newest first: latest.log, then the rotated ones by date and number. */
-function logFiles(logDir: string): { file: string; date: string }[] {
+export function logFiles(logDir: string): { file: string; date: string }[] {
   const names = (() => {
     try {
       return fs.readdirSync(logDir);
@@ -183,7 +183,7 @@ function logFiles(logDir: string): { file: string; date: string }[] {
   return [...(latestDate ? [{ file: latest, date: latestDate }] : []), ...rotated].slice(0, LOG_FILES_MAX);
 }
 
-function readLog(file: string): string {
+export function readLog(file: string): string {
   try {
     const data = fs.readFileSync(file);
     const text = file.endsWith('.gz') ? zlib.gunzipSync(data, { maxOutputLength: LOG_BYTES_MAX }) : data;

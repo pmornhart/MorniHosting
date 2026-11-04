@@ -675,7 +675,11 @@
     "preload_running": "Already loading.",
     "preload_unknown": "This game cannot be preloaded.",
     "host_memory_full": "Not enough memory is free for this server: it needs {{need}} MB, {{free}} MB are free (the machine has {{total}} MB). Give it less RAM, stop another server or give the machine more RAM.",
-    "host_disk_full": "Only {{free}} MB are free on the machine. Delete old backups or files before servers start, otherwise worlds cannot save."
+    "host_disk_full": "Only {{free}} MB are free on the machine. Delete old backups or files before servers start, otherwise worlds cannot save.",
+    "public_stats_java_only": "The statistics page is only for Minecraft Java.",
+    "public_stats_slug_taken": "Another server already uses /stats/{{slug}}.",
+    "public_stats_unknown": "This statistics page does not exist.",
+    "craft_attack_software": "Craft Attack only works with Paper or Purpur."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -2159,7 +2163,10 @@
       "appliedTitle": "Voucher “{{code}}” redeemed!",
       "appliedText": "From now on you pay {{payee}} {{price}} a month for this server, directly to {{payee}}.",
       "paid": "€9,999.99 / month"
-    }
+    },
+    "craftAttack": "Craft Attack",
+    "craftAttackText": "A ready friends’ server: spawn with fountain and decoration, /spawn, /home and /tpa (EssentialsX), whitelist, pre-generated world and a public statistics page. The panel picks a version the plugins support.",
+    "craftAttackSoftware": "Only with Paper or Purpur."
   },
   "version": {
     "title": "Minecraft version",
@@ -3037,7 +3044,9 @@
       "geyser": "Geyser for Bedrock players + ViaVersion",
       "voice": "Simple Voice Chat",
       "backups": "Daily backup at 04:00",
-      "start": "First start (creating the world)"
+      "start": "First start (creating the world)",
+      "craftattack": "Craft Attack: plugins, settings, spawn",
+      "pregen": "Generate the world around the spawn"
     }
   },
   "preload": {
@@ -3067,5 +3076,33 @@
     "allBusy": "Loading … ({{count}} left)",
     "updateAll": "Update all ({{count}})",
     "newVersion": "New: {{version}}"
+  },
+  "publicStats": {
+    "cardTitle": "Public statistics page",
+    "cardText": "A page to share, no login needed: who is online, who plays the most, who died how often and of what.",
+    "open": "Open",
+    "missing": "This page does not exist",
+    "missingText": "The server switched its statistics page off or the link is wrong.",
+    "online": "Online · {{online}}/{{max}}",
+    "offline": "Offline right now",
+    "join": "Join:",
+    "players": "Players",
+    "playTime": "Play time together",
+    "deaths": "Deaths",
+    "kills": "Kills",
+    "blocks": "blocks",
+    "boards": {
+      "playTime": "Most play time",
+      "deaths": "Most deaths",
+      "kills": "Most kills",
+      "distance": "Longest distance"
+    },
+    "empty": "No numbers yet.",
+    "feed": "Latest deaths",
+    "noDeaths": "Nobody has died yet.",
+    "everyone": "All players",
+    "playingNow": "Playing now",
+    "lastSeen": "Last seen {{when}}",
+    "updated": "Updated {{when}} · refreshes by itself"
   }
 }

@@ -675,7 +675,11 @@
     "preload_running": "Wird gerade schon geladen.",
     "preload_unknown": "Dieses Spiel lässt sich nicht vorladen.",
     "host_memory_full": "Für diesen Server ist nicht genug Arbeitsspeicher frei: er braucht {{need}} MB, frei sind {{free}} MB (der Rechner hat {{total}} MB). Gib ihm weniger RAM, stoppe einen anderen Server oder gib dem Rechner mehr RAM.",
-    "host_disk_full": "Auf dem Rechner sind nur noch {{free}} MB frei. Lösche alte Backups oder Dateien, bevor Server starten, sonst können Welten nicht mehr speichern."
+    "host_disk_full": "Auf dem Rechner sind nur noch {{free}} MB frei. Lösche alte Backups oder Dateien, bevor Server starten, sonst können Welten nicht mehr speichern.",
+    "public_stats_java_only": "Die Statistik-Seite gibt es nur für Minecraft Java.",
+    "public_stats_slug_taken": "Die Adresse /stats/{{slug}} hat schon ein anderer Server.",
+    "public_stats_unknown": "Diese Statistik-Seite gibt es nicht.",
+    "craft_attack_software": "Craft Attack geht nur mit Paper oder Purpur."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -2159,7 +2163,10 @@
       "appliedTitle": "Gutschein „{{code}}“ eingelöst!",
       "appliedText": "Ab jetzt zahlst du {{payee}} {{price}} im Monat für diesen Server. Bezahlt wird direkt bei {{payee}}.",
       "paid": "9.999,99 € / Monat"
-    }
+    },
+    "craftAttack": "Craft Attack",
+    "craftAttackText": "Fertiger Freunde-Server: Spawn mit Brunnen und Deko, /spawn, /home und /tpa (EssentialsX), Whitelist, vorgenerierte Welt und eine öffentliche Statistik-Seite. Die Version passt das Panel an die Plugins an.",
+    "craftAttackSoftware": "Nur mit Paper oder Purpur."
   },
   "version": {
     "title": "Minecraft-Version",
@@ -3037,7 +3044,9 @@
       "geyser": "Geyser für Bedrock-Spieler + ViaVersion",
       "voice": "Simple Voice Chat",
       "backups": "Tägliches Backup um 04:00",
-      "start": "Erster Start (Welt wird erstellt)"
+      "start": "Erster Start (Welt wird erstellt)",
+      "craftattack": "Craft Attack: Plugins, Einstellungen, Spawn",
+      "pregen": "Welt um den Spawn vorgenerieren"
     }
   },
   "preload": {
@@ -3067,5 +3076,33 @@
     "allBusy": "Lädt … (noch {{count}})",
     "updateAll": "Alle aktualisieren ({{count}})",
     "newVersion": "Neu: {{version}}"
+  },
+  "publicStats": {
+    "cardTitle": "Öffentliche Statistik-Seite",
+    "cardText": "Eine Seite ohne Anmeldung zum Teilen: wer online ist, wer am meisten spielt, wer wie oft gestorben ist und woran.",
+    "open": "Öffnen",
+    "missing": "Diese Seite gibt es nicht",
+    "missingText": "Der Server hat seine Statistik-Seite ausgeschaltet oder der Link ist falsch.",
+    "online": "Online · {{online}}/{{max}}",
+    "offline": "Gerade aus",
+    "join": "Verbinden:",
+    "players": "Spieler",
+    "playTime": "Spielzeit zusammen",
+    "deaths": "Tode",
+    "kills": "Kills",
+    "blocks": "Blöcke",
+    "boards": {
+      "playTime": "Meiste Spielzeit",
+      "deaths": "Meiste Tode",
+      "kills": "Meiste Kills",
+      "distance": "Weiteste Strecke"
+    },
+    "empty": "Noch keine Werte.",
+    "feed": "Letzte Tode",
+    "noDeaths": "Bisher ist niemand gestorben.",
+    "everyone": "Alle Spieler",
+    "playingNow": "Spielt gerade",
+    "lastSeen": "Zuletzt {{when}}",
+    "updated": "Aktualisiert {{when}} · aktualisiert sich von selbst"
   }
 }

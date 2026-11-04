@@ -203,10 +203,10 @@ export const cpuLimitSchema = z.number().min(CPU_LIMIT_STEP).max(CPU_LIMIT_MAX).
 export const diskLimitSchema = z.number().int().min(DISK_LIMIT_MIN_MB).max(DISK_LIMIT_MAX_MB);
 
 /** Extras someone can tick when ordering a Minecraft server. */
-export const ADD_ON_KEYS = ['geyser', 'voice', 'backups'] as const;
+export const ADD_ON_KEYS = ['geyser', 'voice', 'backups', 'craftattack'] as const;
 export type AddOnKey = (typeof ADD_ON_KEYS)[number];
 /** What happens after an order, in this order: plugins load, add-ons get set up, the server starts the first time. */
-export const SETUP_STEPS = ['download', ...ADD_ON_KEYS, 'start'] as const;
+export const SETUP_STEPS = ['download', ...ADD_ON_KEYS, 'start', 'pregen'] as const;
 export type SetupStep = (typeof SETUP_STEPS)[number];
 export interface SetupProgress {
   readonly pending: readonly SetupStep[];
@@ -236,6 +236,8 @@ export const createServerSchema = z.object({
       geyser: z.boolean().default(false),
       voice: z.boolean().default(false),
       backups: z.boolean().default(false),
+      /** Craft Attack package (Paper/Purpur): plugins, settings, spawn, public statistics. */
+      craftattack: z.boolean().default(false),
     })
     .optional(),
   /** Voucher from the order page ("MORNI"); unknown codes are refused. */

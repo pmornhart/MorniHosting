@@ -8,6 +8,7 @@ import type { ScheduleService } from '../schedules/service.js';
 import type { ServerService } from '../servers/service.js';
 import type { VoiceChatService } from '../voicechat/service.js';
 import type { NotifyService } from '../notify/service.js';
+import type { CraftAttackService } from '../craftattack/service.js';
 import { MS_PER_HOUR } from '../lib/units.js';
 
 /**
@@ -55,9 +56,10 @@ export function createOrderService(
     readonly voice: VoiceChatService;
     readonly schedules: ScheduleService;
     readonly notify?: NotifyService;
+    readonly craftAttack?: CraftAttackService;
   },
 ): OrderService {
-  const { servers, geyser, voice, schedules, notify } = deps;
+  const { servers, geyser, voice, schedules, notify, craftAttack } = deps;
 
   /** The person who ordered hears on Discord (and by mail, if wished) as soon as the new server is online. */
   const tellOnline = (serverId: string, creator: UserRow): void => {
@@ -143,13 +145,27 @@ export function createOrderService(
           ),
       },
       {
+        key: 'craftattack',
+        on: addOns?.craftattack === true && craftAttack !== undefined,
+        label: 'Craft Attack (EssentialsX, /spawn, Spawn-Platz, Statistik-Seite)',
+        run: async () => craftAttack?.setUp(serverId, actor),
+      },
+      {
         key: 'start',
-        on: input.startNow === true,
+        on: input.startNow === true || addOns?.craftattack === true,
         label: 'Erster Start',
         run: async () => {
           const over = firstStartOver(serverId);
           await servers.start(serverId, actor);
           await over;
+        },
+      },
+      {
+        key: 'pregen',
+        on: addOns?.craftattack === true && craftAttack !== undefined,
+        label: 'Welt um den Spawn vorgenerieren',
+        run: async () => {
+          if (servers.live(serverId).state === 'running') await craftAttack?.pregenerate(serverId);
         },
       },
     ];
@@ -162,7 +178,7 @@ export function createOrderService(
     show(0);
     await chosen.reduce(async (previous, step, index) => {
       await previous;
-      if (step.key !== 'download' && step.key !== 'start')
+      if (step.key !== 'download' && step.key !== 'start' && step.key !== 'pregen')
         servers.note(serverId, `Richte ${step.label} ein …`);
       try {
         await step.run();
@@ -178,8 +194,15 @@ export function createOrderService(
     tellOnline(serverId, creator);
   };
 
-  const create: OrderService['create'] = async (input, actor, creator) => {
-    const wanted = input.addOns && (input.addOns.geyser || input.addOns.voice || input.addOns.backups);
+  const create: OrderService['create'] = async (rawInput, actor, creator) => {
+    // Craft Attack needs a version its plugins support: the newest one that fits.
+    const input =
+      rawInput.addOns?.craftattack && craftAttack
+        ? { ...rawInput, version: await craftAttack.fitVersion(rawInput.software, rawInput.version) }
+        : rawInput;
+    const wanted =
+      input.addOns &&
+      (input.addOns.geyser || input.addOns.voice || input.addOns.backups || input.addOns.craftattack);
     if (!wanted && !input.startNow) return servers.create(input, actor, creator);
     const summary = await servers.create({ ...input, startNow: false }, actor, creator);
     // Ticked at the order = switched on right away; the setup below fills in plugins and ports.
