@@ -3075,7 +3075,11 @@
     "allDone": "Everything loaded",
     "allBusy": "Loading … ({{count}} left)",
     "updateAll": "Update all ({{count}})",
-    "newVersion": "New: {{version}}"
+    "newVersion": "New: {{version}}",
+    "removeAll": "Remove all ({{count}})",
+    "removeAllTitle": "Remove all preloaded games?",
+    "removeAllText": "{{count}} preloaded games are deleted and free their disk space. Your servers stay as they are. New servers download the games again themselves.",
+    "removedAll": "All preloaded games removed"
   },
   "publicStats": {
     "cardTitle": "Public statistics page",

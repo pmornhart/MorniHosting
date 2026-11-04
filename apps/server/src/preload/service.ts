@@ -76,6 +76,8 @@ export interface PreloadService {
   /** Loads every downloaded game again that has a newer version; returns how many were queued. */
   readonly updateAll: (admin: UserRow) => number;
   readonly remove: (software: SoftwareId) => Promise<void>;
+  /** Removes every downloaded game that is not loading right now; returns how many. */
+  readonly removeAll: () => Promise<number>;
 }
 
 const editionOf = (software: SoftwareId): Edition =>
@@ -303,6 +305,16 @@ export function createPreloadService(ctx: AppContext, servers: ServerService): P
   const timer = setInterval(() => void keepCurrent(), UPDATE_CHECK_MS);
   timer.unref();
 
+  const removeOne = async (software: SoftwareId): Promise<void> => {
+    const job = jobs.get(software);
+    if (job?.running || job?.queued) throw conflict('preload_running');
+    const template = templateOf(software);
+    if (template) await servers.remove(template.id, true, SYSTEM_ACTOR);
+    const { [software]: _gone, ...rest } = done();
+    ctx.settings.setValue(SETTINGS_KEY, rest);
+    jobs.delete(software);
+  };
+
   return {
     list,
     start: (software, admin) => {
@@ -320,14 +332,14 @@ export function createPreloadService(ctx: AppContext, servers: ServerService): P
         .filter((item) => item.state === 'none' || item.state === 'failed')
         .forEach((item) => enqueue(item.software, admin));
     },
-    remove: async (software) => {
-      const job = jobs.get(software);
-      if (job?.running || job?.queued) throw conflict('preload_running');
-      const template = templateOf(software);
-      if (template) await servers.remove(template.id, true, SYSTEM_ACTOR);
-      const { [software]: _gone, ...rest } = done();
-      ctx.settings.setValue(SETTINGS_KEY, rest);
-      jobs.delete(software);
+    remove: removeOne,
+    removeAll: async () => {
+      const finished = listNow().filter((item) => item.state === 'ready' || item.state === 'failed');
+      await finished.reduce(async (previous, item) => {
+        await previous;
+        await removeOne(item.software);
+      }, Promise.resolve());
+      return finished.length;
     },
   };
 }
