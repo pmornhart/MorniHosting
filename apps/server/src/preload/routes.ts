@@ -32,6 +32,12 @@ export function registerPreloadRoutes(app: Api, preload: PreloadService): void {
     return reply.code(HTTP_ACCEPTED).send(preload.list());
   });
 
+  app.delete('/api/preload', async (request, reply) => {
+    requireAdmin(request);
+    await preload.removeAll();
+    return reply.code(HTTP_NO_CONTENT).send();
+  });
+
   app.delete('/api/preload/:software', { schema: { params } }, async (request, reply) => {
     requireAdmin(request);
     await preload.remove(request.params.software);

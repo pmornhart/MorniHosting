@@ -61,6 +61,15 @@ describe('preloading games in the admin area', () => {
     expect((await item('factorio'))?.mode).toBe('image');
     expect((await call('DELETE', '/api/preload/factorio')).statusCode).toBe(204);
     expect((await item('factorio'))?.state).toBe('none');
+    // "Remove all" clears every finished download at once.
+    await call('POST', '/api/preload/factorio');
+    await call('POST', '/api/preload/bedrock');
+    await waitFor(
+      async () => (await item('bedrock'))?.state === 'ready' && (await item('factorio'))?.state === 'ready',
+    );
+    expect((await call('DELETE', '/api/preload')).statusCode).toBe(204);
+    expect((await item('factorio'))?.state).toBe('none');
+    expect((await item('bedrock'))?.state).toBe('none');
   });
 
   test('"download all" queues every game; they load one after another', async () => {

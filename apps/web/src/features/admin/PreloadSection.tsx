@@ -11,10 +11,11 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react';
-import type { ReactElement } from 'react';
+import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { SOFTWARE, isGameId, type PreloadItem, type PreloadState } from '@mornihosting/shared';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { DownloadInfo } from '@/components/download-info';
 import { SoftwareLogo } from '@/components/software-logo';
 import { Button } from '@/components/ui/button';
@@ -111,14 +112,22 @@ function PreloadCard({ item }: { item: PreloadItem }): ReactElement {
             </Button>
           </>
         ) : (
-          <Button
-            size="sm"
-            onClick={() => start.mutate()}
-            disabled={item.state === 'loading' || item.state === 'queued' || start.isPending}
-          >
-            <Download aria-hidden />
-            {item.state === 'failed' ? t('preload.retry') : t('preload.download')}
-          </Button>
+          <>
+            <Button
+              size="sm"
+              onClick={() => start.mutate()}
+              disabled={item.state === 'loading' || item.state === 'queued' || start.isPending}
+            >
+              <Download aria-hidden />
+              {item.state === 'failed' ? t('preload.retry') : t('preload.download')}
+            </Button>
+            {item.state === 'failed' ? (
+              <Button size="sm" variant="ghost" onClick={() => remove.mutate()} disabled={remove.isPending}>
+                <Trash2 aria-hidden />
+                {t('preload.remove')}
+              </Button>
+            ) : null}
+          </>
         )}
       </div>
     </Card>
@@ -147,6 +156,16 @@ export function PreloadSection(): ReactElement {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
     onError: (err) => toast.error(errorText(err)),
   });
+  const [confirmAll, setConfirmAll] = useState(false);
+  const removeAll = useMutation({
+    mutationFn: () => api('/api/preload', { method: 'DELETE' }),
+    onSuccess: async () => {
+      toast.success(t('preload.removedAll'));
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+    onError: (err) => toast.error(errorText(err)),
+  });
+  const removable = data?.filter((i) => i.state === 'ready' || i.state === 'failed').length ?? 0;
   const outdated = data?.filter((i) => i.newVersion !== null).length ?? 0;
   const missing = data?.filter((i) => i.state === 'none' || i.state === 'failed').length ?? 0;
   const busy = data?.filter((i) => i.state === 'loading' || i.state === 'queued').length ?? 0;
@@ -173,11 +192,27 @@ export function PreloadSection(): ReactElement {
             {t('preload.updateAll', { count: outdated })}
           </Button>
         ) : null}
+        {removable ? (
+          <Button variant="ghost" onClick={() => setConfirmAll(true)} disabled={removeAll.isPending}>
+            <Trash2 aria-hidden />
+            {t('preload.removeAll', { count: removable })}
+          </Button>
+        ) : null}
         <Button onClick={() => all.mutate()} disabled={!missing || all.isPending}>
           <DownloadCloud aria-hidden />
           {allLabel()}
         </Button>
       </div>
+      <ConfirmDialog
+        open={confirmAll}
+        onOpenChange={setConfirmAll}
+        title={t('preload.removeAllTitle')}
+        description={t('preload.removeAllText', { count: removable })}
+        confirmLabel={t('preload.removeAll', { count: removable })}
+        onConfirm={async () => {
+          await removeAll.mutateAsync();
+        }}
+      />
       {data ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {data.map((item) => (

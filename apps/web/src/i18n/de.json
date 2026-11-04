@@ -3075,7 +3075,11 @@
     "allDone": "Alles geladen",
     "allBusy": "Lädt … (noch {{count}})",
     "updateAll": "Alle aktualisieren ({{count}})",
-    "newVersion": "Neu: {{version}}"
+    "newVersion": "Neu: {{version}}",
+    "removeAll": "Alle entfernen ({{count}})",
+    "removeAllTitle": "Alle vorgeladenen Spiele entfernen?",
+    "removeAllText": "{{count}} vorgeladene Spiele werden gelöscht und geben ihren Speicherplatz frei. Deine Server bleiben, wie sie sind. Neue Server laden die Spiele dann wieder selbst herunter.",
+    "removedAll": "Alle vorgeladenen Spiele entfernt"
   },
   "publicStats": {
     "cardTitle": "Öffentliche Statistik-Seite",
