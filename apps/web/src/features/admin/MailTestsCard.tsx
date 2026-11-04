@@ -30,6 +30,11 @@ import { formatRelative, formatTime } from '@/lib/format';
 import { errorText } from '@/lib/query';
 import { useSession } from '@/features/auth/session';
 
+// The panel did not reach its own mail server at all (no login problem): "connect EHOSTUNREACH 10.0.0.5:465",
+// "connect ECONNREFUSED …", "ETIMEDOUT", "getaddrinfo ENOTFOUND mail.example.org" match; "535 Authentication failed" does not.
+// https://regex101.com/?flavor=javascript&regex=EHOSTUNREACH%7CECONNREFUSED%7CETIMEDOUT%7CENOTFOUND%7CENETUNREACH%7CEAI_AGAIN&testString=connect%20EHOSTUNREACH%2010.0.0.5%3A465%0A535%20Authentication%20failed
+const UNREACHABLE = /EHOSTUNREACH|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|ENETUNREACH|EAI_AGAIN/;
+
 const testsKey = ['mail-tests'] as const;
 /** While a test is still under way the list follows along. */
 const REFRESH_MS = 5000;
@@ -90,7 +95,13 @@ function RecipientRow({
         <span className="ml-6 break-words font-mono text-xs text-muted-foreground">{recipient.detail}</span>
       ) : null}
       {['retrying', 'rejected', 'failed'].includes(recipient.state) ? (
-        <span className="ml-6 text-[13px]">{t(`mailTests.tips.${recipient.state}`)}</span>
+        <span className="ml-6 text-[13px]">
+          {t(
+            recipient.state === 'failed' && UNREACHABLE.test(recipient.detail ?? '')
+              ? 'mailTests.tips.unreachable'
+              : `mailTests.tips.${recipient.state}`,
+          )}
+        </span>
       ) : null}
     </li>
   );
