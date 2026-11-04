@@ -31,3 +31,30 @@ pct exec 100 -- tail /var/log/mornihosting-guard.log   # Eingriffe im Container
 ```
 
 Entfernen: `mornihosting-host-guard uninstall` (Host) bzw. `bash /opt/mornihosting/scripts/guard.sh uninstall` (Container).
+
+## Meldungen an dich (Discord + Mail)
+
+Alles, was schiefgeht, kommt sofort als Discord-Nachricht an die Admins (und per Mail, wenn unter
+Mein Konto → Benachrichtigungen eingeschaltet). Jede Meldung sagt: **was los ist**, **ob es sich von selbst behebt**
+und – wenn nicht – **was du tun musst**, mit dem fertigen Befehl. Ist es wieder gut, kommt eine Entwarnung.
+
+Gemeldet werden u. a.: Container neu gestartet oder hängt (Proxmox-Host), NetBird getrennt / verbindet sich nicht,
+Hausanschluss nicht mehr versteckt, DNS repariert, Docker oder Panel neu gestartet, Festplatte fast voll, ein
+Spielserver startet nicht wieder (z. B. zu wenig RAM), Backup fehlgeschlagen, NetBird von selbst repariert (neue
+Rechner-ID übernommen, Reste gelöschter Server entfernt). Gleiche Meldungen kommen höchstens alle 30 Minuten.
+
+Die Wächter schreiben ihre Ereignisse nach `<Datenvolume>/guard/events.jsonl`; das Panel liest sie alle 10 Sekunden
+(auch die, die entstanden sind, während das Panel aus war).
+
+## Hausanschluss verstecken – den Ausgang einrichten
+
+Einmal auf dem NetBird-Server (dem Ausgang) als root:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/main/scripts/netbird-exit-node.sh)"
+```
+
+Erlaubt das Weiterleiten, öffnet die Firewall für NetBird-Verkehr (auch wenn Docker die FORWARD-Kette sperrt), mit NAT,
+und prüft das alle 2 Minuten. Der Wächter im MorniHosting-Container schaltet den Ausgang danach von selbst wieder ein
+(alle 10 Minuten ein Versuch; kommt kein Internet durch, sofort wieder aus – fremde Ausgänge wie „Mailserver Ausgang“
+fasst er nicht an).

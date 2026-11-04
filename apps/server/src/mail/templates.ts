@@ -43,7 +43,9 @@ export type MailKind =
   | 'account_rejected'
   | 'request_new'
   | 'request_approved'
-  | 'request_rejected';
+  | 'request_rejected'
+  | 'alert'
+  | 'alert_ok';
 
 const EMERALD = '#10b981';
 const EMERALD_DEEP = '#065f46';
@@ -73,6 +75,8 @@ const LOOK: Readonly<Record<MailKind, { readonly icon: string; readonly warn?: b
   request_new: { icon: '🖥️' },
   request_approved: { icon: '🚀' },
   request_rejected: { icon: '🚫', warn: true },
+  alert: { icon: '🚨', warn: true },
+  alert_ok: { icon: '✅' },
 };
 
 /** Mail apps that know dark mode (Apple Mail, Outlook app) switch colours through these classes. */
@@ -301,6 +305,22 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
       ],
       ...(v.link ? { button: { label: 'Server öffnen', url: v.link } } : {}),
     }),
+    alert: (v) => ({
+      subject: `⚠️ ${v['title'] ?? 'Problem bei MorniHosting'}`,
+      heading: v['title'] ?? 'Problem bei MorniHosting',
+      paragraphs: [hi.de(v.name), v['what'] ?? ''].filter(Boolean),
+      rows: [
+        ['Behebt sich selbst?', v['status'] ?? ''],
+        ['Du musst', v['action'] ?? ''],
+        ['Zeitpunkt', v['when'] ?? ''],
+      ].filter(([, value]) => value) as [string, string][],
+      ...(v['command'] ? { highlight: { label: 'Befehl zum Einfügen', value: v['command'] } } : {}),
+    }),
+    alert_ok: (v) => ({
+      subject: `✅ ${v['title'] ?? 'Wieder in Ordnung'}`,
+      heading: v['title'] ?? 'Wieder in Ordnung',
+      paragraphs: [hi.de(v.name), v['what'] ?? ''].filter(Boolean),
+    }),
     server_crashed: (v) => ({
       subject: `Server „${v['server'] ?? ''}“ ist abgestürzt`,
       heading: 'Ein Server ist abgestürzt',
@@ -455,6 +475,22 @@ const COPY: Readonly<Record<Locale, Readonly<Record<MailKind, Copy>>>> = {
         ['Ordered on', v['when'] ?? ''],
       ],
       ...(v.link ? { button: { label: 'Open server', url: v.link } } : {}),
+    }),
+    alert: (v) => ({
+      subject: `⚠️ ${v['title'] ?? 'Problem with MorniHosting'}`,
+      heading: v['title'] ?? 'Problem with MorniHosting',
+      paragraphs: [hi.en(v.name), v['what'] ?? ''].filter(Boolean),
+      rows: [
+        ['Fixes itself?', v['status'] ?? ''],
+        ['You need to', v['action'] ?? ''],
+        ['Time', v['when'] ?? ''],
+      ].filter(([, value]) => value) as [string, string][],
+      ...(v['command'] ? { highlight: { label: 'Command to paste', value: v['command'] } } : {}),
+    }),
+    alert_ok: (v) => ({
+      subject: `✅ ${v['title'] ?? 'Back to normal'}`,
+      heading: v['title'] ?? 'Back to normal',
+      paragraphs: [hi.en(v.name), v['what'] ?? ''].filter(Boolean),
     }),
     server_crashed: (v) => ({
       subject: `Server “${v['server'] ?? ''}” crashed`,

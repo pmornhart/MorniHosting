@@ -63,6 +63,8 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
   const services = new Map<string, FakeService>();
   const networks: { id: string; name: string }[] = [];
   const groups: { id: string; name: string; peers?: string[] }[] = [];
+  /** The panel's machine; connected again in NetBird it gets a new id. */
+  const machine = { id: PEER.id };
   const routes = new Map<string, Record<string, unknown> & { id: string }>();
   const routers: { network: string; peer: string }[] = [];
   const resources = new Map<string, FakeResource>();
@@ -86,7 +88,7 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
     const net = url.pathname.split('/');
     if (url.pathname === '/api/peers')
       return Response.json([
-        { ...PEER, connection_ip: HOME_IP },
+        { ...PEER, id: machine.id, connection_ip: HOME_IP },
         { ...PEER, id: 'peer-laptop', name: 'laptop' },
         { ...EXIT_PEER, connection_ip: EXIT_IP },
       ]);
@@ -218,6 +220,7 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
     return Response.json({ message: 'not found' }, { status: 404 });
   };
   return {
+    machine,
     services,
     routes,
     networks,
@@ -736,5 +739,18 @@ describe('NetBird automation', () => {
     await call('PUT', '/api/netbird/exit', { enabled: false });
     expect(netbird.routes.size).toBe(0);
     expect(netbird.groups.some((g) => g.name === 'MorniHosting Ausgang')).toBe(false);
+  });
+  test('the machine gets a new NetBird id: the panel moves over by itself and tidies leftovers', async () => {
+    await configure();
+    const server = await create({ netbirdName: 'survival' });
+    await waitFor(() => netbird.byDomain(`survival.${BASE}`) !== undefined);
+    netbird.machine.id = 'peer-mh-new';
+    const healed = await t.netbird.heal();
+    expect(healed?.peerMoved).toBe('mornihosting');
+    // The server's address now points at the machine under its new id.
+    expect(netbird.byDomain(`survival.${BASE}`)?.targets[0]?.target_id).toBe('peer-mh-new');
+    // All fine now: nothing more to repair.
+    expect(await t.netbird.heal()).toBeNull();
+    expect(server.id).toBeTruthy();
   });
 });

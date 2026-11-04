@@ -101,6 +101,15 @@ export interface NetbirdAutomation {
     actor: Actor,
   ) => Promise<NetbirdServerInfo | null>;
   readonly setupPanel: (input: { name: string; port: number }, actor: Actor) => Promise<NetbirdStatus>;
+  /**
+   * Self-repair (at start and every few minutes): the panel's machine was connected again and got a new id in
+   * NetBird → take it over and move everything to it; resources of deleted servers are removed.
+   * Returns what was repaired (for the alert), or null when all was fine.
+   */
+  readonly heal: () => Promise<{
+    readonly peerMoved: string | null;
+    readonly removed: readonly string[];
+  } | null>;
 }
 
 export function createNetbirdAutomation(
@@ -525,8 +534,45 @@ export function createNetbirdAutomation(
       if (moveToResources) saveConfig({ resourceMode: true });
     })();
 
+  const heal: NetbirdAutomation['heal'] = async () => {
+    const cfg = config();
+    if (!cfg) return null;
+    const client = clientFor(cfg);
+    const peers = await client.peers();
+    const peerMoved = await (async (): Promise<string | null> => {
+      if (peers.some((p) => p.id === cfg.peerId)) return null;
+      const same =
+        peers.find((p) => p.name === cfg.peerName) ??
+        peers.find((p) => `${p.name} ${p.hostname}`.toLowerCase().includes(MACHINE_HINT));
+      if (!same) return null;
+      saveConfig({ peerId: same.id, peerName: same.name });
+      ctx.log.warn({ from: cfg.peerId, to: same.id }, 'NetBird machine has a new id, moved over');
+      const moved = config() ?? cfg;
+      if (lanAddress()) await ensureNetwork(client, moved);
+      await Promise.allSettled(namedServers().map((r) => syncQuietly(r.id, true)));
+      return same.name;
+    })();
+    const current = config() ?? cfg;
+    const removed = current.networkId
+      ? await (async (): Promise<string[]> => {
+          const networkId = current.networkId ?? '';
+          const wanted = new Set([
+            `${NETWORK_NAME} Panel`,
+            ...namedServers().map((r) => `${NETWORK_NAME} ${r.netbirdName ?? ''}`),
+          ]);
+          const stale = (await client.resources(networkId)).filter(
+            (r) => r.name.startsWith(`${NETWORK_NAME} `) && !wanted.has(r.name),
+          );
+          await Promise.allSettled(stale.map((r) => client.deleteResource(networkId, r.id)));
+          return stale.map((r) => r.name);
+        })()
+      : [];
+    return peerMoved || removed.length ? { peerMoved, removed } : null;
+  };
+
   return {
     status,
+    heal,
     discover: async (input) => {
       const client = clientFromInput(input);
       const [domains, peers] = await Promise.all([client.domains(), client.peers()]);
