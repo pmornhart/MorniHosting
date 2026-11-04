@@ -252,6 +252,7 @@ export function createMailService(
     } catch (err) {
       note({ channel: 'mail', to, subject: message.subject, ok: false, detail: errorMessage(err) });
       log.warn({ err, kind }, 'mail could not be sent');
+      ctx.events.emit('mail.failed', { error: errorMessage(err) });
       throw badRequest('mail_failed', { message: oneLine(errorMessage(err)).slice(0, SMTP_ERROR_MAX) });
     }
   };

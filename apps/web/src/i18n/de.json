@@ -2813,7 +2813,8 @@
     "tips": {
       "retrying": "Der Server des Empfängers hat die Mail noch nicht genommen. Stalwart versucht es von selbst wieder. Steht hier ein Zertifikats- oder Verbindungsfehler, liegt es meist am Weg nach draußen (Port 25, Weiterleitung).",
       "rejected": "Der Server des Empfängers hat die Mail abgelehnt. Der Grund steht oben – oft fehlt PTR, SPF oder DKIM, oder die IP steht auf einer Sperrliste.",
-      "failed": "Dein eigener Mailserver hat die Mail nicht angenommen. Prüf oben die Zugangsdaten bzw. „Stalwart verbinden“."
+      "failed": "Dein eigener Mailserver hat die Mail nicht angenommen. Prüf oben die Zugangsdaten bzw. „Stalwart verbinden“.",
+      "unreachable": "Das Panel erreicht deinen Mailserver gerade gar nicht (kein Problem mit den Zugangsdaten). Läuft der Mailserver-Container? Auf dem Proxmox-Host: pct status <ID> – sonst prüfen, ob der Weg im Heimnetz frei ist."
     },
     "older": "Ältere Tests ({{count}})"
   },

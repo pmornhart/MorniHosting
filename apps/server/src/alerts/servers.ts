@@ -4,6 +4,9 @@ import type { AlertService } from './service.js';
 
 /** Game servers that cannot come back by themselves, and failed backups, as alerts. */
 
+// Not reached at all (no login problem): "connect EHOSTUNREACH 10.0.0.5:465", "ECONNREFUSED", "ETIMEDOUT" match; "535 Authentication failed" does not.
+// https://regex101.com/?flavor=javascript&regex=EHOSTUNREACH%7CECONNREFUSED%7CETIMEDOUT%7CENOTFOUND%7CENETUNREACH%7CEAI_AGAIN&testString=connect%20EHOSTUNREACH%2010.0.0.5%3A465%0A535%20Authentication%20failed
+const MAIL_UNREACHABLE = /EHOSTUNREACH|ECONNREFUSED|ETIMEDOUT|ENOTFOUND|ENETUNREACH|EAI_AGAIN/;
 const CONTAINER_HINT = 'pct set <ID> --memory 32768';
 /** Problems always-on cannot solve alone: what the person has to do. */
 const NEEDS_PERSON: Readonly<Record<string, (p: Readonly<Record<string, unknown>>) => string>> = {
@@ -45,6 +48,20 @@ export function watchServerAlerts(ctx: AppContext, servers: ServerService, alert
             ...(code === 'host_memory_full' ? { command: `${CONTAINER_HINT}   # auf dem Proxmox-Host` } : {}),
           }
         : {}),
+    });
+  });
+
+  ctx.events.on('mail.failed', ({ error }) => {
+    const unreachable = MAIL_UNREACHABLE.test(error);
+    alerts.alert({
+      key: 'mail',
+      title: unreachable ? 'Mailserver nicht erreichbar' : 'Mail konnte nicht verschickt werden',
+      what: `Das Panel konnte eine Mail nicht abgeben: ${error}`,
+      status: 'action',
+      action: unreachable
+        ? 'Läuft der Mailserver (z. B. der Stalwart-Container)? Auf dem Proxmox-Host prüfen und ggf. starten:'
+        : 'Zugangsdaten im Panel unter Admin → E-Mail prüfen (bzw. „Stalwart verbinden“ noch einmal).',
+      ...(unreachable ? { command: 'pct list   # dann: pct start <ID>' } : {}),
     });
   });
 

@@ -21,6 +21,8 @@ export interface PanelEvents {
   'server.requested': { requestId: string };
   /** A sign-up or server request was decided; `userId` is the person it was about (null when deleted). */
   'approvals.changed': { userId: number | null };
+  /** A mail could not be handed to the mail server (unreachable, login refused …). */
+  'mail.failed': { error: string };
   /** Always-on could not start a server that should run (tries counts up; 0 = it runs again). */
   'server.revive': {
     serverId: string;

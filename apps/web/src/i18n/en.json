@@ -2813,7 +2813,8 @@
     "tips": {
       "retrying": "The recipient's server has not taken the mail yet. Stalwart retries on its own. A certificate or connection error usually means the way out is blocked (port 25, forwarding).",
       "rejected": "The recipient's server refused the mail. The reason is above – often PTR, SPF or DKIM is missing, or the IP is on a block list.",
-      "failed": "Your own mail server did not accept the mail. Check the login data above or “Connect Stalwart”."
+      "failed": "Your own mail server did not accept the mail. Check the login data above or “Connect Stalwart”.",
+      "unreachable": "The panel cannot reach your mail server at all right now (not a login problem). Is the mail server container running? On the Proxmox host: pct status <ID> – otherwise check the path in your home network."
     },
     "older": "Older tests ({{count}})"
   },
