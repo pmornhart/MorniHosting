@@ -22,7 +22,15 @@ export async function createTestApp(
 ): Promise<TestApp> {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-test-'));
   const config = loadConfig(
-    { MH_SECRET: TEST_SECRET, MH_DATA_DIR: dataDir, MH_DOCKER_DRIVER: 'fake', ...env },
+    {
+      MH_SECRET: TEST_SECRET,
+      MH_DATA_DIR: dataDir,
+      MH_DOCKER_DRIVER: 'fake',
+      // The address router changes NetBird ports; tests that want it switch it on.
+      MH_ROUTER_JAVA_PORT: '0',
+      MH_ROUTER_BEDROCK_PORT: '0',
+      ...env,
+    },
     '0.0.0-test',
   );
   const built = await buildApp({

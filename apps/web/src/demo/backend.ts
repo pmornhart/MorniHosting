@@ -704,6 +704,7 @@ const NOT_CONNECTED: NetbirdStatus = {
   panelAddress: null,
   customPorts: false,
   openPorts: [],
+  router: { java: true, bedrock: true },
 };
 const netbird = { status: NOT_CONNECTED, nextPort: 31000 };
 
@@ -712,6 +713,7 @@ const netbird = { status: NOT_CONNECTED, nextPort: 31000 };
 const OWN_DOMAIN = 'mornihosting.de';
 const OWN_IP = '203.0.113.25';
 const BEDROCK_STANDARD_PORT = 19132;
+const JAVA_STANDARD_PORT = 25565;
 /** The recorded servers get names under the own domain, as Philip would pick them. */
 const OWN_NAMES: Readonly<Record<string, string>> = {
   'Survival mit Freunden': 'survival',
@@ -754,6 +756,7 @@ function setDomainName(server: ServerDetail, name: string | null): ServerDetail 
           ? [{ purpose: 'voice', domain: host, port: server.voicePort } as const]
           : []),
       ],
+      routed: { java: false, bedrock: false },
       error: null,
     },
     domain: host,
@@ -787,11 +790,13 @@ function setNetbirdName(id: string, name: string | null): ServerDetail | undefin
       : []),
   ];
   const port = (purpose: string): number | null => services.find((s) => s.purpose === purpose)?.port ?? null;
+  // Like a self-hosted NetBird with the address router: Java and Bedrock by the name alone.
+  const java = server.edition === 'java';
   return changeServer(id, {
-    netbird: { name, services, error: null },
+    netbird: { name, services, routed: { java, bedrock: java && server.geyser }, error: null },
     domain: `${name}.${domain}`,
-    publicPort: port('main'),
-    address: `${name}.${domain}:${port('main')}`,
+    publicPort: java ? JAVA_STANDARD_PORT : port('main'),
+    address: java ? `${name}.${domain}` : `${name}.${domain}:${port('main')}`,
     geyserPublicPort: port('geyser'),
     voicePublicPort: port('voice'),
     voiceHost: server.voiceChat ? `${name}.${domain}:${port('voice')}` : null,

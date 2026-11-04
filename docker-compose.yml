@@ -17,6 +17,9 @@ services:
       MH_MC_NETWORK: mornihosting-mc
     ports:
       - '${MH_PANEL_PORT:-8080}:8080'
+      # Adress-Verteiler: alle Server über ihren Namen ohne Port (NetBird schickt 25565 und 19132 hierher).
+      - '24565:24565/tcp'
+      - '19100:19100/tcp'
     volumes:
       # Alle Server, Backups und die Panel-Datenbank liegen hier.
       - mornihosting-data:/data

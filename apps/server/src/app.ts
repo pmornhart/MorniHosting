@@ -75,6 +75,7 @@ import { registerWebhookRoutes } from './webhooks/routes.js';
 import { createWebhookService } from './webhooks/service.js';
 import { registerWebSocket } from './ws.js';
 import { createNetbirdAutomation, type NetbirdAutomation } from './netbird/service.js';
+import { createAddressGateway, type AddressGateway } from './gateway/service.js';
 import { createNetbirdExit } from './netbird/exit.js';
 import { createExitWatch } from './netbird/exit-watch.js';
 import { createAlertService } from './alerts/service.js';
@@ -133,6 +134,7 @@ export interface BuiltApp {
   readonly dns: DnsAutomation;
   /** NetBird automation; tests trigger its self-repair directly. */
   readonly netbird: NetbirdAutomation;
+  readonly gateway: AddressGateway;
   readonly start: () => Promise<void>;
   readonly stop: () => Promise<void>;
 }
@@ -205,6 +207,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const schedules = createScheduleService(ctx, servers, backups);
   const webhooks = createWebhookService(ctx, options.resolver);
   const netbird = createNetbirdAutomation(ctx, servers);
+  const gateway = createAddressGateway(ctx);
   const dns = createDnsAutomation(ctx, servers);
   const https = createHttpsGateway(ctx, () => dns.status().domain);
   proxies.isGateway = https.isGateway;
@@ -373,8 +376,10 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     servers,
     dns,
     netbird,
+    gateway,
     start: async () => {
       sampleHostCpu();
+      await gateway.start();
       exitWatch.start();
       alerts.start();
       // Learns what RAM the machine really has (a Proxmox container shows the host's in /proc).
@@ -393,6 +398,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
       schedules.init();
     },
     stop: async () => {
+      await gateway.stop();
       exitWatch.stop();
       alerts.stop();
       intervals.forEach(clearInterval);

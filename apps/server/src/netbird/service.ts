@@ -1,5 +1,6 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import {
+  ROUTER_PUBLIC_PORTS,
   SOFTWARE,
   type NetbirdConfigInput,
   type NetbirdDiscovery,
@@ -14,6 +15,7 @@ import { AppError, badRequest, conflict } from '../lib/errors.js';
 import { createKeyedLock } from '../lib/locks.js';
 import { GEYSER_PURPOSE, VOICE_PURPOSE, type ServerService, type TunnelAddress } from '../servers/service.js';
 import type { ServerRow } from '../servers/spec.js';
+import type { RouterKind } from '../gateway/router.js';
 import { createNetbirdClient, type NetbirdClient, type NetbirdClientFactory } from './client.js';
 
 /**
@@ -44,6 +46,8 @@ const portTaken = (err: unknown): number | null => {
 const NETWORK_NAME = 'MorniHosting';
 const PANEL_KEY = 'panel';
 const NETWORK_LOCK = 'network';
+const ROUTER_LOCK = 'router';
+const isRouterPurpose = (purpose: string): boolean => purpose.startsWith('router-');
 /** Machines whose name contains this are offered first: the Proxmox script calls its container so. */
 const MACHINE_HINT = 'mornihosting';
 const SUFFIX: Readonly<Record<NetbirdPurpose, string>> = {
@@ -54,7 +58,19 @@ const SUFFIX: Readonly<Record<NetbirdPurpose, string>> = {
   'geyser-signal': '-bedrock-tcp',
   voice: '-voice',
   panel: '',
+  'router-java': '',
+  'router-bedrock': '',
 };
+/** The router's own NetBird names (players never type them: any name on the router's port reaches it). */
+const ROUTER_NAMES: Readonly<Record<RouterKind, string>> = {
+  java: 'mh-router-java',
+  bedrock: 'mh-router-bedrock',
+};
+const ROUTER_PURPOSE: Readonly<Record<RouterKind, NetbirdPurpose>> = {
+  java: 'router-java',
+  bedrock: 'router-bedrock',
+};
+const ROUTER_KINDS: readonly RouterKind[] = ['java', 'bedrock'];
 
 interface StoredConfig {
   readonly apiUrl: string;
@@ -86,6 +102,8 @@ interface Wanted {
   readonly port: number;
   /** The outside port this service must get (the TCP half of Geyser uses the same one as the UDP half). */
   readonly listenPort?: number | null;
+  /** Outside ports it must not take (the router's 25565 and 19132). */
+  readonly avoid?: readonly number[];
 }
 
 type Mapping = typeof netbirdServices.$inferSelect;
@@ -129,6 +147,18 @@ export function createNetbirdAutomation(
     if (!cfg) throw badRequest('netbird_not_configured');
     return cfg;
   };
+
+  /** Router kinds this setup gets: only where the proxy takes fixed ports (self-hosted NetBird) and the port is on. */
+  const routerKinds = (cfg: StoredConfig): RouterKind[] =>
+    cfg.customPorts === true ? ROUTER_KINDS.filter((kind) => ctx.config.routerPorts[kind] > 0) : [];
+  const routerMapping = (kind: RouterKind): Mapping | undefined =>
+    mappings(null).find((m) => m.purpose === ROUTER_PURPOSE[kind]);
+  /** Which router ports really are in NetBird (on 25565 / 19132). */
+  const routerLive = (): { java: boolean; bedrock: boolean } => ({
+    java: routerMapping('java')?.listenPort === ROUTER_PUBLIC_PORTS.java,
+    bedrock: routerMapping('bedrock')?.listenPort === ROUTER_PUBLIC_PORTS.bedrock,
+  });
+  const panelMapping = (): Mapping | undefined => mappings(null).find((m) => m.purpose === 'panel');
 
   const saveConfig = (patch: Partial<StoredConfig>): void => {
     const cfg = config();
@@ -220,12 +250,25 @@ export function createNetbirdAutomation(
       row.extraPorts.find((p) => p.purpose === purpose)?.port;
     const geyserPort = row.geyser ? hostPort(GEYSER_PURPOSE) : undefined;
     const voicePort = row.voiceChat ? hostPort(VOICE_PURPOSE) : undefined;
+    const routed = routerKinds(cfg);
+    // With the router, 25565/19132 (TCP) belong to it; a server's own address moves to another port.
+    const avoid = routed.map((kind) => ROUTER_PUBLIC_PORTS[kind]);
     return [
-      { purpose: 'main', domain: host('main'), mode: SOFTWARE[row.software].protocol, port: row.port },
+      { purpose: 'main', domain: host('main'), mode: SOFTWARE[row.software].protocol, port: row.port, avoid },
       ...(geyserPort
         ? ([
             { purpose: 'geyser', domain: host('geyser'), mode: 'udp', port: geyserPort },
-            { purpose: 'geyser-signal', domain: host('geyser-signal'), mode: 'tcp', port: geyserPort },
+            // Signaling goes through the router then; only the UDP half needs its own port.
+            ...(routed.includes('bedrock')
+              ? []
+              : [
+                  {
+                    purpose: 'geyser-signal',
+                    domain: host('geyser-signal'),
+                    mode: 'tcp',
+                    port: geyserPort,
+                  } as const,
+                ]),
           ] as const)
         : []),
       ...(voicePort
@@ -331,7 +374,15 @@ export function createNetbirdAutomation(
       passHostHeader: want.mode === 'http',
     };
     // Fixed ports: the same port outside as on the server. Otherwise NetBird's port stays once assigned.
-    const fixedPort = want.listenPort ?? (cfg.customPorts && want.mode !== 'http' ? want.port : null);
+    const asked = want.listenPort ?? (cfg.customPorts && want.mode !== 'http' ? want.port : null);
+    const avoided = (port: number | null | undefined): boolean =>
+      port !== null && port !== undefined && (want.avoid ?? []).includes(port);
+    // A port the router needs: keep the service's current one if that is fine, else start looking one higher.
+    const fixedPort = avoided(asked)
+      ? avoided(existing?.listenPort)
+        ? (asked ?? 0) + 1
+        : (existing?.listenPort ?? (asked ?? 0) + 1)
+      : asked;
     const same =
       existing?.domain === want.domain &&
       existing.targetPort === want.port &&
@@ -375,14 +426,16 @@ export function createNetbirdAutomation(
     return known;
   };
 
-  const addressOf = (done: readonly Mapping[]): TunnelAddress => {
+  const addressOf = (row: ServerRow, done: readonly Mapping[]): TunnelAddress => {
     const port = (purpose: NetbirdPurpose): number | null =>
       done.find((m) => m.purpose === purpose)?.listenPort ?? null;
     const main = done.find((m) => m.purpose === 'main');
+    // Through the router Java players use the name alone (port 25565).
+    const viaRouter = row.edition === 'java' && routerLive().java;
     return main
       ? {
           domain: main.domain,
-          publicPort: main.listenPort,
+          publicPort: viaRouter ? ROUTER_PUBLIC_PORTS.java : main.listenPort,
           geyserPublicPort: port('geyser'),
           voicePublicPort: port('voice'),
         }
@@ -429,7 +482,7 @@ export function createNetbirdAutomation(
     );
     const done = [...first, ...second];
     if (!wants.length) await dropResource(client, cfg, serverId);
-    if (row) servers.setTunnelAddress(serverId, addressOf(done));
+    if (row) servers.setTunnelAddress(serverId, addressOf(row, done));
     failures.delete(serverId);
   };
 
@@ -467,13 +520,65 @@ export function createNetbirdAutomation(
       .select()
       .from(netbirdServices)
       .all()
-      .filter((m) => m.serverId !== null && m.listenPort !== null && m.mode !== 'http')
+      .filter((m) => m.listenPort !== null && m.mode !== 'http')
       .map((m) => ({
         port: m.listenPort ?? 0,
         protocol: m.mode === 'udp' ? ('udp' as const) : ('tcp' as const),
         domain: m.domain,
       }))
       .sort((a, b) => a.port - b.port);
+
+  /**
+   * The router's two services (TCP 25565 → the panel's Java router, TCP 19132 → its Bedrock router). Run after the
+   * servers: they move their own addresses off these ports first.
+   */
+  const syncRouterNow = async (force: boolean): Promise<void> => {
+    const cfg = config();
+    if (!cfg) return;
+    const client = clientFor(cfg);
+    const kinds = routerKinds(cfg);
+    const resource = kinds.length
+      ? ((await ensureResource(client, cfg, PANEL_KEY, `${NETWORK_NAME} Panel`))?.resource ?? null)
+      : null;
+    await Promise.all(
+      ROUTER_KINDS.map(async (kind) => {
+        const existing = routerMapping(kind);
+        if (!kinds.includes(kind)) {
+          if (existing) {
+            await client.deleteService(existing.id);
+            forget(existing.id);
+          }
+          return;
+        }
+        const want: Wanted = {
+          purpose: ROUTER_PURPOSE[kind],
+          domain: `${ROUTER_NAMES[kind]}.${cfg.domain}`,
+          mode: 'tcp',
+          port: ctx.config.routerPorts[kind],
+          listenPort: ROUTER_PUBLIC_PORTS[kind],
+        };
+        const done = await apply(client, cfg, null, want, existing, force, resource);
+        // Someone else holds the port: a router on another port helps nobody.
+        if (done.listenPort !== ROUTER_PUBLIC_PORTS[kind]) {
+          ctx.log.warn({ kind, port: ROUTER_PUBLIC_PORTS[kind] }, 'router port taken in NetBird');
+          await client.deleteService(done.id);
+          forget(done.id);
+        }
+      }),
+    );
+    // Addresses follow: through the router Java players use the name alone.
+    namedServers().forEach((r) => {
+      const done = mappings(r.id);
+      if (done.length) servers.setTunnelAddress(r.id, addressOf(r, done));
+    });
+  };
+  const syncRouter = async (force = false): Promise<void> => {
+    try {
+      await lock(ROUTER_LOCK, () => syncRouterNow(force));
+    } catch (err) {
+      ctx.log.warn({ err }, 'NetBird router sync failed');
+    }
+  };
 
   const status = (): NetbirdStatus => {
     const cfg = config();
@@ -483,9 +588,10 @@ export function createNetbirdAutomation(
       domain: cfg?.domain ?? null,
       peerId: cfg?.peerId ?? null,
       peerName: cfg?.peerName ?? null,
-      panelAddress: mappings(null)[0]?.domain ?? null,
+      panelAddress: panelMapping()?.domain ?? null,
       customPorts: cfg?.customPorts ?? false,
       openPorts: openPorts(),
+      router: routerLive(),
     };
   };
 
@@ -521,6 +627,10 @@ export function createNetbirdAutomation(
             domain: m.domain,
             port: m.listenPort,
           })),
+          routed: {
+            java: row.edition === 'java' && routerLive().java,
+            bedrock: row.edition === 'java' && row.geyser && routerLive().bedrock,
+          },
           error: failures.get(row.id) ?? null,
         }
       : null;
@@ -532,6 +642,7 @@ export function createNetbirdAutomation(
     void (async () => {
       await Promise.allSettled(namedServers().map((r) => syncQuietly(r.id, moveToResources)));
       if (moveToResources) saveConfig({ resourceMode: true });
+      await syncRouter(moveToResources);
     })();
 
   const heal: NetbirdAutomation['heal'] = async () => {
@@ -550,6 +661,7 @@ export function createNetbirdAutomation(
       const moved = config() ?? cfg;
       if (lanAddress()) await ensureNetwork(client, moved);
       await Promise.allSettled(namedServers().map((r) => syncQuietly(r.id, true)));
+      await syncRouter(true);
       return same.name;
     })();
     const current = config() ?? cfg;
@@ -620,13 +732,14 @@ export function createNetbirdAutomation(
         previous.customPorts !== chosen.supports_custom_ports ||
         previous.resourceMode !== (lanAddress() !== null);
       await Promise.allSettled(namedServers().map((r) => syncQuietly(r.id, moved)));
+      await syncRouter(moved);
       return status();
     },
     disconnect: async (actor) => {
       const cfg = config();
       const owned = ctx.db.select().from(netbirdServices).all();
       // The panel's own service stays in NetBird: removing it could lock the admin out of the panel.
-      const serverServices = owned.filter((m) => m.serverId !== null);
+      const serverServices = owned.filter((m) => m.serverId !== null || isRouterPurpose(m.purpose));
       if (cfg) await Promise.allSettled(serverServices.map((m) => clientFor(cfg).deleteService(m.id)));
       const serverResources = Object.keys(storedResources()).filter((key) => key !== PANEL_KEY);
       if (cfg) await Promise.allSettled(serverResources.map((key) => dropResource(clientFor(cfg), cfg, key)));
@@ -690,7 +803,7 @@ export function createNetbirdAutomation(
         port: want.port,
         passHostHeader: true,
       };
-      const ours = mappings(null)[0];
+      const ours = panelMapping();
       // A service for this address made by hand in NetBird is taken over, with "Pass Host Header" on.
       const byHand = (await client.services()).find((s) => s.domain === want.domain);
       const done = await lock(PANEL_KEY, async () => {

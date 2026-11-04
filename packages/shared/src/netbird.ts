@@ -42,7 +42,12 @@ export const netbirdPanelSchema = z.object({
 
 /** What a NetBird service is for: the server itself, Bedrock players via Geyser, voice chat, the panel. */
 /** "geyser-signal": the TCP half of Geyser's port (NetherNet finds the server over TCP, plays over UDP). */
-export type NetbirdPurpose = 'main' | 'geyser' | 'geyser-signal' | 'voice' | 'panel';
+/** "router-java"/"router-bedrock": the panel's address router on 25565/19132 (every server by name, no port). */
+export type NetbirdPurpose =
+  'main' | 'geyser' | 'geyser-signal' | 'voice' | 'panel' | 'router-java' | 'router-bedrock';
+
+/** Outside ports of the address router: the ports Java and Bedrock use when no port is typed. */
+export const ROUTER_PUBLIC_PORTS = { java: 25565, bedrock: 19132 } as const;
 
 export interface NetbirdStatus {
   readonly configured: boolean;
@@ -56,6 +61,8 @@ export interface NetbirdStatus {
   readonly customPorts: boolean;
   /** Outside ports of the server addresses: on a self-hosted proxy each must be let through. */
   readonly openPorts: readonly NetbirdOpenPort[];
+  /** The address router is in place: Java on 25565, Bedrock on 19132, every server by its name alone. */
+  readonly router: { readonly java: boolean; readonly bedrock: boolean };
 }
 
 export interface NetbirdOpenPort {
@@ -95,6 +102,8 @@ export interface NetbirdServiceInfo {
 export interface NetbirdServerInfo {
   readonly name: string;
   readonly services: readonly NetbirdServiceInfo[];
+  /** Players join by the name alone (no port): Java through the router, Bedrock through the router (Geyser on). */
+  readonly routed: { readonly java: boolean; readonly bedrock: boolean };
   /** Why the last sync with NetBird failed (an error code with its details); null when all is in place. */
   readonly error: {
     readonly code: string;
