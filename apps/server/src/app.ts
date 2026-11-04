@@ -72,8 +72,11 @@ import { registerItemIconRoutes } from './players/item-icons.js';
 import { registerWebhookRoutes } from './webhooks/routes.js';
 import { createWebhookService } from './webhooks/service.js';
 import { registerWebSocket } from './ws.js';
-import { createNetbirdAutomation } from './netbird/service.js';
+import { createNetbirdAutomation, type NetbirdAutomation } from './netbird/service.js';
 import { createNetbirdExit } from './netbird/exit.js';
+import { createExitWatch } from './netbird/exit-watch.js';
+import { createAlertService } from './alerts/service.js';
+import { watchServerAlerts } from './alerts/servers.js';
 import { createDnsAutomation, type DnsAutomation } from './dns/service.js';
 import { registerDnsRoutes } from './dns/routes.js';
 import { createHttpsGateway } from './https/gateway.js';
@@ -126,6 +129,8 @@ export interface BuiltApp {
   readonly servers: ServerService;
   /** Own-domain DNS automation; tests trigger its IP check directly. */
   readonly dns: DnsAutomation;
+  /** NetBird automation; tests trigger its self-repair directly. */
+  readonly netbird: NetbirdAutomation;
   readonly start: () => Promise<void>;
   readonly stop: () => Promise<void>;
 }
@@ -214,6 +219,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   // Approved server requests are orders too: same add-ons, same order of things.
   const approvals = createApprovalService(ctx, mail, notify, { ...servers, create: orders.create });
   notify.start();
+  const alerts = createAlertService(ctx, notify);
+  watchServerAlerts(ctx, servers, alerts);
 
   // Smaller answers load faster, above all the web app's scripts on a phone. Only text-like types are packed.
   await app.register(compress, { global: true, threshold: COMPRESS_MIN_BYTES, encodings: ['br', 'gzip'] });
@@ -294,7 +301,9 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerMarketRoutes(app, ctx, servers, market);
   registerGeyserRoutes(app, ctx, geyser);
   registerVoiceChatRoutes(app, ctx, voiceChat);
-  registerNetbirdRoutes(app, netbird, dns, createNetbirdExit(ctx, undefined, options.resolver));
+  const netbirdExit = createNetbirdExit(ctx, undefined, options.resolver);
+  const exitWatch = createExitWatch(ctx, netbirdExit, alerts, netbird);
+  registerNetbirdRoutes(app, netbird, dns, netbirdExit);
   registerDnsRoutes(app, dns);
   registerHttpsRoutes(app, https);
   registerGameArtRoutes(app, ctx);
@@ -351,8 +360,11 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     ctx,
     servers,
     dns,
+    netbird,
     start: async () => {
       sampleHostCpu();
+      exitWatch.start();
+      alerts.start();
       // Learns what RAM the machine really has (a Proxmox container shows the host's in /proc).
       void hostInfo(ctx.docker, ctx.config.dataDir);
       intervals.push(setInterval(sampleHostCpu, HOST_SAMPLE_SECONDS * MS_PER_SECOND));
@@ -369,6 +381,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
       schedules.init();
     },
     stop: async () => {
+      exitWatch.stop();
+      alerts.stop();
       intervals.forEach(clearInterval);
       schedules.shutdown();
       notify.stop();

@@ -82,6 +82,31 @@ find_ctid() {
   echo "${found:-100}"
 }
 
+# Meldung ans Panel (Discord + Mail) über den Wächter im Container. Geht das gerade nicht (Container startet noch),
+# bleibt sie hier liegen und wird bei der nächsten Prüfung nachgeschickt.
+host_event() {
+  local ctid="$1"
+  shift
+  mkdir -p "${STATE_DIR}"
+  printf '%q ' "$@" >>"${STATE_DIR}/pending-${ctid}"
+  printf '\n' >>"${STATE_DIR}/pending-${ctid}"
+  send_host_events "${ctid}"
+}
+
+send_host_events() {
+  local ctid="$1"
+  local file="${STATE_DIR}/pending-${ctid}" line rest="" args
+  [[ -s "${file}" ]] || return 0
+  while IFS= read -r line; do
+    [[ -n "${line}" ]] || continue
+    eval "args=(${line})"
+    if ! timeout "${EXEC_TIMEOUT_SECONDS}" pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" event host "${args[@]}" >/dev/null 2>&1; then
+      rest+="${line}"$'\n'
+    fi
+  done <"${file}"
+  printf '%s' "${rest}" >"${file}"
+}
+
 ct_running() { [[ "$(pct status "$1" 2>/dev/null)" == "status: running" ]]; }
 
 # Hat zuletzt ein Mensch (oder Proxmox auf Wunsch) den Container gestoppt? Dann bleibt er aus.
@@ -116,7 +141,15 @@ guard() {
       return 0
     fi
     log "Container ${ctid} ist aus, ohne dass ihn jemand gestoppt hat – starte ihn"
-    pct start "${ctid}" >/dev/null 2>&1 || log "Start von ${ctid} ging nicht – nächster Versuch in einer Minute"
+    if pct start "${ctid}" >/dev/null 2>&1; then
+      host_event "${ctid}" container fixed "MorniHosting-Container neu gestartet" \
+        "Container ${ctid} war aus, ohne dass ihn jemand gestoppt hat. Der Host-Wächter hat ihn sofort wieder gestartet."
+    else
+      log "Start von ${ctid} ging nicht – nächster Versuch in einer Minute"
+      host_event "${ctid}" container action "MorniHosting-Container startet nicht" \
+        "Container ${ctid} ist aus und lässt sich nicht starten. Panel und alle Server sind offline." \
+        "In der Proxmox-Shell nachsehen, warum:" "pct start ${ctid} --debug"
+    fi
     return 0
   fi
   # Läuft er, antwortet aber nicht mehr (hängt)? Nach 3 Minuten wird er neu gestartet.
@@ -129,6 +162,8 @@ guard() {
     echo "${n}" >"${hung_file}"
     if ((n >= HUNG_RESTART_AFTER)); then
       log "Container ${ctid} hängt seit ${n} Minuten – starte ihn neu"
+      host_event "${ctid}" container fixed "MorniHosting-Container hing" \
+        "Container ${ctid} antwortete ${n} Minuten nicht mehr und wurde neu gestartet. Server mit Automatisch starten laufen gleich wieder."
       echo 0 >"${hung_file}"
       timeout 120 pct reboot "${ctid}" >/dev/null 2>&1 || {
         pct stop "${ctid}" --skiplock 1 >/dev/null 2>&1 || true
@@ -137,6 +172,7 @@ guard() {
     fi
     return 0
   fi
+  send_host_events "${ctid}"
   # Der Wächter im Container muss laufen; fehlt er (alte Installation), wird er eingerichtet.
   if ! pct exec "${ctid}" -- systemctl is-active --quiet mornihosting-guard.timer 2>/dev/null; then
     if pct exec "${ctid}" -- test -f "${INSTALL_DIR}/scripts/guard.sh" 2>/dev/null; then

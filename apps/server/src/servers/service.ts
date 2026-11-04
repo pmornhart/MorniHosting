@@ -878,7 +878,10 @@ export function createServerService(ctx: AppContext): ServerService {
     rows.forEach((r) => {
       const state = rt(r.id).state;
       const since = rt(r.id).startedAt ? Date.parse(rt(r.id).startedAt ?? '') : 0;
-      if (state === 'running' && since && now - since > KEEP_ALIVE_RESET_MS) revive.delete(r.id);
+      if (state === 'running' && since && now - since > KEEP_ALIVE_RESET_MS && revive.has(r.id)) {
+        revive.delete(r.id);
+        events.emit('server.revive', { serverId: r.id, tries: 0, reason: null });
+      }
     });
     const down = rows.filter(
       (r) =>
@@ -907,6 +910,12 @@ export function createServerService(ctx: AppContext): ServerService {
         try {
           await service.start(r.id, SYSTEM_ACTOR);
         } catch (err) {
+          events.emit('server.revive', {
+            serverId: r.id,
+            tries,
+            reason: errorMessage(err),
+            ...(err instanceof AppError ? { code: err.code, params: err.params ?? {} } : {}),
+          });
           panelLog(
             r.id,
             `Dauerbetrieb: Start ging nicht (${errorMessage(err)}). Nächster Versuch in ${Math.round(wait / MS_PER_SECOND / SECONDS_PER_MINUTE) || 1} Min.`,

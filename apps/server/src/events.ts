@@ -21,6 +21,14 @@ export interface PanelEvents {
   'server.requested': { requestId: string };
   /** A sign-up or server request was decided; `userId` is the person it was about (null when deleted). */
   'approvals.changed': { userId: number | null };
+  /** Always-on could not start a server that should run (tries counts up; 0 = it runs again). */
+  'server.revive': {
+    serverId: string;
+    tries: number;
+    reason: string | null;
+    code?: string;
+    params?: Readonly<Record<string, unknown>>;
+  };
 }
 
 export type PanelEventName = keyof PanelEvents;

@@ -39,6 +39,8 @@ export interface NetbirdExit {
   readonly set: (input: NetbirdExitInput, actor: Actor) => Promise<NetbirdExitStatus>;
   /** Removes route and group again (when NetBird is disconnected). */
   readonly remove: () => Promise<void>;
+  /** Sets group and route up again as stored (e.g. the panel's machine got a new id); no-op when off. */
+  readonly repair: () => Promise<void>;
 }
 
 const failureOf = (err: unknown): NetbirdExitStatus['error'] =>
@@ -189,5 +191,9 @@ export function createNetbirdExit(
       return status();
     },
     remove,
+    repair: async () => {
+      const exit = stored();
+      if (exit) await enable(exit.exitPeerId);
+    },
   };
 }
