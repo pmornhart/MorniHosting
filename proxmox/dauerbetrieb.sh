@@ -132,10 +132,35 @@ stopped_on_purpose() {
   ((newest >= boot)) && [[ "${newest_type}" == "vzstop" || "${newest_type}" == "vzshutdown" ]]
 }
 
+# Der Host selbst: Geht sein Internet über einen NetBird-Ausgang (Exit-Node), der nicht antwortet, wird der
+# Ausgang abgewählt – sonst wäre der Host offline (keine Updates, kein Proxmox-Repository, kein Wächter-Update).
+host_internet_ok() { curl -fsS -m 8 -o /dev/null https://api.github.com >/dev/null 2>&1; }
+host_drop_dead_exit() {
+  command -v netbird >/dev/null 2>&1 || return 0
+  host_internet_ok && return 0
+  local listing ids id
+  listing="$(timeout 10 netbird networks ls 2>/dev/null || timeout 10 netbird routes list 2>/dev/null || true)"
+  ids="$(awk '
+    /ID:/      { id = $0; sub(/.*ID:[ \t]*/, "", id); net = ""; next }
+    /Network:/ { net = $0; sub(/.*Network:[ \t]*/, "", net); next }
+    /Status:/  { if ((net == "0.0.0.0/0" || net == "::/0") && $0 ~ /Selected/ && $0 !~ /Not/) print id }
+  ' <<<"${listing}")"
+  [[ -n "${ids}" ]] || return 0
+  while IFS= read -r id; do
+    [[ -n "${id}" ]] || continue
+    netbird networks deselect "${id}" >/dev/null 2>&1 || netbird routes deselect "${id}" >/dev/null 2>&1 || true
+    log "Host ohne Internet über NetBird-Ausgang ${id} – Ausgang auf dem Host abgewählt"
+    host_event "$(find_ctid)" host-exit action "Proxmox-Host war offline" \
+      "Der Proxmox-Host ging über den NetBird-Ausgang ${id} ins Internet, der nicht antwortet. Der Host-Wächter hat ihn auf dem Host abgewählt – der Host hat wieder Internet." \
+      "Der Host gehört nicht in die Gruppe dieses Ausgangs. Im Panel unter Admin → NetBird als Rechner den MorniHosting-Container (nicht den Host) wählen."
+  done <<<"${ids}"
+}
+
 guard() {
   local ctid
   ctid="$(find_ctid)"
   mkdir -p "${STATE_DIR}"
+  host_drop_dead_exit
   local hung_file="${STATE_DIR}/hung-${ctid}"
   if ! ct_running "${ctid}"; then
     echo 0 >"${hung_file}"
@@ -249,6 +274,12 @@ setup() {
     exit 1
   }
   printf '\n %sMorniHosting Dauerbetrieb%s für Container %s\n\n' "${GN}" "${CL}" "${ctid}"
+  host_drop_dead_exit
+  if host_internet_ok; then
+    msg_ok "Host hat Internet"
+  else
+    msg_error "Host hat kein Internet – Dateien kommen über den Container"
+  fi
 
   pct set "${ctid}" --onboot 1 --startup order=1,up=30 >/dev/null
   msg_ok "Startet mit dem Proxmox-Host (als Erster)"
