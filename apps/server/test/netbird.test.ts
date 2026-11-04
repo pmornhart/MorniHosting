@@ -181,6 +181,20 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
         { message: `resource target "${String(missing.target_id)}" not found in account`, code: 422 },
         { status: 422 },
       );
+    // Like a self-hosted NetBird: one outside port per protocol.
+    const clash =
+      options.customPorts && body?.listen_port
+        ? [...services.values()].find(
+            (s) => s.id !== id && s.listen_port === body.listen_port && s.mode === body.mode,
+          )
+        : undefined;
+    if (clash && (method === 'POST' || method === 'PUT'))
+      return Response.json(
+        {
+          message: `${String(body?.mode)} port ${String(body?.listen_port)} is already in use by service ${String(clash.id)} on cluster netbird.example.org`,
+        },
+        { status: 409 },
+      );
     if (method === 'POST' && body) {
       if ([...services.values()].some((s) => s.domain === body.domain))
         return Response.json({ message: 'domain already in use' }, { status: 409 });
@@ -409,6 +423,47 @@ describe('NetBird automation', () => {
     await call('PUT', `/api/servers/${server.id}/netbird`, { name: 'reich' });
     expect(netbird.byDomain(`reich.${BASE}`)?.listen_port).toBe(25565);
     expect((await detail(server.id)).publicPort).toBe(25565);
+  });
+
+  test("a taken outside port: a left-over of the panel is removed, someone else's makes the server move on", async () => {
+    netbird = createFakeNetbird({ customPorts: true });
+    await configure();
+    // Left-over of the panel itself (its domain, but no longer in its list), e.g. after re-adding the machine.
+    netbird.services.set('old-1', {
+      id: 'old-1',
+      domain: `alt.${BASE}`,
+      mode: 'tcp',
+      listen_port: 25565,
+      pass_host_header: false,
+      targets: [],
+    });
+    // Someone else's service on 25566.
+    netbird.services.set('foreign', {
+      id: 'foreign',
+      domain: 'mail.other.example',
+      mode: 'tcp',
+      listen_port: 25566,
+      pass_host_header: false,
+      targets: [],
+    });
+    const first = await create({ netbirdName: 'eins' });
+    await waitFor(async () => (await detail(first.id)).publicPort === 25565);
+    expect(netbird.services.has('old-1')).toBe(false);
+    const second = await call('POST', '/api/servers', {
+      edition: 'java',
+      software: 'paper',
+      version: '1.21.4',
+      memoryMb: 2048,
+      port: 25566,
+      eula: true,
+      startNow: false,
+      name: 'Zwei',
+      netbirdName: 'zwei',
+    });
+    const id = second.json<{ id: string }>().id;
+    await waitFor(async () => (await detail(id)).publicPort === 25567);
+    expect(netbird.services.has('foreign')).toBe(true);
+    expect((await detail(id)).netbird?.error ?? null).toBeNull();
   });
 
   test('a new server with a name gets its address in NetBird right after creating', async () => {
