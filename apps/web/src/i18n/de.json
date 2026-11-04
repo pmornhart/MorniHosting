@@ -778,7 +778,10 @@
       "banText": "Der Spieler wird getrennt und kann nicht mehr beitreten, bis du die Sperre aufhebst."
     },
     "title": "Spieler",
-    "intro": "Wer gerade online ist, wer OP ist und wer auf die Whitelist darf. Mit einem Klick kicken, bannen oder OP geben."
+    "intro": "Wer gerade online ist, wer OP ist und wer auf die Whitelist darf. Mit einem Klick kicken, bannen oder OP geben.",
+    "gameIntro": "Hier siehst du, wer gerade auf deinem {{game}}-Server spielt.",
+    "gameOnlineText": "Die Namen kommen direkt vom Spiel und sind ein paar Sekunden aktuell.",
+    "gameNoNames": "{{game}} verrät dem Panel keine Spielernamen. Wer online ist, siehst du im Spiel selbst."
   },
   "settings": {
     "sections": {

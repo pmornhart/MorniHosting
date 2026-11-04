@@ -63,7 +63,7 @@ function PreloadCard({ item }: { item: PreloadItem }): ReactElement {
   const label = SOFTWARE[item.software].label;
   const family = isGameId(item.software) ? null : 'Minecraft';
   return (
-    <Card className="mh-lift grid content-start gap-3 p-4">
+    <Card className="mh-lift grid min-w-0 content-start gap-3 p-4">
       <div className="flex items-center gap-3">
         <SoftwareLogo id={item.software} className="size-10 shrink-0" />
         <div className="min-w-0 flex-1">
@@ -87,7 +87,9 @@ function PreloadCard({ item }: { item: PreloadItem }): ReactElement {
         </div>
       ) : null}
       {item.state === 'failed' && item.error ? (
-        <p className="rounded-[10px] bg-destructive-soft px-3 py-2 text-xs text-destructive">{item.error}</p>
+        <p className="rounded-[10px] bg-destructive-soft px-3 py-2 text-xs [overflow-wrap:anywhere] text-destructive">
+          {item.error}
+        </p>
       ) : null}
       <div className="mt-auto flex flex-wrap gap-2">
         {item.state === 'ready' ? (

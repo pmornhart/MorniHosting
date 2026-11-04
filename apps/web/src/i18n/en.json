@@ -778,7 +778,10 @@
       "banText": "They are disconnected and can't join until you lift the ban."
     },
     "title": "Players",
-    "intro": "Who is online, who is OP and who may join through the whitelist. Kick, ban or OP with one click."
+    "intro": "Who is online, who is OP and who may join through the whitelist. Kick, ban or OP with one click.",
+    "gameIntro": "See who is playing on your {{game}} server right now.",
+    "gameOnlineText": "The names come straight from the game and are a few seconds fresh.",
+    "gameNoNames": "{{game}} does not tell the panel any player names. Check who is online in the game itself."
   },
   "settings": {
     "sections": {

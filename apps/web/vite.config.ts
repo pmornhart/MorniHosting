@@ -13,6 +13,33 @@ const src = path.resolve(import.meta.dirname, 'src');
 const DEMO_IMAGES = 'virtual:demo-images';
 const RESOLVED_DEMO_IMAGES = `\0${DEMO_IMAGES}`;
 
+/**
+ * Libraries in their own files: they rarely change, so after a panel update the browser keeps them in its cache
+ * and only fetches the panel's own code again. First match wins.
+ */
+const VENDOR_CHUNKS: readonly (readonly [string, RegExp])[] = [
+  // "node_modules/react-dom/client.js" → react; "node_modules/react-router/dist/index.js" → router.
+  // https://regex101.com/?flavor=javascript&regex=node_modules%5C%2F(react%7Creact-dom%7Cscheduler)%5C%2F&testString=node_modules%2Freact-dom%2Fclient.js%0Anode_modules%2Freact-router%2Fdist%2Findex.js
+  ['react', /node_modules\/(react|react-dom|scheduler)\//],
+  ['router', /node_modules\/react-router\//],
+  // "node_modules/@tanstack/query-core/build/index.js" → query.
+  // https://regex101.com/?flavor=javascript&regex=node_modules%5C%2F%40tanstack%5C%2F&testString=node_modules%2F%40tanstack%2Fquery-core%2Fbuild%2Findex.js
+  ['query', /node_modules\/@tanstack\//],
+  // "node_modules/@radix-ui/react-dialog/dist/index.mjs" → ui; "node_modules/@floating-ui/dom/x.js" → ui.
+  // https://regex101.com/?flavor=javascript&regex=node_modules%5C%2F(%40radix-ui%7C%40floating-ui%7Creact-remove-scroll%7Csonner%7Ctailwind-merge)&testString=node_modules%2F%40radix-ui%2Freact-dialog%2Fdist%2Findex.mjs%0Anode_modules%2F%40floating-ui%2Fdom%2Fx.js
+  ['ui', /node_modules\/(@radix-ui|@floating-ui|react-remove-scroll|sonner|tailwind-merge)/],
+  // "node_modules/zod/v4/core/core.js" → zod.
+  // https://regex101.com/?flavor=javascript&regex=node_modules%5C%2Fzod%5C%2F&testString=node_modules%2Fzod%2Fv4%2Fcore%2Fcore.js
+  ['zod', /node_modules\/zod\//],
+  // "node_modules/i18next/dist/esm/i18next.js" → i18n; "node_modules/react-i18next/dist/x.js" → i18n.
+  // https://regex101.com/?flavor=javascript&regex=node_modules%5C%2F(react-)%3Fi18next&testString=node_modules%2Fi18next%2Fdist%2Fesm%2Fi18next.js%0Anode_modules%2Freact-i18next%2Fdist%2Fx.js
+  ['i18n', /node_modules\/(react-)?i18next/],
+];
+
+function vendorChunk(id: string): string | undefined {
+  return VENDOR_CHUNKS.find(([, pattern]) => pattern.test(id))?.[0];
+}
+
 /** Downloads one picture as a data: URI, or nothing if it cannot be fetched (the drawn fallback shows then). */
 async function embed(url: string): Promise<string | undefined> {
   try {
@@ -93,6 +120,7 @@ export default defineConfig(({ mode }) => {
           outDir: 'dist',
           sourcemap: false,
           chunkSizeWarningLimit: CHUNK_WARNING_KB,
+          rollupOptions: { output: { manualChunks: vendorChunk } },
         },
   };
 });

@@ -46,6 +46,7 @@ import { applyTheme, useResolvedTheme } from './theme';
 import { VersionBadge } from './VersionBadge';
 import { approvalsQuery } from '@/features/approvals/ApprovalsPage';
 import { UpdateCard } from './UpdateCard';
+import { usePrefetchPages } from '@/lib/prefetch';
 
 interface NavItem {
   readonly to: string;
@@ -319,6 +320,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }): ReactEleme
 export function AppShell(): ReactElement {
   const { t } = useTranslation();
   const connected = useLiveSync();
+  usePrefetchPages();
   const [open, setOpen] = useState(false);
   return (
     <div className="grid min-h-dvh lg:grid-cols-[252px_minmax(0,1fr)]">

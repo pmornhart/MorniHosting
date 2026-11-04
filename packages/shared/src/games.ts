@@ -114,6 +114,8 @@ export interface GameInfo {
     readonly leave?: RegExp;
     /** One player in the answer to `listCommand`; group 1 = name. */
     readonly listEntry?: RegExp;
+    /** The answer is only a player list when this matches (otherwise the names from join/leave lines stay). */
+    readonly listHeader?: RegExp;
   };
   /** Steam app id, for the header picture (loaded at runtime, never stored in the repository). */
   readonly steamAppId?: number;
@@ -168,6 +170,19 @@ const SRCDS_JOIN = /Client "([^"]+)" connected/;
 // srcds console leave: "Dropped Lena from server (Disconnect by user.)" → "Lena".
 // https://regex101.com/?flavor=javascript&regex=Dropped%20(.%2B%3F)%20from%20server&flags=gm&testString=Dropped%20Lena%20from%20server%20(Disconnect%20by%20user.)%0ADropped%20packets
 const SRCDS_LEAVE = /Dropped (.+?) from server/;
+// srcds "status": the player table starts with "# userid name uniqueid …"; without it the answer is no list.
+// https://regex101.com/?flavor=javascript&regex=%5E%23%20userid%20name&flags=gm&testString=%23%20userid%20name%20uniqueid%20connected%20ping%0A%23%20%20%20%20%20%202%20%22Lena%22
+const SRCDS_LIST_HEADER = /^# userid name/m;
+// srcds "status" row: '#      2 "Lena"   STEAM_0:1:123  00:12  50  0 active 10.0.0.2:27005' → "Lena"; bots ("BOT") not.
+// https://regex101.com/?flavor=javascript&regex=%5E%23%5Cs%2B%5Cd%2B%5Cs%2B(%3F%3A%5Cd%2B%5Cs%2B)%3F%22(.%2B)%22%5Cs%2BSTEAM_&flags=gm&testString=%23%20%20%20%20%20%202%20%22Lena%22%20%20%20%20%20%20%20STEAM_0%3A1%3A123%20%2000%3A12%20%2050%20%200%20active%2010.0.0.2%3A27005%0A%23%20%20%20%20%20%203%20%22Bot01%22%20%20%20%20%20%20BOT%20active
+const SRCDS_LIST_ENTRY = /^#\s+\d+\s+(?:\d+\s+)?"(.+)"\s+STEAM_/;
+// CS2 "status": the player table starts with "---------players--------".
+// https://regex101.com/?flavor=javascript&regex=-%2Bplayers-%2B&flags=gm&testString=---------players--------%0A%20%20id%20%20%20%20%20time%20ping%20loss
+const CS2_LIST_HEADER = /-+players-+/;
+// CS2 "status" row: "    2    01:23   17    0     active 786432 203.0.113.5:27005 'Lena'" → "Lena";
+// rejects the "[NoChan] … challenging" row and bots (no time column).
+// https://regex101.com/?flavor=javascript&regex=%5E%5Cs*%5Cd%2B%5Cs%2B%5Cd%2B(%3F%3A%3A%5Cd%2B)%2B%5Cs%2B%5Cd%2B%5Cs%2B%5Cd%2B%5Cs%2Bactive%5Cs%2B%5Cd%2B%5Cs%2B%5CS%2B%5Cs%2B'(.%2B)'%5Cs*%24&flags=gm&testString=%20%20%20%202%20%20%20%2001%3A23%20%20%2017%20%20%20%200%20%20%20%20%20active%20786432%20203.0.113.5%3A27005%20'Lena'%0A65535%20%5BNoChan%5D%20%20%20%200%20%20%20%200%20challenging%20%20%20%20%20%200unknown%20''
+const CS2_LIST_ENTRY = /^\s*\d+\s+\d+(?::\d+)+\s+\d+\s+\d+\s+active\s+\d+\s+\S+\s+'(.+)'\s*$/;
 const GMOD_DIR = '/home/gmod/server/garrysmod';
 const ETS2_HOME = '.local/share/Euro Truck Simulator 2';
 const ETS2_PORT = 27015;
@@ -303,7 +318,14 @@ export const GAMES: Readonly<Record<GameId, GameInfo>> = Object.freeze({
     playersPerGb: 5,
     maxPlayers: 64,
     stopCommand: 'quit',
-    logPatterns: { ready: CS2_READY, join: SOURCE_JOIN, leave: SOURCE_LEAVE },
+    listCommand: 'status',
+    logPatterns: {
+      ready: CS2_READY,
+      join: SOURCE_JOIN,
+      leave: SOURCE_LEAVE,
+      listHeader: CS2_LIST_HEADER,
+      listEntry: CS2_LIST_ENTRY,
+    },
     steamAppId: 730,
     downloadGb: 60,
   },
@@ -349,7 +371,14 @@ export const GAMES: Readonly<Record<GameId, GameInfo>> = Object.freeze({
     playersPerGb: 8,
     maxPlayers: 128,
     stopCommand: 'quit',
-    logPatterns: { ready: SRCDS_READY, join: SRCDS_JOIN, leave: SRCDS_LEAVE },
+    listCommand: 'status',
+    logPatterns: {
+      ready: SRCDS_READY,
+      join: SRCDS_JOIN,
+      leave: SRCDS_LEAVE,
+      listHeader: SRCDS_LIST_HEADER,
+      listEntry: SRCDS_LIST_ENTRY,
+    },
     steamAppId: 4000,
     downloadGb: 4,
   },

@@ -23,10 +23,8 @@ const HTTP_NOT_MODIFIED = 304;
 const CONTAINER_DATA_DIR = '/data';
 const EVENT_ACTIONS: readonly ContainerEvent['action'][] = ['start', 'die', 'oom', 'destroy'];
 const MANAGED_LABEL = 'mornihosting.server';
-/** How often an image that is already there gets checked for a newer version (when a server starts). */
+/** How often an image that is already there gets checked for a newer version (in the background). */
 const IMAGE_REFRESH_MS = 24 * 60 * 60 * 1000;
-/** Longest wait for that check before starting with the image that is there. */
-const IMAGE_REFRESH_WAIT_MS = 2 * 60 * 1000;
 
 interface DockerApiError {
   readonly statusCode?: number;
@@ -90,6 +88,7 @@ export function createDockerDriver(config: Config): DockerDriver {
   };
 
   const pulledAt = new Map<string, number>();
+  const refreshing = new Set<string>();
   const pullImage = async (
     image: string,
     onProgress: Parameters<DockerDriver['ensureImage']>[1],
@@ -142,23 +141,25 @@ export function createDockerDriver(config: Config): DockerDriver {
       })();
       // An image that is there gets refreshed once a day: old ones talk to services that changed meanwhile
       // (e.g. PaperMC's API v2 is gone, old itzg images then hang at "Resolving type given PAPER").
-      if (present && Date.now() - (pulledAt.get(image) ?? 0) < IMAGE_REFRESH_MS) return;
-      try {
-        // A refresh never blocks a start for long: on a slow line the image we have is good enough.
-        await (present
-          ? Promise.race([
-              pullImage(image, onProgress),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error('image refresh took too long')), IMAGE_REFRESH_WAIT_MS),
-              ),
-            ])
-          : pullImage(image, onProgress));
-        pulledAt.set(image, Date.now());
-      } catch (err) {
-        // Offline or a locally built image: the one we have still works.
-        if (!present) throw err;
-        pulledAt.set(image, Date.now());
+      // That happens in the background, so a start never waits for it; the panel also refreshes all images it
+      // uses right after it starts and then twice a day, so the next start already has the new one.
+      if (present) {
+        if (Date.now() - (pulledAt.get(image) ?? 0) < IMAGE_REFRESH_MS || refreshing.has(image)) return;
+        refreshing.add(image);
+        void (async () => {
+          try {
+            await pullImage(image, undefined);
+          } catch {
+            // Offline or a locally built image: the one we have still works.
+          } finally {
+            pulledAt.set(image, Date.now());
+            refreshing.delete(image);
+          }
+        })();
+        return;
       }
+      await pullImage(image, onProgress);
+      pulledAt.set(image, Date.now());
     },
     ensureNetwork: async (name) => {
       try {

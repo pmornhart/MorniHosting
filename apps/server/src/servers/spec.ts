@@ -65,6 +65,8 @@ function javaEnv(row: ServerRow, timezone: string): Record<string, string> {
     // memory clean-up) and chunk saving that does not stop the game while it writes.
     USE_AIKAR_FLAGS: 'true',
     SYNC_CHUNK_WRITES: 'false',
+    // The panel writes the folder as the same user already: walking a big world to fix owners only costs time.
+    SKIP_CHOWN_DATA: 'true',
     TZ: timezone,
     UID: RUN_UID,
     GID: RUN_UID,
@@ -74,6 +76,7 @@ function javaEnv(row: ServerRow, timezone: string): Record<string, string> {
       TYPE: 'VELOCITY',
       VELOCITY_VERSION: row.version,
       MEMORY: `${row.memoryMb}M`,
+      SKIP_CHOWN_DATA: 'true',
       TZ: timezone,
       UID: RUN_UID,
       GID: RUN_UID,

@@ -42,6 +42,9 @@ const FIRST_START_LIMIT_HOURS = 6;
 const FIRST_START_LIMIT_MS = FIRST_START_LIMIT_HOURS * MS_PER_HOUR;
 /** After a crash the panel may restart once by itself (steamcmd); give it this long to show "starting". */
 const RETRY_GRACE_MS = 15_000;
+// Terminal colours in log lines: "\u001b[33m[MorniHosting]\u001b[0m Start" → "[MorniHosting] Start".
+// https://regex101.com/?flavor=javascript&regex=%5Cx1b%5C%5B%5B0-9%3B%5D*m&flags=g&testString=%1B%5B33m%5BMorniHosting%5D%1B%5B0m%20Start
+const ANSI_COLOUR = /\x1b\[[0-9;]*m/g; // eslint-disable-line no-control-regex -- the point is to strip them
 /** Rough download sizes for Minecraft software, in GB (server program + libraries). */
 const MINECRAFT_SIZE_GB = 0.3;
 
@@ -206,7 +209,9 @@ export function createPreloadService(ctx: AppContext, servers: ServerService): P
     const result = await over;
     await servers.stopAndWait(id, SYSTEM_ACTOR);
     if (result !== 'running')
-      throw new Error(servers.logs(id).slice(-1)[0] ?? 'Der erste Start hat nicht geklappt.');
+      throw new Error(
+        (servers.logs(id).slice(-1)[0] ?? 'Der erste Start hat nicht geklappt.').replace(ANSI_COLOUR, ''),
+      );
     markDone(software, version);
     ctx.log.info({ software, version }, 'game preloaded');
   };
