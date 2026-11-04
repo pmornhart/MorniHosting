@@ -929,4 +929,6 @@ export interface PreloadItem {
   readonly doneAt: string | null;
   /** Last hourly look for updates (they install by themselves). */
   readonly checkedAt: string | null;
+  /** A newer version than the downloaded one is out (Minecraft software); null when there is none or unknown. */
+  readonly newVersion: string | null;
 }

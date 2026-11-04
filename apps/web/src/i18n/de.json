@@ -3064,6 +3064,8 @@
     "autoChecked": "Bleibt automatisch aktuell – zuletzt um {{time}} nach Updates geschaut (jede Stunde).",
     "all": "Alle herunterladen ({{count}})",
     "allDone": "Alles geladen",
-    "allBusy": "Lädt … (noch {{count}})"
+    "allBusy": "Lädt … (noch {{count}})",
+    "updateAll": "Alle aktualisieren ({{count}})",
+    "newVersion": "Neu: {{version}}"
   }
 }
