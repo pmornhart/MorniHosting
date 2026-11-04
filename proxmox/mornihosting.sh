@@ -159,6 +159,7 @@ if [[ -n "${NETBIRD_SETUP_KEY}" ]]; then
     NETBIRD_OK="yes"
     # Das Panel merkt sich, mit welchem NetBird-Server der Container verbunden ist (Cloud oder selbst betrieben).
     pct exec "${CTID}" -- bash -c "cd /opt/mornihosting && bash scripts/netbird-env.sh >/dev/null && docker compose up -d >/dev/null" || true
+    pct exec "${CTID}" -- bash /opt/mornihosting/scripts/netbird-watchdog.sh install >/dev/null 2>&1 || true
     msg_ok "NetBird verbunden – im NetBird-Dashboard heißt dieser Rechner ${CT_HOSTNAME}"
   else
     msg_error "NetBird ließ sich nicht einrichten. Später im Container: netbird up --setup-key <KEY>"

@@ -108,6 +108,15 @@ if [[ -f scripts/ddos-guard.sh ]]; then
     msg_error "DDoS-Schutz ließ sich nicht einrichten (Details: sudo ${INSTALL_DIR}/scripts/ddos-guard.sh install)"
   fi
 fi
+# NetBird-Wächter: hält NetBird und das Internet stabil (nur wo NetBird installiert ist).
+if [[ -f scripts/netbird-watchdog.sh ]] && command -v netbird >/dev/null 2>&1; then
+  chmod +x scripts/netbird-watchdog.sh
+  if scripts/netbird-watchdog.sh install >/dev/null; then
+    msg_ok "NetBird-Wächter eingerichtet (prüft jede Minute)"
+  else
+    msg_error "NetBird-Wächter ließ sich nicht einrichten (Details: sudo ${INSTALL_DIR}/scripts/netbird-watchdog.sh install)"
+  fi
+fi
 STEP="null"
 write_status "done"
 msg_ok "Fertig. Deine Minecraft-Server sind die ganze Zeit weitergelaufen."
