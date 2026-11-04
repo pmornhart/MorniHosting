@@ -257,9 +257,15 @@ keep_panel() {
     echo 0 >"${PANEL_FAIL_FILE}"
     return 0
   fi
+  # Ein laufendes Update startet das Panel selbst neu – nicht dazwischenfunken (höchstens 30 Min. alt).
+  if [[ -n "$(find /run/mornihosting-update.lock -mmin -30 2>/dev/null)" ]]; then
+    return 0
+  fi
   local failures
   failures="$(count_up "${PANEL_FAIL_FILE}")"
   ((failures < PANEL_RESTART_AFTER)) && return 0
+  # Reste eines abgebrochenen Neustarts blockieren Compose ("name … is already in use").
+  docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_mornihosting(-[a-z-]+)?$' | xargs -r docker rm -f >/dev/null 2>&1 || true
   log "Panel seit ${failures} Prüfungen aus oder krank – starte es neu"
   (cd "${INSTALL_DIR}" && timeout 300 docker compose up -d >/dev/null 2>&1) || true
   container_ok mornihosting || docker restart mornihosting >/dev/null 2>&1 || true
