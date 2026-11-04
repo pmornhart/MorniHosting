@@ -67,6 +67,19 @@ Ports gerade gebraucht werden, zeigt das Panel unter **Admin-Bereich → NetBird
 **Trennen** (Admin-Bereich → NetBird) löscht die Dienste der Server in NetBird wieder; die Panel-Adresse bleibt,
 damit du dich nicht aussperrst.
 
+## Ohne Port beitreten (Adress-Verteiler)
+
+Bei einem selbst betriebenen NetBird (eigene Ports erlaubt) richtet das Panel zusätzlich einen Verteiler ein. Dann tippen alle Spieler nur noch den Namen ein:
+
+- **Java:** `reich.mornihosting.de` (ohne `:25567`)
+- **Bedrock** (Handy, Xbox, PlayStation, Switch, Windows, über Geyser): ebenfalls `reich.mornihosting.de`, Port bleibt 19132
+
+So funktioniert es: NetBird schickt Port 25565 und 19132 (TCP) an das Panel. Java nennt beim Verbinden den eingetippten Namen, Bedrock (ab 26.60) ebenfalls, beim ersten Kontakt über TCP. Das Panel leitet die Verbindung an den passenden Server weiter. Das eigentliche Bedrock-Spiel läuft danach über den eigenen UDP-Port des Servers, den Geyser dem Handy selbst mitteilt. An der Fritzbox musst du nichts einstellen.
+
+Die NetBird-Dienste dafür heißen `mh-router-java.<domain>` und `mh-router-bedrock.<domain>`. Der eigene Port eines Servers (z. B. `reich.mornihosting.de:25566`) geht weiterhin.
+
+Auf dem NetBird-Server müssen 25565/tcp und 19132/tcp offen sein. Das erledigt `scripts/netbird-proxy-ports.sh` schon, wenn du es einmal ausgeführt hast.
+
 ## Von Hand
 
 Lieber alles selbst eintragen? Öffne im Panel **Admin-Bereich → Domain → Reiter „NetBird“** und trag deine

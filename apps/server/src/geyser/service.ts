@@ -1,10 +1,16 @@
-import { PORT_BEDROCK, type ContentSource, type GeyserCheck, type SoftwareId } from '@mornihosting/shared';
+import {
+  PORT_BEDROCK,
+  ROUTER_PUBLIC_PORTS,
+  type ContentSource,
+  type GeyserCheck,
+  type SoftwareId,
+} from '@mornihosting/shared';
 import type { Actor } from '../audit/service.js';
 import type { AppContext } from '../context.js';
 import { AppError, badRequest } from '../lib/errors.js';
 import type { MarketService } from '../market/service.js';
 import type { ServerService } from '../servers/service.js';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { netbirdServices } from '../db/schema.js';
 import { bedrockPing, signalingAnswers } from '../lib/bedrock-ping.js';
@@ -219,6 +225,22 @@ export function createGeyserService(
     return host && port ? { host, port } : null;
   };
 
+  /** The server's name when the router takes Bedrock players by it (NetBird service on TCP 19132). */
+  const routedName = (serverId: string): string | null => {
+    const router = ctx.db
+      .select()
+      .from(netbirdServices)
+      .where(and(isNull(netbirdServices.serverId), eq(netbirdServices.purpose, 'router-bedrock')))
+      .get();
+    if (router?.listenPort !== ROUTER_PUBLIC_PORTS.bedrock) return null;
+    const main = ctx.db
+      .select()
+      .from(netbirdServices)
+      .where(and(eq(netbirdServices.serverId, serverId), eq(netbirdServices.purpose, 'main')))
+      .get();
+    return main?.domain ?? null;
+  };
+
   /** NetherNet signaling (TCP) or the old RakNet ping (UDP): either answer means Geyser is up. */
   const answersInside = async (
     serverId: string,
@@ -255,6 +277,9 @@ export function createGeyserService(
       if (!target || !running) return null;
       try {
         // NetherNet first (what current Bedrock uses), then the old RakNet way through mcsrvstat.
+        // Through the address router players reach signaling by the server's name on 19132.
+        const routed = routedName(serverId);
+        if (routed && (await signalingAnswers(routed, ROUTER_PUBLIC_PORTS.bedrock))) return true;
         if (await signalingAnswers(target.host, target.port)) return true;
         const data = bedrockStatusSchema.parse(
           await fetchJson(BEDROCK_STATUS + encodeURIComponent(`${target.host}:${target.port}`)),

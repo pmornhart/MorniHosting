@@ -8,6 +8,9 @@ const MIN_SECRET_LENGTH = 32;
 const DEFAULT_MAX_UPLOAD_MB = 4096;
 const DEFAULT_PLUGIN_UPLOAD_MB = 100;
 const PORT_MAX = 65535;
+/** Inside the panel container; docker-compose.yml publishes them, NetBird sends 25565/19132 there. */
+const DEFAULT_ROUTER_JAVA_PORT = 24565;
+const DEFAULT_ROUTER_BEDROCK_PORT = 19100;
 
 const booleanFromEnv = z
   .enum(['true', 'false', '1', '0', 'yes', 'no'])
@@ -38,6 +41,9 @@ const envSchema = z.object({
   MH_UPDATE_BRANCH: z.string().default('main'),
   /** NetBird server this machine is connected to; install.sh and update.sh read it from `netbird status`. */
   MH_NETBIRD_API: netbirdApiUrlSchema.optional().catch(undefined),
+  /** Address router (every server by name, no port): ports inside the panel container; 0 = off. */
+  MH_ROUTER_JAVA_PORT: z.coerce.number().int().min(0).max(PORT_MAX).default(DEFAULT_ROUTER_JAVA_PORT),
+  MH_ROUTER_BEDROCK_PORT: z.coerce.number().int().min(0).max(PORT_MAX).default(DEFAULT_ROUTER_BEDROCK_PORT),
   MH_DEMO: booleanFromEnv.default(false),
   MH_WEB_DIR: z.string().optional(),
   MH_MAX_UPLOAD_MB: z.coerce.number().int().positive().default(DEFAULT_MAX_UPLOAD_MB),
@@ -68,6 +74,8 @@ export interface Config {
   readonly updateBranch: string;
   /** Default NetBird API address: the server this machine is connected to, else NetBird Cloud. */
   readonly netbirdApi: string;
+  /** Ports of the address router in the panel container (0 = off). */
+  readonly routerPorts: { readonly java: number; readonly bedrock: number };
   readonly demo: boolean;
   readonly webDir: string;
   readonly maxUploadBytes: number;
@@ -111,6 +119,7 @@ export function loadConfig(env: NodeJS.ProcessEnv, version: string): Config {
     updateRepo: e.MH_UPDATE_REPO,
     updateBranch: e.MH_UPDATE_BRANCH,
     netbirdApi: e.MH_NETBIRD_API ?? NETBIRD_DEFAULT_API,
+    routerPorts: { java: e.MH_ROUTER_JAVA_PORT, bedrock: e.MH_ROUTER_BEDROCK_PORT },
     demo: e.MH_DEMO,
     webDir: e.MH_WEB_DIR ? path.resolve(e.MH_WEB_DIR) : path.resolve(here, '../../web/dist'),
     maxUploadBytes: e.MH_MAX_UPLOAD_MB * BYTES_PER_MB,

@@ -484,6 +484,7 @@ describe('NetBird automation', () => {
     expect(shown.netbird).toEqual<NetbirdServerInfo>({
       name: 'survival',
       services: [{ purpose: 'main', domain: `survival.${BASE}`, port: 31000 }],
+      routed: { java: false, bedrock: false },
       error: null,
     });
     const taken = await call('POST', '/api/servers', {
@@ -537,6 +538,71 @@ describe('NetBird automation', () => {
       'geyser-signal',
       'main',
     ]);
+  });
+
+  test('address router: 25565 and 19132 go to the panel, servers move aside, players use the name alone', async () => {
+    netbird = createFakeNetbird({ customPorts: true });
+    const routed = await createTestApp({ MH_ROUTER_JAVA_PORT: '24565', MH_ROUTER_BEDROCK_PORT: '19100' });
+    try {
+      const admin = await setupAdmin(routed);
+      const rcall = (method: 'GET' | 'PUT' | 'POST', url: string, payload?: object) =>
+        routed.app.inject({ method, url, payload, headers: authHeaders(admin) });
+      await rcall('PUT', '/api/netbird', {
+        apiUrl: 'https://api.netbird.io',
+        token: TOKEN,
+        domain: BASE,
+        peerId: 'peer-mh',
+      });
+      expect(netbird.byDomain(`mh-router-java.${BASE}`)).toMatchObject({
+        mode: 'tcp',
+        listen_port: 25565,
+        targets: [expect.objectContaining({ port: 24565 })],
+      });
+      expect(netbird.byDomain(`mh-router-bedrock.${BASE}`)).toMatchObject({
+        mode: 'tcp',
+        listen_port: 19132,
+        targets: [expect.objectContaining({ port: 19100 })],
+      });
+      const server = (
+        await rcall('POST', '/api/servers', {
+          edition: 'java',
+          software: 'paper',
+          version: '1.21.4',
+          memoryMb: 2048,
+          port: 25565,
+          eula: true,
+          startNow: false,
+          name: 'Reich',
+          netbirdName: 'reich',
+        })
+      ).json<ServerSummary>();
+      await rcall('PUT', `/api/servers/${server.id}/geyser`, { enabled: true });
+      const shown = async () => (await rcall('GET', `/api/servers/${server.id}`)).json<ServerDetail>();
+      await waitFor(async () => (await shown()).netbird?.services.length === 2);
+      // The server's own address leaves 25565 to the router; Bedrock signaling needs no own TCP service.
+      expect(netbird.byDomain(`reich.${BASE}`)?.listen_port).toBe(25566);
+      expect(netbird.byDomain(`reich-bedrock-tcp.${BASE}`)).toBeUndefined();
+      expect(netbird.byDomain(`reich-bedrock.${BASE}`)).toMatchObject({ mode: 'udp', listen_port: 19132 });
+      const detailNow = await shown();
+      expect(detailNow.address).toBe(`reich.${BASE}`);
+      expect(detailNow.netbird?.routed).toEqual({ java: true, bedrock: true });
+      expect((await rcall('GET', '/api/netbird')).json<NetbirdStatus>().router).toEqual({
+        java: true,
+        bedrock: true,
+      });
+      // The router finds the container by the name typed (with or without "-bedrock", any case, with port).
+      expect(routed.gateway.lookup(`reich.${BASE}`, 'java')).toEqual({
+        host: `mh-${server.id}`,
+        port: 25565,
+      });
+      expect(routed.gateway.lookup(`reich-bedrock.${BASE}`, 'bedrock')).toEqual({
+        host: `mh-${server.id}`,
+        port: 19132,
+      });
+      expect(routed.gateway.lookup(`fremd.${BASE}`, 'java')).toBeNull();
+    } finally {
+      await routed.cleanup();
+    }
   });
 
   test('renaming moves the addresses, removing the name or the server cleans up NetBird', async () => {

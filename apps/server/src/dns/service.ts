@@ -317,6 +317,7 @@ export function createDnsAutomation(
     const voice = row.voiceChat ? portOf(VOICE_PURPOSE) : undefined;
     return {
       name: row.netbirdName,
+      routed: { java: false, bedrock: false },
       services: [
         { purpose: 'main', domain, port: row.port },
         ...(geyser ? [{ purpose: 'geyser' as const, domain, port: geyser }] : []),
