@@ -1,7 +1,9 @@
 import { randomInt } from 'node:crypto';
 import { and, eq, ne } from 'drizzle-orm';
 import {
+  wantsKind,
   wantsNotice,
+  type NotifyKind,
   type DiscordLinkCode,
   type DiscordSettingsView,
   type DiscordLinked,
@@ -99,6 +101,8 @@ export interface NotifyService {
     people: readonly UserRow[],
     topic: NotifyTopic,
     notice: (person: UserRow) => Notice,
+    /** Which single kind it is: someone may have switched just this one off. */
+    kind: NotifyKind,
   ) => void;
   readonly admins: () => UserRow[];
   readonly onAction: (action: string, handler: ActionHandler) => void;
@@ -357,6 +361,7 @@ export function createNotifyService(
         decisions: wantsNotice(prefs, 'decisions'),
         email: wantsNotice(prefs, 'email'),
         discord: wantsNotice(prefs, 'discord'),
+        muted: [...(prefs.muted ?? [])],
       },
       discord: {
         available: stored() !== undefined,
@@ -373,7 +378,7 @@ export function createNotifyService(
   const fresh = (user: UserRow): UserRow =>
     db.select().from(users).where(eq(users.id, user.id)).get() ?? user;
 
-  const tell: NotifyService['tell'] = (people, topic, notice) => {
+  const tell: NotifyService['tell'] = (people, topic, notice, kind) => {
     const t = token();
     // Whatever does not go out lands in the outbox with the reason, so a missing message can be explained.
     const skipped = (channel: 'mail' | 'discord', person: UserRow, subject: string, detail: string): void =>
@@ -383,7 +388,7 @@ export function createNotifyService(
       .forEach((person) => {
         const n = notice(person);
         const subject = n.discord.title;
-        if (!wantsNotice(person.notify, topic)) {
+        if (!wantsNotice(person.notify, topic) || !wantsKind(person.notify, kind)) {
           skipped('discord', person, subject, `${person.username} hat diese Benachrichtigung ausgeschaltet`);
           return;
         }

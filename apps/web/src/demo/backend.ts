@@ -190,7 +190,7 @@ const state = {
     error: null,
   } as DiscordSettingsView,
   notify: {
-    prefs: { approvals: true, crashes: true, decisions: true, email: true, discord: true },
+    prefs: { approvals: true, crashes: true, decisions: true, email: true, discord: true, muted: [] },
     discord: {
       available: false,
       linked: false,

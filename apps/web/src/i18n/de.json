@@ -2629,7 +2629,95 @@
     "lastError": "Letzter Fehler von Discord: {{message}}",
     "stepServer": "Hol den Bot auf einen deiner Discord-Server (irgendeinen, auch einen leeren). Ohne gemeinsamen Server lässt Discord ihn dir nicht privat schreiben. Auf dem Server schreibt er nichts.",
     "stepCommand": "Tippe in Discord in irgendeinen Chat /verbinden, wähle den Befehl aus der Liste und drück Enter. Dann auf „Jetzt verbinden“ klicken – fertig, der Bot schreibt dir.",
-    "step2Code": "Tippe in Discord /verbinden, wähle den Befehl aus der Liste und trag im Feld „code“ diesen Code ein:"
+    "step2Code": "Tippe in Discord /verbinden, wähle den Befehl aus der Liste und trag im Feld „code“ diesen Code ein:",
+    "kindsTitle": "Einzeln abschalten",
+    "kindsText": "Jede Nachricht, die das Panel dir schicken kann. Was du ausschaltest, kommt nicht mehr – weder per Mail noch per Discord.",
+    "selfFixing": "behebt sich selbst",
+    "kindsShow": "Liste zeigen ({{count}} aus)",
+    "kindsHide": "Liste ausblenden",
+    "topicOff": "Oben ausgeschaltet",
+    "kinds": {
+      "server-crash": {
+        "title": "Server abgestürzt",
+        "text": "Ursache, Lösung und Reparatur-Knöpfe, wenn ein Server abstürzt."
+      },
+      "server-restart": {
+        "title": "Server startet nicht von selbst",
+        "text": "Der Dauerbetrieb versucht einen Server neu zu starten und es klappt nicht sofort."
+      },
+      "backup-failed": {
+        "title": "Backup fehlgeschlagen",
+        "text": "Ein Backup konnte nicht gespeichert werden."
+      },
+      "disk": {
+        "title": "Festplatte fast voll",
+        "text": "Im MorniHosting-Container wird der Platz knapp."
+      },
+      "panel-restart": {
+        "title": "Panel neu gestartet",
+        "text": "Das Panel war kurz weg und wurde vom Wächter neu gestartet."
+      },
+      "docker": {
+        "title": "Docker neu gestartet",
+        "text": "Docker antwortete nicht und wurde neu gestartet."
+      },
+      "container-restart": {
+        "title": "Container neu gestartet",
+        "text": "Der Proxmox-Host hat den MorniHosting-Container neu gestartet."
+      },
+      "host-offline": {
+        "title": "Proxmox-Host offline",
+        "text": "Der Proxmox-Host hatte kein Internet."
+      },
+      "host-storage": {
+        "title": "Proxmox-Speicher fast voll",
+        "text": "Der Speicher auf dem Proxmox-Host wird knapp."
+      },
+      "netbird": {
+        "title": "NetBird getrennt",
+        "text": "NetBird hat die Verbindung verloren und verbindet sich neu."
+      },
+      "netbird-exit": {
+        "title": "Hausanschluss nicht versteckt",
+        "text": "Der NetBird-Ausgang geht nicht, deine Heim-IP könnte sichtbar sein."
+      },
+      "netbird-heal": {
+        "title": "NetBird repariert",
+        "text": "Das Panel hat NetBird selbst repariert (neue Rechner-ID, alte Einträge)."
+      },
+      "dns": {
+        "title": "DNS repariert",
+        "text": "Der Container konnte keine Adressen auflösen, der Wächter hat das behoben."
+      },
+      "mail-failed": {
+        "title": "Mail nicht verschickt",
+        "text": "Das Panel konnte eine Mail nicht abgeben."
+      },
+      "registration": {
+        "title": "Neue Registrierung",
+        "text": "Jemand möchte ein Konto und wartet auf Freigabe."
+      },
+      "server-request": {
+        "title": "Neue Server-Anfrage",
+        "text": "Jemand möchte einen Server und wartet auf Freigabe."
+      },
+      "payment": {
+        "title": "Neue Bestellung mit Preis",
+        "text": "Ein Server mit Kosten wurde bestellt."
+      },
+      "decision": {
+        "title": "Antwort auf deine Anfrage",
+        "text": "Dein Konto oder deine Server-Anfrage wurde freigegeben oder abgelehnt."
+      },
+      "server-online": {
+        "title": "Neuer Server ist online",
+        "text": "Dein bestellter Server ist fertig und läuft."
+      },
+      "other": {
+        "title": "Sonstige Warnungen",
+        "text": "Alles andere, was schiefgehen kann."
+      }
+    }
   },
   "discordLink": {
     "title": "Discord verbinden",
