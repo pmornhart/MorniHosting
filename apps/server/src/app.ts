@@ -67,6 +67,8 @@ import { createAccessService } from './users/access.js';
 import { registerUserRoutes } from './users/routes.js';
 import { registerTeamRoutes } from './team/routes.js';
 import { createPlayerDetailService } from './players/detail.js';
+import { createCraftAttackService } from './craftattack/service.js';
+import { registerCraftAttackRoutes } from './craftattack/routes.js';
 import { registerPlayerDetailRoutes } from './players/routes.js';
 import { registerItemIconRoutes } from './players/item-icons.js';
 import { registerWebhookRoutes } from './webhooks/routes.js';
@@ -215,7 +217,16 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const market = createMarketService(ctx, servers, files);
   const geyser = createGeyserService(ctx, servers, market);
   const voiceChat = createVoiceChatService(ctx, servers, market);
-  const orders = createOrderService(ctx, { servers, geyser, voice: voiceChat, schedules, notify });
+  const playerDetails = createPlayerDetailService(servers);
+  const craftAttack = createCraftAttackService(ctx, { servers, market, players: playerDetails });
+  const orders = createOrderService(ctx, {
+    servers,
+    geyser,
+    voice: voiceChat,
+    schedules,
+    notify,
+    craftAttack,
+  });
   // Approved server requests are orders too: same add-ons, same order of things.
   const approvals = createApprovalService(ctx, mail, notify, { ...servers, create: orders.create });
   notify.start();
@@ -319,7 +330,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerCrashRoutes(app, ctx, createCrashHelpService(ctx, { servers, backups, files, notify }));
   registerUserRoutes(app, ctx, mail);
   registerTeamRoutes(app, ctx);
-  registerPlayerDetailRoutes(app, ctx, createPlayerDetailService(servers));
+  registerPlayerDetailRoutes(app, ctx, playerDetails);
+  registerCraftAttackRoutes(app, ctx, craftAttack);
   registerTokenRoutes(app, ctx);
   registerAuditRoutes(app, ctx);
   registerSettingsRoutes(app, ctx);

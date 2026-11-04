@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Archive,
   ArrowLeft,
+  Castle,
   Mic,
   Blocks,
   Check,
@@ -21,6 +22,7 @@ import { useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
+  CRAFT_ATTACK_SOFTWARE,
   CREATABLE_SOFTWARE,
   GAME_IDS,
   SOFTWARE,
@@ -173,7 +175,7 @@ export function CreateServerPage(): ReactElement {
   const [nameIdea, setNameIdea] = useState(suggestName);
   const [displayName, setDisplayName] = useState('');
   const [portPick, setPortPick] = useState<number | null>(null);
-  const [addOns, setAddOns] = useState({ geyser: false, voice: false, backups: false });
+  const [addOns, setAddOns] = useState({ geyser: false, voice: false, backups: false, craftattack: false });
   const [startNow, setStartNow] = useState(false);
   const [coupon, setCoupon] = useState<string | null>(null);
   const [eula, setEula] = useState(false);
@@ -217,6 +219,8 @@ export function CreateServerPage(): ReactElement {
   const port = portPick ?? nextFreePort(defaultPort, servers);
   const voicePossible = software !== null && VOICE_CHAT_SOFTWARE.includes(software);
   const voice = voicePossible && addOns.voice;
+  const craftAttackPossible = software !== null && CRAFT_ATTACK_SOFTWARE.includes(software);
+  const craftAttack = craftAttackPossible && addOns.craftattack;
   const addressName = toNetbirdName(subdomain, '');
   const name = displayName.trim() || subdomain.trim();
   const hostname = address && addressName ? `${addressName}.${address.domain}` : null;
@@ -239,7 +243,7 @@ export function CreateServerPage(): ReactElement {
         ...(address && addressName ? { netbirdName: addressName } : {}),
         ...(coupon ? { coupon } : {}),
         // The panel sets these up itself, one after another, before the first start.
-        addOns: { geyser, voice, backups: addOns.backups },
+        addOns: { geyser, voice, backups: addOns.backups, craftattack: craftAttack },
       };
       const server = await placeOrder(body, me.user.canCreateServers);
       if (!server) return null;
@@ -587,6 +591,20 @@ export function CreateServerPage(): ReactElement {
               locked={!voicePossible}
               onChange={(on) => setAddOns({ ...addOns, voice: on })}
             />
+            {edition === 'java' ? (
+              <AddOn
+                icon={
+                  <AddOnTile>
+                    <Castle className="size-5 text-primary" aria-hidden />
+                  </AddOnTile>
+                }
+                title={t('order.craftAttack')}
+                text={craftAttackPossible ? t('order.craftAttackText') : t('order.craftAttackSoftware')}
+                on={craftAttack}
+                locked={!craftAttackPossible}
+                onChange={(on) => setAddOns({ ...addOns, craftattack: on })}
+              />
+            ) : null}
             <AddOn
               icon={
                 <AddOnTile>
@@ -648,13 +666,14 @@ export function CreateServerPage(): ReactElement {
                 {hostname ?? `Port ${port}`}
               </dd>
             </div>
-            {geyser || voice || addOns.backups ? (
+            {geyser || voice || addOns.backups || craftAttack ? (
               <div className="flex justify-between gap-3 border-b border-border pb-3">
                 <dt className="text-muted-foreground">{t('order.addOns')}</dt>
                 <dd className="grid text-right font-semibold">
                   {geyser ? <span>{t('order.geyser')}</span> : null}
                   {voice ? <span>{t('order.voice')}</span> : null}
                   {addOns.backups ? <span>{t('order.backups')}</span> : null}
+                  {craftAttack ? <span>{t('order.craftAttack')}</span> : null}
                 </dd>
               </div>
             ) : null}

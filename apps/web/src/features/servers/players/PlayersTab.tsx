@@ -22,6 +22,7 @@ import { api } from '@/lib/api';
 import { useServer } from '../ServerLayout';
 import { TabIntro } from '@/components/tab-intro';
 import { KnownPlayersCard } from './KnownPlayersCard';
+import { PublicStatsCard } from './PublicStatsCard';
 
 interface ActionInput {
   readonly action: PlayerAction;
@@ -257,6 +258,7 @@ export default function PlayersTab(): ReactElement {
           {t(bedrock ? 'playersTab.offlineBedrock' : 'playersTab.offline')}
         </p>
       ) : null}
+      {bedrock ? null : <PublicStatsCard serverId={server.id} canEdit={can('config')} />}
       {bedrock ? null : <KnownPlayersCard serverId={server.id} live={server.live.players.join(',')} />}
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <ListCard
