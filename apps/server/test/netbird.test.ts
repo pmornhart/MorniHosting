@@ -406,7 +406,12 @@ describe('NetBird automation', () => {
     // Creating does not wait for NetBird; the address follows a moment later.
     await waitFor(() => netbird.byDomain(`reich.${BASE}`) !== undefined);
     await waitFor(async () => (await detail(server.id)).publicPort === 25565);
-    expect(netbird.byDomain(`reich.${BASE}`)).toMatchObject({ mode: 'tcp', listen_port: 25565 });
+    expect(netbird.byDomain(`reich.${BASE}`)).toMatchObject({
+      mode: 'tcp',
+      listen_port: 25565,
+      pass_host_header: false,
+      targets: [],
+    });
     expect((await detail(server.id)).publicPort).toBe(25565);
     const status = (await call('GET', '/api/netbird')).json<NetbirdStatus>();
     expect(status).toMatchObject({
@@ -429,7 +434,14 @@ describe('NetBird automation', () => {
     netbird = createFakeNetbird({ customPorts: true });
     await configure();
     // Left-over of the panel itself (its domain, but no longer in its list), e.g. after re-adding the machine.
-    netbird.services.set('old-1', { id: 'old-1', domain: `alt.${BASE}`, mode: 'tcp', listen_port: 25565 });
+    netbird.services.set('old-1', {
+      id: 'old-1',
+      domain: `alt.${BASE}`,
+      mode: 'tcp',
+      listen_port: 25565,
+      pass_host_header: false,
+      targets: [],
+    });
     // Someone else's service on 25566.
     netbird.services.set('foreign', {
       id: 'foreign',
