@@ -40,7 +40,7 @@ import {
   validateGameSettings,
 } from '../games/settings.js';
 import { pluginPackages } from './plugin-packages.js';
-import { hostMemoryMb } from '../system/host.js';
+import { hostMemoryMb, refreshHostMemory } from '../system/host.js';
 import { analyseCrash } from './crash.js';
 import { createDownloadMeter, type DownloadProgress } from './steam-progress.js';
 import {
@@ -698,15 +698,22 @@ export function createServerService(ctx: AppContext): ServerService {
     const channel = commandChannelFor(r);
     const game = gameOf(r.software);
     if (game) return stopGame(id, r, game);
-    const isJavaServer = r.edition === 'java' && !SOFTWARE[r.software].proxy;
-    try {
-      if (isJavaServer) await docker.sendCommand(r.containerId, 'save-all', channel);
-      await docker.sendCommand(r.containerId, SOFTWARE[r.software].proxy ? 'end' : 'stop', channel);
-    } catch (err) {
-      log.info({ err, serverId: id }, 'stop command not delivered, falling back to docker stop');
-    }
-    const exited = await waitForExit(r.containerId, STOP_TIMEOUT_SECONDS * MS_PER_SECOND);
+    const began = Date.now();
+    // "stop" saves the world itself; an extra "save-all" before only doubled the waiting.
+    const delivered = await (async (): Promise<boolean> => {
+      try {
+        await docker.sendCommand(r.containerId ?? '', SOFTWARE[r.software].proxy ? 'end' : 'stop', channel);
+        return true;
+      } catch (err) {
+        // Already gone counts as done; still running gets Docker's stop below (the image saves on SIGTERM too).
+        log.info({ err, serverId: id }, 'stop command not confirmed');
+        return (await docker.inspect(r.containerId ?? ''))?.running !== true;
+      }
+    })();
+    // Not reachable by command: let Docker stop it right away (the image saves on SIGTERM too) instead of waiting.
+    const exited = delivered ? await waitForExit(r.containerId, STOP_TIMEOUT_SECONDS * MS_PER_SECOND) : false;
     if (!exited) await docker.stop(r.containerId, DOCKER_STOP_GRACE_SECONDS);
+    panelLog(id, `Server ist aus (nach ${Math.round((Date.now() - began) / MS_PER_SECOND)} Sekunden).`);
     setState(id, 'stopped');
     return exited;
   };
@@ -767,7 +774,9 @@ export function createServerService(ctx: AppContext): ServerService {
    * into the machine (with room for the panel and Docker) and the disk has some space left. Otherwise the machine
    * would swap until everything hangs, or fill up until nothing can save anymore.
    */
-  const guardHost = (r: ServerRow): void => {
+  const guardHost = async (r: ServerRow): Promise<void> => {
+    // The machine may have got more RAM meanwhile (pct set …): ask again instead of trusting an old number.
+    await refreshHostMemory(docker);
     const hostMb = hostMemoryMb();
     const othersMb = db
       .select()
@@ -1264,7 +1273,7 @@ export function createServerService(ctx: AppContext): ServerService {
       const usedMb = rt(id).diskMb;
       if (r.diskLimitMb !== null && usedMb !== null && usedMb > r.diskLimitMb)
         throw conflict('disk_limit_reached', { used: Math.round(usedMb), limit: r.diskLimitMb });
-      guardHost(r);
+      await guardHost(r);
       audit.record(actor, 'server.start', id);
       rt(id).state = 'starting';
       publishLive(id);
