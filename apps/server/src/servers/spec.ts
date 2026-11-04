@@ -50,12 +50,18 @@ export function imageFor(config: Config, row: Pick<ServerRow, 'software' | 'vers
   return `${config.images.java}:${row.javaTag ?? javaTagFor(row.software, row.version)}`;
 }
 
+/** Heap Java starts with; it grows up to the server's RAM when players and chunks need it. */
+const INIT_MEMORY_MB = 1024;
+
 function javaEnv(row: ServerRow, timezone: string): Record<string, string> {
   const base: Record<string, string> = {
     EULA: 'TRUE',
     TYPE: ITZG_TYPE[row.software] ?? 'CUSTOM',
     VERSION: row.version,
-    MEMORY: `${row.memoryMb}M`,
+    // The set RAM is the ceiling; Java starts small and takes more only when the server needs it. With the same
+    // start and maximum (and Aikar's AlwaysPreTouch) it would grab the whole amount at once, even when empty.
+    INIT_MEMORY: `${Math.min(INIT_MEMORY_MB, row.memoryMb)}M`,
+    MAX_MEMORY: `${row.memoryMb}M`,
     ENABLE_RCON: 'true',
     RCON_PASSWORD: row.rconPassword,
     RCON_PORT: String(PORT_RCON),
