@@ -173,7 +173,7 @@ function prepareFiles(spec: ContainerSpec): void {
 }
 
 function memoryMbOf(spec: ContainerSpec): number {
-  const raw = spec.env['MEMORY'] ?? '';
+  const raw = spec.env['MAX_MEMORY'] ?? spec.env['MEMORY'] ?? '';
   const value = Number.parseInt(raw, 10);
   return raw.toUpperCase().endsWith('G') ? value * 1024 : value; // eslint-disable-line ts-patterns/no-magic-numbers
 }
