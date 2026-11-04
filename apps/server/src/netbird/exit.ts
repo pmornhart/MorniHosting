@@ -18,6 +18,8 @@ import { createNetbirdClient, type NetbirdClientFactory, type NetbirdPeer } from
 const NETBIRD_KEY = 'netbird';
 const EXIT_KEY = 'netbird_exit';
 const EXIT_NAME = 'MorniHosting Ausgang';
+/** The panel's container is called "mornihosting" (Proxmox script, install.sh); its NetBird peer carries the name. */
+const PANEL_MACHINE_HINT = 'mornihosting';
 
 interface NetbirdConfig {
   readonly apiUrl: string;
@@ -152,7 +154,8 @@ export function createNetbirdExit(
     if (!exitPeerId) throw badRequest('netbird_exit_peer_missing');
     if (exitPeerId === cfg.peerId) throw badRequest('netbird_exit_same_machine');
     const client = clientOf(cfg);
-    const exitPeer = (await client.peers()).find((p) => p.id === exitPeerId);
+    const peers = await client.peers();
+    const exitPeer = peers.find((p) => p.id === exitPeerId);
     if (!exitPeer) throw badRequest('netbird_exit_peer_unknown');
     const previous = stored();
     // Remember the home IP once, before traffic moves (later it would already be the exit's IP).
@@ -161,9 +164,16 @@ export function createNetbirdExit(
     const groups = await client.groups();
     const existingGroup =
       groups.find((g) => g.id === previous?.groupId) ?? groups.find((g) => g.name === EXIT_NAME);
+    // Only the machine the panel runs on goes out through the exit: the MorniHosting container, found by its name –
+    // also when the machine chosen for the addresses is another one (e.g. the Proxmox host routing into the LAN).
+    // The host itself must never be in this group, or it loses its internet whenever the exit is down.
+    const panelPeer =
+      peers.find(
+        (p) => p.id !== exitPeerId && `${p.name} ${p.hostname}`.toLowerCase().includes(PANEL_MACHINE_HINT),
+      )?.id ?? cfg.peerId;
     const group = existingGroup
-      ? await client.updateGroup(existingGroup.id, EXIT_NAME, [cfg.peerId])
-      : await client.createGroup(EXIT_NAME, [cfg.peerId]);
+      ? await client.updateGroup(existingGroup.id, EXIT_NAME, [panelPeer])
+      : await client.createGroup(EXIT_NAME, [panelPeer]);
     const request = { name: EXIT_NAME, peerId: exitPeerId, groupId: group.id };
     const routes = await client.routes();
     const existingRoute =
