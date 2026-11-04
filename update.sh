@@ -77,6 +77,17 @@ if NB_API="$(bash scripts/netbird-env.sh)" && [[ -n "${NB_API}" ]]; then
   msg_ok "NetBird-Server dieses Rechners: ${NB_API}"
 fi
 
+# Solange das Update läuft, lässt der Wächter (scripts/guard.sh) das Panel in Ruhe – sonst starten beide es
+# gleichzeitig neu und Docker meldet „container name … is already in use“.
+UPDATE_LOCK="/run/mornihosting-update.lock"
+touch "${UPDATE_LOCK}" 2>/dev/null || true
+trap 'rm -f "${UPDATE_LOCK}"' EXIT
+
+# Reste eines abgebrochenen Neustarts ("7d63457cd4e6_mornihosting") weg, damit Compose neu anlegen kann.
+remove_leftovers() {
+  docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_mornihosting(-[a-z-]+)?$' | xargs -r docker rm -f >/dev/null 2>&1 || true
+}
+
 step "build"
 # Das Panel folgt dem Stand von main: gebaut wird aus genau dem eben geholten Code. Ein fertiges Image
 # (ghcr.io) nur, wenn in der .env ausdrücklich MH_IMAGE_TAG steht.
@@ -84,7 +95,8 @@ if grep -q '^MH_IMAGE_TAG=' .env 2>/dev/null; then
   msg_info "Neues Panel-Image wird geladen"
   docker compose pull --quiet panel
   step "restart"
-  docker compose up -d --quiet-pull >/dev/null
+  remove_leftovers
+  docker compose up -d --quiet-pull >/dev/null || { remove_leftovers; docker compose up -d --quiet-pull >/dev/null; }
 else
   msg_info "Neues Panel wird gebaut (dauert ein paar Minuten)"
   MH_BUILD_VERSION="$(git describe --tags --always 2>/dev/null || echo dev)" docker compose build --quiet panel
@@ -93,7 +105,8 @@ else
   msg_ok "Panel gebaut"
   step "restart"
   msg_info "Panel wird neu gestartet"
-  docker compose up -d >/dev/null
+  remove_leftovers
+  docker compose up -d >/dev/null || { remove_leftovers; docker compose up -d >/dev/null; }
 fi
 msg_ok "Panel neu gestartet"
 
