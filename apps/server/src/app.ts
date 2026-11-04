@@ -56,7 +56,7 @@ import { registerSettingsRoutes } from './settings/routes.js';
 import { registerTransferRoutes } from './transfer/routes.js';
 import { createTransferService } from './transfer/service.js';
 import { createSettingsService } from './settings/service.js';
-import { sampleHostCpu } from './system/host.js';
+import { hostInfo, sampleHostCpu } from './system/host.js';
 import { registerSystemRoutes } from './system/routes.js';
 import { registerQuotaRoutes } from './quota/routes.js';
 import { registerPreloadRoutes } from './preload/routes.js';
@@ -353,6 +353,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     dns,
     start: async () => {
       sampleHostCpu();
+      // Learns what RAM the machine really has (a Proxmox container shows the host's in /proc).
+      void hostInfo(ctx.docker, ctx.config.dataDir);
       intervals.push(setInterval(sampleHostCpu, HOST_SAMPLE_SECONDS * MS_PER_SECOND));
       intervals.push(setInterval(() => ctx.sessions.purgeExpired(), MS_PER_HOUR));
       mail.purgeStale();

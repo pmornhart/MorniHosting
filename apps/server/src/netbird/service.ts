@@ -345,6 +345,12 @@ export function createNetbirdAutomation(
     const created = await withFreeListenPort(client, cfg, fixedPort, want.domain, (listenPort) =>
       client.createService({ ...request, listenPort }),
     );
+    // Some NetBird setups pick their own port on creating; the wanted one (Geyser's TCP half follows its UDP half)
+    // is then set right away instead of at the next sync.
+    if (want.listenPort && created.listen_port && created.listen_port !== want.listenPort) {
+      const moved = await client.updateService(created.id, { ...request, listenPort: want.listenPort });
+      return remember(serverId, want, created.id, moved.listen_port ?? want.listenPort);
+    }
     return remember(serverId, want, created.id, created.listen_port ?? fixedPort);
   };
 

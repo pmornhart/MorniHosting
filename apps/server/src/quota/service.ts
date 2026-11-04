@@ -7,6 +7,7 @@ import type { UserRow } from '../auth/context.js';
 import type { AppContext } from '../context.js';
 import { roles, serverAccess, servers as serverTable, users } from '../db/schema.js';
 import { conflict, notFound } from '../lib/errors.js';
+import { hostMemoryMb } from '../system/host.js';
 import type { QuotaGuard, ServerService } from '../servers/service.js';
 
 /**
@@ -36,7 +37,7 @@ function hostOf(dataDir: string): QuotaView['host'] {
       return null;
     }
   })();
-  return { memoryMb: Math.round(os.totalmem() / BYTES_PER_MB), cpus: os.cpus().length, diskMb };
+  return { memoryMb: hostMemoryMb(), cpus: os.cpus().length, diskMb };
 }
 
 export function createQuotaService(ctx: AppContext, servers: ServerService): QuotaService {

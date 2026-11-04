@@ -61,8 +61,11 @@ function cpuPercent(stats: Docker.ContainerStats): number {
   const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - (stats.precpu_stats.cpu_usage?.total_usage ?? 0);
   const systemDelta = (stats.cpu_stats.system_cpu_usage ?? 0) - (stats.precpu_stats.system_cpu_usage ?? 0);
   const cpus = stats.cpu_stats.online_cpus || stats.cpu_stats.cpu_usage.percpu_usage?.length || 1;
+  // Without an earlier sample (first read, a container that just started) there is nothing to compare with.
+  if (!stats.precpu_stats.system_cpu_usage || !stats.precpu_stats.cpu_usage?.total_usage) return 0;
   if (systemDelta <= 0 || cpuDelta < 0) return 0;
-  return (cpuDelta / systemDelta) * cpus * PERCENT;
+  // Some hosts (LXC, cgroup v2) report odd counters now and then; more than all cores at full load is impossible.
+  return Math.min((cpuDelta / systemDelta) * cpus * PERCENT, cpus * PERCENT);
 }
 
 export function createDockerDriver(config: Config): DockerDriver {
@@ -270,10 +273,13 @@ export function createDockerDriver(config: Config): DockerDriver {
       try {
         const s = await docker.getContainer(id).stats({ stream: false });
         const cache = s.memory_stats.stats?.inactive_file ?? s.memory_stats.stats?.cache ?? 0;
+        const limit = s.memory_stats.limit ?? 0;
+        const used = Math.max(0, (s.memory_stats.usage ?? 0) - cache);
         return {
           cpuPercent: cpuPercent(s),
-          memoryBytes: Math.max(0, (s.memory_stats.usage ?? 0) - cache),
-          memoryLimitBytes: s.memory_stats.limit ?? 0,
+          // Never more than the container may use (odd counters on some hosts would draw spikes in the chart).
+          memoryBytes: limit ? Math.min(used, limit) : used,
+          memoryLimitBytes: limit,
           rxBytes: Object.values(s.networks ?? {}).reduce((sum, n) => sum + n.rx_bytes, 0),
           txBytes: Object.values(s.networks ?? {}).reduce((sum, n) => sum + n.tx_bytes, 0),
         };
