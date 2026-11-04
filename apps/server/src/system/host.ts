@@ -44,10 +44,24 @@ export function sampleHostCpu(): void {
  * The smaller one is the truth; it is remembered for the quota sliders, which need it right away.
  */
 const known: { memoryBytes: number } = { memoryBytes: os.totalmem() };
+const REFRESH_WAIT_MS = 3000;
 
 /** RAM this machine really has, in MB. */
 export function hostMemoryMb(): number {
   return Math.round(known.memoryBytes / BYTES_PER_MB);
+}
+
+/** Learns the machine's RAM again (quick: one Docker call, at most a few seconds). */
+export async function refreshHostMemory(docker: DockerDriver): Promise<void> {
+  try {
+    const info = await Promise.race([
+      docker.hostInfo(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), REFRESH_WAIT_MS)),
+    ]);
+    if (info) known.memoryBytes = Math.min(info.memoryBytes, os.totalmem());
+  } catch {
+    // Docker busy: the last known number stays.
+  }
 }
 
 /** What the servers use right now: on a limited machine the host-wide /proc numbers would be someone else's. */

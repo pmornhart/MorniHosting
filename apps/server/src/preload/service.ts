@@ -36,6 +36,9 @@ const SETTINGS_KEY = 'preload';
 const UPDATE_CHECK_MS = MS_PER_HOUR;
 /** The "new version" hints are looked up at most this often. */
 const LATEST_RECHECK_MS = MS_PER_HOUR / 2;
+/** Steam game templates update at most this often, and only at night (local time of the panel). */
+const STEAM_REFRESH_MS = 20 * MS_PER_HOUR;
+const NIGHT_HOURS: readonly number[] = [3, 4, 5];
 const MINECRAFT_TEMPLATE_MB = 2048;
 const MB_PER_GB = 1024;
 /** Template servers listen far away from the ports players use. */
@@ -293,9 +296,14 @@ export function createPreloadService(ctx: AppContext, servers: ServerService): P
           try {
             const newest = await versionToUse(software);
             if (!gameOf(software)) latest.set(software, newest);
-            const steamGame = gameOf(software)?.steamAppId !== undefined;
+            // Steam games start their template to update – heavy (CPU, disk): once a day at night, not hourly.
+            const lastDone = Date.parse(stored[software]?.doneAt ?? '') || 0;
+            const steamGame =
+              gameOf(software)?.steamAppId !== undefined &&
+              Date.now() - lastDone > STEAM_REFRESH_MS &&
+              NIGHT_HOURS.includes(new Date().getHours());
             const changed = newest !== (templateOf(software)?.version ?? stored[software]?.version ?? null);
-            if (changed || steamGame || modeOf(software) === 'image') enqueue(software, admin);
+            if (changed || steamGame) enqueue(software, admin);
           } catch (err) {
             ctx.log.debug({ err, software }, 'preload update check failed');
           }
