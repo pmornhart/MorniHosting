@@ -180,6 +180,8 @@ const LOG_BUFFER_LINES = 1000;
 const PORT_SEARCH_LIMIT = 100;
 const ATTACH_TAIL_LINES = 300;
 const STATS_INTERVAL_SECONDS = 10;
+/** Images the servers use are checked for a newer version this often (the driver pulls at most once a day). */
+const IMAGE_REFRESH_EVERY_MS = MS_PER_DAY / 2;
 /** Harmless command that every Source-engine console answers. */
 const READY_PROBE_COMMAND = 'status';
 const TPS_EVERY_TICKS = 3;
@@ -248,7 +250,31 @@ function playerLine(game: GameInfo | null, line: string): { kind: 'join' | 'leav
 export function createServerService(ctx: AppContext): ServerService {
   const { db, config, docker, events, settings, audit, secrets, log } = ctx;
   const runtimes = new Map<string, Runtime>();
-  const timers: { stats: NodeJS.Timeout | null; tick: number } = { stats: null, tick: 0 };
+  const timers: { stats: NodeJS.Timeout | null; images: NodeJS.Timeout | null; tick: number } = {
+    stats: null,
+    images: null,
+    tick: 0,
+  };
+
+  /** Every image the servers use stays current in the background, so starting never waits for a download. */
+  const refreshImages = (): void => {
+    const images = new Set(
+      db
+        .select({ image: servers.image })
+        .from(servers)
+        .all()
+        .map((r) => r.image),
+    );
+    images.forEach((image) => {
+      void (async () => {
+        try {
+          await docker.ensureImage(image);
+        } catch (err) {
+          log.debug({ err, image }, 'image refresh failed');
+        }
+      })();
+    });
+  };
   const unsubscribers: (() => void)[] = [];
 
   const rt = (id: string): Runtime => {
@@ -580,7 +606,6 @@ export function createServerService(ctx: AppContext): ServerService {
     panelLog(id, `Server wird gestartet (${what}) …`);
     beforeStart.forEach((prepare) => prepare(id));
     await docker.ensureNetwork(config.mcNetwork);
-    panelLog(id, 'Prüfe, ob es eine neuere Version des Server-Programms gibt (höchstens 2 Minuten) …');
     await docker.ensureImage(r.image, (percent) => {
       const current = rt(id);
       if (percent !== null && percent !== current.progress) {
@@ -880,9 +905,13 @@ export function createServerService(ctx: AppContext): ServerService {
       timers.stats = setInterval(() => {
         void sampleAll();
       }, STATS_INTERVAL_SECONDS * MS_PER_SECOND);
+      refreshImages();
+      timers.images = setInterval(refreshImages, IMAGE_REFRESH_EVERY_MS);
+      timers.images.unref();
     },
     shutdown: () => {
       if (timers.stats) clearInterval(timers.stats);
+      if (timers.images) clearInterval(timers.images);
       unsubscribers.forEach((u) => u());
       [...runtimes.keys()].forEach(detachLogs);
     },

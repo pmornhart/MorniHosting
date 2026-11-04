@@ -210,8 +210,37 @@ export default function PlayersTab(): ReactElement {
     );
   }
 
-  const bedrock = server.edition === 'bedrock';
+  const game = gameOf(server.software);
   const running = server.live.state === 'running';
+  if (game) {
+    // Other games: who is online, by the name the game shows. Some games do not tell their names at all.
+    const reportsNames = Boolean(game.listCommand ?? game.logPatterns.join);
+    return (
+      <div className="grid gap-4">
+        <TabIntro title={t('playersTab.title')} text={t('playersTab.gameIntro', { game: game.label })} />
+        <ListCard
+          icon={<UsersRound />}
+          title={t('playersTab.online')}
+          text={t(reportsNames ? 'playersTab.gameOnlineText' : 'playersTab.gameNoNames', {
+            game: game.label,
+          })}
+          count={server.live.playersOnline}
+          empty={running ? t('players.nobody') : t('players.serverOff')}
+        >
+          {server.live.players.map((name) => (
+            <PlayerRow
+              key={name}
+              player={{ name, uuid: null }}
+              busy={false}
+              onAction={() => undefined}
+              actions={[]}
+            />
+          ))}
+        </ListCard>
+      </div>
+    );
+  }
+  const bedrock = server.edition === 'bedrock';
   const run = (input: ActionInput): void => {
     const dangerous = input.action === 'ban' || input.action === 'kick';
     if (dangerous) setConfirm(input);
@@ -228,9 +257,7 @@ export default function PlayersTab(): ReactElement {
           {t(bedrock ? 'playersTab.offlineBedrock' : 'playersTab.offline')}
         </p>
       ) : null}
-      {bedrock || gameOf(server.software) ? null : (
-        <KnownPlayersCard serverId={server.id} live={server.live.players.join(',')} />
-      )}
+      {bedrock ? null : <KnownPlayersCard serverId={server.id} live={server.live.players.join(',')} />}
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <ListCard
           icon={<UsersRound />}

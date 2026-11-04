@@ -75,7 +75,7 @@ const TABS: readonly TabDef[] = [
     key: 'players',
     icon: UsersRound,
     permission: 'players',
-    show: (s) => !SOFTWARE[s.software].proxy && !isGameId(s.software),
+    show: (s) => !SOFTWARE[s.software].proxy,
   },
   { to: 'settings', key: 'settings', icon: SlidersHorizontal, permission: 'config', show: () => true },
   { to: 'files', key: 'files', icon: Folder, permission: 'files', show: () => true },

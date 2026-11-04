@@ -142,6 +142,8 @@ export function prepareGameFiles(
 export function parseGamePlayers(game: GameInfo, answer: string): string[] | null {
   const entry = game.logPatterns.listEntry;
   if (!entry) return null;
+  const header = game.logPatterns.listHeader;
+  if (header && !header.test(answer)) return null;
   return answer
     .split('\n')
     .map((line) => line.match(entry)?.[1])
