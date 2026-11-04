@@ -15,7 +15,7 @@ import {
 } from '@mornihosting/shared';
 import { actorOf, requireAuth } from '../auth/context.js';
 import type { Api, AppContext } from '../context.js';
-import { dnsRecords, stats } from '../db/schema.js';
+import { dnsRecords, servers as serverTable, stats } from '../db/schema.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { HTTP_ACCEPTED, HTTP_NO_CONTENT } from '../lib/http-status.js';
 import { isHomeNetworkAddress } from '../lib/net-guard.js';
@@ -223,6 +223,14 @@ export function registerServerRoutes(
 
   app.get('/api/host', async (request) => {
     requireAuth(request);
-    return hostInfo(ctx.docker, ctx.config.dataDir);
+    const live = ctx.db
+      .select({ id: serverTable.id })
+      .from(serverTable)
+      .all()
+      .map((r) => servers.live(r.id));
+    return hostInfo(ctx.docker, ctx.config.dataDir, {
+      cpuPercent: live.reduce((sum, l) => sum + (l.cpuPercent ?? 0), 0),
+      memoryMb: live.reduce((sum, l) => sum + (l.memoryMb ?? 0), 0),
+    });
   });
 }

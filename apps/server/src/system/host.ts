@@ -38,7 +38,29 @@ export function sampleHostCpu(): void {
   state.last = now;
 }
 
-export async function hostInfo(docker: DockerDriver, dataDir: string): Promise<HostInfo> {
+/**
+ * Inside a Proxmox container (LXC) the panel's own container sees the whole Proxmox host in /proc (e.g. 251 GB),
+ * while Docker – running in the LXC with its virtual /proc – reports what the LXC really has (e.g. 8 GB).
+ * The smaller one is the truth; it is remembered for the quota sliders, which need it right away.
+ */
+const known: { memoryBytes: number } = { memoryBytes: os.totalmem() };
+
+/** RAM this machine really has, in MB. */
+export function hostMemoryMb(): number {
+  return Math.round(known.memoryBytes / BYTES_PER_MB);
+}
+
+/** What the servers use right now: on a limited machine the host-wide /proc numbers would be someone else's. */
+export interface ServerUsage {
+  readonly cpuPercent: number;
+  readonly memoryMb: number;
+}
+
+export async function hostInfo(
+  docker: DockerDriver,
+  dataDir: string,
+  usage?: ServerUsage,
+): Promise<HostInfo> {
   const info = await (async () => {
     try {
       return await docker.hostInfo();
@@ -46,6 +68,9 @@ export async function hostInfo(docker: DockerDriver, dataDir: string): Promise<H
       return { name: os.hostname(), cpus: os.cpus().length, memoryBytes: os.totalmem() };
     }
   })();
+  known.memoryBytes = Math.min(info.memoryBytes, os.totalmem());
+  const limited = known.memoryBytes < os.totalmem();
+  const panelMb = process.memoryUsage().rss / BYTES_PER_MB;
   const disk = await (async () => {
     try {
       const s = await fs.promises.statfs(dataDir);
@@ -59,10 +84,10 @@ export async function hostInfo(docker: DockerDriver, dataDir: string): Promise<H
   })();
   return {
     name: info.name,
-    cpuPercent: state.percent,
+    cpuPercent: limited && usage ? Math.min(usage.cpuPercent / info.cpus, PERCENT) : state.percent,
     cpuCores: info.cpus,
-    memoryUsedMb: (os.totalmem() - os.freemem()) / BYTES_PER_MB,
-    memoryTotalMb: os.totalmem() / BYTES_PER_MB,
+    memoryUsedMb: limited && usage ? usage.memoryMb + panelMb : (os.totalmem() - os.freemem()) / BYTES_PER_MB,
+    memoryTotalMb: known.memoryBytes / BYTES_PER_MB,
     diskUsedGb: disk?.used ?? null,
     diskTotalGb: disk?.total ?? null,
   };
