@@ -70,6 +70,56 @@ export const CRASH_TEXTS: Readonly<Record<'de' | 'en', Readonly<Record<string, C
       text: 'Beim ersten Start lädt der Server die Spieldateien aus dem Internet. Das hat nicht geklappt.',
       fix: 'Prüfe die Internetverbindung des Servers (DNS, Firewall) und starte ihn erneut.',
     },
+    'disk-full': {
+      title: 'Die Festplatte ist voll',
+      text: 'Der Server konnte nichts mehr speichern: Auf dem Rechner ist kein Platz mehr frei.',
+      fix: 'Lösche alte Backups oder Dateien (Papierkorb leeren) oder gib dem Rechner mehr Speicherplatz.',
+    },
+    'host-out-of-memory': {
+      title: 'Der Rechner hatte keinen Arbeitsspeicher mehr',
+      text: 'Der Server ({{memoryMb}} MB) wurde hart beendet, weil der ganze Rechner keinen Arbeitsspeicher mehr frei hatte – meist laufen zu viele Server oder einer hat mehr RAM als der Rechner.',
+      fix: 'Gib dem Server weniger RAM, stoppe andere Server oder gib dem Rechner mehr RAM (Proxmox: pct set <ID> --memory …).',
+    },
+    'plugin-incompatible': {
+      title: '{{plugin}} passt nicht zu dieser Server-Version',
+      text: '{{plugin}} wurde für eine andere Minecraft-Version gebaut und ruft Dinge auf, die es hier nicht gibt.',
+      fix: 'Aktualisiere {{plugin}} unter „Plugins“ oder schalte es aus, bis es ein Update gibt.',
+    },
+    'world-locked': {
+      title: 'Die Welt ist schon geöffnet',
+      text: 'Ein anderer Vorgang hält die Welt noch offen (z. B. ein alter Server-Prozess oder ein zweiter Server mit derselben Welt).',
+      fix: 'Warte kurz und starte neu. Passiert es wieder, lösche die Datei session.lock im Welt-Ordner.',
+    },
+    'config-broken': {
+      title: 'Eine Einstellungsdatei hat einen Fehler',
+      text: 'Eine Konfigurationsdatei (YAML/JSON) ist kaputt, oft ein Tab, ein fehlendes Leerzeichen oder Anführungszeichen.',
+      fix: 'Öffne die zuletzt geänderte Datei unter „Dateien“ und korrigiere die Zeile aus dem Fehler unten.',
+    },
+    'config-broken-plugin': {
+      title: 'Die Einstellungen von {{plugin}} sind kaputt',
+      text: 'In einer Konfigurationsdatei von {{plugin}} ist ein Schreibfehler (oft ein Tab oder fehlende Anführungszeichen).',
+      fix: 'Öffne unter „Dateien“ den Ordner plugins/{{plugin}} und korrigiere die Datei, oder schalte {{plugin}} vorerst aus.',
+    },
+    watchdog: {
+      title: 'Der Server hat sich aufgehängt',
+      text: 'Ein Spieltick dauerte so lange, dass der Wachhund den Server beendet hat (zu viel los, Endlosschleife oder zu wenig CPU).',
+      fix: 'Starte neu. Passiert es öfter, reduziere Farmen/Entities oder gib dem Server mehr Prozessor.',
+    },
+    'watchdog-plugin': {
+      title: '{{plugin}} hat den Server aufgehängt',
+      text: 'Der Wachhund hat den Server beendet, weil {{plugin}} zu lange gerechnet hat.',
+      fix: 'Aktualisiere {{plugin}} oder schalte es aus und starte neu.',
+    },
+    'permission-denied': {
+      title: 'Keine Berechtigung für Dateien',
+      text: 'Der Server durfte eine Datei nicht lesen oder schreiben.',
+      fix: 'Starte den Server neu; MorniHosting setzt die Rechte dabei. Lade Dateien nur über das Panel hoch.',
+    },
+    'unknown-error': {
+      title: 'Der Server ist mit einem Fehler abgestürzt',
+      text: 'Fehler: {{error}}',
+      fix: 'Starte neu. Kommt der Fehler wieder, such nach der Fehlermeldung oder schalte zuletzt installierte Plugins/Mods aus.',
+    },
   },
   en: {
     'out-of-memory': {
@@ -131,6 +181,56 @@ export const CRASH_TEXTS: Readonly<Record<'de' | 'en', Readonly<Record<string, C
       title: 'Game files could not be downloaded',
       text: 'On its first start the server downloads the game files from the internet. That failed.',
       fix: "Check the server's internet connection (DNS, firewall) and start it again.",
+    },
+    'disk-full': {
+      title: 'The disk is full',
+      text: 'The server could not save anything: there is no free space left on the machine.',
+      fix: 'Delete old backups or files (empty the trash) or give the machine more disk space.',
+    },
+    'host-out-of-memory': {
+      title: 'The machine ran out of memory',
+      text: 'The server ({{memoryMb}} MB) was killed because the whole machine had no memory left – usually too many servers or one with more RAM than the machine.',
+      fix: 'Give the server less RAM, stop other servers or give the machine more RAM (Proxmox: pct set <ID> --memory …).',
+    },
+    'plugin-incompatible': {
+      title: '{{plugin}} does not fit this server version',
+      text: '{{plugin}} was built for another Minecraft version and calls things that do not exist here.',
+      fix: 'Update {{plugin}} under “Plugins” or switch it off until there is an update.',
+    },
+    'world-locked': {
+      title: 'The world is already open',
+      text: 'Something else still holds the world open (an old server process or a second server with the same world).',
+      fix: 'Wait a moment and restart. If it happens again, delete session.lock in the world folder.',
+    },
+    'config-broken': {
+      title: 'A settings file has an error',
+      text: 'A config file (YAML/JSON) is broken, often a tab, a missing space or quote.',
+      fix: 'Open the last changed file under “Files” and fix the line from the error below.',
+    },
+    'config-broken-plugin': {
+      title: 'The settings of {{plugin}} are broken',
+      text: 'A config file of {{plugin}} has a typo (often a tab or missing quotes).',
+      fix: 'Open the folder plugins/{{plugin}} under “Files” and fix the file, or switch {{plugin}} off for now.',
+    },
+    watchdog: {
+      title: 'The server froze',
+      text: 'One game tick took so long that the watchdog stopped the server (too much going on, an endless loop or too little CPU).',
+      fix: 'Restart. If it happens often, reduce farms/entities or give the server more CPU.',
+    },
+    'watchdog-plugin': {
+      title: '{{plugin}} froze the server',
+      text: 'The watchdog stopped the server because {{plugin}} took too long.',
+      fix: 'Update {{plugin}} or switch it off and restart.',
+    },
+    'permission-denied': {
+      title: 'No permission for files',
+      text: 'The server was not allowed to read or write a file.',
+      fix: 'Restart the server; MorniHosting fixes the permissions. Only upload files through the panel.',
+    },
+    'unknown-error': {
+      title: 'The server crashed with an error',
+      text: 'Error: {{error}}',
+      fix: 'Restart. If the error comes back, search for the message or switch off recently installed plugins/mods.',
     },
   },
 };

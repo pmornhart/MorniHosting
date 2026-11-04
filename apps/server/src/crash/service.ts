@@ -39,6 +39,21 @@ const STEAM_MISSING_CONFIG = /Failed to install app '\d+' \(Missing configuratio
 /** One quiet retry per server in this time; a second failure is a real problem and shown as one. */
 const STEAM_RETRY_MINUTES = 15;
 const STEAM_RETRY_WINDOW_MS = STEAM_RETRY_MINUTES * 60_000;
+/**
+ * Crash protection: a server that ran fine for a while and then fell over for no fixable reason starts again by
+ * itself – at most this often in the window, so a server that keeps crashing stays down and is reported.
+ */
+const AUTO_RESTART_RULES: ReadonlySet<string> = new Set([
+  'unknown',
+  'unknown-error',
+  'watchdog',
+  'world-locked',
+]);
+const AUTO_RESTART_MAX = 2;
+const AUTO_RESTART_WINDOW_MS = 30 * 60_000;
+/** Crashing earlier than this after "running" is a start problem; restarting would only repeat it. */
+const AUTO_RESTART_MIN_UPTIME_MS = 2 * 60_000;
+const AUTO_RESTART_DELAY_MS = 10_000;
 const PLUGIN_DIRS = ['plugins', 'mods'] as const;
 const JAR = '.jar';
 const WORLD_SUFFIXES = ['', '_nether', '_the_end'] as const;
@@ -141,7 +156,9 @@ export function createCrashHelpService(
       danger,
     });
     const plugin = (name: string | undefined): CrashFixOffer[] => {
-      const file = name ? pluginFile(serverId, name) : null;
+      const named = crash.params?.['file'];
+      const exact = named && fs.existsSync(path.join(serverService.dir(serverId), named)) ? named : null;
+      const file = exact ?? (name ? pluginFile(serverId, name) : null);
       return file ? [offer('disable-plugin', { file: path.basename(file) })] : [];
     };
     const backup = latestBackup(serverId);
@@ -159,6 +176,9 @@ export function createCrashHelpService(
       eula: () => [offer('accept-eula')],
       'missing-dependency': () => plugin(crash.params?.['plugin']),
       'plugin-error': () => plugin(crash.params?.['plugin']),
+      'plugin-incompatible': () => plugin(crash.params?.['plugin']),
+      'config-broken-plugin': () => plugin(crash.params?.['plugin']),
+      'watchdog-plugin': () => plugin(crash.params?.['plugin']),
       'world-broken': () => [
         ...(backup
           ? [
@@ -264,6 +284,38 @@ export function createCrashHelpService(
     return true;
   };
 
+  const runningSince = new Map<string, number>();
+  const autoRestarts = new Map<string, readonly number[]>();
+  ctx.events.on('server.state', ({ serverId, state }) => {
+    if (state === 'running') runningSince.set(serverId, Date.now());
+  });
+  /** Whether this crash gets one quiet restart (and notes that in the console). */
+  const autoRestart = (serverId: string, ruleId: string): boolean => {
+    const since = runningSince.get(serverId);
+    runningSince.delete(serverId);
+    if (!AUTO_RESTART_RULES.has(ruleId) || !since || Date.now() - since < AUTO_RESTART_MIN_UPTIME_MS)
+      return false;
+    const recent = (autoRestarts.get(serverId) ?? []).filter(
+      (at) => Date.now() - at < AUTO_RESTART_WINDOW_MS,
+    );
+    if (recent.length >= AUTO_RESTART_MAX) return false;
+    autoRestarts.set(serverId, [...recent, Date.now()]);
+    serverService.note(
+      serverId,
+      `Absturzschutz: Der Server startet in ${AUTO_RESTART_DELAY_MS / 1000} Sekunden von selbst neu (${recent.length + 1}/${AUTO_RESTART_MAX} in 30 Min.).`,
+    );
+    setTimeout(() => {
+      void (async () => {
+        try {
+          if (serverService.row(serverId).crash) await serverService.start(serverId, SYSTEM_ACTOR);
+        } catch (err) {
+          ctx.log.warn({ err, serverId }, 'automatic restart after a crash failed');
+        }
+      })();
+    }, AUTO_RESTART_DELAY_MS);
+    return true;
+  };
+
   ctx.events.on('server.crashed', ({ serverId, crash }) => {
     const row = db.select().from(servers).where(eq(servers.id, serverId)).get();
     if (!row) return;
@@ -284,6 +336,7 @@ export function createCrashHelpService(
     }
     // A preload template has no players and nobody to tell; the admin area shows its state.
     if (template) return;
+    const restarting = autoRestart(serverId, crash.ruleId);
     const text = crashText('de', crash.ruleId, crash.params);
     // In the console, so whoever looks there sees the cause and what to do.
     serverService.note(serverId, `⚠ Absturz erkannt: ${text.title}`);
@@ -304,6 +357,7 @@ export function createCrashHelpService(
           `• **Was:** ${text.title}`,
           text.text ? `• **Ursache:** ${text.text}` : '',
           text.fix ? `• **Lösung:** ${text.fix}` : '',
+          restarting ? '• **Absturzschutz:** Der Server startet gleich von selbst neu.' : '',
           fixes.some((f) => DISCORD_SAFE.has(f.id))
             ? '• **Schnell:** Knopf unten drücken – der Server startet danach neu.'
             : '',

@@ -175,3 +175,37 @@ export async function createZip(
   await done;
   return archive.pointer();
 }
+
+/** Text of the first entry whose name is in `names` (e.g. "plugin.yml" in a plugin's jar), or null. */
+export async function readZipText(
+  file: string,
+  names: readonly string[],
+  maxBytes: number,
+): Promise<string | null> {
+  const zip = await openZip(file);
+  return new Promise<string | null>((resolve, reject) => {
+    const done = (text: string | null): void => {
+      zip.close();
+      resolve(text);
+    };
+    zip.on('entry', (entry: yauzl.Entry) => {
+      if (!names.includes(entry.fileName) || entry.uncompressedSize > maxBytes) {
+        zip.readEntry();
+        return;
+      }
+      zip.openReadStream(entry, (err, stream) => {
+        if (err || !stream) {
+          done(null);
+          return;
+        }
+        const chunks: Buffer[] = [];
+        stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+        stream.on('end', () => done(Buffer.concat(chunks).toString('utf8')));
+        stream.on('error', () => done(null));
+      });
+    });
+    zip.on('end', () => resolve(null));
+    zip.on('error', (err: unknown) => reject(zipError(err)));
+    zip.readEntry();
+  });
+}

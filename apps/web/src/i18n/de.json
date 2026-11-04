@@ -291,7 +291,7 @@
   "crash": {
     "title": "Absturz-Helfer",
     "dismiss": "Ausblenden",
-    "excerpt": "Letzte Zeilen aus dem Protokoll",
+    "excerpt": "Wichtige Zeilen aus dem Protokoll",
     "out-of-memory": {
       "title": "Zu wenig Arbeitsspeicher",
       "text": "Der Server hatte {{memoryMb}} MB und brauchte mehr. Das passiert oft mit Modpacks oder vielen Spielern.",
@@ -378,6 +378,56 @@
     "danger": {
       "restore-backup": "Die Welt und alle Dateien werden auf den Stand des Backups gesetzt. Vorher legt das Panel ein Sicherheits-Backup an.",
       "reset-world": "Die kaputte Welt wird gelöscht (sie landet im Papierkorb, dazu gibt es vorher ein Backup). Beim nächsten Start erzeugt der Server eine neue Welt."
+    },
+    "disk-full": {
+      "title": "Die Festplatte ist voll",
+      "text": "Der Server konnte nichts mehr speichern: Auf dem Rechner ist kein Platz mehr frei.",
+      "fix": "Lösche alte Backups oder Dateien (Papierkorb leeren) oder gib dem Rechner mehr Speicherplatz."
+    },
+    "host-out-of-memory": {
+      "title": "Der Rechner hatte keinen Arbeitsspeicher mehr",
+      "text": "Der Server ({{memoryMb}} MB) wurde hart beendet, weil der ganze Rechner keinen Arbeitsspeicher mehr frei hatte – meist laufen zu viele Server oder einer hat mehr RAM als der Rechner.",
+      "fix": "Gib dem Server weniger RAM, stoppe andere Server oder gib dem Rechner mehr RAM (Proxmox: pct set <ID> --memory …)."
+    },
+    "plugin-incompatible": {
+      "title": "{{plugin}} passt nicht zu dieser Server-Version",
+      "text": "{{plugin}} wurde für eine andere Minecraft-Version gebaut und ruft Dinge auf, die es hier nicht gibt.",
+      "fix": "Aktualisiere {{plugin}} unter „Plugins“ oder schalte es aus, bis es ein Update gibt."
+    },
+    "world-locked": {
+      "title": "Die Welt ist schon geöffnet",
+      "text": "Ein anderer Vorgang hält die Welt noch offen (z. B. ein alter Server-Prozess oder ein zweiter Server mit derselben Welt).",
+      "fix": "Warte kurz und starte neu. Passiert es wieder, lösche die Datei session.lock im Welt-Ordner."
+    },
+    "config-broken": {
+      "title": "Eine Einstellungsdatei hat einen Fehler",
+      "text": "Eine Konfigurationsdatei (YAML/JSON) ist kaputt, oft ein Tab, ein fehlendes Leerzeichen oder Anführungszeichen.",
+      "fix": "Öffne die zuletzt geänderte Datei unter „Dateien“ und korrigiere die Zeile aus dem Fehler unten."
+    },
+    "config-broken-plugin": {
+      "title": "Die Einstellungen von {{plugin}} sind kaputt",
+      "text": "In einer Konfigurationsdatei von {{plugin}} ist ein Schreibfehler (oft ein Tab oder fehlende Anführungszeichen).",
+      "fix": "Öffne unter „Dateien“ den Ordner plugins/{{plugin}} und korrigiere die Datei, oder schalte {{plugin}} vorerst aus."
+    },
+    "watchdog": {
+      "title": "Der Server hat sich aufgehängt",
+      "text": "Ein Spieltick dauerte so lange, dass der Wachhund den Server beendet hat (zu viel los, Endlosschleife oder zu wenig CPU).",
+      "fix": "Starte neu. Passiert es öfter, reduziere Farmen/Entities oder gib dem Server mehr Prozessor."
+    },
+    "watchdog-plugin": {
+      "title": "{{plugin}} hat den Server aufgehängt",
+      "text": "Der Wachhund hat den Server beendet, weil {{plugin}} zu lange gerechnet hat.",
+      "fix": "Aktualisiere {{plugin}} oder schalte es aus und starte neu."
+    },
+    "permission-denied": {
+      "title": "Keine Berechtigung für Dateien",
+      "text": "Der Server durfte eine Datei nicht lesen oder schreiben.",
+      "fix": "Starte den Server neu; MorniHosting setzt die Rechte dabei. Lade Dateien nur über das Panel hoch."
+    },
+    "unknown-error": {
+      "title": "Der Server ist mit einem Fehler abgestürzt",
+      "text": "Fehler: {{error}}",
+      "fix": "Starte neu. Kommt der Fehler wieder, such nach der Fehlermeldung oder schalte zuletzt installierte Plugins/Mods aus."
     }
   },
   "create": {
@@ -623,7 +673,9 @@
     "crash_fix_unknown": "Diese Reparatur passt nicht mehr.",
     "crash_fix_panel_only": "Das geht nur im Panel, weil Daten gelöscht werden.",
     "preload_running": "Wird gerade schon geladen.",
-    "preload_unknown": "Dieses Spiel lässt sich nicht vorladen."
+    "preload_unknown": "Dieses Spiel lässt sich nicht vorladen.",
+    "host_memory_full": "Für diesen Server ist nicht genug Arbeitsspeicher frei: er braucht {{need}} MB, frei sind {{free}} MB (der Rechner hat {{total}} MB). Gib ihm weniger RAM, stoppe einen anderen Server oder gib dem Rechner mehr RAM.",
+    "host_disk_full": "Auf dem Rechner sind nur noch {{free}} MB frei. Lösche alte Backups oder Dateien, bevor Server starten, sonst können Welten nicht mehr speichern."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
