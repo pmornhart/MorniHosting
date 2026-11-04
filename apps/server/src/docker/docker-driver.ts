@@ -23,6 +23,10 @@ const HTTP_NOT_MODIFIED = 304;
 const CONTAINER_DATA_DIR = '/data';
 const EVENT_ACTIONS: readonly ContainerEvent['action'][] = ['start', 'die', 'oom', 'destroy'];
 const MANAGED_LABEL = 'mornihosting.server';
+/** Linux kills processes with a higher score first when memory runs out (-1000 … 1000). */
+const GAME_OOM_SCORE = 500;
+/** Plenty for any game server (Java uses a few hundred threads), stops fork bombs. */
+const GAME_PIDS_LIMIT = 4096;
 /** How often an image that is already there gets checked for a newer version (in the background). */
 const IMAGE_REFRESH_MS = 24 * 60 * 60 * 1000;
 
@@ -204,6 +208,12 @@ export function createDockerDriver(config: Config): DockerDriver {
           ),
           PortBindings: bindings,
           Memory: spec.memoryLimitBytes,
+          // Crash protection: no swap (a full server is stopped cleanly instead of dragging the machine into swap),
+          // game servers go first when the machine runs out of memory (the panel and Docker survive), and a
+          // runaway server cannot start endless processes.
+          MemorySwap: spec.memoryLimitBytes,
+          OomScoreAdj: GAME_OOM_SCORE,
+          PidsLimit: GAME_PIDS_LIMIT,
           ...(spec.cpus ? { NanoCpus: Math.round(spec.cpus * NANO_CPUS_PER_CORE) } : {}),
           NetworkMode: config.mcNetwork,
           RestartPolicy: { Name: spec.restart ?? 'no' },

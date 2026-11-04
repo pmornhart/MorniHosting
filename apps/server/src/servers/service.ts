@@ -38,6 +38,8 @@ import {
   prepareGameFiles,
   validateGameSettings,
 } from '../games/settings.js';
+import { pluginPackages } from './plugin-packages.js';
+import { hostMemoryMb } from '../system/host.js';
 import { analyseCrash } from './crash.js';
 import { createDownloadMeter, type DownloadProgress } from './steam-progress.js';
 import {
@@ -180,6 +182,10 @@ const LOG_BUFFER_LINES = 1000;
 const PORT_SEARCH_LIMIT = 100;
 const ATTACH_TAIL_LINES = 300;
 const STATS_INTERVAL_SECONDS = 10;
+/** RAM kept free for the panel, Docker and the system when servers start. */
+const HOST_RESERVE_MB = 768;
+/** Below this much free disk no server starts (worlds and backups would fail to save). */
+const MIN_FREE_DISK_MB = 1024;
 /** Images the servers use are checked for a newer version this often (the driver pulls at most once a day). */
 const IMAGE_REFRESH_EVERY_MS = MS_PER_DAY / 2;
 /** Harmless command that every Source-engine console answers. */
@@ -728,7 +734,9 @@ export function createServerService(ctx: AppContext): ServerService {
       return;
     }
     const state = await docker.inspect(containerId);
+    const packages = await pluginPackages(serverDir(config, r.id));
     const crash = analyseCrash({
+      packages,
       lines: runtime.logs,
       oomKilled: state?.oomKilled ?? false,
       exitCode: state?.exitCode ?? null,
@@ -739,6 +747,37 @@ export function createServerService(ctx: AppContext): ServerService {
     panelLog(r.id, 'Der Server wurde unerwartet beendet. Der Absturz-Helfer zeigt dir die Ursache.');
     setState(r.id, 'crashed');
     events.emit('server.crashed', { serverId: r.id, crash });
+  };
+
+  /**
+   * Crash protection for the whole machine: a server only starts when the RAM of all running servers still fits
+   * into the machine (with room for the panel and Docker) and the disk has some space left. Otherwise the machine
+   * would swap until everything hangs, or fill up until nothing can save anymore.
+   */
+  const guardHost = (r: ServerRow): void => {
+    const hostMb = hostMemoryMb();
+    const othersMb = db
+      .select()
+      .from(servers)
+      .all()
+      .filter((other) => other.id !== r.id && ACTIVE_STATES.includes(rt(other.id).state))
+      .reduce((sum, other) => sum + other.memoryMb, 0);
+    if (hostMb > 0 && othersMb + r.memoryMb + HOST_RESERVE_MB > hostMb)
+      throw conflict('host_memory_full', {
+        need: r.memoryMb,
+        free: Math.max(0, hostMb - othersMb - HOST_RESERVE_MB),
+        total: hostMb,
+      });
+    const freeMb = (() => {
+      try {
+        const s = fs.statfsSync(config.dataDir);
+        return (s.bavail * s.bsize) / BYTES_PER_MB;
+      } catch {
+        return null;
+      }
+    })();
+    if (freeMb !== null && freeMb < MIN_FREE_DISK_MB)
+      throw conflict('host_disk_full', { free: Math.round(freeMb) });
   };
 
   const quietCommand = async (id: string, command: string): Promise<string> => {
@@ -1142,6 +1181,7 @@ export function createServerService(ctx: AppContext): ServerService {
       const usedMb = rt(id).diskMb;
       if (r.diskLimitMb !== null && usedMb !== null && usedMb > r.diskLimitMb)
         throw conflict('disk_limit_reached', { used: Math.round(usedMb), limit: r.diskLimitMb });
+      guardHost(r);
       audit.record(actor, 'server.start', id);
       rt(id).state = 'starting';
       publishLive(id);

@@ -12,14 +12,22 @@ export interface CrashContext {
   readonly exitCode: number | null;
   readonly memoryMb: number;
   readonly javaTag: string | null;
+  /** Java package → plugin or mod name (from plugin.yml / fabric.mod.json), to name the culprit of a stack trace. */
+  readonly packages?: Readonly<Record<string, { readonly name: string; readonly file: string }>>;
 }
 
 interface CrashRule {
   readonly id: string;
-  readonly detect: (ctx: CrashContext, text: string) => Record<string, string> | null;
+  readonly detect: (ctx: CrashContext, text: string) => Readonly<Record<string, string>> | null;
 }
 
 const EXCERPT_LINES = 12;
+/** Lines around an important one that belong to it (the stack trace below an error). */
+const CONTEXT_AFTER = 3;
+/** Killed with SIGKILL (128 + 9): without Docker's own OOM flag, the machine itself ran out of memory. */
+const EXIT_KILLED = 137;
+/** Error messages are cut here, so the explanation stays readable. */
+const ERROR_MAX_CHARS = 160;
 /** Java class file version 52 is Java 8; each newer Java adds one. */
 const CLASS_VERSION_JAVA8 = 52;
 const JAVA8 = 8;
@@ -68,6 +76,93 @@ const VERSION_NOT_FOUND = /Could not find a version|No (?:release|build)s? found
 // https://regex101.com/?flavor=javascript&regex=Failed%20to%20download%7CUnknownHostException%7Ccertification%20path%7CConnection%20timed%20out&flags=gm&testString=%5Binit%5D%20%5BERROR%5D%20Failed%20to%20download%20paper%0Ajava.net.UnknownHostException%3A%20fill.papermc.io%0ADownloaded%20paper
 const DOWNLOAD_FAILED = /Failed to download|UnknownHostException|certification path|Connection timed out/;
 
+// No room left on the disk: "java.io.IOException: No space left on device" matches; "space" alone does not.
+// https://regex101.com/?flavor=javascript&regex=No%20space%20left%20on%20device%7CDisk%20quota%20exceeded&flags=gm&testString=java.io.IOException%3A%20No%20space%20left%20on%20device%0Aspace
+const DISK_FULL = /No space left on device|Disk quota exceeded/;
+// Paper/Spigot watchdog: "The server has stopped responding! This is (probably) not a Paper bug." matches.
+// https://regex101.com/?flavor=javascript&regex=The%20server%20has%20stopped%20responding%7CWatchdog%20Thread%7CA%20single%20server%20tick%20took&flags=gm&testString=The%20server%20has%20stopped%20responding!%0AA%20single%20server%20tick%20took%2060.00%20seconds%0Aserver%20responding
+const WATCHDOG = /The server has stopped responding|Watchdog Thread|A single server tick took/;
+// The world is open elsewhere: "Failed to acquire directory lock" or "session.lock: already locked" match.
+// https://regex101.com/?flavor=javascript&regex=directory%20lock%7Csession%5C.lock&flags=gim&testString=Failed%20to%20acquire%20directory%20lock%0A%2Fdata%2Fworld%2Fsession.lock%3A%20already%20locked%0Aworld%20saved
+const WORLD_LOCKED = /directory lock|session\.lock/i;
+// No right to read/write files: "java.nio.file.AccessDeniedException: /data/world" or "Permission denied" match.
+// https://regex101.com/?flavor=javascript&regex=AccessDeniedException%7CPermission%20denied&flags=gm&testString=java.nio.file.AccessDeniedException%3A%20%2Fdata%2Fworld%0Abash%3A%20.%2Frun.sh%3A%20Permission%20denied%0Apermission%20ok
+const PERMISSION_DENIED = /AccessDeniedException|Permission denied/;
+// A broken config file (YAML/JSON/TOML): "InvalidConfigurationException", "while scanning a simple key", "JsonSyntaxException" match.
+// https://regex101.com/?flavor=javascript&regex=InvalidConfigurationException%7CScannerException%7CParserException%7Cwhile%20(%3F%3Ascanning%7Cparsing)%20a%7CJsonSyntaxException%7CMalformedJsonException%7CParsingException&flags=gm&testString=org.bukkit.configuration.InvalidConfigurationException%0Awhile%20scanning%20a%20simple%20key%0Acom.google.gson.JsonSyntaxException%0Aconfig%20loaded
+const CONFIG_BROKEN =
+  /InvalidConfigurationException|ScannerException|ParserException|while (?:scanning|parsing) a|JsonSyntaxException|MalformedJsonException|ParsingException/;
+// Code built for another server version: "java.lang.NoSuchMethodError: …", "NoClassDefFoundError", "Unsupported API version 1.22" match.
+// https://regex101.com/?flavor=javascript&regex=NoSuchMethodError%7CNoSuchFieldError%7CNoClassDefFoundError%7CClassNotFoundException%7CIncompatibleClassChangeError%7CAbstractMethodError%7CUnsupported%20API%20version&flags=gm&testString=java.lang.NoSuchMethodError%3A%20'void%20org.bukkit.X.y()'%0Ajava.lang.NoClassDefFoundError%3A%20net%2Fminecraft%2FX%0AUnsupported%20API%20version%201.22%0Amethod%20ok
+const INCOMPATIBLE_CODE =
+  /NoSuchMethodError|NoSuchFieldError|NoClassDefFoundError|ClassNotFoundException|IncompatibleClassChangeError|AbstractMethodError|Unsupported API version/;
+// A Java error line: "Caused by: java.lang.NullPointerException: Cannot invoke …" → "java.lang.NullPointerException: Cannot invoke …".
+// https://regex101.com/?flavor=javascript&regex=((%3F%3A%5Ba-z%5D%5B%5Cw%24%5D*%5C.)%2B%5BA-Z%5D%5B%5Cw%24%5D*(%3F%3AException%7CError)%5Cb(%3F%3A%3A.*)%3F)&flags=gm&testString=Caused%20by%3A%20java.lang.NullPointerException%3A%20Cannot%20invoke%20x%0A%5B10%3A00%3A00%20INFO%5D%3A%20Done%20(3.2s)!
+const JAVA_ERROR = /((?:[a-z][\w$]*\.)+[A-Z][\w$]*(?:Exception|Error)\b(?::.*)?)/;
+// A stack frame: "	at com.earth2me.essentials.Essentials.onEnable(Essentials.java:42)" → "com.earth2me.essentials.Essentials".
+// https://regex101.com/?flavor=javascript&regex=%5Cbat%20(%5B%5Cw%24.%5D%2B)%5C.%5B%5Cw%24%3C%3E%5D%2B%5C(&flags=gm&testString=%09at%20com.earth2me.essentials.Essentials.onEnable(Essentials.java%3A42)%0Aat%20the%20spawn
+const STACK_FRAME = /\bat ([\w$.]+)\.[\w$<>]+\(/;
+// Lines worth showing: errors, warnings with exceptions, stack starts. "[10:00:00 ERROR]: x", "Caused by: y", "FATAL" match.
+// https://regex101.com/?flavor=javascript&regex=%5CbERROR%5Cb%7C%5CbFATAL%5Cb%7CSEVERE%7CCaused%20by%3A%7CException%7CError%3A%7Cstopped%20responding&flags=gm&testString=%5B10%3A00%3A00%20ERROR%5D%3A%20x%0ACaused%20by%3A%20y%0A%5B10%3A00%3A00%20INFO%5D%3A%20Done
+const IMPORTANT_LINE = /\bERROR\b|\bFATAL\b|SEVERE|Caused by:|Exception|Error:|stopped responding/;
+/** Frames from the game and Java itself never point at a plugin. */
+const SYSTEM_PACKAGES = [
+  'java.',
+  'javax.',
+  'jdk.',
+  'sun.',
+  'net.minecraft.',
+  'com.mojang.',
+  'org.bukkit.',
+  'org.spigotmc.',
+  'io.papermc.',
+  'com.destroystokyo.',
+  'net.fabricmc.',
+  'net.minecraftforge.',
+  'net.neoforged.',
+  'cpw.mods.',
+];
+
+/** The plugin or mod whose code appears first in the stack traces (that is the one that threw). */
+function culpritOf(
+  lines: readonly string[],
+  packages: CrashContext['packages'],
+): { readonly plugin: string; readonly file: string } | null {
+  if (!packages) return null;
+  const prefixes = Object.keys(packages).sort((a, b) => b.length - a.length);
+  const owner = lines
+    .map((line) => line.match(STACK_FRAME)?.[1])
+    .filter((cls): cls is string => Boolean(cls) && !SYSTEM_PACKAGES.some((p) => cls?.startsWith(p)))
+    .map((cls) => prefixes.find((prefix) => cls === prefix || cls.startsWith(`${prefix}.`)))
+    .find((prefix): prefix is string => prefix !== undefined);
+  const found = owner ? packages[owner] : undefined;
+  return found ? { plugin: found.name, file: found.file } : null;
+}
+
+/** The root cause: the last "Caused by" error, otherwise the last Java error line. */
+function mainError(lines: readonly string[]): string | null {
+  const errors = lines.map((line) => line.match(JAVA_ERROR)?.[1]).filter((e): e is string => Boolean(e));
+  const rootCause = [...lines]
+    .reverse()
+    .find((line) => line.includes('Caused by:'))
+    ?.match(JAVA_ERROR)?.[1];
+  const error = rootCause ?? errors.at(-1) ?? null;
+  return error ? error.slice(0, ERROR_MAX_CHARS) : null;
+}
+
+/** The lines that explain the crash (errors and the stack lines right below), else the last lines. */
+function importantLines(lines: readonly string[]): string[] {
+  const keep = new Set<number>();
+  lines.forEach((line, i) => {
+    if (!IMPORTANT_LINE.test(line)) return;
+    [...Array(CONTEXT_AFTER + 1).keys()].forEach((offset) => {
+      if (i + offset < lines.length) keep.add(i + offset);
+    });
+  });
+  const picked = [...keep].sort((a, b) => a - b).map((i) => lines[i] ?? '');
+  return (picked.length ? picked : lines).slice(-EXCERPT_LINES);
+}
+
 function javaFromClassVersion(classVersion: number): string {
   return String(classVersion - CLASS_VERSION_JAVA8 + JAVA8);
 }
@@ -77,6 +172,11 @@ const RULES: readonly CrashRule[] = [
     id: 'out-of-memory',
     detect: (ctx, text) =>
       ctx.oomKilled || OUT_OF_MEMORY.test(text) ? { memoryMb: String(ctx.memoryMb) } : null,
+  },
+  { id: 'disk-full', detect: (_ctx, text) => (DISK_FULL.test(text) ? {} : null) },
+  {
+    id: 'host-out-of-memory',
+    detect: (ctx) => (ctx.exitCode === EXIT_KILLED ? { memoryMb: String(ctx.memoryMb) } : null),
   },
   {
     id: 'wrong-java',
@@ -97,7 +197,15 @@ const RULES: readonly CrashRule[] = [
       return FORGE_MISSING.test(text) ? { plugin: '', dependency: '' } : null;
     },
   },
+  {
+    id: 'plugin-incompatible',
+    detect: (ctx, text) => {
+      if (!INCOMPATIBLE_CODE.test(text)) return null;
+      return culpritOf(ctx.lines, ctx.packages);
+    },
+  },
   { id: 'port-in-use', detect: (_ctx, text) => (PORT_IN_USE.test(text) ? {} : null) },
+  { id: 'world-locked', detect: (_ctx, text) => (WORLD_LOCKED.test(text) ? {} : null) },
   { id: 'eula', detect: (_ctx, text) => (EULA.test(text) ? {} : null) },
   { id: 'version-not-found', detect: (_ctx, text) => (VERSION_NOT_FOUND.test(text) ? {} : null) },
   { id: 'download-failed', detect: (_ctx, text) => (DOWNLOAD_FAILED.test(text) ? {} : null) },
@@ -110,19 +218,43 @@ const RULES: readonly CrashRule[] = [
       return m?.[1] ? { plugin: m[1] } : null;
     },
   },
+  {
+    id: 'config-broken-plugin',
+    detect: (ctx, text) => (CONFIG_BROKEN.test(text) ? culpritOf(ctx.lines, ctx.packages) : null),
+  },
+  { id: 'config-broken', detect: (_ctx, text) => (CONFIG_BROKEN.test(text) ? {} : null) },
+  {
+    id: 'watchdog-plugin',
+    detect: (ctx, text) => (WATCHDOG.test(text) ? culpritOf(ctx.lines, ctx.packages) : null),
+  },
+  { id: 'watchdog', detect: (_ctx, text) => (WATCHDOG.test(text) ? {} : null) },
+  { id: 'permission-denied', detect: (_ctx, text) => (PERMISSION_DENIED.test(text) ? {} : null) },
+  {
+    // No known pattern, but a plugin's code threw: that plugin is the best lead.
+    id: 'plugin-error',
+    detect: (ctx) => culpritOf(ctx.lines, ctx.packages),
+  },
 ];
 
-/** Picks the first rule that explains the crash, or "unknown" with the last lines as a hint. */
+/**
+ * Picks the first rule that explains the crash, or "unknown". Always names the root error ("error") and keeps
+ * the lines that matter (errors and their stack) instead of just the last ones.
+ */
 export function analyseCrash(ctx: CrashContext): CrashInfo {
   const lines = ctx.lines.map(stripColours);
   const text = lines.join('\n');
   const hit = RULES.map((rule) => [rule.id, rule.detect(ctx, text)] as const).find(
     ([, params]) => params !== null,
   );
+  const error = mainError(lines);
   return {
     at: new Date().toISOString(),
-    ruleId: hit?.[0] ?? 'unknown',
-    params: hit?.[1] ?? { exitCode: String(ctx.exitCode ?? '') },
-    excerpt: lines.slice(-EXCERPT_LINES),
+    ruleId: hit?.[0] ?? (error ? 'unknown-error' : 'unknown'),
+    params: {
+      exitCode: String(ctx.exitCode ?? ''),
+      ...(error ? { error } : {}),
+      ...hit?.[1],
+    },
+    excerpt: importantLines(lines),
   };
 }

@@ -20,6 +20,11 @@ async function main(): Promise<void> {
       process.exit(0);
     }
   };
+  // Crash protection for the panel itself: a forgotten promise somewhere (a webhook, a download) is logged
+  // instead of taking the whole panel down. Real programming errors still end it; Docker starts it again.
+  process.on('unhandledRejection', (reason) => {
+    built.app.log.error({ err: reason }, 'unhandled promise rejection (panel keeps running)');
+  });
   process.once('SIGTERM', () => void shutdown('SIGTERM'));
   process.once('SIGINT', () => void shutdown('SIGINT'));
 }

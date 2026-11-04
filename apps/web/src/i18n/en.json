@@ -291,7 +291,7 @@
   "crash": {
     "title": "Crash helper",
     "dismiss": "Dismiss",
-    "excerpt": "Last lines from the log",
+    "excerpt": "Important lines from the log",
     "out-of-memory": {
       "title": "Not enough memory",
       "text": "The server had {{memoryMb}} MB and needed more. This often happens with modpacks or many players.",
@@ -378,6 +378,56 @@
     "danger": {
       "restore-backup": "The world and all files go back to the backup. The panel makes a safety backup first.",
       "reset-world": "The broken world is deleted (it goes to the bin, with a backup made first). On the next start the server creates a new world."
+    },
+    "disk-full": {
+      "title": "The disk is full",
+      "text": "The server could not save anything: there is no free space left on the machine.",
+      "fix": "Delete old backups or files (empty the trash) or give the machine more disk space."
+    },
+    "host-out-of-memory": {
+      "title": "The machine ran out of memory",
+      "text": "The server ({{memoryMb}} MB) was killed because the whole machine had no memory left – usually too many servers or one with more RAM than the machine.",
+      "fix": "Give the server less RAM, stop other servers or give the machine more RAM (Proxmox: pct set <ID> --memory …)."
+    },
+    "plugin-incompatible": {
+      "title": "{{plugin}} does not fit this server version",
+      "text": "{{plugin}} was built for another Minecraft version and calls things that do not exist here.",
+      "fix": "Update {{plugin}} under “Plugins” or switch it off until there is an update."
+    },
+    "world-locked": {
+      "title": "The world is already open",
+      "text": "Something else still holds the world open (an old server process or a second server with the same world).",
+      "fix": "Wait a moment and restart. If it happens again, delete session.lock in the world folder."
+    },
+    "config-broken": {
+      "title": "A settings file has an error",
+      "text": "A config file (YAML/JSON) is broken, often a tab, a missing space or quote.",
+      "fix": "Open the last changed file under “Files” and fix the line from the error below."
+    },
+    "config-broken-plugin": {
+      "title": "The settings of {{plugin}} are broken",
+      "text": "A config file of {{plugin}} has a typo (often a tab or missing quotes).",
+      "fix": "Open the folder plugins/{{plugin}} under “Files” and fix the file, or switch {{plugin}} off for now."
+    },
+    "watchdog": {
+      "title": "The server froze",
+      "text": "One game tick took so long that the watchdog stopped the server (too much going on, an endless loop or too little CPU).",
+      "fix": "Restart. If it happens often, reduce farms/entities or give the server more CPU."
+    },
+    "watchdog-plugin": {
+      "title": "{{plugin}} froze the server",
+      "text": "The watchdog stopped the server because {{plugin}} took too long.",
+      "fix": "Update {{plugin}} or switch it off and restart."
+    },
+    "permission-denied": {
+      "title": "No permission for files",
+      "text": "The server was not allowed to read or write a file.",
+      "fix": "Restart the server; MorniHosting fixes the permissions. Only upload files through the panel."
+    },
+    "unknown-error": {
+      "title": "The server crashed with an error",
+      "text": "Error: {{error}}",
+      "fix": "Restart. If the error comes back, search for the message or switch off recently installed plugins/mods."
     }
   },
   "create": {
@@ -623,7 +673,9 @@
     "crash_fix_unknown": "This repair no longer fits.",
     "crash_fix_panel_only": "This only works in the panel because data is deleted.",
     "preload_running": "Already loading.",
-    "preload_unknown": "This game cannot be preloaded."
+    "preload_unknown": "This game cannot be preloaded.",
+    "host_memory_full": "Not enough memory is free for this server: it needs {{need}} MB, {{free}} MB are free (the machine has {{total}} MB). Give it less RAM, stop another server or give the machine more RAM.",
+    "host_disk_full": "Only {{free}} MB are free on the machine. Delete old backups or files before servers start, otherwise worlds cannot save."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
