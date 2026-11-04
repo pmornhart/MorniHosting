@@ -108,13 +108,13 @@ if [[ -f scripts/ddos-guard.sh ]]; then
     msg_error "DDoS-Schutz ließ sich nicht einrichten (Details: sudo ${INSTALL_DIR}/scripts/ddos-guard.sh install)"
   fi
 fi
-# NetBird-Wächter: hält NetBird und das Internet stabil (nur wo NetBird installiert ist).
-if [[ -f scripts/netbird-watchdog.sh ]] && command -v netbird >/dev/null 2>&1; then
-  chmod +x scripts/netbird-watchdog.sh
-  if scripts/netbird-watchdog.sh install >/dev/null; then
-    msg_ok "NetBird-Wächter eingerichtet (prüft jede Minute)"
+# MorniHosting-Wächter: prüft jede Minute NetBird, DNS, Docker, Panel und Platz und repariert selbst.
+if [[ -f scripts/guard.sh ]]; then
+  chmod +x scripts/guard.sh
+  if scripts/guard.sh install >/dev/null; then
+    msg_ok "Wächter eingerichtet (prüft jede Minute)"
   else
-    msg_error "NetBird-Wächter ließ sich nicht einrichten (Details: sudo ${INSTALL_DIR}/scripts/netbird-watchdog.sh install)"
+    msg_error "Wächter ließ sich nicht einrichten (Details: sudo ${INSTALL_DIR}/scripts/guard.sh install)"
   fi
 fi
 STEP="null"

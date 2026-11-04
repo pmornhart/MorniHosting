@@ -24,6 +24,7 @@ import type { UserRow } from '../auth/context.js';
 import type { AppContext } from '../context.js';
 import { roles, serverAccess, servers, stats, users } from '../db/schema.js';
 import { randomToken } from '../lib/crypto.js';
+import { SYSTEM_ACTOR } from '../audit/service.js';
 import { AppError, badRequest, conflict, errorMessage, forbidden, notFound } from '../lib/errors.js';
 import { HTTP_CONFLICT } from '../lib/http-status.js';
 import { BYTES_PER_MB, MS_PER_DAY, MS_PER_SECOND, nowIso, sleep } from '../lib/units.js';
@@ -182,6 +183,12 @@ const LOG_BUFFER_LINES = 1000;
 const PORT_SEARCH_LIMIT = 100;
 const ATTACH_TAIL_LINES = 300;
 const STATS_INTERVAL_SECONDS = 10;
+/** Always-on: how often down servers are looked for, and the waits between restart tries. */
+const KEEP_ALIVE_EVERY_MS = 5_000;
+const KEEP_ALIVE_WAITS_MS: readonly number[] = [10_000, 30_000, 60_000, 120_000, 300_000, 600_000, 1_800_000];
+/** Running this long in one go counts as healthy again: the next crash starts with short waits. */
+const KEEP_ALIVE_RESET_MS = 600_000;
+const SECONDS_PER_MINUTE = 60;
 /** RAM kept free for the panel, Docker and the system when servers start. */
 const HOST_RESERVE_MB = 768;
 /** Below this much free disk no server starts (worlds and backups would fail to save). */
@@ -256,9 +263,15 @@ function playerLine(game: GameInfo | null, line: string): { kind: 'join' | 'leav
 export function createServerService(ctx: AppContext): ServerService {
   const { db, config, docker, events, settings, audit, secrets, log } = ctx;
   const runtimes = new Map<string, Runtime>();
-  const timers: { stats: NodeJS.Timeout | null; images: NodeJS.Timeout | null; tick: number } = {
+  const timers: {
+    stats: NodeJS.Timeout | null;
+    images: NodeJS.Timeout | null;
+    keepAlive: NodeJS.Timeout | null;
+    tick: number;
+  } = {
     stats: null,
     images: null,
+    keepAlive: null,
     tick: 0,
   };
 
@@ -531,7 +544,7 @@ export function createServerService(ctx: AppContext): ServerService {
       params: { message },
       excerpt: rt(id).logs.slice(-CRASH_EXCERPT_LINES),
     };
-    db.update(servers).set({ crash, desiredRunning: false }).where(eq(servers.id, id)).run();
+    db.update(servers).set({ crash }).where(eq(servers.id, id)).run();
     panelLog(id, `Start fehlgeschlagen: ${message}`);
     setState(id, 'crashed');
     events.emit('server.crashed', { serverId: id, crash });
@@ -743,7 +756,7 @@ export function createServerService(ctx: AppContext): ServerService {
       memoryMb: r.memoryMb,
       javaTag: r.javaTag,
     });
-    db.update(servers).set({ crash, desiredRunning: false }).where(eq(servers.id, r.id)).run();
+    db.update(servers).set({ crash }).where(eq(servers.id, r.id)).run();
     panelLog(r.id, 'Der Server wurde unerwartet beendet. Der Absturz-Helfer zeigt dir die Ursache.');
     setState(r.id, 'crashed');
     events.emit('server.crashed', { serverId: r.id, crash });
@@ -852,6 +865,57 @@ export function createServerService(ctx: AppContext): ServerService {
     publishLive(r.id);
   };
 
+  /**
+   * Always-on: a server that should run (started and never stopped by a person, "start automatically" on) but is
+   * down – crashed, failed to start, its container gone – starts again by itself. Waits grow after each try
+   * (10 s … 30 min), so a server that cannot start does not hammer the machine; after it ran 10 minutes
+   * in one go the count starts over.
+   */
+  const revive = new Map<string, { tries: number; nextAt: number }>();
+  const keepAlive = async (): Promise<void> => {
+    const now = Date.now();
+    const rows = db.select().from(servers).all();
+    rows.forEach((r) => {
+      const state = rt(r.id).state;
+      const since = rt(r.id).startedAt ? Date.parse(rt(r.id).startedAt ?? '') : 0;
+      if (state === 'running' && since && now - since > KEEP_ALIVE_RESET_MS) revive.delete(r.id);
+    });
+    const down = rows.filter(
+      (r) =>
+        !r.template &&
+        r.desiredRunning &&
+        r.autoStart &&
+        !rt(r.id).stopRequested &&
+        (rt(r.id).state === 'crashed' || rt(r.id).state === 'stopped'),
+    );
+    await Promise.all(
+      down.map(async (r) => {
+        const plan = revive.get(r.id) ?? { tries: 0, nextAt: now + (KEEP_ALIVE_WAITS_MS[0] ?? 0) };
+        if (!revive.has(r.id)) {
+          revive.set(r.id, plan);
+          panelLog(
+            r.id,
+            `Dauerbetrieb: Der Server ist aus, sollte aber laufen – er startet in ${Math.round((KEEP_ALIVE_WAITS_MS[0] ?? 0) / MS_PER_SECOND)} Sekunden von selbst neu.`,
+          );
+          return;
+        }
+        if (now < plan.nextAt) return;
+        const tries = plan.tries + 1;
+        const wait = KEEP_ALIVE_WAITS_MS[Math.min(tries, KEEP_ALIVE_WAITS_MS.length - 1)] ?? 0;
+        revive.set(r.id, { tries, nextAt: now + wait });
+        panelLog(r.id, `Dauerbetrieb: starte den Server neu (Versuch ${tries}) …`);
+        try {
+          await service.start(r.id, SYSTEM_ACTOR);
+        } catch (err) {
+          panelLog(
+            r.id,
+            `Dauerbetrieb: Start ging nicht (${errorMessage(err)}). Nächster Versuch in ${Math.round(wait / MS_PER_SECOND / SECONDS_PER_MINUTE) || 1} Min.`,
+          );
+        }
+      }),
+    );
+  };
+
   const sampleAll = async (): Promise<void> => {
     timers.tick += 1;
     const tick = timers.tick;
@@ -946,11 +1010,21 @@ export function createServerService(ctx: AppContext): ServerService {
       }, STATS_INTERVAL_SECONDS * MS_PER_SECOND);
       refreshImages();
       timers.images = setInterval(refreshImages, IMAGE_REFRESH_EVERY_MS);
+      timers.keepAlive = setInterval(() => {
+        void (async () => {
+          try {
+            await keepAlive();
+          } catch (err) {
+            log.warn({ err }, 'keep-alive check failed');
+          }
+        })();
+      }, KEEP_ALIVE_EVERY_MS);
       timers.images.unref();
     },
     shutdown: () => {
       if (timers.stats) clearInterval(timers.stats);
       if (timers.images) clearInterval(timers.images);
+      if (timers.keepAlive) clearInterval(timers.keepAlive);
       unsubscribers.forEach((u) => u());
       [...runtimes.keys()].forEach(detachLogs);
     },

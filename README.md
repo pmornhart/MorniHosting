@@ -211,6 +211,14 @@ Adresse. Alle Werte kannst du vorher ändern. Nutzt du [NetBird](#netbird-eigene
 es nach deinem Setup-Key und nimmt den Container gleich in dein NetBird-Netz auf. Mehr dazu:
 [Proxmox-Anleitung](docs/proxmox-quickstart.md).
 
+**Dauerbetrieb** (schon installiert? Einmal auf dem Proxmox-Host): hält Container, Docker, Panel, NetBird und
+Spielserver von selbst am Laufen – nur wenn du den Container über Proxmox stoppst, bleibt er aus.
+[Mehr dazu](docs/dauerbetrieb.md).
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/main/proxmox/dauerbetrieb.sh)"
+```
+
 ### B) Debian oder Ubuntu (Server, VM, Mini-PC)
 
 ```bash

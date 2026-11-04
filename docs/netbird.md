@@ -245,15 +245,15 @@ Ziel: Weder Besucher noch Dienste, die MorniHosting aufruft (Modrinth, Mojang, M
 
 Die Heim-IP merkt sich das Panel einmal verschlüsselt, nur für diese Prüfung. Angezeigt oder verschickt wird sie nie. Am Router zu Hause sind danach keine Portfreigaben mehr nötig.
 
-## NetBird-Wächter (hält alles stabil)
+## Wächter (hält alles stabil)
 
 `install.sh`, `update.sh` und das Proxmox-Skript richten auf Rechnern mit NetBird den Wächter ein
-(`scripts/netbird-watchdog.sh`, systemd-Timer `mornihosting-netbird.timer`). Er prüft jede Minute und repariert selbst:
+(`scripts/guard.sh`, systemd-Timer `mornihosting-guard.timer`). Er prüft jede Minute und repariert selbst:
 
 1. **Internet weg über einen NetBird-Ausgang** (Exit-Node antwortet nicht) → der Ausgang wird abgewählt, das Internet geht wieder direkt.
 2. **DNS kaputt** (z. B. nach einem Neustart des Proxmox-Containers) → feste DNS-Server 1.1.1.1 und 9.9.9.9, Proxmox überschreibt sie nicht mehr.
 3. **NetBird getrennt** (zwei Minuten am Stück) → Dienst neu starten und neu verbinden.
 
-Status und letzte Eingriffe: `sudo /opt/mornihosting/scripts/netbird-watchdog.sh status`
-(Protokoll: `/var/log/mornihosting-netbird.log`). Sofort einrichten ohne Update:
-`sudo bash /opt/mornihosting/scripts/netbird-watchdog.sh install`.
+Status und letzte Eingriffe: `sudo /opt/mornihosting/scripts/guard.sh status`
+(Protokoll: `/var/log/mornihosting-guard.log`). Sofort einrichten ohne Update:
+`sudo bash /opt/mornihosting/scripts/guard.sh install`.

@@ -15,6 +15,7 @@ set -Eeuo pipefail
 
 APP="MorniHosting"
 INSTALL_URL="${MH_INSTALL_URL:-https://raw.githubusercontent.com/pmornhart/MorniHosting/main/install.sh}"
+DAUERBETRIEB_URL="${MH_DAUERBETRIEB_URL:-https://raw.githubusercontent.com/pmornhart/MorniHosting/main/proxmox/dauerbetrieb.sh}"
 
 GN=$'\e[32m'
 YW=$'\e[33m'
@@ -159,11 +160,19 @@ if [[ -n "${NETBIRD_SETUP_KEY}" ]]; then
     NETBIRD_OK="yes"
     # Das Panel merkt sich, mit welchem NetBird-Server der Container verbunden ist (Cloud oder selbst betrieben).
     pct exec "${CTID}" -- bash -c "cd /opt/mornihosting && bash scripts/netbird-env.sh >/dev/null && docker compose up -d >/dev/null" || true
-    pct exec "${CTID}" -- bash /opt/mornihosting/scripts/netbird-watchdog.sh install >/dev/null 2>&1 || true
+    pct exec "${CTID}" -- bash /opt/mornihosting/scripts/guard.sh install >/dev/null 2>&1 || true
     msg_ok "NetBird verbunden – im NetBird-Dashboard heißt dieser Rechner ${CT_HOSTNAME}"
   else
     msg_error "NetBird ließ sich nicht einrichten. Später im Container: netbird up --setup-key <KEY>"
   fi
+fi
+
+# Dauerbetrieb: Der Proxmox-Host startet den Container von selbst wieder, wenn er ungewollt ausgeht oder hängt.
+msg_info "Host-Wächter wird eingerichtet"
+if curl -fsSL "${DAUERBETRIEB_URL}" | CTID="${CTID}" bash -s -- hostguard >/dev/null 2>&1; then
+  msg_ok "Host-Wächter läuft: Container ${CTID} startet von selbst wieder, außer du stoppst ihn"
+else
+  msg_error "Host-Wächter ließ sich nicht einrichten. Später: bash -c \"\$(curl -fsSL ${DAUERBETRIEB_URL})\""
 fi
 
 printf '\n %s🎉 %s ist bereit:%s %shttp://%s:8080%s\n' "${GN}" "${APP}" "${CL}" "${BL}" "${IP}" "${CL}"
