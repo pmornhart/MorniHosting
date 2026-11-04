@@ -621,7 +621,9 @@
     "charge_unknown": "This payment doesn't exist.",
     "crash_gone": "This crash is already solved.",
     "crash_fix_unknown": "This repair no longer fits.",
-    "crash_fix_panel_only": "This only works in the panel because data is deleted."
+    "crash_fix_panel_only": "This only works in the panel because data is deleted.",
+    "preload_running": "Already loading.",
+    "preload_unknown": "This game cannot be preloaded."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1750,7 +1752,8 @@
       "mail": "E-mail",
       "move": "Move",
       "quotas": "Quotas",
-      "payments": "Payments"
+      "payments": "Payments",
+      "preload": "Preload games"
     },
     "domainTitle": "Panel address by hand",
     "domainSet": "Set",
@@ -1778,7 +1781,8 @@
       "mail": "Mails to your people: welcome, sign-up, “password forgotten” and orders.",
       "move": "Move settings and connections to another MorniHosting with a code.",
       "quotas": "How much RAM, disk, CPU and how many servers each person may have. Admins have no limits.",
-      "payments": "Who owes you how much for a server ordered with the voucher “MORNI” – and which months are paid."
+      "payments": "Who owes you how much for a server ordered with the voucher “MORNI” – and which months are paid.",
+      "preload": "Downloads a game before anyone orders a server for it. New servers then only copy it – seconds instead of minutes or hours (CS2: about 60 GB)."
     },
     "netbirdManual": "Set up NetBird by hand",
     "netbirdManualHint": "Only needed if you don't use the automation above. Tap to open."
@@ -2979,5 +2983,31 @@
       "backups": "Daily backup at 04:00",
       "start": "First start (creating the world)"
     }
+  },
+  "preload": {
+    "title": "Preload games",
+    "text": "Downloads a game before anyone orders a server for it. New servers then only copy it – seconds instead of minutes or hours (CS2: about 60 GB).",
+    "size": "about {{gb}} GB",
+    "download": "Download",
+    "retry": "Try again",
+    "refresh": "Refresh",
+    "remove": "Remove",
+    "removed": "Preloaded files removed.",
+    "states": {
+      "none": "Not loaded",
+      "loading": "Loading …",
+      "ready": "Ready",
+      "failed": "Failed",
+      "queued": "Waiting …"
+    },
+    "modes": {
+      "template": "Downloads the server program or game files once; new servers copy them.",
+      "image": "The game is already inside the program package – only the package is pulled."
+    },
+    "auto": "Stays current by itself: the panel looks for updates every hour and installs them.",
+    "autoChecked": "Stays current by itself – last looked for updates at {{time}} (every hour).",
+    "all": "Download all ({{count}})",
+    "allDone": "Everything loaded",
+    "allBusy": "Loading … ({{count}} left)"
   }
 }

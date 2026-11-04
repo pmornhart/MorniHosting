@@ -1,6 +1,6 @@
 import { useState, type ReactElement, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isGameId, type ServerState } from '@mornihosting/shared';
+import { isGameId, type GameId, type ServerState } from '@mornihosting/shared';
 import { playerFace } from '@/lib/pixel';
 import { cn } from '@/lib/utils';
 import { Badge, LogoMark } from './art';
@@ -92,16 +92,64 @@ function skinOf(name: string, skin: string | null | undefined): string | null {
  * A player's face from mc-heads.net; falls back to a drawn face offline or for Bedrock names.
  * `skin` picks the account explicitly (null: always draw), e.g. the user's linked Minecraft account.
  */
+/** Colours of the player pictures for other games (from dark to light), in the spirit of each game. */
+const GAME_TINTS: Readonly<Record<GameId, readonly [string, string]>> = {
+  factorio: ['#7a4a12', '#e3962b'],
+  cs2: ['#3b2a12', '#de9b35'],
+  gmod: ['#0d3b66', '#3f8fd8'],
+  satisfactory: ['#5a3a06', '#f2a51a'],
+  ets2: ['#123d2a', '#3fae6b'],
+  hytale: ['#2c1b55', '#8d6cf0'],
+};
+// Words of a player name for its initials: "Lena_Mueller", "lena mueller" and "lena-mueller" give "LM".
+// https://regex101.com/?flavor=javascript&regex=%5B%5Cs_.%5C-%5D%2B&testString=Lena_Mueller%0Alena%20mueller%0Alena-mueller
+const NAME_PARTS = /[\s_.-]+/;
+const INITIALS = 2;
+
+/** A player in another game than Minecraft: initials on the game's colours instead of a Minecraft head. */
+function GamePlayer({
+  name,
+  game,
+  className,
+}: {
+  name: string;
+  game: GameId;
+  className?: string;
+}): ReactElement {
+  const [dark, light] = GAME_TINTS[game];
+  const parts = name.split(NAME_PARTS).filter(Boolean);
+  const letters = (parts.length > 1 ? parts.map((p) => p[0] ?? '') : [...(parts[0] ?? '?')])
+    .slice(0, INITIALS)
+    .join('')
+    .toUpperCase();
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'inline-grid size-6 shrink-0 place-items-center rounded-[5px] text-[0.6em] font-extrabold text-white shadow-sm',
+        className,
+      )}
+      style={{ background: `linear-gradient(135deg, ${light}, ${dark})` }}
+    >
+      {letters}
+    </span>
+  );
+}
+
 export function PlayerHead({
   name,
   skin,
+  game,
   className,
 }: {
   name: string;
   skin?: string | null;
+  /** The server's edition; other games get their own picture instead of a Minecraft head. */
+  game?: string;
   className?: string;
 }): ReactElement {
   const [failed, setFailed] = useState(false);
+  if (game && isGameId(game)) return <GamePlayer name={name} game={game} className={className} />;
   const lookup = skinOf(name, skin);
   // The demo cannot load pictures from other sites, so it draws the faces itself.
   const usable = !failed && !DEMO && lookup !== null;

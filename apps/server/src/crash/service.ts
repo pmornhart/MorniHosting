@@ -267,6 +267,7 @@ export function createCrashHelpService(
   ctx.events.on('server.crashed', ({ serverId, crash }) => {
     const row = db.select().from(servers).where(eq(servers.id, serverId)).get();
     if (!row) return;
+    const template = row.template;
     if (steamHiccup(serverId, crash.excerpt)) {
       serverService.note(
         serverId,
@@ -281,6 +282,8 @@ export function createCrashHelpService(
       })();
       return;
     }
+    // A preload template has no players and nobody to tell; the admin area shows its state.
+    if (template) return;
     const text = crashText('de', crash.ruleId, crash.params);
     // In the console, so whoever looks there sees the cause and what to do.
     serverService.note(serverId, `⚠ Absturz erkannt: ${text.title}`);
