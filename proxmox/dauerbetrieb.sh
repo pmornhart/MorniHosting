@@ -34,6 +34,9 @@ INSTALL_DIR="/opt/mornihosting"
 MAX_MEMORY_MB=32768
 SWAP_MB=4096
 HUNG_RESTART_AFTER=3
+FSTRIM_EVERY_MINUTES=1440
+STORAGE_WARN_PERCENT=85
+STORAGE_CLEAR_MARGIN=5
 EXEC_TIMEOUT_SECONDS=30
 
 GN=$'\033[1;92m'
@@ -156,6 +159,36 @@ host_drop_dead_exit() {
   done <<<"${ids}"
 }
 
+# Speicher von Proxmox: Gelöschtes im Container belegt im LVM-Thin-Speicher weiter Platz, bis es zurückgegeben
+# wird (fstrim) – das passiert einmal am Tag. Ist der Speicher trotzdem über 85 % voll, kommt eine Meldung:
+# läuft er ganz voll, bleiben alle Container auf dem Host stehen.
+keep_storage() {
+  local ctid="$1"
+  local stamp="${STATE_DIR}/fstrim-${ctid}" warned="${STATE_DIR}/storage-warned" storage used
+  mkdir -p "${STATE_DIR}"
+  if [[ -z "$(find "${stamp}" -mmin -"${FSTRIM_EVERY_MINUTES}" 2>/dev/null)" ]]; then
+    touch "${stamp}"
+    timeout 1800 pct fstrim "${ctid}" >/dev/null 2>&1 && log "Gelöschten Platz von Container ${ctid} zurückgegeben (fstrim)"
+  fi
+  storage="$(pct config "${ctid}" | awk -F'[ :,]+' '/^rootfs:/ { print $2 }')"
+  [[ -n "${storage}" ]] || return 0
+  used="$(pvesm status --storage "${storage}" 2>/dev/null | awk 'NR == 2 { gsub(/%/, "", $NF); print int($NF) }')"
+  [[ -n "${used}" ]] || return 0
+  if ((used >= STORAGE_WARN_PERCENT)); then
+    # Höchstens einmal pro Stunde melden.
+    [[ -n "$(find "${warned}" -mmin -60 2>/dev/null)" ]] && return 0
+    touch "${warned}"
+    host_event "${ctid}" storage action "Proxmox-Speicher fast voll" \
+      "Der Speicher ${storage} auf dem Proxmox-Host ist zu ${used} % belegt. Läuft er voll, bleiben alle Container stehen." \
+      "Alte Backups und Server im Panel löschen. Was im Container Platz braucht, zeigt dieser Befehl auf dem Proxmox-Host:" \
+      "pct exec ${ctid} -- bash -c 'du -xh --max-depth=1 /var/lib/docker/volumes/mornihosting-data/_data | sort -h | tail -8'"
+  elif ((used < STORAGE_WARN_PERCENT - STORAGE_CLEAR_MARGIN)) && [[ -f "${warned}" ]]; then
+    rm -f "${warned}"
+    host_event "${ctid}" storage ok "Proxmox-Speicher wieder in Ordnung" "Der Speicher ${storage} ist nur noch zu ${used} % belegt."
+  fi
+  return 0
+}
+
 guard() {
   local ctid
   ctid="$(find_ctid)"
@@ -200,6 +233,7 @@ guard() {
     return 0
   fi
   send_host_events "${ctid}"
+  keep_storage "${ctid}"
   # Der Wächter im Container muss laufen; fehlt er (alte Installation), wird er eingerichtet.
   if ! pct exec "${ctid}" -- systemctl is-active --quiet mornihosting-guard.timer 2>/dev/null; then
     if pct exec "${ctid}" -- test -f "${INSTALL_DIR}/scripts/guard.sh" 2>/dev/null; then
@@ -302,6 +336,9 @@ setup() {
 
   install_host_guard "${ctid}"
   msg_ok "Host-Wächter läuft (jede Minute)"
+  msg_info "Gelöschten Platz an Proxmox zurückgeben (fstrim, kann ein paar Minuten dauern) …"
+  timeout 1800 pct fstrim "${ctid}" >/dev/null 2>&1 && msg_ok "Platz zurückgegeben"
+  mkdir -p "${STATE_DIR}" && touch "${STATE_DIR}/fstrim-${ctid}"
 
   printf '\n'
   status_report "${ctid}"
