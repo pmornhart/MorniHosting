@@ -30,6 +30,8 @@ const firstLanguage = initialLanguage();
 void i18n.use(initReactI18next).init({
   resources: { de: { translation: de } },
   lng: 'de',
+  // No advertising line from i18next in the browser console.
+  showSupportNotice: false,
   fallbackLng: 'de',
   interpolation: { escapeValue: false },
   returnNull: false,
