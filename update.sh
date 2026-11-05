@@ -110,7 +110,9 @@ else
 fi
 msg_ok "Panel neu gestartet"
 
+# Reste aufräumen: alte Image-Versionen und der Build-Cache (sonst wächst er mit jedem Update um mehrere GB).
 docker image prune -f >/dev/null 2>&1 || true
+docker builder prune -af >/dev/null 2>&1 || true
 
 # Neue oder geänderte systemd-Einheiten (DDoS-Schutz) mit einrichten; ein Fehler hier stoppt das Update nicht.
 if [[ -f scripts/ddos-guard.sh ]]; then

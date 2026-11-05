@@ -179,6 +179,8 @@ interface Runtime {
 }
 
 const LOG_BUFFER_LINES = 1000;
+/** Under the data folder: deleted servers wait here while they are removed in the background. */
+const DISCARD_DIR = '.deleting';
 /** How many ports above the wanted one are tried when looking for a free one. */
 const PORT_SEARCH_LIMIT = 100;
 const ATTACH_TAIL_LINES = 300;
@@ -993,6 +995,31 @@ export function createServerService(ctx: AppContext): ServerService {
     });
   };
 
+  /** Folders being deleted in the background; a restart finishes what was left. */
+  const discardDir = path.join(config.dataDir, DISCARD_DIR);
+  const deleteQuietly = (dir: string): void => {
+    fs.promises
+      .rm(dir, { recursive: true, force: true })
+      .catch((err: unknown) => log.warn({ err, dir }, 'could not delete a removed folder'));
+  };
+  const discardLater = (dir: string): void => {
+    if (!fs.existsSync(dir)) return;
+    fs.mkdirSync(discardDir, { recursive: true });
+    const aside = path.join(
+      discardDir,
+      `${path.basename(path.dirname(dir))}-${path.basename(dir)}-${Date.now()}`,
+    );
+    try {
+      fs.renameSync(dir, aside);
+      deleteQuietly(aside);
+    } catch (err) {
+      log.warn({ err, dir }, 'could not move a folder aside, deleting it in place');
+      deleteQuietly(dir);
+    }
+  };
+  if (fs.existsSync(discardDir))
+    fs.readdirSync(discardDir).forEach((name) => deleteQuietly(path.join(discardDir, name)));
+
   const service: ServerService = {
     init: async () => {
       ensureBuiltinRoles();
@@ -1255,7 +1282,8 @@ export function createServerService(ctx: AppContext): ServerService {
       db.delete(stats).where(eq(stats.serverId, id)).run();
       const dirs = ['servers', 'backups', 'trash'].map((d) => path.join(config.dataDir, d, id));
       if (deleteFiles) {
-        dirs.forEach((d) => fs.rmSync(d, { recursive: true, force: true }));
+        // Big servers (CS2: 60 GB) would block the panel while deleting: move aside at once, delete in the background.
+        dirs.forEach((d) => discardLater(d));
       } else {
         const archive = path.join(config.dataDir, 'archive', `${r.name.replace(/[^\w.-]+/g, '_')}-${id}`); // eslint-disable-line ts-patterns/require-regex-example -- anything but word characters, dot and dash becomes "_": "Mein Server!" → "Mein_Server_"
         fs.mkdirSync(path.dirname(archive), { recursive: true });
