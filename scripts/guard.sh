@@ -28,7 +28,7 @@ PANEL_RESTART_AFTER=3
 # Unter so viel freiem Platz (MB) wird aufgeräumt.
 DISK_CLEAN_BELOW_MB=3072
 # So oft wird ein abgewählter NetBird-Ausgang wieder probiert, und so lange darf er sich einrichten.
-EXIT_RETRY_MINUTES=10
+EXIT_RETRY_MINUTES=5
 # Meldungen ans Panel (Discord + Mail): erst hier gesammelt, dann ins Datenvolume des Panels.
 PENDING_EVENTS="${STATE_DIR}/events-pending.jsonl"
 VOLUME_NAME="mornihosting-data"
@@ -49,7 +49,13 @@ UP_TIMEOUT_SECONDS=60
 CHECK_TIMEOUT_SECONDS=8
 FALLBACK_DNS=("1.1.1.1" "9.9.9.9")
 DNS_TEST_HOST="github.com"
-WEB_TEST_URL="https://api.github.com"
+# Internet-Prüfung: Jede Antwort zählt (auch 4xx), nur keine Antwort heißt "kein Internet". Mehrere Ziele ohne
+# Abfrage-Grenze – vorher api.github.com: das erlaubt nur 60 Abfragen pro Stunde, nach einer Stunde kam "zu viele"
+# und der Wächter schaltete den Ausgang ab (Hausanschluss jede Stunde sichtbar).
+WEB_TEST_URLS=("https://1.1.1.1/cdn-cgi/trace" "https://www.google.com/generate_204" "https://9.9.9.9")
+# So oft hintereinander (1 Prüfung = 1 Minute) muss das Internet über den Ausgang fehlen, bevor er abgewählt wird.
+EXIT_DEAD_AFTER=3
+EXIT_FAIL_FILE="${STATE_DIR}/exit-failures"
 # Proxmox schreibt /etc/resolv.conf in Containern bei jedem Start neu – außer diese Datei existiert.
 PVE_IGNORE_RESOLV="/etc/.pve-ignore.resolv.conf"
 
@@ -97,7 +103,13 @@ flush_events() {
 }
 
 dns_ok() { timeout "${CHECK_TIMEOUT_SECONDS}" getent hosts "${DNS_TEST_HOST}" >/dev/null 2>&1; }
-web_ok() { curl -fsS -m "${CHECK_TIMEOUT_SECONDS}" -o /dev/null "${WEB_TEST_URL}" >/dev/null 2>&1; }
+web_ok() {
+  local url
+  for url in "${WEB_TEST_URLS[@]}"; do
+    curl -sS -m "${CHECK_TIMEOUT_SECONDS}" -o /dev/null "${url}" >/dev/null 2>&1 && return 0
+  done
+  return 1
+}
 
 netbird_connected() {
   local out
@@ -162,10 +174,20 @@ retry_exit() {
 }
 
 drop_dead_exit() {
-  web_ok && return 0
-  local ids
+  mkdir -p "${STATE_DIR}"
+  if web_ok; then
+    echo 0 >"${EXIT_FAIL_FILE}"
+    return 0
+  fi
+  local ids failures=0
   ids="$(selected_exit_ids)"
   [[ -n "${ids}" ]] || return 0
+  # Ein kurzer Aussetzer (eine Minute) ist kein Grund, den Hausanschluss offenzulegen.
+  [[ -f "${EXIT_FAIL_FILE}" ]] && failures="$(cat "${EXIT_FAIL_FILE}")"
+  failures=$((failures + 1))
+  echo "${failures}" >"${EXIT_FAIL_FILE}"
+  ((failures < EXIT_DEAD_AFTER)) && return 0
+  echo 0 >"${EXIT_FAIL_FILE}"
   # Nicht gleich in derselben Minute wieder probieren.
   mkdir -p "${STATE_DIR}" && touch "${STATE_DIR}/exit-retry"
   while IFS= read -r id; do

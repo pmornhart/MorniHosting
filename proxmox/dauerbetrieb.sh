@@ -137,10 +137,28 @@ stopped_on_purpose() {
 
 # Der Host selbst: Geht sein Internet über einen NetBird-Ausgang (Exit-Node), der nicht antwortet, wird der
 # Ausgang abgewählt – sonst wäre der Host offline (keine Updates, kein Proxmox-Repository, kein Wächter-Update).
-host_internet_ok() { curl -fsS -m 8 -o /dev/null https://api.github.com >/dev/null 2>&1; }
+# Jede Antwort zählt; mehrere Ziele ohne Abfrage-Grenze (api.github.com erlaubt nur 60 pro Stunde).
+host_internet_ok() {
+  local url
+  for url in https://1.1.1.1/cdn-cgi/trace https://www.google.com/generate_204 https://9.9.9.9; do
+    curl -sS -m 8 -o /dev/null "${url}" >/dev/null 2>&1 && return 0
+  done
+  return 1
+}
 host_drop_dead_exit() {
   command -v netbird >/dev/null 2>&1 || return 0
-  host_internet_ok && return 0
+  local fails_file="${STATE_DIR}/host-exit-failures" fails=0
+  mkdir -p "${STATE_DIR}"
+  if host_internet_ok; then
+    echo 0 >"${fails_file}"
+    return 0
+  fi
+  # Erst nach 3 Minuten ohne Internet abwählen, nicht bei einem kurzen Aussetzer.
+  [[ -f "${fails_file}" ]] && fails="$(cat "${fails_file}")"
+  fails=$((fails + 1))
+  echo "${fails}" >"${fails_file}"
+  ((fails < 3)) && return 0
+  echo 0 >"${fails_file}"
   local listing ids id
   listing="$(timeout 10 netbird networks ls 2>/dev/null || timeout 10 netbird routes list 2>/dev/null || true)"
   ids="$(awk '
