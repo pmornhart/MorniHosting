@@ -2,12 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowUpCircle, ExternalLink, GitCommitHorizontal, Sparkles } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChangeList } from '@/components/change-list';
 import { Link } from 'react-router';
 import type { Changelog } from '@mornihosting/shared';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/misc';
 import { api } from '@/lib/api';
-import { formatRelative } from '@/lib/format';
 import { useSession } from '@/features/auth/session';
 import { updateQuery } from './UpdateCard';
 
@@ -26,7 +26,8 @@ export function VersionBadge({ onNavigate }: { onNavigate?: () => void }): React
   const { data } = useQuery(changelogQuery);
   const { data: update } = useQuery({ ...updateQuery, enabled: me.user.isAdmin, retry: false });
   const release = data?.release ? `v${data.release}` : null;
-  const label = [release, data?.commit].filter(Boolean).join(' · ') || t('version.dev');
+  // The version number alone ("v0.8.4"); the commit only when there is no number.
+  const label = release ?? data?.commit ?? t('version.dev');
   return (
     <>
       <button
@@ -64,24 +65,7 @@ export function VersionBadge({ onNavigate }: { onNavigate?: () => void }): React
           <div className="grid max-h-[50vh] gap-1 overflow-y-auto">
             {data ? null : SKELETON_ROWS.map((k) => <Skeleton key={k} className="h-11" />)}
             {data?.failed ? <p className="text-sm text-muted-foreground">{t('changelog.failed')}</p> : null}
-            {data?.changes.map((c, i) => (
-              <div
-                key={c.sha}
-                className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 rounded-[10px] px-2 py-2 hover:bg-secondary"
-              >
-                <span
-                  className={
-                    i === 0 ? 'mt-1.5 size-2 rounded-full bg-primary' : 'mt-1.5 size-2 rounded-full bg-border'
-                  }
-                />
-                <span className="grid gap-0.5">
-                  <span className="text-sm font-medium">{c.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    <code className="font-mono">{c.sha}</code> · {c.date ? formatRelative(c.date) : ''}
-                  </span>
-                </span>
-              </div>
-            ))}
+            {data ? <ChangeList changes={data.changes} /> : null}
           </div>
           {data?.url ? (
             <a

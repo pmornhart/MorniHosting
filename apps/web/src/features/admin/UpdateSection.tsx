@@ -7,13 +7,13 @@ import {
   CircleCheck,
   CircleX,
   ExternalLink,
-  GitCommitHorizontal,
   LoaderCircle,
   RefreshCw,
   TriangleAlert,
 } from 'lucide-react';
 import { useEffect, useRef, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChangeList } from '@/components/change-list';
 import { toast } from 'sonner';
 import type { UpdateInfo, UpdateRun } from '@mornihosting/shared';
 import { CommandLine } from '@/components/command-line';
@@ -219,14 +219,14 @@ export function UpdateSection(): ReactElement {
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1.5">
           <span className="text-muted-foreground">{t('update.installed')}</span>
-          <b className="font-mono">{data.current}</b>
+          <b className="font-mono">{data.currentVersion ? `v${data.currentVersion}` : data.current}</b>
         </span>
         {data.available && data.latest ? (
           <>
             <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
             <span className="inline-flex items-center gap-2 rounded-full border border-primary/50 bg-accent px-3 py-1.5">
               <span className="text-muted-foreground">{t('update.newest')}</span>
-              <b className="font-mono">{data.latest}</b>
+              <b className="font-mono">{data.latestVersion ? `v${data.latestVersion}` : data.latest}</b>
               {data.latestDate ? (
                 <span className="text-xs text-muted-foreground">{formatDateTime(data.latestDate)}</span>
               ) : null}
@@ -240,17 +240,9 @@ export function UpdateSection(): ReactElement {
       {data.available && data.changes.length ? (
         <div className="grid gap-2">
           <b className="text-sm font-semibold">{t('update.whatsNew')}</b>
-          <ul className="grid max-h-64 gap-1 overflow-y-auto rounded-[12px] bg-secondary p-2">
-            {data.changes.map((c) => (
-              <li key={c.sha} className="flex min-w-0 items-start gap-2 rounded-[8px] px-2 py-1.5 text-sm">
-                <GitCommitHorizontal className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-                <span className="min-w-0 flex-1">{c.title}</span>
-                {c.date ? (
-                  <span className="shrink-0 text-xs text-muted-foreground">{formatRelative(c.date)}</span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <div className="max-h-96 overflow-y-auto rounded-[12px] bg-secondary p-2">
+            <ChangeList changes={data.changes} />
+          </div>
         </div>
       ) : null}
 

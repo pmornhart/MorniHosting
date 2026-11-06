@@ -3213,5 +3213,12 @@
     "remove": "Bild entfernen",
     "open": "Seite ansehen",
     "saved": "Impressum gespeichert."
+  },
+  "changeKinds": {
+    "new": "Neu",
+    "fixed": "Behoben",
+    "improved": "Verbessert",
+    "removed": "Entfernt",
+    "other": "Geändert"
   }
 }

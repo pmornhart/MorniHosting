@@ -230,20 +230,38 @@ const state = {
   ]),
   settings: read<PanelSettings>('/api/settings'),
   update: {
-    current: 'a1b2c3d',
+    current: 'v0.8.4-0-ga1b2c3d',
+    currentVersion: '0.8.4',
+    latestVersion: '0.8.8',
     latest: LATEST_VERSION,
     latestDate: nowIso(),
     available: true,
     behind: 4,
     changes: [
-      { sha: 'd2f2b38', title: 'Joinen mit name.mornihosting.de, Doku zur eigenen Domain', date: nowIso() },
+      {
+        sha: 'd2f2b38',
+        title: 'Joinen mit name.mornihosting.de, Doku zur eigenen Domain',
+        date: nowIso(),
+        items: [
+          { kind: 'new', text: 'Freunde treten mit name.mornihosting.de bei, ohne Port' },
+          { kind: 'fixed', text: 'Bedrock-Spieler kamen von außen nicht rein' },
+          { kind: 'improved', text: 'Server starten nach einem Panel-Update sofort als „läuft“' },
+          { kind: 'removed', text: 'Alter Hinweis zur Router-Freigabe hinter NetBird' },
+        ],
+      },
       {
         sha: '739bf54',
         title: 'Server bestellen wie bei einem Hoster: Pakete, Name, Add-ons',
         date: nowIso(),
+        items: [{ kind: 'new', text: 'Bestellseite mit Paketen, Namen und Add-ons' }],
       },
-      { sha: '5c1e0aa', title: 'HTTPS für die eigene Domain: jede Adresse führt zum Panel', date: nowIso() },
-      { sha: '3f9d210', title: 'INWX als DNS-Anbieter', date: nowIso() },
+      {
+        sha: '5c1e0aa',
+        title: 'HTTPS für die eigene Domain: jede Adresse führt zum Panel',
+        date: nowIso(),
+        items: [],
+      },
+      { sha: '3f9d210', title: 'INWX als DNS-Anbieter', date: nowIso(), items: [] },
     ],
     url: 'https://github.com/pmornhart/MorniHosting/commits/main',
     checkedAt: nowIso(),
@@ -1280,8 +1298,8 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
     '/api/system/changelog',
     () =>
       ok({
-        release: '1.0.0',
-        commit: state.update.current,
+        release: '0.8.4',
+        commit: 'a1b2c3d',
         url: 'https://github.com/pmornhart/MorniHosting/commits/main',
         failed: false,
         changes: [
@@ -1296,6 +1314,7 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
           sha: String(sha),
           title: String(title),
           date: new Date(Date.now() - Number(hours) * 3_600_000).toISOString(),
+          items: [],
         })),
       } satisfies Changelog),
   ],

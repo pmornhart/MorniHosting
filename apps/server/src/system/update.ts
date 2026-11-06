@@ -1,7 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
-import type { Changelog, UpdateChange, UpdateInfo, UpdateRun } from '@mornihosting/shared';
+import type {
+  ChangeItem,
+  ChangeKind,
+  Changelog,
+  UpdateChange,
+  UpdateInfo,
+  UpdateRun,
+} from '@mornihosting/shared';
 import type { Actor } from '../audit/service.js';
 import type { AppContext } from '../context.js';
 import { conflict } from '../lib/errors.js';
@@ -48,6 +55,8 @@ const RELEASE = /^v?(\d+\.\d+\.\d+)$/;
 const DESCRIBED_RELEASE = /^v?(\d+\.\d+\.\d+)-\d+-g/;
 /** How many changes "What's new" lists (merge commits left out). */
 const CHANGELOG_SIZE = 15;
+const VERSION_PARTS = 3;
+const DIGIT_BASE = 10;
 /** Commits fetched for it; some of them are merges. */
 const CHANGELOG_FETCH = 30;
 
@@ -81,14 +90,91 @@ function baseRef(version: string): string | null {
   return release ? `v${release}` : null;
 }
 
+// A bullet line of a commit message: "- Neu: Impressum-Seite" gives "Neu: Impressum-Seite"; "Verfasst …" does not.
+// https://regex101.com/?flavor=javascript&regex=%5E%5Cs*%5B-*%E2%80%A2%5D%5Cs%2B(.%2B)%24&testString=-%20Neu%3A%20Impressum-Seite%0AVerfasst%20mit%20Claude
+const BULLET = /^\s*[-*•]\s+(.+)$/;
+// An explicit kind in front: "Behoben: Bedrock-Port" gives "Behoben" and "Bedrock-Port".
+// https://regex101.com/?flavor=javascript&regex=%5E(neu%7Cbehoben%7Cverbessert%7Centfernt%7Cge%C3%A4ndert)%5Cs*%3A%5Cs*(.%2B)%24&flags=i&testString=Behoben%3A%20Bedrock-Port%0ANeu%3A%20Impressum
+const LABELLED = /^(neu|behoben|verbessert|entfernt|geändert)\s*:\s*(.+)$/i;
+const LABEL_KINDS: Readonly<Record<string, ChangeKind>> = {
+  neu: 'new',
+  behoben: 'fixed',
+  verbessert: 'improved',
+  entfernt: 'removed',
+  geändert: 'other',
+};
+// Words that tell the kind of an unlabelled line, e.g. "… behoben", "Fehler …", "… entfernt", "neue Seite".
+// https://regex101.com/?flavor=javascript&regex=%5Cb(behoben%7Cfix%7Crepariert%7Cfehler%7Ching%7Cging%20nicht%7Ckam%20nicht)&flags=i&testString=Bedrock%20kam%20nicht%20rein
+const FIXED_WORDS = /\b(behoben|fix|repariert|fehler|hing|ging nicht|kam nicht)/i;
+// https://regex101.com/?flavor=javascript&regex=%5Cb(entfernt%7Cgel%C3%B6scht%7Cweg%7Craus%7Cabgeschaltet)%5Cb&flags=i&testString=Men%C3%BCpunkt%20entfernt
+const REMOVED_WORDS = /\b(entfernt|gelöscht|weg|raus|abgeschaltet)\b/i;
+// https://regex101.com/?flavor=javascript&regex=%5Cb(neu%7Cneue%7Cneuer%7Cneues%7Chinzu%7Ckann%20jetzt)%5Cb&flags=i&testString=Neue%20Impressum-Seite
+const NEW_WORDS = /\b(neu|neue|neuer|neues|hinzu|kann jetzt)\b/i;
+// https://regex101.com/?flavor=javascript&regex=%5Cb(schneller%7Cbesser%7Cweniger%7Cstabiler%7Cklarer)%5Cb&flags=i&testString=Start%20ist%20schneller
+const IMPROVED_WORDS = /\b(schneller|besser|weniger|stabiler|klarer)\b/i;
+const GUESSES: readonly (readonly [RegExp, ChangeKind])[] = [
+  [FIXED_WORDS, 'fixed'],
+  [REMOVED_WORDS, 'removed'],
+  [NEW_WORDS, 'new'],
+  [IMPROVED_WORDS, 'improved'],
+];
+/** Lines that are not part of the change itself (signature lines). */
+const SKIP_PREFIXES = ['Verfasst mit Claude', 'Co-Authored-By:', 'Claude-Session:'];
+
+/** One bullet line as a change item: an explicit "Neu:"/"Behoben:" … wins, else the kind is guessed from words. */
+export function changeItem(line: string): ChangeItem {
+  const labelled = LABELLED.exec(line);
+  if (labelled)
+    return { kind: LABEL_KINDS[(labelled[1] ?? '').toLowerCase()] ?? 'other', text: labelled[2] ?? '' };
+  const guessed = GUESSES.find(([words]) => words.test(line))?.[1] ?? 'other';
+  return { kind: guessed, text: line };
+}
+
+/** The bullet lines of a commit message, each with its kind. */
+export function changeItems(message: string): ChangeItem[] {
+  return message
+    .split('\n')
+    .slice(1)
+    .filter((line) => !SKIP_PREFIXES.some((prefix) => line.trim().startsWith(prefix)))
+    .map((line) => BULLET.exec(line)?.[1]?.trim() ?? '')
+    .filter(Boolean)
+    .map(changeItem);
+}
+
 const toChange = (c: Commit): UpdateChange => ({
   sha: c.sha.slice(0, SHORT_SHA),
   title: c.commit.message.split('\n')[0] ?? '',
   date: c.commit.committer?.date ?? '',
+  items: changeItems(c.commit.message),
 });
+
+/** "1.0.84" of the running panel ("v1.0.84-0-gb886c33" or "v1.0.84"), else null. */
+const versionOf = (built: string): string | null =>
+  DESCRIBED_RELEASE.exec(built)?.[1] ?? RELEASE.exec(built)?.[1] ?? null;
+/**
+ * Version numbers count the updates, one digit per place: update 84 is "0.8.4", after "0.0.9" comes "0.1.0",
+ * after "0.9.9" comes "1.0.0". The next version: each update merged into the branch counts one up.
+ */
+export function versionFromCount(count: number): string {
+  const patch = count % DIGIT_BASE;
+  const minor = Math.floor(count / DIGIT_BASE) % DIGIT_BASE;
+  const major = Math.floor(count / (DIGIT_BASE * DIGIT_BASE));
+  return `${major}.${minor}.${patch}`;
+}
+const countFromVersion = (version: string): number | null => {
+  const parts = version.split('.').map(Number);
+  if (parts.length !== VERSION_PARTS || parts.some(Number.isNaN)) return null;
+  const [major = 0, minor = 0, patch = 0] = parts;
+  return major * DIGIT_BASE * DIGIT_BASE + minor * DIGIT_BASE + patch;
+};
+const bumped = (version: string | null, steps: number): string | null => {
+  const count = version === null ? null : countFromVersion(version);
+  return count === null ? null : versionFromCount(count + steps);
+};
 
 interface Latest {
   readonly latest: string | null;
+  readonly latestVersion: string | null;
   readonly latestDate: string | null;
   readonly available: boolean;
   readonly behind: number;
@@ -129,8 +215,10 @@ export function createUpdateService(ctx: AppContext): UpdateService {
 
   const ask = async (): Promise<Latest> => {
     const head = commitSchema.parse(await fetchJson(`${api}/commits/${branch}`, { headers }));
+    const current = versionOf(ctx.config.version);
     const newest = {
       latest: head.sha.slice(0, SHORT_SHA),
+      latestVersion: current,
       latestDate: head.commit.committer?.date ?? null,
       checkedAt: nowIso(),
       checkFailed: false,
@@ -143,12 +231,16 @@ export function createUpdateService(ctx: AppContext): UpdateService {
       url: `https://github.com/${repo}/commits/${branch}`,
     };
     // Built without knowing its commit ("dev"): any version from GitHub is worth offering.
-    if (!base) return { ...unknown, available: true };
+    if (!base) return { ...unknown, latestVersion: null, available: true };
     if (head.sha.startsWith(base)) return { ...unknown, available: false };
     try {
       const diff = compareSchema.parse(await fetchJson(`${api}/compare/${base}...${head.sha}`, { headers }));
+      // Every update arrives as one merge into the branch: that is the step of the version number.
+      const merges = diff.commits.filter((c) => c.commit.message.startsWith(MERGE_PREFIX)).length;
+      const steps = diff.ahead_by > 0 ? Math.max(merges, 1) : 0;
       return {
         ...newest,
+        latestVersion: bumped(current, steps),
         available: diff.ahead_by > 0,
         behind: diff.ahead_by,
         changes: diff.commits
@@ -161,7 +253,7 @@ export function createUpdateService(ctx: AppContext): UpdateService {
     } catch (err) {
       // A commit GitHub does not know (built from a local change): offer the newest version anyway.
       if (err instanceof UpstreamError && err.status === HTTP_NOT_FOUND)
-        return { ...unknown, available: true };
+        return { ...unknown, latestVersion: null, available: true };
       throw err;
     }
   };
@@ -177,6 +269,7 @@ export function createUpdateService(ctx: AppContext): UpdateService {
       ctx.log.warn({ err }, 'update check failed');
       const failed: Latest = {
         latest: null,
+        latestVersion: null,
         latestDate: null,
         available: false,
         behind: 0,
@@ -222,6 +315,7 @@ export function createUpdateService(ctx: AppContext): UpdateService {
     const current = run();
     const base = {
       current: ctx.config.version,
+      currentVersion: versionOf(ctx.config.version),
       canSelfUpdate: fs.existsSync(agentFile),
       updating: current?.state === 'requested' || current?.state === 'running',
       run: current,
@@ -230,6 +324,7 @@ export function createUpdateService(ctx: AppContext): UpdateService {
       return {
         ...base,
         latest: null,
+        latestVersion: null,
         latestDate: null,
         available: false,
         behind: 0,

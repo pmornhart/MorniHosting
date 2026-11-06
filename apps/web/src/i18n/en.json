@@ -3213,5 +3213,12 @@
     "remove": "Remove picture",
     "open": "View page",
     "saved": "Imprint saved."
+  },
+  "changeKinds": {
+    "new": "New",
+    "fixed": "Fixed",
+    "improved": "Improved",
+    "removed": "Removed",
+    "other": "Changed"
   }
 }
