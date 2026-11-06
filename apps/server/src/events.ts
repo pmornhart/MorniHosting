@@ -24,6 +24,8 @@ export interface PanelEvents {
   /** A mail could not be handed to the mail server (unreachable, login refused …). */
   'mail.failed': { error: string };
   /** Always-on could not start a server that should run (tries counts up; 0 = it runs again). */
+  /** The outside address of a server changed (NetBird, own domain): voice chat writes its address again. */
+  'server.address': { serverId: string };
   'server.revive': {
     serverId: string;
     tries: number;

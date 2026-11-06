@@ -1444,7 +1444,11 @@ export function createServerService(ctx: AppContext): ServerService {
       return () => portListeners.delete(listener);
     },
     setTunnelAddress: (id, patch) => {
+      const before = db.select().from(servers).where(eq(servers.id, id)).get();
       db.update(servers).set(patch).where(eq(servers.id, id)).run();
+      const after = db.select().from(servers).where(eq(servers.id, id)).get();
+      if (before && after && voiceHostOf(before) !== voiceHostOf(after))
+        events.emit('server.address', { serverId: id });
     },
     describeNetbird: (provider) => {
       addressDescribers.add(provider);

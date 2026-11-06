@@ -129,6 +129,22 @@ export function createVoiceChatService(
     }
   });
 
+  // NetBird or the own domain gave the server a new outside address: the plugin must hand out the new one,
+  // otherwise players' voice chat calls an old port. It reads the file at its start.
+  ctx.events.on('server.address', ({ serverId }) => {
+    try {
+      if (!servers.row(serverId).voiceChat) return;
+      writeConfig(serverId);
+      if (servers.isRunning(serverId))
+        servers.note(
+          serverId,
+          `Voice-Chat: neue Adresse ${servers.voiceHost(serverId)} – gilt nach dem nächsten Neustart des Servers.`,
+        );
+    } catch (err) {
+      ctx.log.warn({ err, serverId }, 'voice chat address not updated');
+    }
+  });
+
   return {
     set: (serverId, input, actor) =>
       serial(serverId, async () =>
