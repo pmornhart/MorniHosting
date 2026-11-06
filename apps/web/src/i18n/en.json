@@ -679,7 +679,9 @@
     "public_stats_java_only": "The statistics page is only for Minecraft Java.",
     "public_stats_slug_taken": "Another server already uses /stats/{{slug}}.",
     "public_stats_unknown": "This statistics page does not exist.",
-    "craft_attack_software": "Craft Attack only works with Paper or Purpur."
+    "craft_attack_software": "Craft Attack only works with Paper or Purpur.",
+    "impressum_not_image": "That is not a picture (PNG, JPG or WebP).",
+    "impressum_too_big": "The picture is too big (at most {{mb}} MB)."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1641,7 +1643,8 @@
       "player_adjust": "Player changed (health, level, mode …)",
       "payment_paid": "Month marked as paid",
       "payment_unpaid": "Month marked as open again",
-      "server_crash_fix": "Crash fixed"
+      "server_crash_fix": "Crash fixed",
+      "impressum_update": "Imprint changed"
     }
   },
   "ddos": {
@@ -1772,7 +1775,8 @@
     "outsideUnknown": "This could not be checked from outside right now. Try again in a few minutes.",
     "outsideTip": "It works inside the server but not from outside: forward port {{port}} in your router for TCP and UDP (or in NetBird – the panel creates both services itself). Since Bedrock 26.60 the game finds the server over TCP and plays over UDP.",
     "howToJoin": "How Bedrock players join: Play › Servers › Add server › address “{{host}}”, port “{{port}}” (address without :port).",
-    "outsideAfterInside": "First Geyser has to answer inside the server (see above) – then the way in from outside usually works too."
+    "outsideAfterInside": "First Geyser has to answer inside the server (see above) – then the way in from outside usually works too.",
+    "portInfoNetbird": "Bedrock players: address {{host}}, port {{port}} – works without any router setup."
   },
   "passkeys": {
     "title": "Passkeys",
@@ -1812,7 +1816,8 @@
       "move": "Move",
       "quotas": "Quotas",
       "payments": "Payments",
-      "preload": "Preload games"
+      "preload": "Preload games",
+      "impressum": "Imprint"
     },
     "domainTitle": "Panel address by hand",
     "domainSet": "Set",
@@ -1841,7 +1846,8 @@
       "move": "Move settings and connections to another MorniHosting with a code.",
       "quotas": "How much RAM, disk, CPU and how many servers each person may have. Admins have no limits.",
       "payments": "Who owes you how much for a server ordered with the voucher “MORNI” – and which months are paid.",
-      "preload": "Downloads a game before anyone orders a server for it. New servers then only copy it – seconds instead of minutes or hours (CS2: about 60 GB)."
+      "preload": "Downloads a game before anyone orders a server for it. New servers then only copy it – seconds instead of minutes or hours (CS2: about 60 GB).",
+      "impressum": "Picture for the \"Imprint\" page (linked at the bottom of the start page)."
     },
     "netbirdManual": "Set up NetBird by hand",
     "netbirdManualHint": "Only needed if you don't use the automation above. Tap to open."
@@ -3196,5 +3202,16 @@
     "playingNow": "Playing now",
     "lastSeen": "Last seen {{when}}",
     "updated": "Updated {{when}} · refreshes by itself"
+  },
+  "impressum": {
+    "title": "Imprint",
+    "adminText": "Upload a picture here (PNG, JPG or WebP, up to 10 MB). It appears on the \"Imprint\" page linked at the bottom of the start page – also without logging in. Make sure it shows your real details (name, address, contact).",
+    "none": "No imprint yet.",
+    "upload": "Upload picture",
+    "replace": "Upload another picture",
+    "uploading": "Uploading …",
+    "remove": "Remove picture",
+    "open": "View page",
+    "saved": "Imprint saved."
   }
 }

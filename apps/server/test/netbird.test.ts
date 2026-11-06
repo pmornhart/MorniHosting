@@ -578,11 +578,17 @@ describe('NetBird automation', () => {
       ).json<ServerSummary>();
       await rcall('PUT', `/api/servers/${server.id}/geyser`, { enabled: true });
       const shown = async () => (await rcall('GET', `/api/servers/${server.id}`)).json<ServerDetail>();
-      await waitFor(async () => (await shown()).netbird?.services.length === 2);
+      await waitFor(async () => (await shown()).netbird?.services.length === 3);
       // The server's own address leaves 25565 to the router; Bedrock signaling needs no own TCP service.
       expect(netbird.byDomain(`reich.${BASE}`)?.listen_port).toBe(25566);
-      expect(netbird.byDomain(`reich-bedrock-tcp.${BASE}`)).toBeUndefined();
-      expect(netbird.byDomain(`reich-bedrock.${BASE}`)).toMatchObject({ mode: 'udp', listen_port: 19132 });
+      // Bedrock keeps its own port (TCP + UDP, never the router's 19132), so joining with the port always works.
+      const udp = netbird.byDomain(`reich-bedrock.${BASE}`);
+      expect(udp).toMatchObject({ mode: 'udp' });
+      expect(udp?.listen_port).not.toBe(19132);
+      expect(netbird.byDomain(`reich-bedrock-tcp.${BASE}`)).toMatchObject({
+        mode: 'tcp',
+        listen_port: udp?.listen_port,
+      });
       const detailNow = await shown();
       expect(detailNow.address).toBe(`reich.${BASE}`);
       expect(detailNow.netbird?.routed).toEqual({ java: true, bedrock: true });

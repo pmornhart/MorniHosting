@@ -257,18 +257,10 @@ export function createNetbirdAutomation(
       { purpose: 'main', domain: host('main'), mode: SOFTWARE[row.software].protocol, port: row.port, avoid },
       ...(geyserPort
         ? ([
-            { purpose: 'geyser', domain: host('geyser'), mode: 'udp', port: geyserPort },
-            // Signaling goes through the router then; only the UDP half needs its own port.
-            ...(routed.includes('bedrock')
-              ? []
-              : [
-                  {
-                    purpose: 'geyser-signal',
-                    domain: host('geyser-signal'),
-                    mode: 'tcp',
-                    port: geyserPort,
-                  } as const,
-                ]),
+            // Its own outside port, never the router's 19132: the TCP half below needs the same number.
+            { purpose: 'geyser', domain: host('geyser'), mode: 'udp', port: geyserPort, avoid },
+            // Always the server's own TCP signaling too: players can always join with this port, router or not.
+            { purpose: 'geyser-signal', domain: host('geyser-signal'), mode: 'tcp', port: geyserPort },
           ] as const)
         : []),
       ...(voicePort

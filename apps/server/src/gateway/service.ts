@@ -28,8 +28,17 @@ export function createAddressGateway(ctx: AppContext): AddressGateway {
   const lookup: RouteLookup = (address, kind) => {
     const first = address.split('.')[0] ?? '';
     const name = first.endsWith(BEDROCK_ALIAS) ? first.slice(0, -BEDROCK_ALIAS.length) : first;
-    if (!name) return null;
-    const row = ctx.db.select().from(serverTable).where(eq(serverTable.netbirdName, name)).get();
+    const named = ctx.db.select().from(serverTable).where(eq(serverTable.netbirdName, name)).get();
+    // Bedrock without a usable name (no Host header): with just one Bedrock-ready server, that one.
+    const onlyGeyser = (): typeof named => {
+      const geyser = ctx.db
+        .select()
+        .from(serverTable)
+        .all()
+        .filter((r) => r.geyser && !r.template && r.edition === 'java');
+      return geyser.length === 1 ? geyser[0] : undefined;
+    };
+    const row = named ?? (kind === 'bedrock' ? onlyGeyser() : undefined);
     if (!row || row.template || row.edition !== 'java') return null;
     if (kind === 'java') return { host: containerName(row.id), port: SOFTWARE[row.software].defaultPort };
     return row.geyser ? { host: containerName(row.id), port: GEYSER_INSIDE_PORT } : null;

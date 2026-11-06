@@ -69,6 +69,7 @@ import { registerTeamRoutes } from './team/routes.js';
 import { createPlayerDetailService } from './players/detail.js';
 import { createCraftAttackService } from './craftattack/service.js';
 import { registerCraftAttackRoutes } from './craftattack/routes.js';
+import { registerImpressumRoutes } from './impressum/routes.js';
 import { registerPlayerDetailRoutes } from './players/routes.js';
 import { registerItemIconRoutes } from './players/item-icons.js';
 import { registerWebhookRoutes } from './webhooks/routes.js';
@@ -335,6 +336,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerTeamRoutes(app, ctx);
   registerPlayerDetailRoutes(app, ctx, playerDetails);
   registerCraftAttackRoutes(app, ctx, craftAttack);
+  registerImpressumRoutes(app, ctx);
   registerTokenRoutes(app, ctx);
   registerAuditRoutes(app, ctx);
   registerSettingsRoutes(app, ctx);

@@ -679,7 +679,9 @@
     "public_stats_java_only": "Die Statistik-Seite gibt es nur für Minecraft Java.",
     "public_stats_slug_taken": "Die Adresse /stats/{{slug}} hat schon ein anderer Server.",
     "public_stats_unknown": "Diese Statistik-Seite gibt es nicht.",
-    "craft_attack_software": "Craft Attack geht nur mit Paper oder Purpur."
+    "craft_attack_software": "Craft Attack geht nur mit Paper oder Purpur.",
+    "impressum_not_image": "Das ist kein Bild (PNG, JPG oder WebP).",
+    "impressum_too_big": "Das Bild ist zu groß (höchstens {{mb}} MB)."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1641,7 +1643,8 @@
       "player_adjust": "Spieler geändert (Leben, Level, Modus …)",
       "payment_paid": "Monat als bezahlt markiert",
       "payment_unpaid": "Monat wieder offen",
-      "server_crash_fix": "Absturz behoben"
+      "server_crash_fix": "Absturz behoben",
+      "impressum_update": "Impressum geändert"
     }
   },
   "ddos": {
@@ -1772,7 +1775,8 @@
     "outsideUnknown": "Von außen ließ sich das gerade nicht prüfen. Probier es in ein paar Minuten noch mal.",
     "outsideTip": "Im Server klappt es, von außen nicht: Port {{port}} im Router für TCP und UDP freigeben (bzw. in NetBird – das Panel legt beide Dienste selbst an). Seit Bedrock 26.60 sucht das Spiel den Server über TCP und spielt über UDP.",
     "howToJoin": "So treten Bedrock-Spieler bei: Spielen › Server › Server hinzufügen › Adresse „{{host}}“, Port „{{port}}“ (Adresse ohne :Port eintragen).",
-    "outsideAfterInside": "Zuerst muss Geyser im Server antworten (siehe oben) – dann klappt meist auch der Weg von außen."
+    "outsideAfterInside": "Zuerst muss Geyser im Server antworten (siehe oben) – dann klappt meist auch der Weg von außen.",
+    "portInfoNetbird": "Bedrock-Spieler: Adresse {{host}}, Port {{port}} – geht ohne Einstellungen an der Fritzbox."
   },
   "passkeys": {
     "title": "Passkeys",
@@ -1812,7 +1816,8 @@
       "move": "Umzug",
       "quotas": "Kontingente",
       "payments": "Zahlungen",
-      "preload": "Spiele vorladen"
+      "preload": "Spiele vorladen",
+      "impressum": "Impressum"
     },
     "domainTitle": "Panel-Adresse von Hand",
     "domainSet": "Eingetragen",
@@ -1841,7 +1846,8 @@
       "move": "Einstellungen und Verbindungen per Code auf ein anderes MorniHosting übertragen.",
       "quotas": "Wie viel Arbeitsspeicher, Festplatte, CPU und wie viele Server jede Person haben darf. Admins sind ausgenommen.",
       "payments": "Wer dir für einen Server mit Gutschein „MORNI“ wie viel schuldet – und welche Monate bezahlt sind.",
-      "preload": "Lädt ein Spiel schon herunter, bevor jemand einen Server dafür bestellt. Neue Server kopieren es dann nur noch – das geht in Sekunden statt Minuten oder Stunden (CS2: rund 60 GB)."
+      "preload": "Lädt ein Spiel schon herunter, bevor jemand einen Server dafür bestellt. Neue Server kopieren es dann nur noch – das geht in Sekunden statt Minuten oder Stunden (CS2: rund 60 GB).",
+      "impressum": "Bild für die Seite „Impressum“ (unten auf der Startseite verlinkt)."
     },
     "netbirdManual": "NetBird von Hand einrichten",
     "netbirdManualHint": "Nur nötig, wenn du die Automatik oben nicht nutzt. Zum Aufklappen tippen."
@@ -3196,5 +3202,16 @@
     "playingNow": "Spielt gerade",
     "lastSeen": "Zuletzt {{when}}",
     "updated": "Aktualisiert {{when}} · aktualisiert sich von selbst"
+  },
+  "impressum": {
+    "title": "Impressum",
+    "adminText": "Lade hier ein Bild hoch (PNG, JPG oder WebP, bis 10 MB). Es erscheint auf der Seite „Impressum“, die unten auf der Startseite verlinkt ist – auch ohne Anmeldung. Achte darauf, dass dort deine richtigen Angaben stehen (Name, Anschrift, Kontakt).",
+    "none": "Noch kein Impressum hinterlegt.",
+    "upload": "Bild hochladen",
+    "replace": "Anderes Bild hochladen",
+    "uploading": "Wird hochgeladen …",
+    "remove": "Bild entfernen",
+    "open": "Seite ansehen",
+    "saved": "Impressum gespeichert."
   }
 }

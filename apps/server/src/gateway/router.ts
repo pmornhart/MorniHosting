@@ -120,7 +120,9 @@ export function startRouter(options: {
       if (found === 'wait' && buf.length < MAX_HEADER_BYTES) return;
       client.off('data', onData);
       client.pause();
-      const target = typeof found === 'string' ? lookup(cleanAddress(found), kind) : null;
+      // Bedrock without a Host header still gets a lookup (the gateway may know the only fitting server).
+      const address = typeof found === 'string' ? found : kind === 'bedrock' && buf.length > 0 ? '' : null;
+      const target = address === null ? null : lookup(cleanAddress(address), kind);
       if (!target) {
         client.destroy();
         return;

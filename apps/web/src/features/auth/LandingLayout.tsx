@@ -175,7 +175,10 @@ export function LandingLayout({ children }: { children: ReactNode }): ReactEleme
       </section>
 
       <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
-        MorniHosting · {t('landing.footer')}
+        MorniHosting · {t('landing.footer')} ·{' '}
+        <Link to="/impressum" className="underline-offset-4 hover:underline">
+          {t('impressum.title')}
+        </Link>
       </footer>
     </div>
   );

@@ -934,3 +934,9 @@ export interface PreloadItem {
   /** A newer version than the downloaded one is out (Minecraft software); null when there is none or unknown. */
   readonly newVersion: string | null;
 }
+
+/** The imprint page: a picture uploaded in the admin area (shown at /impressum, also without logging in). */
+export interface ImpressumInfo {
+  readonly hasImage: boolean;
+  readonly updatedAt: string | null;
+}
