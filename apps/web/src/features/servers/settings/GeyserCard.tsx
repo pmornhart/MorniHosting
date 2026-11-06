@@ -95,6 +95,8 @@ function BedrockCheck({ serverId, running }: { serverId: string; running: boolea
 
 export function GeyserCard({ server }: { server: ServerDetail }): ReactElement {
   const { t } = useTranslation();
+  // Behind NetBird Bedrock players use the server's own outside name and port (works without router setup).
+  const bedrockService = server.netbird?.services.find((x) => x.purpose === 'geyser');
   const queryClient = useQueryClient();
   const restart = useServerAction(server.id);
   const [restartNeeded, setRestartNeeded] = useState(false);
@@ -141,7 +143,11 @@ export function GeyserCard({ server }: { server: ServerDetail }): ReactElement {
       {server.geyser && server.geyserPort ? (
         <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
           <Pill tone="ok">{t('geyser.on')}</Pill>
-          <span className="text-muted-foreground">{t('geyser.portInfo', { port: server.geyserPort })}</span>
+          <span className="text-muted-foreground">
+            {bedrockService
+              ? t('geyser.portInfoNetbird', { host: bedrockService.domain, port: bedrockService.port ?? '' })
+              : t('geyser.portInfo', { port: server.geyserPort })}
+          </span>
         </div>
       ) : null}
       {restartNeeded && server.live.state === 'running' ? (
@@ -161,7 +167,9 @@ export function GeyserCard({ server }: { server: ServerDetail }): ReactElement {
         </div>
       ) : null}
       {server.geyser ? <BedrockCheck serverId={server.id} running={server.live.state === 'running'} /> : null}
-      <p className="mt-4 text-[13px] text-muted-foreground">{t('geyser.routerHint')}</p>
+      {server.netbird ? null : (
+        <p className="mt-4 text-[13px] text-muted-foreground">{t('geyser.routerHint')}</p>
+      )}
     </Card>
   );
 }

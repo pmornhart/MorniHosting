@@ -11,6 +11,15 @@
 
 set -Eeuo pipefail
 
+# Versionsnummer: jedes Update auf dem Branch zählt eins hoch, eine Ziffer pro Stelle (Update 84 = v0.8.4,
+# nach v0.0.9 kommt v0.1.0). Dahinter der Commit, damit das Panel Updates erkennt: v0.8.4-0-gb886c33.
+mh_version() {
+  local n sha
+  n="$(git rev-list --count --first-parent HEAD 2>/dev/null)" || { echo dev; return; }
+  sha="$(git rev-parse --short HEAD 2>/dev/null)" || { echo dev; return; }
+  printf 'v%d.%d.%d-0-g%s\n' $((n / 100)) $((n / 10 % 10)) $((n % 10)) "${sha}"
+}
+
 INSTALL_DIR="${MH_INSTALL_DIR:-/opt/mornihosting}"
 REPO_URL="${MH_REPO_URL:-https://github.com/pmornhart/MorniHosting.git}"
 BRANCH="${MH_BRANCH:-main}"
@@ -94,7 +103,7 @@ if grep -q '^MH_IMAGE_TAG=' .env; then
   docker compose pull --quiet panel
   docker compose up -d --quiet-pull >/dev/null
 else
-  MH_BUILD_VERSION="$(git describe --tags --always 2>/dev/null || echo dev)" docker compose up -d --build >/dev/null
+  MH_BUILD_VERSION="$(mh_version)" docker compose up -d --build >/dev/null
   # Hytale hat kein offizielles Image: das kleine Rezept aus images/hytale wird mitgebaut.
   docker build --quiet -t ghcr.io/pmornhart/mornihosting-hytale:latest images/hytale >/dev/null || true
 fi

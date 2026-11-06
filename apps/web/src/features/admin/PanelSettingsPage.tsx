@@ -3,6 +3,7 @@ import {
   ArrowUpCircle,
   CircleDollarSign,
   Download,
+  FileText,
   ExternalLink,
   Gauge,
   Globe,
@@ -46,6 +47,7 @@ import { QuotaSection } from './QuotaSection';
 import { PreloadSection } from './PreloadSection';
 import { TransferSection } from './TransferCard';
 import { PaymentsSection } from './PaymentsSection';
+import { ImpressumSection } from './ImpressumSection';
 
 const LANGUAGE_NAMES: Readonly<Record<Locale, string>> = { de: 'Deutsch', en: 'English' };
 /** The admin area's tabs; the address bar (#update …) opens one directly. */
@@ -60,6 +62,7 @@ const TABS = [
   { key: 'mail', icon: Mail },
   { key: 'passwords', icon: KeyRound },
   { key: 'move', icon: PackageOpen },
+  { key: 'impressum', icon: FileText },
   { key: 'settings', icon: SlidersHorizontal },
 ] as const;
 type Tab = (typeof TABS)[number]['key'];
@@ -412,6 +415,7 @@ export function PanelSettingsPage(): ReactElement {
     ),
     passwords: <PasswordResetCard />,
     move: <TransferSection />,
+    impressum: <ImpressumSection />,
     payments: <PaymentsSection />,
     settings: settingsForm,
   };

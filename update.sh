@@ -12,6 +12,15 @@
 
 set -Eeuo pipefail
 
+# Versionsnummer: jedes Update auf dem Branch zählt eins hoch, eine Ziffer pro Stelle (Update 84 = v0.8.4,
+# nach v0.0.9 kommt v0.1.0). Dahinter der Commit, damit das Panel Updates erkennt: v0.8.4-0-gb886c33.
+mh_version() {
+  local n sha
+  n="$(git rev-list --count --first-parent HEAD 2>/dev/null)" || { echo dev; return; }
+  sha="$(git rev-parse --short HEAD 2>/dev/null)" || { echo dev; return; }
+  printf 'v%d.%d.%d-0-g%s\n' $((n / 100)) $((n / 10 % 10)) $((n % 10)) "${sha}"
+}
+
 INSTALL_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 VOLUME_NAME="mornihosting-data"
 PANEL_UID=1000
@@ -68,7 +77,7 @@ cd "${INSTALL_DIR}"
 if [[ -d .git && -z "${MH_UPDATE_PULLED:-}" ]]; then
   msg_info "Neuer Code wird geholt"
   git pull --ff-only --quiet
-  msg_ok "Code aktuell ($(git describe --tags --always 2>/dev/null || echo dev))"
+  msg_ok "Code aktuell ($(mh_version))"
   # Weiter mit der eben geholten Fassung dieses Skripts, damit neue Schritte schon bei diesem Update laufen.
   MH_UPDATE_PULLED=1 exec bash "${INSTALL_DIR}/update.sh" "$@"
 fi
@@ -99,7 +108,7 @@ if grep -q '^MH_IMAGE_TAG=' .env 2>/dev/null; then
   docker compose up -d --quiet-pull >/dev/null || { remove_leftovers; docker compose up -d --quiet-pull >/dev/null; }
 else
   msg_info "Neues Panel wird gebaut (dauert ein paar Minuten)"
-  MH_BUILD_VERSION="$(git describe --tags --always 2>/dev/null || echo dev)" docker compose build --quiet panel
+  MH_BUILD_VERSION="$(mh_version)" docker compose build --quiet panel
   # Hytale hat kein offizielles Image: das kleine Rezept aus images/hytale wird mitgebaut (Fehler stören das Update nicht).
   docker build --quiet -t ghcr.io/pmornhart/mornihosting-hytale:latest images/hytale >/dev/null || msg_info "Hytale-Image konnte nicht gebaut werden"
   msg_ok "Panel gebaut"

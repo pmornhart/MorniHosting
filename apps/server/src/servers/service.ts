@@ -207,8 +207,11 @@ const DISK_EVERY_TICKS = 6;
 const STATS_RETENTION_DAYS = 7;
 const STOP_TIMEOUT_SECONDS = 60;
 const DOCKER_STOP_GRACE_SECONDS = 30;
+const STOP_UNCONFIRMED_SECONDS = 20;
 const POLL_INTERVAL_MS = 500;
 const REPLAY_QUIET_MS = 3000;
+/** A container already running this long when the panel starts counts as up (no ready line needed). */
+const RECONCILE_RUNNING_AFTER_MS = 180_000;
 const CRASH_EXCERPT_LINES = 12;
 const DIE_SETTLE_MS = 750;
 /** Old statistics are pruned once an hour (360 ticks of 10 seconds). */
@@ -712,8 +715,12 @@ export function createServerService(ctx: AppContext): ServerService {
         return (await docker.inspect(r.containerId ?? ''))?.running !== true;
       }
     })();
-    // Not reachable by command: let Docker stop it right away (the image saves on SIGTERM too) instead of waiting.
-    const exited = delivered ? await waitForExit(r.containerId, STOP_TIMEOUT_SECONDS * MS_PER_SECOND) : false;
+    // Unconfirmed often only means RCON closed while the server was already shutting down: give it a short while
+    // to finish saving instead of cutting it off (a cut-off save broke the next start).
+    const exited = await waitForExit(
+      r.containerId,
+      (delivered ? STOP_TIMEOUT_SECONDS : STOP_UNCONFIRMED_SECONDS) * MS_PER_SECOND,
+    );
     if (!exited) await docker.stop(r.containerId, DOCKER_STOP_GRACE_SECONDS);
     panelLog(id, `Server ist aus (nach ${Math.round((Date.now() - began) / MS_PER_SECOND)} Sekunden).`);
     setState(id, 'stopped');
@@ -826,9 +833,9 @@ export function createServerService(ctx: AppContext): ServerService {
     runtime.playersMax = game.maxPlayers;
   };
 
-  const probeReady = async (id: string, game: GameInfo): Promise<void> => {
+  const probeReady = async (id: string, game: GameInfo | null): Promise<void> => {
     try {
-      await quietCommand(id, game.listCommand ?? READY_PROBE_COMMAND);
+      await quietCommand(id, game?.listCommand ?? READY_PROBE_COMMAND);
       if (rt(id).state === 'starting') setState(id, 'running');
     } catch {
       // Not listening yet: still downloading or loading.
@@ -859,8 +866,11 @@ export function createServerService(ctx: AppContext): ServerService {
       await syncGamePlayers(r.id, runtime.game);
     // Some games print their "ready" line late or not at all (Garry's Mod buffers its output):
     // once their remote console answers, they are up.
-    if (runtime.state === 'starting' && runtime.game?.console === 'rcon')
-      await probeReady(r.id, runtime.game);
+    // Minecraft Java too: after a panel restart the "Done" line may be long gone from the log, so the server would
+    // stay on "starting" for ever although it runs. Its RCON only answers once the world is loaded.
+    const answersRcon =
+      runtime.game?.console === 'rcon' || (r.edition === 'java' && !SOFTWARE[r.software].proxy);
+    if (runtime.state === 'starting' && answersRcon) await probeReady(r.id, runtime.game ?? null);
     if (!(tick % PERSIST_EVERY_TICKS)) {
       db.insert(stats)
         .values({
@@ -979,6 +989,10 @@ export function createServerService(ctx: AppContext): ServerService {
       runtime.startedAt = state.startedAt;
       runtime.quietUntil = Date.now() + REPLAY_QUIET_MS;
       await attachLogs(r.id, r.containerId, ATTACH_TAIL_LINES);
+      // Kept running while the panel was away (update): it was up long before, so it counts as running now –
+      // servers without a remote console would otherwise wait for a "ready" line that already went by.
+      const upFor = Date.now() - Date.parse(state.startedAt ?? '');
+      if (runtime.state === 'starting' && upFor > RECONCILE_RUNNING_AFTER_MS) setState(r.id, 'running');
       return;
     }
     if (r.desiredRunning && r.autoStart) await withLock(r.id, () => startInternal(r.id));

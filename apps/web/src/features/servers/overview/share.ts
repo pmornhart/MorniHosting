@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { PORT_BEDROCK, SOFTWARE, type ConnectionInfo, type ServerDetail } from '@mornihosting/shared';
+import { SOFTWARE, type ConnectionInfo, type ServerDetail } from '@mornihosting/shared';
 import { api } from '@/lib/api';
 
 const PORT_SEPARATOR = ':';
@@ -36,10 +36,6 @@ export function useShareInfo(server: ServerDetail): ShareInfo | null {
     data.srv === true || routed?.java === true || (server.edition === 'bedrock' && data.domain !== null);
   const shareAddress = host && bareName ? host : host && withPort(host, sharePort, defaultPort);
   const bedrock = server.netbird?.services.find((s) => s.purpose === 'geyser');
-  // Through the address router Bedrock players use the same name as Java and the usual port 19132.
-  if (routed?.bedrock && host) {
-    return { data, shareAddress, host, sharePort, bedrockHost: host, bedrockPort: PORT_BEDROCK };
-  }
   return {
     data,
     shareAddress,

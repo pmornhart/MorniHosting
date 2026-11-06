@@ -17,6 +17,10 @@ const PublicStatsPage = lazyPage(async () => ({
   default: (await import('@/features/public/PublicStatsPage')).PublicStatsPage,
 }));
 
+const ImpressumPage = lazyPage(async () => ({
+  default: (await import('@/features/public/ImpressumPage')).ImpressumPage,
+}));
+
 /** The demo runs inside a frame where the address bar cannot change, so it keeps its route in memory. */
 const createRouter = import.meta.env.MODE === 'demo' ? createMemoryRouter : createBrowserRouter;
 
@@ -33,6 +37,15 @@ const router = createRouter([
     element: (
       <Suspense fallback={null}>
         <PublicStatsPage />
+      </Suspense>
+    ),
+  },
+  // Imprint (picture from the admin area): no login.
+  {
+    path: '/impressum',
+    element: (
+      <Suspense fallback={null}>
+        <ImpressumPage />
       </Suspense>
     ),
   },

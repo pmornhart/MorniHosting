@@ -809,10 +809,21 @@ export interface PanelSettings {
 }
 
 /** One change on the update branch, newest first: the first line of its commit message. */
+/** What one line of an update did: new feature, bug fixed, made better, taken out, or something else. */
+export type ChangeKind = 'new' | 'fixed' | 'improved' | 'removed' | 'other';
+export const CHANGE_KINDS: readonly ChangeKind[] = ['new', 'fixed', 'improved', 'removed', 'other'];
+
+export interface ChangeItem {
+  readonly kind: ChangeKind;
+  readonly text: string;
+}
+
 export interface UpdateChange {
   readonly sha: string;
   readonly title: string;
   readonly date: string;
+  /** The details of the change, sorted by kind (from the lines of the commit message). */
+  readonly items: readonly ChangeItem[];
 }
 
 /** Where an update stands: asked for, running on the host (with its step), finished or failed. */
@@ -828,6 +839,10 @@ export interface UpdateRun {
 export interface UpdateInfo {
   /** The running version: a commit ("b886c33"), a release ("1.2.0") or "dev". */
   readonly current: string;
+  /** Version number of the running panel ("1.0.84"); null when it was built without one. */
+  readonly currentVersion: string | null;
+  /** Version number the newest update will have. */
+  readonly latestVersion: string | null;
   /** Short commit of the newest version on the update branch. */
   readonly latest: string | null;
   readonly latestDate: string | null;
@@ -933,4 +948,10 @@ export interface PreloadItem {
   readonly checkedAt: string | null;
   /** A newer version than the downloaded one is out (Minecraft software); null when there is none or unknown. */
   readonly newVersion: string | null;
+}
+
+/** The imprint page: a picture uploaded in the admin area (shown at /impressum, also without logging in). */
+export interface ImpressumInfo {
+  readonly hasImage: boolean;
+  readonly updatedAt: string | null;
 }
