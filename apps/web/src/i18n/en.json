@@ -2175,7 +2175,7 @@
       "paid": "€9,999.99 / month"
     },
     "craftAttack": "Craft Attack",
-    "craftAttackText": "A ready friends’ server: spawn with fountain and decoration, /spawn, /home and /tpa (EssentialsX), whitelist, pre-generated world and a public statistics page. The panel picks a version the plugins support.",
+    "craftAttackText": "A ready friends’ server: a floating spawn island high in the sky with a start elytra (double jump to glide, F to boost), /spawn, /home and /tpa (EssentialsX), whitelist, pre-generated world and a public statistics page. The panel picks a version the plugins support.",
     "craftAttackSoftware": "Only with Paper or Purpur.",
     "via": "All versions (ViaVersion)",
     "viaText": "Players on older and newer Minecraft versions get in anyway. Kept up to date automatically.",

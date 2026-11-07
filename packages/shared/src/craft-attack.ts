@@ -2,7 +2,7 @@ import type { SoftwareId } from './software.js';
 
 /**
  * "Craft Attack": a ready-made survival server for a group of friends, set up in one go when ordering –
- * the right plugins, settings for a whitelisted friends server, a decorated spawn built on the first start,
+ * the right plugins, settings for a whitelisted friends server, a floating spawn island with a start elytra,
  * /spawn, a pre-generated world and a public statistics page (who died when and how, play time, kills).
  */
 
@@ -21,6 +21,8 @@ export const CRAFT_ATTACK_PLUGINS: readonly CraftAttackPlugin[] = [
   { id: 'hXiIvTyT', name: 'EssentialsX', required: true },
   { id: 'sYpvDxGJ', name: 'EssentialsX Spawn', required: true },
   { id: 'fALzjamp', name: 'Chunky', required: false },
+  // The start elytra: double jump at the spawn to glide down, F (Java) / sneak (Bedrock) to boost.
+  { id: 'NAFqBu99', name: 'SpawnElytra', required: false },
 ];
 
 /** server.properties for a friends' survival world. */
@@ -30,8 +32,8 @@ export const CRAFT_ATTACK_PROPERTIES: Readonly<Record<string, string>> = {
   pvp: 'true',
   'white-list': 'true',
   'enforce-whitelist': 'true',
-  // Non-operators cannot break the spawn (blocks around the world spawn).
-  'spawn-protection': '24',
+  // Non-operators cannot break the spawn island and its launch decks (blocks around the world spawn).
+  'spawn-protection': '44',
   'view-distance': '10',
   'simulation-distance': '8',
   'max-players': '40',

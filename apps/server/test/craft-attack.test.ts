@@ -3,7 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, test } from 'vitest';
 import type { PublicStats, ServerSummary } from '@mornihosting/shared';
-import { plazaCommands, spawnPackFiles } from '../src/craftattack/spawn.js';
+import {
+  SPAWN_Y,
+  islandRadius,
+  plazaCommands,
+  spawnElytraConfig,
+  spawnPackFiles,
+} from '../src/craftattack/spawn.js';
 import { deathOf, deathsOf } from '../src/craftattack/stats.js';
 import { authHeaders, createTestApp, setupAdmin, type Session, type TestApp } from './helpers.js';
 
@@ -37,13 +43,26 @@ describe('Craft Attack spawn', () => {
         'pack.mcmeta',
         'data/minecraft/tags/function/load.json',
         'data/craftattack/function/build.mcfunction',
-        'data/craftattack/functions/plaza.mcfunction',
+        'data/craftattack/functions/island.mcfunction',
+        'data/craftattack/function/top.mcfunction',
       ]),
     );
     expect(files['data/craftattack/function/load.mcfunction']).toContain('unless score #built');
-    expect(files['data/craftattack/function/build.mcfunction']).toContain(
-      'positioned over motion_blocking_no_leaves',
-    );
+    // High in the sky, not on the ground: a floating island.
+    expect(files['data/craftattack/function/build.mcfunction']).toContain(`positioned 0 ${SPAWN_Y} 0`);
+    // The renamed game rule: each name in its own optional function, so an unknown one cannot break the build.
+    expect(files['data/craftattack/tags/function/rules.json']).toContain('"required":false');
+    expect(files['data/craftattack/function/rules_new.mcfunction']).toBe('gamerule respawn_radius 0\n');
+  });
+
+  it('is a floating island: rock below the grass narrowing to a point, a beacon, launch decks over the edge', () => {
+    expect(islandRadius(0)).toBeGreaterThan(islandRadius(10));
+    expect(islandRadius(10)).toBeGreaterThan(islandRadius(28));
+    const all = plazaCommands().join('\n');
+    expect(all).toContain('beacon');
+    expect(all).toContain('spruce_planks');
+    expect(all).toContain('pointed_dripstone[vertical_direction=down');
+    expect(spawnElytraConfig('world')).toContain('ignoreYInSpawnRadius: true');
   });
 });
 
