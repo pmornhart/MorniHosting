@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import {
@@ -18,14 +19,15 @@ import type { PlayerDetailService } from '../players/detail.js';
 import { readPropertiesFile, writePropertiesFile } from '../servers/properties-file.js';
 import type { ServerService } from '../servers/service.js';
 import { versionsFor } from '../servers/versions.js';
-import { writeSpawnPack } from './spawn.js';
+import { spawnElytraConfig, writeSpawnPack } from './spawn.js';
 import { deathsOf, playerNumbers } from './stats.js';
 
 /**
  * The Craft Attack package and the public statistics page.
  *
- * Package (ordered as an add-on): EssentialsX + EssentialsX Spawn (/spawn, /home, /tpa …) and Chunky from Modrinth,
- * settings for a whitelisted friends' survival world, a datapack that builds the decorated spawn on the first
+ * Package (ordered as an add-on): EssentialsX + EssentialsX Spawn (/spawn, /home, /tpa …), Chunky and SpawnElytra
+ * (the start elytra) from Modrinth, settings for a whitelisted friends' survival world, a datapack that builds the
+ * floating spawn island on the first
  * start, the world around it generated in advance, and the statistics page switched on.
  */
 
@@ -39,6 +41,8 @@ const NOT_SLUG = /[^a-z0-9]+/g;
 // https://regex101.com/?flavor=javascript&regex=%5E-%2B%7C-%2B%24&flags=g&testString=-craft-attack-
 const EDGE_DASHES = /^-+|-+$/g;
 const SLUG_MAX = 40;
+/** The SpawnElytra plugin's data folder (its name in plugin.yml). */
+const ELYTRA_FOLDER = 'SpawnElytra';
 
 export const publicStatsInputSchema = z.object({
   enabled: z.boolean(),
@@ -136,6 +140,12 @@ export function createCraftAttackService(
     writePropertiesFile(dir, { ...CRAFT_ATTACK_PROPERTIES, motd: `§f${row.name}${MOTD_SUFFIX}` });
     const level = readPropertiesFile(dir).values['level-name'] || 'world';
     writeSpawnPack(path.join(dir, path.basename(level)));
+    // The start elytra's settings, before the plugin first starts (it keeps an existing file and fills in the rest).
+    const elytraConfig = path.join(dir, 'plugins', ELYTRA_FOLDER, 'config.yml');
+    if (!fs.existsSync(elytraConfig)) {
+      fs.mkdirSync(path.dirname(elytraConfig), { recursive: true });
+      fs.writeFileSync(elytraConfig, spawnElytraConfig(path.basename(level)));
+    }
     setPublic(serverId, { enabled: true });
   };
 
