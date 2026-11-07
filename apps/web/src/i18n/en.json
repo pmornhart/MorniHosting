@@ -304,8 +304,8 @@
     },
     "missing-dependency": {
       "title": "A required plugin or mod is missing",
-      "text": "{{plugin}} needs {{dependency}}, which is not installed.",
-      "fix": "Install {{dependency}} from the marketplace or remove {{plugin}}."
+      "text": "{{plugin}} needs {{dependency}}, which is not installed. {{plugin}} itself is fine.",
+      "fix": "Install {{dependency}} – with the button below (matching your version) or from the marketplace."
     },
     "port-in-use": {
       "title": "The port is already in use",
@@ -366,6 +366,7 @@
     "popupCount_one": "1 server crashed",
     "popupCount_other": "{{count}} servers crashed",
     "fixes": {
+      "install-dependency": "Install {{name}}",
       "raise-memory": "Raise memory to {{toGb}} GB",
       "set-java": "Use Java {{java}}",
       "free-port": "Use free port {{port}}",

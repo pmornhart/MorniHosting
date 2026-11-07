@@ -22,8 +22,8 @@ export const CRASH_TEXTS: Readonly<Record<'de' | 'en', Readonly<Record<string, C
     },
     'missing-dependency': {
       title: 'Es fehlt ein benötigtes Plugin oder Mod',
-      text: '{{plugin}} braucht {{dependency}}, das ist aber nicht installiert.',
-      fix: 'Installiere {{dependency}} über den Marktplatz oder entferne {{plugin}}.',
+      text: '{{plugin}} braucht {{dependency}}, das ist aber nicht installiert. {{plugin}} selbst ist in Ordnung.',
+      fix: 'Installiere {{dependency}} – mit dem Knopf (passend zu deiner Version) oder über den Marktplatz.',
     },
     'port-in-use': {
       title: 'Der Port ist schon belegt',
@@ -134,8 +134,8 @@ export const CRASH_TEXTS: Readonly<Record<'de' | 'en', Readonly<Record<string, C
     },
     'missing-dependency': {
       title: 'A required plugin or mod is missing',
-      text: '{{plugin}} needs {{dependency}}, which is not installed.',
-      fix: 'Install {{dependency}} from the marketplace or remove {{plugin}}.',
+      text: '{{plugin}} needs {{dependency}}, which is not installed. {{plugin}} itself is fine.',
+      fix: 'Install {{dependency}} – with the button (matching your version) or from the marketplace.',
     },
     'port-in-use': {
       title: 'The port is already in use',

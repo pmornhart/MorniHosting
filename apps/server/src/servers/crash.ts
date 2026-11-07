@@ -1,5 +1,6 @@
 import type { CrashInfo } from '@mornihosting/shared';
 import { stripColours } from './log-parse.js';
+import type { MissingDependency } from './mod-deps.js';
 
 /**
  * The crash helper: recognises typical failures in the last console lines and names
@@ -14,6 +15,8 @@ export interface CrashContext {
   readonly javaTag: string | null;
   /** Java package → plugin or mod name (from plugin.yml / fabric.mod.json), to name the culprit of a stack trace. */
   readonly packages?: Readonly<Record<string, { readonly name: string; readonly file: string }>>;
+  /** Required plugins/mods no installed jar provides (read from their plugin.yml, fabric.mod.json, mods.toml …). */
+  readonly missing?: readonly MissingDependency[];
 }
 
 interface CrashRule {
@@ -38,18 +41,75 @@ const CLASS_VERSION = /class file version (\d+)/;
 // Paper's Java check: captures the Java version it asks for. "You need Java 21 or newer" or "requires running the server with Java 21" → "21".
 // https://regex101.com/?flavor=javascript&regex=(%3F%3Arequires%20running%20the%20server%20with%7Cneed%7Cuse)%20Java%20(%5Cd%2B)&flags=gim&testString=This%20version%20requires%20running%20the%20server%20with%20Java%2021%20or%20above%0AYou%20need%20Java%2021%20or%20newer%0AJava%20is%20fine
 const NEEDS_JAVA = /(?:requires running the server with|need|use) Java (\d+)/i;
-// Bukkit missing dependency: captures plugin file and missing names. "Could not load 'plugins/Shop.jar' in folder 'plugins'" + "Unknown/missing dependency plugins: [Vault]".
-// https://regex101.com/?flavor=javascript&regex=Unknown%5C%2Fmissing%20dependency%20plugins%3A%20%5C%5B(%5B%5E%5C%5D%5D%2B)%5C%5D&flags=gm&testString=org.bukkit.plugin.UnknownDependencyException%3A%20Unknown%2Fmissing%20dependency%20plugins%3A%20%5BVault%5D.%20Please%20download%20and%20install%20these%20plugins%0Adependency
-const BUKKIT_MISSING = /Unknown\/missing dependency plugins: \[([^\]]+)\]/;
-// The plugin that failed to load: "Could not load 'plugins/Shop.jar' in folder 'plugins'" → "Shop.jar".
-// https://regex101.com/?flavor=javascript&regex=Could%20not%20load%20'plugins%5C%2F(%5B%5E'%5D%2B)'&flags=gm&testString=Could%20not%20load%20'plugins%2FShop.jar'%20in%20folder%20'plugins'%0ACould%20not%20load
-const BUKKIT_COULD_NOT_LOAD = /Could not load 'plugins\/([^']+)'/;
-// Fabric/Quilt missing mod: captures mod and dependency. "Mod 'Sodium Extra' (sodium-extra) 0.5.4 requires any version of sodium, which is missing!" → ("Sodium Extra", "sodium").
-// https://regex101.com/?flavor=javascript&regex=Mod%20'(%5B%5E'%5D%2B)'.*%3Frequires%20(%3F%3Aany%20version%20of%20%7Cversion%20%5CS%2B%20of%20)%3F(%5CS%2B)%2C%20which%20is%20missing&flags=gm&testString=Mod%20'Sodium%20Extra'%20(sodium-extra)%200.5.4%20requires%20any%20version%20of%20sodium%2C%20which%20is%20missing!%0AMod%20loaded
-const FABRIC_MISSING = /Mod '([^']+)'.*?requires (?:any version of |version \S+ of )?(\S+), which is missing/;
-// Forge/NeoForge missing mod: "Missing or unsupported mandatory dependencies:" matches; "dependencies resolved" does not.
+// Bukkit/Paper missing dependency: captures the missing names. "Unknown/missing dependency plugins: [Vault]" and
+// Paper's "… due to missing dependencies: [Vault, ProtocolLib]" match; "dependency resolved" does not.
+// https://regex101.com/?flavor=javascript&regex=missing%20dependenc(%3F%3Ay%7Cies)%5B%5E%5C%5B%5Cn%5D*%5C%5B(%5B%5E%5C%5D%5D%2B)%5C%5D&flags=gi&testString=org.bukkit.plugin.UnknownDependencyException%3A%20Unknown%2Fmissing%20dependency%20plugins%3A%20%5BVault%5D.%0ACould%20not%20load%20plugin%20due%20to%20missing%20dependencies%3A%20%5BVault%2C%20ProtocolLib%5D%0Adependency%20resolved
+const BUKKIT_MISSING = /missing dependenc(?:y|ies)[^[\n]*\[([^\]]+)\]/gi;
+// The plugin that failed to load: "Could not load 'plugins/Shop.jar' in folder 'plugins'" or "… to run 'Shop'" → "Shop.jar" / "Shop".
+// https://regex101.com/?flavor=javascript&regex=Could%20not%20load%20(%3F%3Aplugin%20)%3F'(%3F%3Aplugins%5C%2F)%3F(%5B%5E'%5D%2B)'%7Cto%20run%20'(%5B%5E'%5D%2B)'&flags=gm&testString=Could%20not%20load%20'plugins%2FShop.jar'%20in%20folder%20'plugins'%0APlease%20download%20and%20install%20these%20plugins%20to%20run%20'Shop'.%0ACould%20not%20load
+const BUKKIT_COULD_NOT_LOAD = /Could not load (?:plugin )?'(?:plugins\/)?([^']+)'|to run '([^']+)'/;
+// Fabric/Quilt missing mod, old and new wording (names may contain quotes, so the id in brackets ends them). Captures the mod,
+// then either name and id of the missing mod or just its id:
+// "Mod 'Sodium Extra' (sodium-extra) 0.5.4 requires any version of sodium, which is missing!" → ("Sodium Extra", -, -, "sodium");
+// "Mod 'Xaero's Minimap' (xaerominimap) 24.6.1 requires version 0.92.0 or later of mod 'Fabric API' (fabric-api), which is missing!"
+// → ("Xaero's Minimap", "Fabric API", "fabric-api"); "Mod loaded" does not match.
+// https://regex101.com/?flavor=javascript&regex=Mod%20%27%28.%2B%3F%29%27%20%5C%28%5B%5Cw.-%5D%2B%5C%29.%2A%3Frequires%20.%2A%3Fof%20%28%3F%3Amod%20%27%28.%2B%3F%29%27%20%5C%28%28%5B%5Cw.-%5D%2B%29%5C%29%7C%28%5B%5Cw.-%5D%2B%29%29%2C%20which%20is%20missing&flags=g&testString=Mod%20%27Sodium%20Extra%27%20%28sodium-extra%29%200.5.4%20requires%20any%20version%20of%20sodium%2C%20which%20is%20missing%21%0AMod%20%27Xaero%27s%20Minimap%27%20%28xaerominimap%29%2024.6.1%20requires%20version%200.92.0%20or%20later%20of%20mod%20%27Fabric%20API%27%20%28fabric-api%29%2C%20which%20is%20missing%21%0AMod%20loaded
+const FABRIC_MISSING =
+  /Mod '(.+?)' \([\w.-]+\).*?requires .*?of (?:mod '(.+?)' \(([\w.-]+)\)|([\w.-]+)), which is missing/g;
+// Forge/NeoForge missing mod: "Mod ID: 'cloth_config', Requested by: 'mymod', Expected range: '[13,)', Actual version: '[MISSING]'" → ("cloth_config", "mymod").
+// https://regex101.com/?flavor=javascript&regex=Mod%20ID%3A%20'(%5B%5E'%5D%2B)'%2C%20Requested%20by%3A%20'(%5B%5E'%5D%2B)'%5B%5E%5Cn%5D*%5C%5BMISSING%5C%5D&flags=g&testString=Mod%20ID%3A%20'cloth_config'%2C%20Requested%20by%3A%20'mymod'%2C%20Expected%20range%3A%20'%5B13%2C)'%2C%20Actual%20version%3A%20'%5BMISSING%5D'%0AMod%20ID%3A%20'minecraft'%2C%20Requested%20by%3A%20'mymod'%2C%20Actual%20version%3A%20'1.21.1'
+const FORGE_MISSING = /Mod ID: '([^']+)', Requested by: '([^']+)'[^\n]*\[MISSING\]/g;
+// NeoForge's other wording: "Mod mymod requires architectury 13.0.6 or above … Currently, architectury is not installed" → "architectury".
+// https://regex101.com/?flavor=javascript&regex=Currently%2C%20(%5CS%2B)%20is%20not%20installed&flags=g&testString=Mod%20mymod%20requires%20architectury%2013.0.6%20or%20above%0ACurrently%2C%20architectury%20is%20not%20installed%0Ais%20installed
+const NOT_INSTALLED = /Currently, (\S+) is not installed/g;
+// Forge/NeoForge headline above the list: "Missing or unsupported mandatory dependencies:" matches; "dependencies resolved" does not.
 // https://regex101.com/?flavor=javascript&regex=Missing%20or%20unsupported%20mandatory%20dependencies&flags=gm&testString=Missing%20or%20unsupported%20mandatory%20dependencies%3A%0Adependencies%20resolved
-const FORGE_MISSING = /Missing or unsupported mandatory dependencies/;
+const FORGE_MISSING_HEADLINE = /Missing or unsupported mandatory dependencies/;
+// A class that could not be found: "java.lang.NoClassDefFoundError: net/milkbowl/vault/economy/Economy" or
+// "ClassNotFoundException: me.shedaniel.clothconfig2.api.ConfigBuilder" → the class name; "NoClassDefFoundError" alone does not match.
+// https://regex101.com/?flavor=javascript&regex=(%3F%3ANoClassDefFoundError%7CClassNotFoundException)%3A%20(%5B%5Cw%24.%2F%5D%2B)&flags=g&testString=java.lang.NoClassDefFoundError%3A%20net%2Fmilkbowl%2Fvault%2Feconomy%2FEconomy%0AClassNotFoundException%3A%20me.shedaniel.clothconfig2.api.ConfigBuilder%0ANoClassDefFoundError
+const MISSING_CLASS = /(?:NoClassDefFoundError|ClassNotFoundException): ([\w$./]+)/;
+// Trailing digits of a package part: "clothconfig2" → "clothconfig".
+// https://regex101.com/?flavor=javascript&regex=%5Cd%2B%24&testString=clothconfig2
+const TRAILING_DIGITS = /\d+$/;
+/** Package parts that say nothing about which mod it is ("dev.architectury.event" → "architectury"). */
+const GENERIC_PARTS = new Set([
+  'api',
+  'common',
+  'core',
+  'impl',
+  'util',
+  'utils',
+  'lib',
+  'internal',
+  'event',
+  'events',
+  'main',
+  'plugin',
+  'mod',
+  'mixin',
+  'client',
+  'server',
+  'economy',
+  'config',
+]);
+/** Package parts that are only the domain ("net.milkbowl.vault" → skip "net"). */
+const DOMAIN_PARTS = new Set([
+  'com',
+  'net',
+  'org',
+  'io',
+  'me',
+  'dev',
+  'de',
+  'fr',
+  'uk',
+  'xyz',
+  'gg',
+  'top',
+  'cc',
+  'eu',
+]);
 // A plugin that threw while starting: "Error occurred while enabling Essentials v2.21.0 (Is it up to date?)" → "Essentials".
 // https://regex101.com/?flavor=javascript&regex=Error%20occurred%20while%20enabling%20(%5CS%2B)&flags=gm&testString=Error%20occurred%20while%20enabling%20Essentials%20v2.21.0%20(Is%20it%20up%20to%20date%3F)%0AEnabling%20Essentials
 const PLUGIN_ENABLE_ERROR = /Error occurred while enabling (\S+)/;
@@ -167,6 +227,96 @@ function javaFromClassVersion(classVersion: number): string {
   return String(classVersion - CLASS_VERSION_JAVA8 + JAVA8);
 }
 
+interface Missing {
+  /** Who needs it (shown). */
+  readonly plugin: string;
+  /** What is missing, as shown ("Fabric API"). */
+  readonly dependency: string;
+  /** What to look for in the marketplaces ("fabric-api"). */
+  readonly id: string;
+}
+
+const unique = (list: readonly Missing[]): Missing[] =>
+  list.filter((m, i) => list.findIndex((o) => o.id.toLowerCase() === m.id.toLowerCase()) === i);
+
+/** Missing plugins/mods as the server itself reported them in the log (Paper, Spigot, Fabric, Forge, NeoForge). */
+function missingFromLog(text: string): Missing[] {
+  const bukkitPlugin = text.match(BUKKIT_COULD_NOT_LOAD);
+  const plugin = bukkitPlugin?.[1] ?? bukkitPlugin?.[2] ?? '';
+  const bukkit = [...text.matchAll(BUKKIT_MISSING)].flatMap((m) =>
+    (m[1] ?? '').split(',').map((name) => ({ plugin, dependency: name.trim(), id: name.trim() })),
+  );
+  const fabric = [...text.matchAll(FABRIC_MISSING)].map((m) => ({
+    plugin: m[1] ?? '',
+    dependency: m[2] ?? m[4] ?? m[3] ?? '',
+    id: m[3] ?? m[4] ?? '',
+  }));
+  const forge = [...text.matchAll(FORGE_MISSING)].map((m) => ({
+    plugin: m[2] ?? '',
+    dependency: m[1] ?? '',
+    id: m[1] ?? '',
+  }));
+  const neoforge = [...text.matchAll(NOT_INSTALLED)].map((m) => ({
+    plugin: '',
+    dependency: m[1] ?? '',
+    id: m[1] ?? '',
+  }));
+  return unique([...bukkit, ...fabric, ...forge, ...neoforge].filter((m) => m.id));
+}
+
+const isSystemClass = (cls: string): boolean => SYSTEM_PACKAGES.some((p) => cls.startsWith(p));
+
+/** The likely mod/plugin name in a class name: "net.milkbowl.vault.economy.Economy" → "vault". */
+function nameFromClass(cls: string): string {
+  const parts = cls
+    .split('.')
+    .slice(0, -1)
+    .map((p) => p.toLowerCase());
+  const meaningful = parts.filter((p, i) => !(i === 0 && DOMAIN_PARTS.has(p)) && !GENERIC_PARTS.has(p));
+  // After the domain comes the author ("milkbowl"), then the project ("vault"); a short package has just one.
+  const pick = meaningful.length > 1 ? meaningful[1] : meaningful[0];
+  return (pick ?? '').replace(TRAILING_DIGITS, '');
+}
+
+/**
+ * A class that is not there, from no installed plugin and not from the game: code of another plugin/mod that is
+ * not installed. (A missing class of the game itself means a plugin for another version – a different crash.)
+ */
+function missingFromClass(ctx: CrashContext, text: string): Missing[] {
+  const raw = text.match(MISSING_CLASS)?.[1];
+  if (!raw) return [];
+  const cls = raw.replaceAll('/', '.');
+  if (isSystemClass(cls)) return [];
+  const owned = Object.keys(ctx.packages ?? {}).some(
+    (prefix) => cls === prefix || cls.startsWith(`${prefix}.`),
+  );
+  if (owned) return [];
+  const id = nameFromClass(cls);
+  if (!id) return [];
+  const pkg = cls.split('.').slice(0, -1).join('.');
+  return [{ plugin: culpritOf(ctx.lines, ctx.packages)?.plugin ?? '', dependency: `${id} (${pkg})`, id }];
+}
+
+/** The parameters of a "missing dependency" crash: who needs what, and what to look for. */
+function missingParams(list: readonly Missing[], ctx: CrashContext): Readonly<Record<string, string>> | null {
+  if (list.length === 0) return null;
+  const known = (m: Missing): MissingDependency | undefined =>
+    ctx.missing?.find((d) => d.dependency.toLowerCase() === m.id.toLowerCase());
+  const plugins = [...new Set(list.map((m) => m.plugin || known(m)?.by || '').filter(Boolean))];
+  const file = list.map((m) => known(m)?.byFile).find(Boolean);
+  const disabled = list.map((m) => known(m)?.disabledFile).filter((f): f is string => Boolean(f));
+  return {
+    plugin: plugins.join(', ') || '?',
+    dependency: list.map((m) => m.dependency).join(', '),
+    dependencyIds: list.map((m) => m.id).join(','),
+    ...(file ? { file } : {}),
+    ...(disabled.length ? { disabledFiles: disabled.join(',') } : {}),
+  };
+}
+
+const fromScan = (ctx: CrashContext): Missing[] =>
+  unique((ctx.missing ?? []).map((m) => ({ plugin: m.by, dependency: m.dependency, id: m.dependency })));
+
 const RULES: readonly CrashRule[] = [
   {
     id: 'out-of-memory',
@@ -188,14 +338,29 @@ const RULES: readonly CrashRule[] = [
     },
   },
   {
+    // The server named the missing plugin/mod itself: the clearest case, so before everything that follows from it.
     id: 'missing-dependency',
-    detect: (_ctx, text) => {
-      const bukkit = text.match(BUKKIT_MISSING);
-      if (bukkit?.[1]) return { dependency: bukkit[1], plugin: text.match(BUKKIT_COULD_NOT_LOAD)?.[1] ?? '' };
-      const fabric = text.match(FABRIC_MISSING);
-      if (fabric?.[1] && fabric[2]) return { plugin: fabric[1], dependency: fabric[2] };
-      return FORGE_MISSING.test(text) ? { plugin: '', dependency: '' } : null;
+    detect: (ctx, text) => {
+      const named = missingParams(missingFromLog(text), ctx);
+      if (named) return named;
+      if (!FORGE_MISSING_HEADLINE.test(text)) return null;
+      return missingParams(fromScan(ctx), ctx) ?? { plugin: '?', dependency: '?' };
     },
+  },
+  { id: 'port-in-use', detect: (_ctx, text) => (PORT_IN_USE.test(text) ? {} : null) },
+  { id: 'world-locked', detect: (_ctx, text) => (WORLD_LOCKED.test(text) ? {} : null) },
+  { id: 'eula', detect: (_ctx, text) => (EULA.test(text) ? {} : null) },
+  { id: 'version-not-found', detect: (_ctx, text) => (VERSION_NOT_FOUND.test(text) ? {} : null) },
+  { id: 'download-failed', detect: (_ctx, text) => (DOWNLOAD_FAILED.test(text) ? {} : null) },
+  {
+    // A class of another plugin/mod is missing: install that one, do not switch off the one that needs it.
+    id: 'missing-dependency',
+    detect: (ctx, text) => missingParams(missingFromClass(ctx, text), ctx),
+  },
+  {
+    // The files say a required plugin/mod is not installed (Fabric's "Incompatible mods found!" lands here too).
+    id: 'missing-dependency',
+    detect: (ctx) => missingParams(fromScan(ctx), ctx),
   },
   {
     id: 'plugin-incompatible',
@@ -204,11 +369,6 @@ const RULES: readonly CrashRule[] = [
       return culpritOf(ctx.lines, ctx.packages);
     },
   },
-  { id: 'port-in-use', detect: (_ctx, text) => (PORT_IN_USE.test(text) ? {} : null) },
-  { id: 'world-locked', detect: (_ctx, text) => (WORLD_LOCKED.test(text) ? {} : null) },
-  { id: 'eula', detect: (_ctx, text) => (EULA.test(text) ? {} : null) },
-  { id: 'version-not-found', detect: (_ctx, text) => (VERSION_NOT_FOUND.test(text) ? {} : null) },
-  { id: 'download-failed', detect: (_ctx, text) => (DOWNLOAD_FAILED.test(text) ? {} : null) },
   { id: 'mod-version-mismatch', detect: (_ctx, text) => (MOD_VERSION_MISMATCH.test(text) ? {} : null) },
   { id: 'world-broken', detect: (_ctx, text) => (WORLD_BROKEN.test(text) ? {} : null) },
   {
