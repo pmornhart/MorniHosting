@@ -9,6 +9,7 @@ import {
   Cpu,
   Dices,
   Gauge,
+  History,
   Globe,
   Puzzle,
   Rocket,
@@ -25,6 +26,7 @@ import {
   CRAFT_ATTACK_SOFTWARE,
   CREATABLE_SOFTWARE,
   GAME_IDS,
+  VIA_SOFTWARE,
   SOFTWARE,
   isGameId,
   type GameId,
@@ -175,13 +177,22 @@ export function CreateServerPage(): ReactElement {
   const [nameIdea, setNameIdea] = useState(suggestName);
   const [displayName, setDisplayName] = useState('');
   const [portPick, setPortPick] = useState<number | null>(null);
-  const [addOns, setAddOns] = useState({ geyser: false, voice: false, backups: false, craftattack: false });
+  const [addOns, setAddOns] = useState({
+    geyser: false,
+    via: false,
+    voice: false,
+    backups: false,
+    craftattack: false,
+  });
   const [startNow, setStartNow] = useState(false);
   const [coupon, setCoupon] = useState<string | null>(null);
   const [eula, setEula] = useState(false);
 
   const geyserPossible = edition === 'java' && software !== null && GEYSER_SOFTWARE.includes(software);
   const geyser = game === 'crossplay' || (geyserPossible && addOns.geyser);
+  const viaPossible = edition === 'java' && software !== null && VIA_SOFTWARE.includes(software);
+  // Geyser brings ViaVersion along: then it is simply on.
+  const via = viaPossible && (geyser || addOns.via);
 
   const versions = useQuery({
     queryKey: ['versions', software],
@@ -243,7 +254,7 @@ export function CreateServerPage(): ReactElement {
         ...(address && addressName ? { netbirdName: addressName } : {}),
         ...(coupon ? { coupon } : {}),
         // The panel sets these up itself, one after another, before the first start.
-        addOns: { geyser, voice, backups: addOns.backups, craftattack: craftAttack },
+        addOns: { geyser, via, voice, backups: addOns.backups, craftattack: craftAttack },
       };
       const server = await placeOrder(body, me.user.canCreateServers);
       if (!server) return null;
@@ -575,6 +586,26 @@ export function CreateServerPage(): ReactElement {
                 onChange={(on) => setAddOns({ ...addOns, geyser: on })}
               />
             ) : null}
+            {edition === 'java' ? (
+              <AddOn
+                icon={
+                  <AddOnTile>
+                    <History className="size-5 text-primary" aria-hidden />
+                  </AddOnTile>
+                }
+                title={t('order.via')}
+                text={
+                  !viaPossible
+                    ? t('order.notForSoftware')
+                    : geyser
+                      ? t('order.viaWithGeyser')
+                      : t('order.viaText')
+                }
+                on={via}
+                locked={!viaPossible || geyser}
+                onChange={(on) => setAddOns({ ...addOns, via: on })}
+              />
+            ) : null}
             <AddOn
               icon={
                 <AddOnTile>
@@ -666,7 +697,7 @@ export function CreateServerPage(): ReactElement {
                 {hostname ?? `Port ${port}`}
               </dd>
             </div>
-            {geyser || voice || addOns.backups || craftAttack ? (
+            {geyser || via || voice || addOns.backups || craftAttack ? (
               <div className="flex justify-between gap-3 border-b border-border pb-3">
                 <dt className="text-muted-foreground">{t('order.addOns')}</dt>
                 <dd className="grid text-right font-semibold">

@@ -681,7 +681,8 @@
     "public_stats_unknown": "This statistics page does not exist.",
     "craft_attack_software": "Craft Attack only works with Paper or Purpur.",
     "impressum_not_image": "That is not a picture (PNG, JPG or WebP).",
-    "impressum_too_big": "The picture is too big (at most {{mb}} MB)."
+    "impressum_too_big": "The picture is too big (at most {{mb}} MB).",
+    "via_unsupported": "There is no ViaVersion for this software."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1644,7 +1645,9 @@
       "payment_paid": "Month marked as paid",
       "payment_unpaid": "Month marked as open again",
       "server_crash_fix": "Crash fixed",
-      "impressum_update": "Imprint changed"
+      "impressum_update": "Imprint changed",
+      "via_enable": "All versions (ViaVersion) switched on",
+      "via_disable": "All versions (ViaVersion) switched off"
     }
   },
   "ddos": {
@@ -2172,7 +2175,10 @@
     },
     "craftAttack": "Craft Attack",
     "craftAttackText": "A ready friends’ server: spawn with fountain and decoration, /spawn, /home and /tpa (EssentialsX), whitelist, pre-generated world and a public statistics page. The panel picks a version the plugins support.",
-    "craftAttackSoftware": "Only with Paper or Purpur."
+    "craftAttackSoftware": "Only with Paper or Purpur.",
+    "via": "All versions (ViaVersion)",
+    "viaText": "Players on older and newer Minecraft versions get in anyway. Kept up to date automatically.",
+    "viaWithGeyser": "Already included with Geyser."
   },
   "version": {
     "title": "Minecraft version",
@@ -3140,7 +3146,8 @@
       "backups": "Daily backup at 04:00",
       "start": "First start (creating the world)",
       "craftattack": "Craft Attack: plugins, settings, spawn",
-      "pregen": "Generate the world around the spawn"
+      "pregen": "Generate the world around the spawn",
+      "via": "All versions (ViaVersion)"
     }
   },
   "preload": {
@@ -3220,5 +3227,14 @@
     "improved": "Improved",
     "removed": "Removed",
     "other": "Changed"
+  },
+  "via": {
+    "title": "All Minecraft versions",
+    "text": "With ViaVersion and ViaBackwards (ViaFabric on Fabric) players on older and newer Minecraft versions can join. The panel keeps the plugins up to date automatically.",
+    "on": "On – all versions may join.",
+    "off": "Off – only the server version.",
+    "restart": "Takes effect at the next restart.",
+    "pillOn": "On",
+    "pillOff": "Off"
   }
 }

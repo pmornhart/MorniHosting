@@ -76,7 +76,7 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
         gameSettings: settings,
         ...(address && addressName ? { netbirdName: addressName } : {}),
         ...(coupon ? { coupon } : {}),
-        addOns: { geyser: false, voice: false, backups, craftattack: false },
+        addOns: { geyser: false, via: false, voice: false, backups, craftattack: false },
       };
       const server = await placeOrder(body, me.user.canCreateServers);
       if (!server) return null;
