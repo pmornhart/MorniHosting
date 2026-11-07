@@ -1,5 +1,6 @@
 import {
   PORT_BEDROCK,
+  type ViaStatus,
   ROUTER_PUBLIC_PORTS,
   type ContentSource,
   type GeyserCheck,
@@ -88,6 +89,9 @@ const VIA: Partial<Readonly<Record<SoftwareId, readonly Plugin[]>>> = {
 // Geyser and Floodgate jars, also when switched off: "Geyser-Spigot.jar" and "floodgate-spigot.jar.disabled" match.
 // https://regex101.com/?regex=geyser%7Cfloodgate&flags=i&testString=Geyser-Spigot.jar%0Afloodgate-spigot.jar.disabled%0AViaVersion.jar
 const GEYSER_FILE = /geyser|floodgate/i;
+// ViaVersion jars, also switched off: "ViaVersion-5.5.1.jar", "ViaBackwards.jar.disabled", "viafabric.jar"; not "Geyser".
+// https://regex101.com/?flavor=javascript&regex=%5Evia(version%7Cbackwards%7Cfabric)&flags=i&testString=ViaVersion-5.5.1.jar%0AViaBackwards.jar.disabled%0Aviafabric.jar%0AGeyser-Spigot.jar
+const VIA_FILE = /^via(version|backwards|fabric)/i;
 
 export interface GeyserResult {
   readonly enabled: boolean;
@@ -100,6 +104,10 @@ export interface GeyserService {
   readonly check: (serverId: string) => Promise<GeyserCheck>;
   /** Loads Geyser, Floodgate and ViaVersion into the download cache at the same time (before `set`). */
   readonly prefetch: (serverId: string) => Promise<void>;
+  /** "All versions" on its own (also without Geyser): ViaVersion + ViaBackwards, or ViaFabric. */
+  readonly via: (serverId: string) => ViaStatus;
+  readonly setVia: (serverId: string, enabled: boolean, actor: Actor) => Promise<ViaStatus>;
+  readonly prefetchVia: (serverId: string) => Promise<void>;
 }
 
 /** Geyser needs a moment after the Java server is up before it answers Bedrock pings. */
@@ -330,7 +338,43 @@ export function createGeyserService(
     await Promise.all(first.map((p) => market.prefetch(serverId, p.source, p.id)));
   };
 
+  const viaPlugins = (serverId: string): readonly Plugin[] => {
+    const row = servers.row(serverId);
+    const plugins = row.edition === 'java' ? VIA[row.software] : undefined;
+    if (!plugins) throw badRequest('via_unsupported');
+    return plugins;
+  };
+  const via: GeyserService['via'] = (serverId) => ({
+    enabled: market.list(serverId).some((e) => VIA_FILE.test(e.fileName) && e.enabled),
+    restartRequired: servers.isRunning(serverId),
+  });
+  const setViaNow = async (serverId: string, enabled: boolean, actor: Actor): Promise<ViaStatus> => {
+    if (enabled) {
+      // Each plugin from Modrinth (a few tries); the panel keeps them up to date afterwards (crossplay plugins).
+      await viaPlugins(serverId).reduce(async (previous, plugin) => {
+        await previous;
+        await installFirst(serverId, [plugin], actor);
+      }, Promise.resolve());
+    } else {
+      market
+        .list(serverId)
+        .filter((e) => VIA_FILE.test(e.fileName) && e.enabled)
+        .forEach((e) => market.setEnabled(serverId, e.fileName, false, actor));
+    }
+    ctx.audit.record(actor, enabled ? 'via.enable' : 'via.disable', serverId);
+    return via(serverId);
+  };
+
   return {
+    via,
+    setVia: (serverId, enabled, actor) => serial(serverId, () => setViaNow(serverId, enabled, actor)),
+    prefetchVia: async (serverId) => {
+      await Promise.all(
+        viaPlugins(serverId).map((plugin) =>
+          market.prefetch(serverId, plugin.source, plugin.id).catch(() => undefined),
+        ),
+      );
+    },
     check,
     prefetch,
     set: (serverId, enabled, actor) =>

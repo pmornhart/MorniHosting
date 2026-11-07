@@ -109,13 +109,14 @@ export function createOrderService(
     const steps: readonly Step[] = [
       {
         key: 'download',
-        on: addOns?.geyser === true || addOns?.voice === true,
+        on: addOns?.geyser === true || addOns?.voice === true || addOns?.via === true,
         label: 'Plugins herunterladen',
         // All at once: the installs below then only copy from the cache.
         run: () =>
           Promise.all([
             addOns?.geyser ? geyser.prefetch(serverId) : null,
             addOns?.voice ? voice.prefetch(serverId) : null,
+            addOns?.via ? geyser.prefetchVia(serverId) : null,
           ]),
       },
       {
@@ -124,6 +125,13 @@ export function createOrderService(
         label: 'Geyser (Bedrock-Spieler) + ViaVersion',
         run: () => geyser.set(serverId, true, actor),
         undo: () => servers.setGeyser(serverId, false),
+      },
+      {
+        key: 'via',
+        // Geyser brings ViaVersion along already.
+        on: addOns?.via === true && addOns.geyser !== true,
+        label: 'Alle Versionen (ViaVersion)',
+        run: () => geyser.setVia(serverId, true, actor),
       },
       {
         key: 'voice',
@@ -207,7 +215,11 @@ export function createOrderService(
         : rawInput;
     const wanted =
       input.addOns &&
-      (input.addOns.geyser || input.addOns.voice || input.addOns.backups || input.addOns.craftattack);
+      (input.addOns.geyser ||
+        input.addOns.via ||
+        input.addOns.voice ||
+        input.addOns.backups ||
+        input.addOns.craftattack);
     if (!wanted && !input.startNow) return servers.create(input, actor, creator);
     const summary = await servers.create({ ...input, startNow: false }, actor, creator);
     // Ticked at the order = switched on right away; the setup below fills in plugins and ports.

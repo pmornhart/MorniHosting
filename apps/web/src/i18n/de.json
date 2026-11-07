@@ -681,7 +681,8 @@
     "public_stats_unknown": "Diese Statistik-Seite gibt es nicht.",
     "craft_attack_software": "Craft Attack geht nur mit Paper oder Purpur.",
     "impressum_not_image": "Das ist kein Bild (PNG, JPG oder WebP).",
-    "impressum_too_big": "Das Bild ist zu groß (höchstens {{mb}} MB)."
+    "impressum_too_big": "Das Bild ist zu groß (höchstens {{mb}} MB).",
+    "via_unsupported": "Für diese Software gibt es ViaVersion nicht."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1644,7 +1645,9 @@
       "payment_paid": "Monat als bezahlt markiert",
       "payment_unpaid": "Monat wieder offen",
       "server_crash_fix": "Absturz behoben",
-      "impressum_update": "Impressum geändert"
+      "impressum_update": "Impressum geändert",
+      "via_enable": "Alle Versionen (ViaVersion) eingeschaltet",
+      "via_disable": "Alle Versionen (ViaVersion) ausgeschaltet"
     }
   },
   "ddos": {
@@ -2172,7 +2175,10 @@
     },
     "craftAttack": "Craft Attack",
     "craftAttackText": "Fertiger Freunde-Server: Spawn mit Brunnen und Deko, /spawn, /home und /tpa (EssentialsX), Whitelist, vorgenerierte Welt und eine öffentliche Statistik-Seite. Die Version passt das Panel an die Plugins an.",
-    "craftAttackSoftware": "Nur mit Paper oder Purpur."
+    "craftAttackSoftware": "Nur mit Paper oder Purpur.",
+    "via": "Alle Versionen (ViaVersion)",
+    "viaText": "Spieler mit älteren und neueren Minecraft-Versionen kommen trotzdem rein. Bleibt automatisch aktuell.",
+    "viaWithGeyser": "Ist bei Geyser schon dabei."
   },
   "version": {
     "title": "Minecraft-Version",
@@ -3140,7 +3146,8 @@
       "backups": "Tägliches Backup um 04:00",
       "start": "Erster Start (Welt wird erstellt)",
       "craftattack": "Craft Attack: Plugins, Einstellungen, Spawn",
-      "pregen": "Welt um den Spawn vorgenerieren"
+      "pregen": "Welt um den Spawn vorgenerieren",
+      "via": "Alle Versionen (ViaVersion)"
     }
   },
   "preload": {
@@ -3220,5 +3227,14 @@
     "improved": "Verbessert",
     "removed": "Entfernt",
     "other": "Geändert"
+  },
+  "via": {
+    "title": "Alle Minecraft-Versionen",
+    "text": "Mit ViaVersion und ViaBackwards (bei Fabric ViaFabric) kommen Spieler mit älteren und neueren Minecraft-Versionen auf deinen Server. Das Panel hält die Plugins automatisch aktuell.",
+    "on": "An – alle Versionen dürfen rein.",
+    "off": "Aus – nur die Server-Version.",
+    "restart": "Wird beim nächsten Neustart aktiv.",
+    "pillOn": "An",
+    "pillOff": "Aus"
   }
 }

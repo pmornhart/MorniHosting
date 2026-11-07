@@ -223,4 +223,19 @@ describe('Simple Voice Chat and public ports', () => {
     await call('PATCH', `/api/servers/${server.id}`, { publicPort: null });
     expect((await detail(server.id)).address).toBe('mc.example.de');
   });
+
+  test('all versions (ViaVersion) with one switch, also without Geyser; not for Vanilla', async () => {
+    const server = await create({ name: 'Alle Versionen' });
+    expect((await call('GET', `/api/servers/${server.id}/via`)).json()).toMatchObject({ enabled: false });
+    const on = await call('PUT', `/api/servers/${server.id}/via`, { enabled: true });
+    expect(on.json()).toMatchObject({ enabled: true });
+    const plugins = fs.readdirSync(path.join(t.dataDir, 'servers', server.id, 'plugins'));
+    expect(plugins).toEqual(expect.arrayContaining(['ViaVersion-5.5.1.jar', 'ViaBackwards-5.5.1.jar']));
+    const off = await call('PUT', `/api/servers/${server.id}/via`, { enabled: false });
+    expect(off.json()).toMatchObject({ enabled: false });
+    const vanilla = await create({ name: 'Pur', software: 'vanilla' });
+    expect((await call('PUT', `/api/servers/${vanilla.id}/via`, { enabled: true })).json()).toMatchObject({
+      error: 'via_unsupported',
+    });
+  });
 });
