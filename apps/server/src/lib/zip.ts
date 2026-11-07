@@ -209,3 +209,51 @@ export async function readZipText(
     zip.readEntry();
   });
 }
+
+/**
+ * Reads several small entries of a ZIP (a jar or a jar inside a jar, given as bytes) in one pass. Entries the
+ * filter does not want or that are larger than `maxBytes` are skipped; unreadable ones are left out.
+ */
+export async function readZipEntries(
+  source: string | Buffer,
+  wanted: (name: string) => boolean,
+  maxBytes: number,
+): Promise<Map<string, Buffer>> {
+  const zip = await (typeof source === 'string'
+    ? openZip(source)
+    : new Promise<yauzl.ZipFile>((resolve, reject) => {
+        yauzl.fromBuffer(
+          source,
+          { lazyEntries: true, decodeStrings: true, strictFileNames: false },
+          (err, z) =>
+            err || !z
+              ? reject(new AppError(HTTP_BAD_REQUEST, 'invalid_zip', {}, { cause: err }))
+              : resolve(z),
+        );
+      }));
+  const found = new Map<string, Buffer>();
+  return new Promise((resolve, reject) => {
+    zip.on('entry', (entry: yauzl.Entry) => {
+      if (!wanted(entry.fileName) || entry.uncompressedSize > maxBytes) {
+        zip.readEntry();
+        return;
+      }
+      zip.openReadStream(entry, (err, stream) => {
+        if (err || !stream) {
+          zip.readEntry();
+          return;
+        }
+        const chunks: Buffer[] = [];
+        stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+        stream.on('end', () => {
+          found.set(entry.fileName, Buffer.concat(chunks));
+          zip.readEntry();
+        });
+        stream.on('error', () => zip.readEntry());
+      });
+    });
+    zip.on('end', () => resolve(found));
+    zip.on('error', (err: unknown) => reject(zipError(err)));
+    zip.readEntry();
+  });
+}

@@ -4,6 +4,9 @@ import { eq } from 'drizzle-orm';
 import {
   CRASH_FIX_LABELS,
   JAVA_TAGS,
+  SOFTWARE,
+  type ContentSource,
+  type MarketProject,
   crashText,
   type CrashFixId,
   type CrashFixOffer,
@@ -19,6 +22,7 @@ import type { AppContext } from '../context.js';
 import { serverAccess, servers, users } from '../db/schema.js';
 import type { FileService } from '../files/service.js';
 import { conflict, forbidden, notFound } from '../lib/errors.js';
+import type { MarketService } from '../market/service.js';
 import type { NotifyService } from '../notify/service.js';
 import { readPropertiesFile } from '../servers/properties-file.js';
 import type { ServerService } from '../servers/service.js';
@@ -43,6 +47,7 @@ const PLUGIN_DIRS = ['plugins', 'mods'] as const;
 const JAR = '.jar';
 const WORLD_SUFFIXES = ['', '_nether', '_the_end'] as const;
 const DISCORD_SAFE = new Set<CrashFixId>([
+  'install-dependency',
   'raise-memory',
   'set-java',
   'free-port',
@@ -53,6 +58,7 @@ const DISCORD_SAFE = new Set<CrashFixId>([
 
 /** Rights a repair needs on the server, besides starting it. */
 const NEEDS: Readonly<Record<CrashFixId, readonly ServerPermission[]>> = {
+  'install-dependency': ['plugins'],
   'raise-memory': ['config'],
   'set-java': ['config'],
   'free-port': ['config'],
@@ -83,7 +89,41 @@ const JAR_SUFFIX = /\.jar$/i;
 // Placeholders in button texts. Matches "{{toGb}}" (captures "toGb") in "Mehr RAM ({{toGb}} GB)".
 // https://regex101.com/?flavor=javascript&regex=%5C%7B%5C%7B(%5Cw%2B)%5C%7D%5C%7D&flags=g&testString=Mehr%20RAM%20(%7B%7BtoGb%7D%7D%20GB)
 const PLACEHOLDER = /\{\{(\w+)\}\}/g;
+// A switched-off jar's ending: "fabric-api-0.92.jar.disabled" → "fabric-api-0.92"; "fabric-api.jar" stays.
+// https://regex101.com/?flavor=javascript&regex=%5C.jar%5C.disabled%24&flags=i&testString=fabric-api-0.92.jar.disabled%0Afabric-api.jar
+const DISABLED_JAR = /\.jar\.disabled$/i;
+// The ".disabled" ending that switches a jar off: "mods/fabric-api.jar.disabled" → "mods/fabric-api.jar".
+// https://regex101.com/?flavor=javascript&regex=%5C.disabled%24&flags=i&testString=mods%2Ffabric-api.jar.disabled%0Amods%2Ffabric-api.jar
+const DISABLED_SUFFIX = /\.disabled$/i;
 const normalise = (s: string): string => s.toLowerCase().replace(NOT_ALNUM, '');
+/** Where a missing plugin/mod is looked for, in this order (CurseForge needs a key, so it is left out). */
+const LOOKUP_SOURCES: Readonly<Record<'plugins' | 'mods', readonly ContentSource[]>> = {
+  mods: ['modrinth'],
+  plugins: ['modrinth', 'hangar', 'spiget'],
+};
+/** At most this many missing plugins/mods are looked up (more is a broken modpack, not a missing piece). */
+const MAX_LOOKUPS = 5;
+/** A name shorter than this only counts as an exact match ("ui" must not pick "UItils"). */
+const MIN_PREFIX_LENGTH = 4;
+const LOOKUP_TIMEOUT_MS = 15_000;
+const LIST_SEPARATOR = ',';
+const SOURCE_SEPARATOR = ':';
+const slugOf = (url: string): string => url.split('/').filter(Boolean).at(-1) ?? '';
+
+/** The marketplace hit that is this plugin/mod: same name or slug, otherwise one that starts with it. */
+function pickProject(hits: readonly MarketProject[], wanted: string): MarketProject | null {
+  const key = normalise(wanted);
+  if (!key) return null;
+  const usable = hits.filter((h) => h.installable && h.compatible !== 'no');
+  const names = (h: MarketProject): string[] => [normalise(h.name), normalise(slugOf(h.url))];
+  return (
+    usable.find((h) => names(h).includes(key)) ??
+    (key.length >= MIN_PREFIX_LENGTH
+      ? usable.find((h) => names(h).some((n) => n.startsWith(key)))
+      : undefined) ??
+    null
+  );
+}
 const fillLabel = (offer: CrashFixOffer): string =>
   CRASH_FIX_LABELS[offer.id].replace(PLACEHOLDER, (_m, k: string) => offer.params[k] ?? '');
 
@@ -94,10 +134,62 @@ export function createCrashHelpService(
     readonly backups: BackupService;
     readonly files: FileService;
     readonly notify: NotifyService;
+    readonly market: MarketService;
   },
 ): CrashHelpService {
   const { db } = ctx;
-  const { servers: serverService, backups, files, notify } = deps;
+  const { servers: serverService, backups, files, notify, market } = deps;
+
+  /**
+   * For a missing plugin/mod: finds it in the marketplaces (fitting this server's software and version) and keeps
+   * the result in the crash, so the button can install it with one click – also from Discord.
+   */
+  const findMissing = async (serverId: string, crash: CrashInfo): Promise<CrashInfo> => {
+    const params = crash.params ?? {};
+    if (crash.ruleId !== 'missing-dependency' || params['installs'] !== undefined) return crash;
+    const content = SOFTWARE[serverService.row(serverId).software].content;
+    if (content !== 'mods' && content !== 'plugins') return crash;
+    const ids = (params['dependencyIds'] ?? '').split(LIST_SEPARATOR).filter(Boolean).slice(0, MAX_LOOKUPS);
+    const switchedOff = (params['disabledFiles'] ?? '').split(LIST_SEPARATOR).filter(Boolean);
+    const offIds = new Set(switchedOff.map((f) => normalise(path.basename(f).replace(JAR_SUFFIX, ''))));
+    const lookOne = async (id: string): Promise<MarketProject | null> =>
+      LOOKUP_SOURCES[content].reduce<Promise<MarketProject | null>>(async (previous, source) => {
+        const found = await previous;
+        if (found || source === 'geysermc') return found;
+        try {
+          const result = await market.search(serverId, source, {
+            q: id,
+            sort: 'relevance',
+            page: 0,
+            compatibleOnly: source === 'modrinth',
+          });
+          return pickProject(result.hits, id);
+        } catch (err) {
+          ctx.log.debug({ err, serverId, id, source }, 'missing dependency lookup failed');
+          return null;
+        }
+      }, Promise.resolve(null));
+    const wanted = ids.filter((id) => ![...offIds].some((off) => off.startsWith(normalise(id))));
+    const timeout = new Promise<(MarketProject | null)[]>((resolve) =>
+      setTimeout(() => resolve([]), LOOKUP_TIMEOUT_MS).unref(),
+    );
+    const results: (MarketProject | null)[] = await Promise.race([Promise.all(wanted.map(lookOne)), timeout]);
+    const found = results.filter((p): p is MarketProject => p !== null);
+    const names = [
+      ...switchedOff.map((f) => path.basename(f).replace(DISABLED_JAR, '')),
+      ...found.map((p) => p.name),
+    ];
+    const next: CrashInfo = {
+      ...crash,
+      params: {
+        ...params,
+        installs: found.map((p) => `${p.source}${SOURCE_SEPARATOR}${p.id}`).join(LIST_SEPARATOR),
+        installNames: names.join(', '),
+      },
+    };
+    db.update(servers).set({ crash: next }).where(eq(servers.id, serverId)).run();
+    return next;
+  };
 
   /** The jar in plugins/ or mods/ that belongs to a plugin or mod name ("Essentials" → "EssentialsX-2.21.0.jar"). */
   const pluginFile = (serverId: string, name: string): string | null => {
@@ -159,7 +251,10 @@ export function createCrashHelpService(
       },
       'port-in-use': () => [offer('free-port', { port: String(serverService.nextFreePort(serverId)) })],
       eula: () => [offer('accept-eula')],
-      'missing-dependency': () => plugin(crash.params?.['plugin']),
+      'missing-dependency': () =>
+        crash.params?.['installNames']
+          ? [offer('install-dependency', { name: crash.params['installNames'] })]
+          : plugin(crash.params?.['plugin']),
       'plugin-error': () => plugin(crash.params?.['plugin']),
       'plugin-incompatible': () => plugin(crash.params?.['plugin']),
       'config-broken-plugin': () => plugin(crash.params?.['plugin']),
@@ -207,6 +302,24 @@ export function createCrashHelpService(
     const dir = serverService.dir(serverId);
     const level = readPropertiesFile(dir).values['level-name'] || 'world';
     const repairs: Readonly<Record<CrashFixId, () => Promise<void>>> = {
+      'install-dependency': async () => {
+        const params = current.crash.params ?? {};
+        (params['disabledFiles'] ?? '')
+          .split(LIST_SEPARATOR)
+          .filter(Boolean)
+          .forEach((file) => {
+            const from = path.join(dir, file);
+            if (fs.existsSync(from)) fs.renameSync(from, from.replace(DISABLED_SUFFIX, ''));
+          });
+        await (params['installs'] ?? '')
+          .split(LIST_SEPARATOR)
+          .filter(Boolean)
+          .reduce(async (previous, entry) => {
+            await previous;
+            const [source = '', projectId = ''] = entry.split(SOURCE_SEPARATOR);
+            await market.installFrom(serverId, source as ContentSource, projectId, actor);
+          }, Promise.resolve());
+      },
       'raise-memory': async () => {
         serverService.update(serverId, { memoryMb: Number(offer.params['toMb']) }, actor);
       },
@@ -269,11 +382,15 @@ export function createCrashHelpService(
     return true;
   };
 
-  ctx.events.on('server.crashed', ({ serverId, crash }) => {
+  ctx.events.on('server.crashed', ({ serverId, crash: reported }) => {
+    void tellCrash(serverId, reported);
+  });
+
+  async function tellCrash(serverId: string, reported: CrashInfo): Promise<void> {
     const row = db.select().from(servers).where(eq(servers.id, serverId)).get();
     if (!row) return;
     const template = row.template;
-    if (steamHiccup(serverId, crash.excerpt)) {
+    if (steamHiccup(serverId, reported.excerpt)) {
       serverService.note(
         serverId,
         'Steam hat sich beim ersten Laden verschluckt („Missing configuration“) – starte gleich noch einmal …',
@@ -289,6 +406,11 @@ export function createCrashHelpService(
     }
     // A preload template has no players and nobody to tell; the admin area shows its state.
     if (template) return;
+    // A missing plugin/mod is looked up first, so the message can already offer "install it" as a button.
+    const crash = await findMissing(serverId, reported).catch((err: unknown) => {
+      ctx.log.warn({ err, serverId }, 'missing dependency lookup failed');
+      return reported;
+    });
     // Always-on (servers/service.ts keepAlive) starts it again by itself when "start automatically" is on.
     const restarting = row.autoStart;
     const text = crashText('de', crash.ruleId, crash.params);
@@ -342,7 +464,7 @@ export function createCrashHelpService(
       }),
       'server-crash',
     );
-  });
+  }
 
   notify.onAction('crashfix', async (target, by) => {
     const [serverId = '', fixId = ''] = target.split('~');

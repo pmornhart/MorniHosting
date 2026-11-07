@@ -39,6 +39,7 @@ import {
   prepareGameFiles,
   validateGameSettings,
 } from '../games/settings.js';
+import { missingDependencies } from './mod-deps.js';
 import { pluginPackages } from './plugin-packages.js';
 import { hostMemoryMb, refreshHostMemory } from '../system/host.js';
 import { analyseCrash } from './crash.js';
@@ -763,9 +764,13 @@ export function createServerService(ctx: AppContext): ServerService {
       return;
     }
     const state = await docker.inspect(containerId);
-    const packages = await pluginPackages(serverDir(config, r.id));
+    const [packages, missing] = await Promise.all([
+      pluginPackages(serverDir(config, r.id)),
+      missingDependencies(serverDir(config, r.id)).catch(() => []),
+    ]);
     const crash = analyseCrash({
       packages,
+      missing,
       lines: runtime.logs,
       oomKilled: state?.oomKilled ?? false,
       exitCode: state?.exitCode ?? null,

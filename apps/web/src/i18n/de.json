@@ -304,8 +304,8 @@
     },
     "missing-dependency": {
       "title": "Es fehlt ein benötigtes Plugin oder Mod",
-      "text": "{{plugin}} braucht {{dependency}}, das ist aber nicht installiert.",
-      "fix": "Installiere {{dependency}} über den Marktplatz oder entferne {{plugin}}."
+      "text": "{{plugin}} braucht {{dependency}}, das ist aber nicht installiert. {{plugin}} selbst ist in Ordnung.",
+      "fix": "Installiere {{dependency}} – mit dem Knopf unten (passend zu deiner Version) oder über den Marktplatz."
     },
     "port-in-use": {
       "title": "Der Port ist schon belegt",
@@ -366,6 +366,7 @@
     "popupCount_one": "1 Server abgestürzt",
     "popupCount_other": "{{count}} Server abgestürzt",
     "fixes": {
+      "install-dependency": "{{name}} installieren",
       "raise-memory": "Arbeitsspeicher auf {{toGb}} GB erhöhen",
       "set-java": "Java {{java}} einstellen",
       "free-port": "Freien Port {{port}} nehmen",

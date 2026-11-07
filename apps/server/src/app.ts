@@ -331,7 +331,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerStalwartRoutes(app, stalwart);
   registerNotifyRoutes(app, ctx, notify, approvals);
   registerPaymentRoutes(app, ctx, createPaymentsService(ctx, notify));
-  registerCrashRoutes(app, ctx, createCrashHelpService(ctx, { servers, backups, files, notify }));
+  registerCrashRoutes(app, ctx, createCrashHelpService(ctx, { servers, backups, files, notify, market }));
   registerUserRoutes(app, ctx, mail);
   registerTeamRoutes(app, ctx);
   registerPlayerDetailRoutes(app, ctx, playerDetails);

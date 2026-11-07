@@ -6,6 +6,7 @@ import type { CrashInfo } from './api.js';
  * state: is there a backup, which plugin file is it …) and offers them as buttons – in the panel and in Discord.
  */
 export const CRASH_FIXES = [
+  'install-dependency',
   'raise-memory',
   'set-java',
   'free-port',
@@ -39,6 +40,7 @@ export type CrashFixInput = z.infer<typeof crashFixSchema>;
 
 /** Button texts outside the web app (Discord). */
 export const CRASH_FIX_LABELS: Readonly<Record<CrashFixId, string>> = {
+  'install-dependency': '{{name}} installieren + Neustart',
   'raise-memory': 'Mehr RAM ({{toGb}} GB) + Neustart',
   'set-java': 'Java {{java}} einstellen + Neustart',
   'free-port': 'Freien Port {{port}} nehmen + Neustart',
