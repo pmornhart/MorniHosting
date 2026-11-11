@@ -202,6 +202,19 @@ drop_dead_exit() {
   done <<<"${ids}"
 }
 
+# Der NetBird-Hintergrunddienst muss laufen, sonst sagt "netbird up" nur
+# "dial unix /var/run/netbird.sock: no such file". Fehlt er (nie eingerichtet oder
+# nach einem Update weg), wird er hier angelegt und gestartet.
+ensure_netbird_service() {
+  command -v netbird >/dev/null 2>&1 || return 0
+  if ! systemctl cat netbird >/dev/null 2>&1; then
+    log "NetBird-Dienst fehlt – richte ihn ein"
+    netbird service install >/dev/null 2>&1 || true
+  fi
+  systemctl enable netbird >/dev/null 2>&1 || true
+  systemctl is-active --quiet netbird || netbird service start >/dev/null 2>&1 || systemctl start netbird >/dev/null 2>&1 || true
+}
+
 reconnect() {
   local failures=0
   mkdir -p "${STATE_DIR}"
@@ -228,7 +241,7 @@ reconnect() {
   elif ((failures == RESTART_AFTER)); then
     event container netbird fixing "NetBird getrennt" "NetBird ist seit ${failures} Minuten getrennt. Der Wächter startet NetBird neu und verbindet es wieder."
   fi
-  systemctl enable netbird >/dev/null 2>&1 || true
+  ensure_netbird_service
   systemctl restart netbird >/dev/null 2>&1 || true
   sleep 3
   timeout "${UP_TIMEOUT_SECONDS}" netbird up >/dev/null 2>&1 || log "netbird up hat nicht geantwortet – nächster Versuch in einer Minute"
@@ -398,7 +411,7 @@ UNIT
   systemctl enable --now mornihosting-guard.timer >/dev/null
   # Docker und NetBird sollen nach jedem Neustart von allein wieder da sein.
   systemctl enable docker containerd >/dev/null 2>&1 || true
-  systemctl enable netbird >/dev/null 2>&1 || true
+  ensure_netbird_service
   ensure_live_restore
 }
 
