@@ -126,7 +126,10 @@ export interface NetbirdAutomation {
    */
   readonly heal: () => Promise<{
     readonly peerMoved: string | null;
+    /** Leftovers that are really gone now. */
     readonly removed: readonly string[];
+    /** Leftovers NetBird refused to delete, with its answer. */
+    readonly stuck: readonly { readonly name: string; readonly reason: string }[];
   } | null>;
 }
 
@@ -637,6 +640,40 @@ export function createNetbirdAutomation(
       await syncRouter(moveToResources);
     })();
 
+  /**
+   * Resources of servers that no longer exist. NetBird refuses to delete a resource while a service still points
+   * at it (a service left over from the same server), so those services go first. Only what is really gone counts
+   * as removed.
+   */
+  const removeLeftovers = async (
+    client: NetbirdClient,
+    networkId: string,
+  ): Promise<{ readonly name: string; readonly reason: string | null }[]> => {
+    const wanted = new Set([
+      `${NETWORK_NAME} Panel`,
+      ...namedServers().map((r) => `${NETWORK_NAME} ${r.netbirdName ?? ''}`),
+    ]);
+    const stale = (await client.resources(networkId)).filter(
+      (r) => r.name.startsWith(`${NETWORK_NAME} `) && !wanted.has(r.name),
+    );
+    if (stale.length === 0) return [];
+    const services = await client.services().catch(() => []);
+    const reasonOf = (err: unknown): string => (err instanceof Error ? err.message : String(err));
+    return Promise.all(
+      stale.map(async (resource) => {
+        const users = services.filter((s) => (s.targets ?? []).some((t) => t.target_id === resource.id));
+        try {
+          await Promise.all(users.map((s) => client.deleteService(s.id)));
+          await client.deleteResource(networkId, resource.id);
+          return { name: resource.name, reason: null };
+        } catch (err) {
+          ctx.log.warn({ err, resource: resource.name }, 'NetBird leftover could not be removed');
+          return { name: resource.name, reason: reasonOf(err) };
+        }
+      }),
+    );
+  };
+
   const heal: NetbirdAutomation['heal'] = async () => {
     const cfg = config();
     if (!cfg) return null;
@@ -657,21 +694,10 @@ export function createNetbirdAutomation(
       return same.name;
     })();
     const current = config() ?? cfg;
-    const removed = current.networkId
-      ? await (async (): Promise<string[]> => {
-          const networkId = current.networkId ?? '';
-          const wanted = new Set([
-            `${NETWORK_NAME} Panel`,
-            ...namedServers().map((r) => `${NETWORK_NAME} ${r.netbirdName ?? ''}`),
-          ]);
-          const stale = (await client.resources(networkId)).filter(
-            (r) => r.name.startsWith(`${NETWORK_NAME} `) && !wanted.has(r.name),
-          );
-          await Promise.allSettled(stale.map((r) => client.deleteResource(networkId, r.id)));
-          return stale.map((r) => r.name);
-        })()
-      : [];
-    return peerMoved || removed.length ? { peerMoved, removed } : null;
+    const outcomes = current.networkId ? await removeLeftovers(client, current.networkId) : [];
+    const removed = outcomes.filter((o) => o.reason === null).map((o) => o.name);
+    const stuck = outcomes.flatMap((o) => (o.reason === null ? [] : [{ name: o.name, reason: o.reason }]));
+    return peerMoved || outcomes.length ? { peerMoved, removed, stuck } : null;
   };
 
   return {
