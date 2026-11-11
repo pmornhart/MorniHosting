@@ -35,6 +35,7 @@ MAX_MEMORY_MB=32768
 SWAP_MB=4096
 HUNG_RESTART_AFTER=3
 FSTRIM_EVERY_MINUTES=1440
+FSTRIM_WAIT_SECONDS=1800
 STORAGE_WARN_PERCENT=85
 STORAGE_CLEAR_MARGIN=5
 EXEC_TIMEOUT_SECONDS=30
@@ -185,6 +186,19 @@ release_stale_lock() {
   pgrep -f "pct fstrim ${ctid}" >/dev/null 2>&1 && return 0
   pct unlock "${ctid}" >/dev/null 2>&1 && log "Hängende fstrim-Sperre von Container ${ctid} gelöst"
   return 0
+}
+
+# Läuft gerade ein fstrim (Host-Wächter), ist der Container gesperrt und "pct set" scheitert mit
+# "CT is locked (fstrim)". Die Einrichtung wartet darauf (höchstens 30 Min.) und löst eine hängende Sperre.
+wait_for_fstrim() {
+  local ctid="$1" waited=0
+  while pct config "${ctid}" 2>/dev/null | grep -q '^lock: fstrim' && pgrep -f "pct fstrim ${ctid}" >/dev/null 2>&1; do
+    ((waited == 0)) && msg_info "Proxmox gibt gerade freien Platz zurück (fstrim) – warte, bis das fertig ist …"
+    ((waited >= FSTRIM_WAIT_SECONDS)) && break
+    sleep 10
+    waited=$((waited + 10))
+  done
+  release_stale_lock "${ctid}"
 }
 
 # Speicher von Proxmox: Gelöschtes im Container belegt im LVM-Thin-Speicher weiter Platz, bis es zurückgegeben
@@ -346,6 +360,7 @@ setup() {
     msg_error "Host hat kein Internet – Dateien kommen über den Container"
   fi
 
+  wait_for_fstrim "${ctid}"
   pct set "${ctid}" --onboot 1 --startup order=1,up=30 >/dev/null
   msg_ok "Startet mit dem Proxmox-Host (als Erster)"
   raise_resources "${ctid}"
