@@ -177,6 +177,16 @@ host_drop_dead_exit() {
   done <<<"${ids}"
 }
 
+# Bricht "pct fstrim" ab (Zeitlimit, Neustart des Hosts), bleibt die Sperre "lock: fstrim" stehen – dann
+# startet der Container nicht mehr ("CT is locked (fstrim)"). Läuft kein fstrim mehr, wird sie hier gelöst.
+release_stale_lock() {
+  local ctid="$1"
+  pct config "${ctid}" 2>/dev/null | grep -q '^lock: fstrim' || return 0
+  pgrep -f "pct fstrim ${ctid}" >/dev/null 2>&1 && return 0
+  pct unlock "${ctid}" >/dev/null 2>&1 && log "Hängende fstrim-Sperre von Container ${ctid} gelöst"
+  return 0
+}
+
 # Speicher von Proxmox: Gelöschtes im Container belegt im LVM-Thin-Speicher weiter Platz, bis es zurückgegeben
 # wird (fstrim) – das passiert einmal am Tag. Ist der Speicher trotzdem über 85 % voll, kommt eine Meldung:
 # läuft er ganz voll, bleiben alle Container auf dem Host stehen.
@@ -187,6 +197,7 @@ keep_storage() {
   if [[ -z "$(find "${stamp}" -mmin -"${FSTRIM_EVERY_MINUTES}" 2>/dev/null)" ]]; then
     touch "${stamp}"
     timeout 1800 pct fstrim "${ctid}" >/dev/null 2>&1 && log "Gelöschten Platz von Container ${ctid} zurückgegeben (fstrim)"
+    release_stale_lock "${ctid}"
   fi
   storage="$(pct config "${ctid}" | awk -F'[ :,]+' '/^rootfs:/ { print $2 }')"
   [[ -n "${storage}" ]] || return 0
@@ -219,6 +230,7 @@ guard() {
       return 0
     fi
     log "Container ${ctid} ist aus, ohne dass ihn jemand gestoppt hat – starte ihn"
+    release_stale_lock "${ctid}"
     if pct start "${ctid}" >/dev/null 2>&1; then
       host_event "${ctid}" container fixed "MorniHosting-Container neu gestartet" \
         "Container ${ctid} war aus, ohne dass ihn jemand gestoppt hat. Der Host-Wächter hat ihn sofort wieder gestartet."
@@ -245,6 +257,7 @@ guard() {
       echo 0 >"${hung_file}"
       timeout 120 pct reboot "${ctid}" >/dev/null 2>&1 || {
         pct stop "${ctid}" --skiplock 1 >/dev/null 2>&1 || true
+        release_stale_lock "${ctid}"
         pct start "${ctid}" >/dev/null 2>&1 || true
       }
     fi
@@ -356,6 +369,7 @@ setup() {
   msg_ok "Host-Wächter läuft (jede Minute)"
   msg_info "Gelöschten Platz an Proxmox zurückgeben (fstrim, kann ein paar Minuten dauern) …"
   timeout 1800 pct fstrim "${ctid}" >/dev/null 2>&1 && msg_ok "Platz zurückgegeben"
+  release_stale_lock "${ctid}"
   mkdir -p "${STATE_DIR}" && touch "${STATE_DIR}/fstrim-${ctid}"
 
   printf '\n'
