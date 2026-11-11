@@ -169,6 +169,12 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
         resources.set(resourceId, { ...resourceBody, id: resourceId });
         return Response.json({ ...resourceBody, id: resourceId });
       }
+      // Like NetBird: a resource that a service still points at cannot be deleted.
+      const inUse = [...services.values()].some((s) =>
+        (s.targets ?? []).some((target) => String(target.target_id) === resourceId),
+      );
+      if (method === 'DELETE' && inUse)
+        return Response.json({ message: 'resource is in use by a reverse proxy service' }, { status: 422 });
       if (method === 'DELETE')
         return new Response(null, { status: resources.delete(resourceId) ? 200 : 404 });
     }
@@ -824,6 +830,36 @@ describe('NetBird automation', () => {
     // All fine now: nothing more to repair.
     expect(await t.netbird.heal()).toBeNull();
     expect(server.id).toBeTruthy();
+  });
+  test('leftovers of a deleted server go away for real, also when an old service still points at them', async () => {
+    await t.cleanup();
+    netbird = createFakeNetbird({ delayMs: 5 });
+    t = await createTestApp({ MH_LAN_IP: '198.51.100.20' });
+    s = await setupAdmin(t);
+    await configure();
+    await create({ netbirdName: 'survival' });
+    await waitFor(() => netbird.byDomain(`survival.${BASE}`) !== undefined);
+    // A leftover from a server deleted while the panel could not reach NetBird: resource plus its service.
+    netbird.resources.set('res-old', {
+      id: 'res-old',
+      name: 'MorniHosting zelt',
+      address: '198.51.100.20',
+    } as never);
+    netbird.services.set('svc-old', {
+      id: 'svc-old',
+      domain: `zelt.${BASE}`,
+      mode: 'tcp',
+      listen_port: 25570,
+      targets: [{ target_id: 'res-old', target_type: 'host' }],
+    } as never);
+    const healed = await t.netbird.heal();
+    expect(healed?.removed).toEqual(['MorniHosting zelt']);
+    expect(healed?.stuck).toEqual([]);
+    expect(netbird.resources.has('res-old')).toBe(false);
+    expect(netbird.services.has('svc-old')).toBe(false);
+    // The live server keeps its address; nothing left to report next time.
+    expect(netbird.byDomain(`survival.${BASE}`)).toBeDefined();
+    expect(await t.netbird.heal()).toBeNull();
   });
   test('hiding the home connection: only the MorniHosting container goes out, not the chosen routing machine', async () => {
     // The addresses run over another machine (like the Proxmox host routing into the LAN).

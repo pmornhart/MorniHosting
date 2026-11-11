@@ -34,6 +34,11 @@ const serviceSchema = z.object({
   id: z.string(),
   domain: z.string(),
   listen_port: z.number().int().nullable().optional(),
+  targets: z
+    .array(z.object({ target_id: z.string().catch('') }).loose())
+    .nullable()
+    .optional()
+    .catch([]),
 });
 const errorSchema = z.object({ message: z.string() });
 const namedSchema = z.object({ id: z.string(), name: z.string().catch('') });

@@ -32,13 +32,30 @@ export function createExitWatch(
   alerts: AlertService,
   netbird?: NetbirdAutomation,
 ): ExitWatch {
-  const run: { timer: NodeJS.Timeout | null; fails: number } = { timer: null, fails: 0 };
+  const run: { timer: NodeJS.Timeout | null; fails: number; stuck: string } = {
+    timer: null,
+    fails: 0,
+    stuck: '',
+  };
 
   /** NetBird repairs itself first: new machine id taken over, leftovers of deleted servers removed. */
   const heal = async (): Promise<void> => {
     const healed = await netbird?.heal();
     if (!healed) return;
     if (healed.peerMoved) await exit.repair();
+    // Leftovers NetBird keeps refusing: say so once (with NetBird's answer), not again on every check.
+    const stuckKey = healed.stuck.map((s) => s.name).join(',');
+    if (healed.stuck.length && stuckKey !== run.stuck) {
+      alerts.alert({
+        key: 'netbird-heal-stuck',
+        title: 'NetBird: Reste lassen sich nicht löschen',
+        what: `NetBird lehnt das Löschen ab: ${healed.stuck.map((s) => `${s.name} (${s.reason})`).join('; ')}. Deine Server laufen trotzdem.`,
+        status: 'action',
+        action: 'Im NetBird-Dashboard unter Networks → MorniHosting diese Resources von Hand löschen.',
+      });
+    }
+    run.stuck = stuckKey;
+    if (!healed.peerMoved && healed.removed.length === 0) return;
     alerts.alert({
       key: 'netbird-heal',
       title: 'NetBird von selbst repariert',
