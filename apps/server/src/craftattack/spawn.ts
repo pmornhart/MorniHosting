@@ -6,7 +6,7 @@ import path from 'node:path';
  * The Craft Attack spawn: a floating island high above the world, built by a datapack on the world's first start.
  *
  * - The island: grass on top, rock below that narrows to a rough point, with ores, glowing spots, dripstone and
- *   hanging lanterns underneath; two waterfalls spill over its edge; three small islets float around it.
+ *   hanging lanterns underneath; five small islets float around it.
  * - On top: a round plaza with a fountain whose column carries a beacon (a green beam visible from far away) and
  *   water running down its sides; four paths lead to wooden launch decks ("Absprung") that stick out over the edge –
  *   from there players jump and glide down with the start elytra (the SpawnElytra plugin: double jump to glide,
@@ -19,7 +19,7 @@ import path from 'node:path';
  * versions go into separate functions behind a tag with optional entries.
  */
 
-const PACK_DIR = 'mornihosting-craftattack';
+export const SPAWN_PACK_DIR = 'mornihosting-craftattack';
 const NAMESPACE = 'craftattack';
 /** Height of the plaza (players walk at this y). High in the sky, under the clouds. */
 export const SPAWN_Y = 170;
@@ -290,7 +290,8 @@ export function topCommands(): string[] {
   const fountain = [
     ...disc(-1, BASIN, 'stone_bricks'),
     ...disc(-1, BASIN - 1, 'prismarine_bricks'),
-    ...disc(0, BASIN, 'stone_brick_wall'),
+    // Rims of full blocks: walls can hold water themselves (waterlogged) and let it run out over the plaza.
+    ...disc(0, BASIN, RIM),
     ...disc(0, BASIN - 1, 'water'),
     ...[
       [3, 0],
@@ -306,17 +307,14 @@ export function topCommands(): string[] {
     ...disc(3, 3.6, 'stone_bricks'),
     ...disc(3, 2.2, 'prismarine_bricks'),
     fill(-1, 3, -1, 1, 3, 1, 'quartz_bricks'),
+    // A rim round the upper bowl, so its water stays in (it used to spill over the whole plaza).
+    ...disc(4, 3.6, RIM),
     ...disc(4, 2.6, 'water'),
     fill(-1, 4, -1, 1, 4, 1, 'quartz_bricks'),
     fill(-1, 8, -1, 1, 8, 1, 'chiseled_quartz_block'),
     fill(-1, 9, -1, 1, 9, 1, 'iron_block'),
     set(0, 10, 0, 'beacon'),
     set(0, 11, 0, 'lime_stained_glass'),
-    // Water running down the column's sides into the bowl.
-    set(1, 10, 0, 'water'),
-    set(-1, 10, 0, 'water'),
-    set(0, 10, 1, 'water'),
-    set(0, 10, -1, 'water'),
     ...[
       [-1, -1],
       [1, -1],
@@ -385,8 +383,8 @@ export function topCommands(): string[] {
     ];
   });
   // North-west: the lookout tower (players jump off its top too).
-  const tx = -15;
-  const tz = 15;
+  const tx = TOWER_X;
+  const tz = TOWER_Z;
   const tower = [
     fill(tx - 2, -1, tz - 2, tx + 2, 15, tz + 2, 'stone_bricks'),
     fill(tx - 1, 0, tz - 1, tx + 1, 15, tz + 1, 'air'),
@@ -409,8 +407,8 @@ export function topCommands(): string[] {
     ].map(([x = 0, z = 0]) => set(x, 18, z, 'lantern')),
     fill(tx + 2, 17, tz + 2, tx + 2, 21, tz + 2, 'spruce_fence'),
     fill(tx + 2, 20, tz + 3, tx + 2, 21, tz + 5, 'lime_wool'),
-    set(tx, 1, tz, 'lantern'),
-    set(tx, 9, tz, 'lantern[hanging=true]'),
+    // Light inside without anything in the way: glowing blocks in the walls, invisible light in the shaft.
+    ...TOWER_LIGHTS.map(([x, y, z, block]) => set(tx + x, y, tz + z, block)),
   ];
   // South-west … north-west: the pavilion with benches.
   const px = -14;
@@ -491,33 +489,9 @@ export function topCommands(): string[] {
     const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
     return lampPost(Math.round(Math.cos(angle) * (RT - 4)), Math.round(Math.sin(angle) * (RT - 4)));
   });
-  // Two waterfalls spilling over the edge, from a little rock spring.
-  const falls = [2.6, 5.75].flatMap((angle) => {
-    const point = (r: number): [number, number] => [
-      Math.round(Math.cos(angle) * r),
-      Math.round(Math.sin(angle) * r),
-    ];
-    const [sx, sz] = point(RT - 4);
-    const channel = range(RT - 4, RT + 2).flatMap((r) => {
-      const [x, z] = point(r);
-      return [fill(x, -1, z, x, 0, z, 'air')];
-    });
-    return [
-      ...channel,
-      fill(sx - 1, -1, sz - 1, sx + 1, 0, sz + 1, 'mossy_cobblestone', 'replace grass_block'),
-      set(sx, 1, sz, 'mossy_cobblestone'),
-      set(sx, -2, sz, 'stone'),
-      set(sx, -1, sz, 'water'),
-    ];
-  });
   // Invisible light everywhere on top, so no monsters spawn on the island.
-  const lights = range(-3, 3).flatMap((gx) =>
-    range(-3, 3).flatMap((gz) => {
-      const x = gx * 8 + 4;
-      const z = gz * 8 + 4;
-      return Math.hypot(x, z) > RT - 2 ? [] : [set(x, 0, z, 'light[level=15]', 'keep')];
-    }),
-  );
+  const lights = lightGrid();
+
   const islets = [
     ...islet(46, -6, -20, 5, 'tree'),
     ...islet(-40, 8, 34, 3.8, 'azalea'),
@@ -564,13 +538,98 @@ export function topCommands(): string[] {
     ...cherries,
     ...pond,
     ...rimLamps,
-    ...falls,
     ...flowers,
     ...lights,
     ...islets,
     ...hills,
     ...rocks,
     `setworldspawn ${at(0, 0, SPAWN_Z)}`,
+  ];
+}
+
+/** Lights of the lookout tower, relative to its middle: glowing blocks set into the walls, light blocks inside. */
+const TOWER_LIGHTS: readonly (readonly [number, number, number, Block])[] = [
+  [-2, 5, 1, 'shroomlight'],
+  [2, 10, -1, 'shroomlight'],
+  [0, 1, 1, 'light[level=15]'],
+  [0, 8, 1, 'light[level=15]'],
+  [0, 13, 1, 'light[level=15]'],
+];
+/** The lookout tower's middle. */
+const TOWER_X = -15;
+const TOWER_Z = 15;
+
+/** The fountain's rims: full blocks, which (unlike walls) can never hold water. */
+const RIM: Block = 'chiseled_stone_bricks';
+/** Half-size of the box round the fountain whose walls become full blocks (the plaza lamps stand further out). */
+const RIM_BOX = 6;
+
+/** No light blocks this close to the fountain (the plaza lamps light it). */
+const LIGHT_FREE = 8;
+
+/** Invisible light all over the top, so no monsters spawn on the island. */
+function lightGrid(): string[] {
+  return range(-3, 3).flatMap((gx) =>
+    range(-3, 3).flatMap((gz) => {
+      const x = gx * 8 + 4;
+      const z = gz * 8 + 4;
+      // Not right next to the fountain: a light block takes on water (waterlogged) and then feeds it onto the plaza.
+      const distance = Math.hypot(x, z);
+      return distance > RT - 2 || distance < LIGHT_FREE ? [] : [set(x, 0, z, 'light[level=15]', 'keep')];
+    }),
+  );
+}
+
+/** Where the two springs of the first version sat (removed: their water never ran off cleanly). */
+const OLD_SPRING_ANGLES = [2.6, 5.75] as const;
+const OLD_SPRING_RADIUS = 28;
+/** Radius around the fountain where spilled water is cleared. */
+const SPILL_HALF = 14;
+const SPILL_HEIGHT = 11;
+
+/**
+ * Repairs islands built by the first version: the upper bowl had no rim and water ran from the top of the column,
+ * so water spread over the plaza; the two springs at the edge stood still in a hole; lanterns blocked the tower. Clears all water around the
+ * fountain, fills basin and bowl again (now with a rim) and turns the springs back into lawn.
+ */
+export function fixWaterCommands(): string[] {
+  const springs = OLD_SPRING_ANGLES.flatMap((angle) => {
+    const point = (r: number): [number, number] => [
+      Math.round(Math.cos(angle) * r),
+      Math.round(Math.sin(angle) * r),
+    ];
+    const [sx, sz] = point(OLD_SPRING_RADIUS);
+    return [
+      fill(sx - 1, -1, sz - 1, sx + 1, 1, sz + 1, 'air'),
+      fill(sx - 1, -1, sz - 1, sx + 1, -1, sz + 1, 'grass_block'),
+      ...range(OLD_SPRING_RADIUS + 1, RT - 1).map((r) => {
+        const [x, z] = point(r);
+        return set(x, -1, z, 'grass_block');
+      }),
+      set(sx - 1, 0, sz, 'mossy_cobblestone'),
+    ];
+  });
+  return [
+    // Light blocks round the fountain had taken on water and kept feeding it onto the plaza: away with them first
+    // (the ones far enough out come back below, dry).
+    fill(-SPILL_HALF, 0, -SPILL_HALF, SPILL_HALF, 0, SPILL_HALF, 'air', 'replace light'),
+    fill(-SPILL_HALF, 0, -SPILL_HALF, SPILL_HALF, SPILL_HEIGHT, SPILL_HALF, 'air', 'replace water'),
+    ...disc(0, BASIN - 1, 'water').map((c) => `${c} replace air`),
+    fill(-RIM_BOX, 0, -RIM_BOX, RIM_BOX, 4, RIM_BOX, RIM, 'replace stone_brick_wall'),
+    ...disc(4, 3.6, RIM).map((c) => `${c} replace air`),
+    ...disc(4, 2.6, 'water').map((c) => `${c} replace ${RIM}`),
+    ...lightGrid().filter((cmd) => {
+      const [x = 0, , z = 0] = cmd
+        .split(' ')
+        .slice(1, 4)
+        .map((v) => Number(v.replace('~', '') || 0));
+      return Math.abs(x) <= SPILL_HALF && Math.abs(z) <= SPILL_HALF;
+    }),
+    ...springs,
+    // The first tower had a lantern on its floor and one hanging in the air inside – both in the way.
+    set(TOWER_X, 1, TOWER_Z, 'air'),
+    set(TOWER_X, 9, TOWER_Z, 'air'),
+    ...TOWER_LIGHTS.map(([x, y, z, block]) => set(TOWER_X + x, y, TOWER_Z + z, block)),
   ];
 }
 
@@ -587,12 +646,21 @@ export function spawnPackFiles(): Record<string, string> {
     'scoreboard objectives add mh_craftattack dummy',
     `execute unless score #built mh_craftattack matches 1 run forceload add ${AREA}`,
     `execute unless score #built mh_craftattack matches 1 run schedule function ${NAMESPACE}:build ${BUILD_DELAY_TICKS}t`,
+    // Islands of the first version: clear the spilled water once.
+    `execute if score #built mh_craftattack matches 1 unless score #water mh_craftattack matches 1 run forceload add ${AREA}`,
+    `execute if score #built mh_craftattack matches 1 unless score #water mh_craftattack matches 1 run schedule function ${NAMESPACE}:fix_water ${BUILD_DELAY_TICKS}t`,
+  ];
+  const fixWater = [
+    `execute positioned 0 ${SPAWN_Y} 0 run function ${NAMESPACE}:water`,
+    'scoreboard players set #water mh_craftattack 1',
+    `forceload remove ${AREA}`,
   ];
   const build = [
     `execute positioned 0 ${SPAWN_Y} 0 run function ${NAMESPACE}:island`,
     `execute positioned 0 ${SPAWN_Y} 0 run function ${NAMESPACE}:top`,
     `function #${NAMESPACE}:rules`,
     'scoreboard players set #built mh_craftattack 1',
+    'scoreboard players set #water mh_craftattack 1',
     `forceload remove ${AREA}`,
   ];
   const meta = {
@@ -618,6 +686,8 @@ export function spawnPackFiles(): Record<string, string> {
     build,
     island: islandCommands(),
     top: topCommands(),
+    fix_water: fixWater,
+    water: fixWaterCommands(),
     rules_old: ['gamerule spawnRadius 0'],
     rules_new: ['gamerule respawn_radius 0'],
   };
@@ -636,7 +706,7 @@ export function spawnPackFiles(): Record<string, string> {
 
 /** Puts the datapack into the world folder; the server loads it when it creates the world. */
 export function writeSpawnPack(worldDir: string): void {
-  const root = path.join(worldDir, 'datapacks', PACK_DIR);
+  const root = path.join(worldDir, 'datapacks', SPAWN_PACK_DIR);
   Object.entries(spawnPackFiles()).forEach(([file, content]) => {
     const target = path.join(root, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });

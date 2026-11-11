@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, test } from 'vitest';
 import type { PublicStats, ServerSummary } from '@mornihosting/shared';
 import {
   SPAWN_Y,
+  fixWaterCommands,
   islandRadius,
+  topCommands,
   plazaCommands,
   spawnElytraConfig,
   spawnPackFiles,
@@ -63,6 +65,17 @@ describe('Craft Attack spawn', () => {
     expect(all).toContain('spruce_planks');
     expect(all).toContain('pointed_dripstone[vertical_direction=down');
     expect(spawnElytraConfig('world')).toContain('ignoreYInSpawnRadius: true');
+  });
+
+  it('keeps all water in the fountain and repairs islands of the first version once', () => {
+    const top = topCommands();
+    // No walls or light blocks at the fountain: both can take on water and let it run over the plaza.
+    expect(top.filter((c) => c.endsWith(' chiseled_stone_bricks')).length).toBeGreaterThan(0);
+    expect(top.some((c) => c.includes('light[level=15]') && c.startsWith('setblock ~4 ~ ~4 '))).toBe(false);
+    const files = spawnPackFiles();
+    expect(files['data/craftattack/function/load.mcfunction']).toContain('unless score #water');
+    expect(files['data/craftattack/function/build.mcfunction']).toContain('#water mh_craftattack 1');
+    expect(fixWaterCommands()[0]).toContain('replace light');
   });
 });
 
