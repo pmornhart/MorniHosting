@@ -19,7 +19,7 @@ import type { PlayerDetailService } from '../players/detail.js';
 import { readPropertiesFile, writePropertiesFile } from '../servers/properties-file.js';
 import type { ServerService } from '../servers/service.js';
 import { versionsFor } from '../servers/versions.js';
-import { spawnElytraConfig, writeSpawnPack } from './spawn.js';
+import { SPAWN_PACK_DIR, spawnElytraConfig, writeSpawnPack } from './spawn.js';
 import { deathsOf, playerNumbers } from './stats.js';
 
 /**
@@ -200,6 +200,19 @@ export function createCraftAttackService(
       updatedAt: new Date().toISOString(),
     };
   };
+
+  // Worlds with the Craft Attack spawn get the newest datapack before each start; it repairs older islands once
+  // (see fixWaterCommands) and never builds anything twice.
+  servers.onBeforeStart((serverId) => {
+    try {
+      const dir = servers.dir(serverId);
+      const level = readPropertiesFile(dir).values['level-name'] || 'world';
+      const worldDir = path.join(dir, path.basename(level));
+      if (fs.existsSync(path.join(worldDir, 'datapacks', SPAWN_PACK_DIR))) writeSpawnPack(worldDir);
+    } catch (err) {
+      ctx.log.warn({ err, serverId }, 'craft attack datapack update failed');
+    }
+  });
 
   return { fitVersion, setUp, pregenerate, publicSetting, setPublic, publicStats };
 }
