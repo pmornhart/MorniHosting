@@ -72,6 +72,8 @@ final class Sidebar implements Listener {
       o.setDisplaySlot(DisplaySlot.SIDEBAR);
       hideNumbers(o);
       for (int i = 0; i < KEYS.length; i++) b.registerNewTeam("mc" + i).addEntry(KEYS[i]);
+      // The rank symbols above the heads live in teams: every player's own board needs them too.
+      plugin.ranks().paint(b);
       p.setScoreboard(b);
       return b;
     });
@@ -101,6 +103,12 @@ final class Sidebar implements Listener {
     String clock = ZonedDateTime.now(zone()).format(CLOCK);
     List<Component> lines = new ArrayList<>();
     lines.add(Component.empty());
+    Ranks.Rank rank = plugin.ranks().of(p);
+    if (rank != null && !rank.fallback()) {
+      lines.add(Component.text((rank.symbol().isEmpty() ? "◆" : rank.symbol()) + " ", rank.color())
+          .append(Component.text(ui.flat("sidebar.rank") + " ", Ui.SOFT))
+          .append(Component.text(rank.name(), rank.color())));
+    }
     lines.add(row("◷", Ui.ACCENT_2, ui.flat("sidebar.clock"), clock));
     lines.add(row(night ? "☾" : "☀", night ? Ui.MAIL : Ui.GOLD, ui.flat("sidebar.day", Ui.v("n", day)), gameTime));
     lines.add(row("●", Ui.ACCENT, ui.flat("sidebar.online"), Bukkit.getOnlinePlayers().size() + " / " + Bukkit.getMaxPlayers()));

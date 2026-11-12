@@ -3262,7 +3262,8 @@
       "elytra": "Start elytra",
       "world": "World",
       "show": "Display",
-      "rules": "Rules"
+      "rules": "Rules",
+      "ranks": "Ranks"
     },
     "fields": {
       "tpa": "Teleport requests (/tpa)",
@@ -3316,6 +3317,65 @@
     "saved": "MorniCraft settings saved",
     "commands": "All commands",
     "personal": "Every player has a page with exactly their commands:",
-    "playerName": "<playername>"
+    "playerName": "<playername>",
+    "ranks": {
+      "text": "Symbol and colour in front of the name – in chat, in the tab list and above the head – and what the rank may do. The highest matching rank counts.",
+      "addRank": "Add rank",
+      "newName": "New rank",
+      "name": "Name",
+      "symbol": "Symbol",
+      "noSymbol": "No symbol",
+      "color": "Colour",
+      "ownColor": "custom",
+      "permissions": "Permissions",
+      "players": "Players",
+      "everyoneElse": "Everyone without another rank has this one.",
+      "autoHint": "Automatically from the panel (linked Minecraft account)",
+      "removePlayer": "Remove {{name}}",
+      "nobody": "Nobody yet",
+      "addPlaceholder": "Minecraft name",
+      "add": "Add",
+      "fromPanel": "Also automatically:",
+      "sources": {
+        "none": "Nobody",
+        "owner": "Owners from the panel",
+        "moderator": "Moderators from the panel"
+      },
+      "default": "For everyone else",
+      "up": "Move up",
+      "down": "Move down",
+      "remove": "Delete {{name}}",
+      "previewText": "Hello everyone!",
+      "isDefault": "For everyone else",
+      "isDefaultHint": "Whoever has no other rank gets this one",
+      "perms": {
+        "build": "Build at the spawn",
+        "instant": "Teleport at once",
+        "homes": "Unlimited homes",
+        "kick": "Kick players",
+        "ban": "Ban players",
+        "gamemode": "Change game mode",
+        "teleport": "Teleport to anyone",
+        "world": "Time and weather",
+        "whitelist": "Manage the whitelist",
+        "reload": "Reload MorniCraft"
+      },
+      "permHints": {
+        "build": "Change the spawn island",
+        "instant": "No wait for /spawn, /home …",
+        "homes": "/sethome without a limit",
+        "kick": "/kick",
+        "ban": "/ban, /pardon, /banlist",
+        "gamemode": "/gamemode",
+        "teleport": "/tp",
+        "world": "/time, /weather",
+        "whitelist": "/whitelist add …",
+        "reload": "/mornicraft reload"
+      },
+      "playerCount_one": "{{count}} player",
+      "playerCount_other": "{{count}} players",
+      "permCount_one": "{{count}} permission",
+      "permCount_other": "{{count}} permissions"
+    }
   }
 }

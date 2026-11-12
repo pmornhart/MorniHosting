@@ -16,7 +16,8 @@ import {
 import { SYSTEM_ACTOR, type Actor } from '../audit/service.js';
 import type { GeyserService } from '../geyser/service.js';
 import type { AppContext } from '../context.js';
-import { servers as serverTable } from '../db/schema.js';
+import { and, eq, isNotNull } from 'drizzle-orm';
+import { roles, serverAccess, servers as serverTable, users } from '../db/schema.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { fetchJson } from '../lib/http-client.js';
 import type { MarketService } from '../market/service.js';
@@ -28,6 +29,7 @@ import { type IslandSpot, SPAWN_PACK_DIR, SPAWN_Y, writeSpawnPack } from './spaw
 import {
   homesOf,
   installMorniCraft,
+  type LinkedPlayer,
   morniCraftJar,
   personalLink,
   retireReplacedPlugins,
@@ -185,6 +187,42 @@ export function createCraftAttackService(
   const mcStored = (): Record<string, Partial<MorniCraftSettings>> =>
     ctx.settings.getValue<Record<string, Partial<MorniCraftSettings>>>(MORNICRAFT_KEY) ?? {};
   const settingsOf = (serverId: string): MorniCraftSettings => withDefaults(mcStored()[serverId]);
+  /** Linked Minecraft accounts of the server's owners (and panel admins) and moderators: they get their rank. */
+  const panelMembers = (serverId: string): Record<'owner' | 'moderator', LinkedPlayer[]> => {
+    const withRole = (role: 'owner' | 'moderator'): Set<number> =>
+      new Set(
+        ctx.db
+          .select({ userId: serverAccess.userId })
+          .from(serverAccess)
+          .innerJoin(roles, eq(roles.id, serverAccess.roleId))
+          .where(and(eq(serverAccess.serverId, serverId), eq(roles.builtIn, role)))
+          .all()
+          .map((r) => r.userId),
+      );
+    const owners = withRole('owner');
+    const moderators = withRole('moderator');
+    const linked = ctx.db
+      .select()
+      .from(users)
+      .where(and(isNotNull(users.minecraftUuid), eq(users.disabled, false)))
+      .all();
+    const player = (u: (typeof linked)[number]): LinkedPlayer => ({
+      uuid: u.minecraftUuid ?? '',
+      name: u.minecraftName ?? '',
+    });
+    return {
+      owner: linked.filter((u) => u.isAdmin || owners.has(u.id)).map(player),
+      moderator: linked.filter((u) => !u.isAdmin && !owners.has(u.id) && moderators.has(u.id)).map(player),
+    };
+  };
+  const writeConfig = (serverId: string): void =>
+    writeMorniCraftConfig(servers.dir(serverId), settingsOf(serverId), {
+      language: locale(),
+      serverName: servers.row(serverId).name,
+      timezone: ctx.settings.get().timezone,
+      link: linkFor(serverId),
+      members: panelMembers(serverId),
+    });
   /** The plugin, its config, and the old plugins it replaces switched off. */
   /** True when a new plugin version was put in (a running server loads it at its next start). */
   const equip = (serverId: string): boolean => {
@@ -193,12 +231,7 @@ export function createCraftAttackService(
     const retired = retireReplacedPlugins(dir);
     if (retired.length)
       servers.note(serverId, `Durch MorniCraft ersetzt und ausgeschaltet: ${retired.join(', ')}`);
-    writeMorniCraftConfig(dir, settingsOf(serverId), {
-      language: locale(),
-      serverName: servers.row(serverId).name,
-      timezone: ctx.settings.get().timezone,
-      link: linkFor(serverId),
-    });
+    writeConfig(serverId);
     return newPlugin;
   };
   const safeSlug = (serverId: string): string | undefined => {
@@ -408,6 +441,10 @@ export function createCraftAttackService(
       slug: active ? publicSetting(serverId).slug : null,
       settings: settingsOf(serverId),
       pluginAvailable: morniCraftJar() !== null,
+      panelMembers: (() => {
+        const m = panelMembers(serverId);
+        return { owner: m.owner.map((p) => p.name), moderator: m.moderator.map((p) => p.name) };
+      })(),
     };
   };
 
@@ -480,6 +517,27 @@ export function createCraftAttackService(
       ctx.log.warn({ err, serverId }, 'mornicraft update before start failed');
     }
   });
+
+  // Someone got or lost a role on a server, or linked a Minecraft account: ranks follow at once.
+  const refreshRanks = (): void => {
+    try {
+      ctx.db
+        .select({ id: serverTable.id })
+        .from(serverTable)
+        .all()
+        .filter((row) => isCraftAttack(row.id))
+        .forEach((row) => {
+          writeConfig(row.id);
+          if (servers.live(row.id).state === 'running') {
+            void servers.command(row.id, 'mornicraft reload', null).catch(() => undefined);
+          }
+        });
+    } catch (err) {
+      ctx.log.warn({ err }, 'mornicraft: ranks not updated');
+    }
+  };
+  ctx.events.on('access.changed', refreshRanks);
+  ctx.events.on('minecraft.linked', refreshRanks);
 
   // After a panel update: plugin and config are in place at once (the plugin itself loads at the next restart).
   setTimeout(() => {

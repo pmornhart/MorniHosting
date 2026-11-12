@@ -60,6 +60,10 @@ final class Commands implements TabExecutor {
       info(sender);
       return true;
     }
+    if (name.equals("team")) {
+      team(sender);
+      return true;
+    }
     if (name.equals("rules")) {
       rules(sender);
       return true;
@@ -386,6 +390,26 @@ final class Commands implements TabExecutor {
       lines.add(Component.text((i + 1) + "  ", Ui.ACCENT).append(Component.text(rules.get(i), Ui.SOFT)));
     }
     ui().card(to, ui().flat("rules.title"), lines);
+  }
+
+  /** Who has which rank: online names bright, the others dimmed. The default rank (everyone) is left out. */
+  void team(CommandSender to) {
+    List<Component> lines = new ArrayList<>();
+    for (Ranks.Rank r : plugin.ranks().all()) {
+      if (r.fallback() || r.players().isEmpty()) continue;
+      Component names = Component.empty();
+      boolean first = true;
+      for (Ranks.Member m : r.players()) {
+        String shown = m.shown();
+        Player online = m.uuid() != null ? Bukkit.getPlayer(m.uuid()) : Bukkit.getPlayerExact(shown);
+        if (!first) names = names.append(Component.text(", ", Ui.DIM));
+        names = names.append(Component.text(shown, online != null ? NamedTextColor.WHITE : Ui.DIM));
+        first = false;
+      }
+      lines.add(r.badge().append(Component.text("  ", Ui.DIM)).append(names));
+    }
+    if (lines.isEmpty()) lines.add(ui().words("team.empty"));
+    ui().card(to, ui().flat("team.title"), lines);
   }
 
   // ── Tab completion ──────────────────────────────────────────────────────────────────

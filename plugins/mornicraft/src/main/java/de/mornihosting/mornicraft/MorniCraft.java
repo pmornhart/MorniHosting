@@ -13,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MorniCraft extends JavaPlugin {
   private static final List<String> COMMANDS = List.of("spawn", "sethome", "home", "homes", "delhome", "back", "tpa",
       "tpahere", "tpaccept", "tpdeny", "msg", "r", "mail", "ignore", "afk", "seen", "near", "getpos", "ping", "info",
-      "rules", "leiste", "mornicraft");
+      "rules", "leiste", "team", "mornicraft");
 
   private Settings settings;
   private Ui ui;
@@ -24,6 +24,7 @@ public final class MorniCraft extends JavaPlugin {
   private SpawnElytra elytra;
   private Bedrock bedrock;
   private Sidebar sidebar;
+  private Ranks ranks;
 
   @Override
   public void onEnable() {
@@ -35,6 +36,8 @@ public final class MorniCraft extends JavaPlugin {
     social = new Social(this);
     commands = new Commands(this);
     elytra = new SpawnElytra(this);
+    ranks = new Ranks(this);
+    ranks.load(getConfig());
     sidebar = new Sidebar(this);
     var pm = Bukkit.getPluginManager();
     pm.registerEvents(teleporter, this);
@@ -44,6 +47,7 @@ public final class MorniCraft extends JavaPlugin {
     pm.registerEvents(new Welcome(this), this);
     pm.registerEvents(new WorldRules(this), this);
     pm.registerEvents(sidebar, this);
+    pm.registerEvents(ranks, this);
     pm.registerEvents(new UpdateCheck(this), this);
     for (String name : COMMANDS) {
       PluginCommand c = getCommand(name);
@@ -59,6 +63,7 @@ public final class MorniCraft extends JavaPlugin {
     if (elytra != null) elytra.release();
     if (teleporter != null) teleporter.release();
     if (sidebar != null) sidebar.release();
+    if (ranks != null) ranks.release();
   }
 
   private void load() {
@@ -69,7 +74,12 @@ public final class MorniCraft extends JavaPlugin {
 
   void reload() {
     load();
+    if (ranks != null) ranks.load(getConfig());
     if (sidebar != null) sidebar.rebuild();
+  }
+
+  Ranks ranks() {
+    return ranks;
   }
 
   Sidebar sidebar() {

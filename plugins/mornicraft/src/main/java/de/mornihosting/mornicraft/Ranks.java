@@ -1,0 +1,255 @@
+package de.mornihosting.mornicraft;
+
+import io.papermc.paper.event.player.AsyncChatEvent;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.regex.Pattern;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.permissions.PermissionAttachment;
+import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
+
+/**
+ * Ranks like Owner, Admin, Supporter or Media: a symbol and a colour in front of the name – in the chat, in the tab
+ * list and above the head – and the permissions that belong to the rank. Set in the dashboard (config.yml "ranks",
+ * highest first); a rank marked "default" is everyone else's.
+ */
+final class Ranks implements Listener {
+  /** At most this many ranks (teams sort the tab list by name: two digits). */
+  static final int MAX = 20;
+  private static final String TEAM = "mcr";
+  /** Lower-case letters, digits, _ and -: "owner", "mod-2". */
+  private static final Pattern ID = Pattern.compile("[a-z0-9_-]{1,24}");
+  private static final int MAX_SYMBOL = 4;
+  private static final int MAX_NAME = 20;
+
+  record Member(UUID uuid, String name) {
+    boolean is(Player p) {
+      return uuid != null ? uuid.equals(p.getUniqueId()) : name.equalsIgnoreCase(p.getName());
+    }
+
+    String shown() {
+      if (!name.isEmpty()) return name;
+      OfflinePlayer o = uuid == null ? null : Bukkit.getOfflinePlayer(uuid);
+      return o == null || o.getName() == null ? "?" : o.getName();
+    }
+  }
+
+  record Rank(String id, String name, String symbol, TextColor color, List<String> permissions, List<Member> players,
+      boolean fallback) {
+    /** "♛ Owner" in the rank's colour (just the name when there is no symbol). */
+    Component badge() {
+      return Component.text(symbol.isEmpty() ? name : symbol + " " + name, color);
+    }
+
+    /** What goes in front of a player name: "♛ " – or nothing. */
+    Component prefix() {
+      return symbol.isEmpty() ? Component.empty() : Component.text(symbol + " ", color);
+    }
+  }
+
+  private final MorniCraft plugin;
+  private volatile List<Rank> ranks = List.of();
+  private final Map<UUID, PermissionAttachment> granted = new HashMap<>();
+
+  Ranks(MorniCraft plugin) {
+    this.plugin = plugin;
+  }
+
+  List<Rank> all() {
+    return ranks;
+  }
+
+  /** Reads the ranks from the config (the built-in ones when there are none) and puts them on everyone online. */
+  void load(FileConfiguration c) {
+    ranks = c.isSet("ranks") ? parse(c.getMapList("ranks")) : DefaultRanks.ranks();
+    for (Player p : Bukkit.getOnlinePlayers()) apply(p);
+    paintAll();
+  }
+
+  static List<Rank> parse(List<Map<?, ?>> raw) {
+    List<Rank> out = new ArrayList<>();
+    for (Map<?, ?> m : raw) {
+      if (out.size() >= MAX) break;
+      String id = String.valueOf(m.get("id")).toLowerCase(Locale.ROOT);
+      if (!ID.matcher(id).matches() || out.stream().anyMatch(r -> r.id().equals(id))) continue;
+      String name = cut(text(m.get("name"), id), MAX_NAME);
+      String symbol = cut(text(m.get("symbol"), ""), MAX_SYMBOL);
+      out.add(new Rank(id, name, symbol, color(text(m.get("color"), "")), strings(m.get("permissions")),
+          members(m.get("players")), Boolean.TRUE.equals(m.get("default"))));
+    }
+    return List.copyOf(out);
+  }
+
+  private static String text(Object o, String fallback) {
+    return o == null ? fallback : String.valueOf(o).trim();
+  }
+
+  private static String cut(String s, int max) {
+    return s.codePointCount(0, s.length()) <= max ? s : s.substring(0, s.offsetByCodePoints(0, max));
+  }
+
+  /** "#ff5555" or a Minecraft colour name ("gold"); grey when neither. */
+  static TextColor color(String raw) {
+    TextColor hex = raw.startsWith("#") ? TextColor.fromHexString(raw) : null;
+    if (hex != null) return hex;
+    NamedTextColor named = NamedTextColor.NAMES.value(raw.toLowerCase(Locale.ROOT));
+    return named != null ? named : NamedTextColor.GRAY;
+  }
+
+  private static List<String> strings(Object o) {
+    if (!(o instanceof List<?> list)) return List.of();
+    return list.stream().map(String::valueOf).map(String::trim).filter(s -> !s.isEmpty()).toList();
+  }
+
+  /** Players as "Name", "uuid" or {name, uuid}. */
+  private static List<Member> members(Object o) {
+    if (!(o instanceof List<?> list)) return List.of();
+    List<Member> out = new ArrayList<>();
+    for (Object item : list) {
+      if (item instanceof Map<?, ?> m) {
+        out.add(new Member(uuid(text(m.get("uuid"), "")), text(m.get("name"), "")));
+      } else if (item != null) {
+        String s = String.valueOf(item).trim();
+        UUID id = uuid(s);
+        out.add(id != null ? new Member(id, "") : new Member(null, s));
+      }
+    }
+    return out.stream().filter(m -> m.uuid() != null || !m.name().isEmpty()).toList();
+  }
+
+  private static UUID uuid(String s) {
+    try {
+      return s.length() == 36 ? UUID.fromString(s) : null;
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  /** The player's rank: the first (highest) that lists them, else the default one, else none. */
+  Rank of(Player p) {
+    Rank fallback = null;
+    for (Rank r : ranks) {
+      if (r.players().stream().anyMatch(m -> m.is(p))) return r;
+      if (r.fallback() && fallback == null) fallback = r;
+    }
+    return fallback;
+  }
+
+  /** "♛ Morni" for chat, tab list and messages. */
+  Component name(Player p) {
+    Rank r = of(p);
+    if (r == null) return Component.text(p.getName());
+    return r.prefix().append(Component.text(p.getName(), r.color()));
+  }
+
+  // ---------------------------------------------------------------- permissions and the tab list
+
+  private void apply(Player p) {
+    PermissionAttachment old = granted.remove(p.getUniqueId());
+    if (old != null) p.removeAttachment(old);
+    Rank r = of(p);
+    if (r != null && !r.permissions().isEmpty()) {
+      PermissionAttachment a = p.addAttachment(plugin);
+      r.permissions().forEach(node -> a.setPermission(node, true));
+      granted.put(p.getUniqueId(), a);
+    }
+    p.playerListName(r == null ? null : name(p));
+    p.updateCommands();
+  }
+
+  /** The rank teams on a scoreboard: symbol before the name above the head, sorted by rank in the tab list. */
+  void paint(Scoreboard board) {
+    List<Rank> list = ranks;
+    for (Team t : board.getTeams()) {
+      String n = t.getName();
+      if (n.startsWith(TEAM) && n.length() == TEAM.length() + 2 && indexOf(n) >= list.size()) t.unregister();
+    }
+    for (int i = 0; i < list.size(); i++) {
+      Rank r = list.get(i);
+      String n = TEAM + String.format("%02d", i);
+      Team t = board.getTeam(n);
+      if (t == null) t = board.registerNewTeam(n);
+      t.prefix(r.prefix());
+      t.color(NamedTextColor.nearestTo(r.color()));
+    }
+    for (Player p : Bukkit.getOnlinePlayers()) {
+      Rank r = of(p);
+      int i = r == null ? -1 : list.indexOf(r);
+      if (i < 0) {
+        Team t = board.getEntryTeam(p.getName());
+        if (t != null && t.getName().startsWith(TEAM)) t.removeEntry(p.getName());
+        continue;
+      }
+      Team t = board.getTeam(TEAM + String.format("%02d", i));
+      if (t != null && !t.hasEntry(p.getName())) t.addEntry(p.getName());
+    }
+  }
+
+  private static int indexOf(String team) {
+    try {
+      return Integer.parseInt(team.substring(TEAM.length()));
+    } catch (NumberFormatException e) {
+      return Integer.MAX_VALUE;
+    }
+  }
+
+  /** The main scoreboard and every player's own one (the bar on the right). */
+  void paintAll() {
+    Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
+    paint(main);
+    for (Player p : Bukkit.getOnlinePlayers()) {
+      if (p.getScoreboard() != main) paint(p.getScoreboard());
+    }
+  }
+
+  void release() {
+    granted.forEach((id, a) -> {
+      Player p = Bukkit.getPlayer(id);
+      if (p != null) p.removeAttachment(a);
+    });
+    granted.clear();
+  }
+
+  @EventHandler(priority = EventPriority.LOW)
+  public void onJoin(PlayerJoinEvent e) {
+    apply(e.getPlayer());
+    paintAll();
+  }
+
+  @EventHandler
+  public void onQuit(PlayerQuitEvent e) {
+    granted.remove(e.getPlayer().getUniqueId());
+    String name = e.getPlayer().getName();
+    Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
+    Team t = main.getEntryTeam(name);
+    if (t != null && t.getName().startsWith(TEAM)) t.removeEntry(name);
+  }
+
+  /** "♛ Owner · Morni » hello" – or "Morni » hello" without a rank. */
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onChat(AsyncChatEvent e) {
+    e.renderer((source, displayName, message, viewer) -> {
+      Rank r = of(source);
+      Component who = r == null || r.symbol().isEmpty()
+          ? Component.text(source.getName(), r == null ? NamedTextColor.WHITE : r.color())
+          : r.badge().append(Component.text(" · ", NamedTextColor.GRAY)).append(Component.text(source.getName(), r.color()));
+      return who.append(Component.text(" » ", NamedTextColor.GRAY)).append(message.colorIfAbsent(NamedTextColor.WHITE));
+    });
+  }
+}

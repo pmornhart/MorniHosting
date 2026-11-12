@@ -20,11 +20,14 @@ import {
   homesOf,
   installMorniCraft,
   morniCraftConfig,
+  morniCraftSettingsSchema,
   personalLink,
   retireReplacedPlugins,
   withDefaults,
 } from '../src/craftattack/mornicraft.js';
 import { deathOf, deathsOf } from '../src/craftattack/stats.js';
+import { DEFAULT_RANKS } from '@mornihosting/shared';
+import { users } from '../src/db/schema.js';
 import { authHeaders, createTestApp, setupAdmin, type Session, type TestApp } from './helpers.js';
 
 const FILL_LIMIT = 32768;
@@ -163,6 +166,58 @@ describe('MorniCraft spawn, plugin and settings', () => {
     expect(parsed['link']).toBe('https://mornihosting.de/befehle/freunde/{name}');
     expect(JSON.stringify(parsed['groups'])).toContain('/leiste');
 
+    // Ranks: every server starts with Owner … Spieler; switches become permission nodes, owners from the panel join
+    // by UUID, a hand-added name that is also an owner is not listed twice.
+    const ranked = morniCraftConfig(
+      withDefaults({
+        ranks: DEFAULT_RANKS.map((r) => (r.id === 'owner' ? { ...r, players: ['morni', 'Lena'] } : r)),
+      }),
+      {
+        language: 'de',
+        serverName: 'Freunde',
+        timezone: 'Europe/Berlin',
+        link: '',
+        members: {
+          owner: [{ uuid: '0b1c-uuid', name: 'Morni' }],
+          moderator: [{ uuid: 'mod-uuid', name: 'Tom' }],
+        },
+      },
+    );
+    const ranks = (JSON.parse(ranked.slice(ranked.indexOf('\n') + 1)) as { ranks: Record<string, unknown>[] })
+      .ranks;
+    expect(ranks.map((r) => r['id'])).toEqual(DEFAULT_RANKS.map((r) => r.id));
+    expect(ranks[0]).toMatchObject({
+      id: 'owner',
+      symbol: '♛',
+      players: [{ uuid: '0b1c-uuid', name: 'Morni' }, { name: 'Lena' }],
+    });
+    expect(ranks[0]?.['permissions']).toEqual(
+      expect.arrayContaining(['mornicraft.build', 'minecraft.command.kick']),
+    );
+    expect(ranks.find((r) => r['id'] === 'moderator')?.['players']).toEqual([
+      { uuid: 'mod-uuid', name: 'Tom' },
+    ]);
+    expect(ranks.find((r) => r['id'] === 'player')).toMatchObject({ default: true, permissions: [] });
+
+    // The dashboard can't save broken ranks: two with the same id, two defaults, a name with spaces.
+    const base = withDefaults(undefined);
+    const owner = DEFAULT_RANKS[0]!;
+    expect(morniCraftSettingsSchema.safeParse(base).success).toBe(true);
+    expect(morniCraftSettingsSchema.safeParse({ ...base, ranks: [owner, owner] }).success).toBe(false);
+    expect(
+      morniCraftSettingsSchema.safeParse({
+        ...base,
+        ranks: [
+          { ...owner, isDefault: true },
+          { ...owner, id: 'b', isDefault: true },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      morniCraftSettingsSchema.safeParse({ ...base, ranks: [{ ...owner, players: ['nicht gültig'] }] })
+        .success,
+    ).toBe(false);
+
     // Homes: MorniCraft's own file, else EssentialsX's (before the plugin took them over).
     fs.mkdirSync(path.join(server, 'plugins', 'Essentials', 'userdata'), { recursive: true });
     fs.writeFileSync(
@@ -299,6 +354,19 @@ describe('public statistics page', () => {
     const written = fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8');
     expect(written).toContain('"tnt": false');
     expect(written).toContain('"teleport-delay": 3');
+
+    // A panel admin with a linked Minecraft account is an owner: the Owner rank lists them by itself, at once.
+    t.ctx.db
+      .update(users)
+      .set({ minecraftName: 'Morni', minecraftUuid: '11111111-2222-3333-4444-555555555555' })
+      .run();
+    t.ctx.events.emit('minecraft.linked', { userId: 1 });
+    const withOwner = (await t.app.inject({ method: 'GET', url: mcUrl, headers: authHeaders(admin) })).json<{
+      panelMembers: { owner: string[]; moderator: string[] };
+    }>();
+    expect(withOwner.panelMembers).toEqual({ owner: ['Morni'], moderator: [] });
+    const ranked = fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8');
+    expect(ranked).toContain('"uuid": "11111111-2222-3333-4444-555555555555"');
   });
 });
 

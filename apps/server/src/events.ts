@@ -11,6 +11,8 @@ export interface PanelEvents {
   'server.deleted': { serverId: string };
   /** Who may do what changed: roles, admin rights, a user locked, deleted or a Minecraft account linked. */
   'access.changed': { userId: number | null };
+  /** Someone linked or unlinked their Minecraft account (MorniCraft ranks follow). */
+  'minecraft.linked': { userId: number };
   'player.joined': { serverId: string; player: string };
   'player.left': { serverId: string; player: string };
   'backup.done': { serverId: string; backupId: number; sizeBytes: number };
