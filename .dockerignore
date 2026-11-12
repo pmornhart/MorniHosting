@@ -10,3 +10,4 @@ playwright-report
 test-results
 *.log
 .env
+plugins/mornicraft/target

@@ -11,16 +11,18 @@ import {
   extrasCommands,
   topCommands,
   plazaCommands,
-  spawnElytraConfig,
   spawnPackFiles,
+  fountainCommands,
+  removeRainbowCommands,
 } from '../src/craftattack/spawn.js';
 import {
   homesOf,
-  infoText,
-  openPlayerCommands,
+  installMorniCraft,
+  morniCraftConfig,
   personalLink,
-  writeHelpFiles,
-} from '../src/craftattack/help.js';
+  retireReplacedPlugins,
+  withDefaults,
+} from '../src/craftattack/mornicraft.js';
 import { deathOf, deathsOf } from '../src/craftattack/stats.js';
 import { authHeaders, createTestApp, setupAdmin, type Session, type TestApp } from './helpers.js';
 
@@ -67,20 +69,24 @@ describe('Craft Attack spawn', () => {
     expect(files['data/craftattack/function/rules_new.mcfunction']).toBe('gamerule respawn_radius 0\n');
   });
 
-  it('is a floating island: rock below the grass narrowing to a point, a beacon, launch decks over the edge', () => {
+  it('is a floating island: rock below the grass narrowing to a point, a fountain, launch decks over the edge', () => {
     expect(islandRadius(0)).toBeGreaterThan(islandRadius(10));
     expect(islandRadius(10)).toBeGreaterThan(islandRadius(28));
     const all = plazaCommands().join('\n');
-    expect(all).toContain('beacon');
+    expect(all).not.toContain('beacon');
+    expect(all).toContain('quartz_pillar');
     expect(all).toContain('spruce_planks');
     expect(all).toContain('pointed_dripstone[vertical_direction=down');
   });
 
   it('keeps all water in the fountain and repairs islands of the first version once', () => {
     const top = topCommands();
-    // No walls or light blocks at the fountain: both can take on water and let it run over the plaza.
-    expect(top.filter((c) => c.endsWith(' chiseled_stone_bricks')).length).toBeGreaterThan(0);
+    // No light blocks at the fountain: they can take on water and let it run over the plaza.
     expect(top.some((c) => c.includes('light[level=15]') && c.startsWith('setblock ~4 ~ ~4 '))).toBe(false);
+    // Nothing next to the fountain's water can hold water itself (stairs, slabs, walls, lanterns).
+    const fountain = fountainCommands().join('\n');
+    expect(fountain).not.toMatch(/_(stairs|slab|wall)\b|lantern\[/); // eslint-disable-line ts-patterns/require-regex-example -- "oak_stairs", "lantern[hanging=true]"
+    expect(fountain).toContain('water');
     const files = spawnPackFiles();
     expect(files['data/craftattack/function/load.mcfunction']).toContain('unless score #water');
     expect(files['data/craftattack/function/build.mcfunction']).toContain('#water mh_craftattack 1');
@@ -88,54 +94,82 @@ describe('Craft Attack spawn', () => {
   });
 });
 
-describe('Craft Attack protection, build and help', () => {
-  it('protects the spawn (adventure mode there), builds where the panel says and keeps the elytra at the spawn', () => {
-    const files = spawnPackFiles();
+describe('MorniCraft spawn, plugin and settings', () => {
+  it('builds where the panel says, repairs at the island and releases old adventure-mode players', () => {
+    const files = spawnPackFiles({ x: 1200, z: -340 });
     expect(files['data/minecraft/tags/function/tick.json']).toContain('craftattack:tick');
-    expect(files['data/craftattack/function/tick.mcfunction']).toContain(
-      'gamemode adventure @a[gamemode=survival',
-    );
+    expect(files['data/craftattack/function/tick.mcfunction']).toContain('gamemode survival @a[tag=mh_spawn');
     const build = files['data/craftattack/function/build.mcfunction'] ?? '';
     expect(build).toContain('function craftattack:island');
     expect(build).toContain('function craftattack:extras');
     expect(build).toContain('summon marker ~ ~ ~9 {Tags:["mh_spawn_center"]}');
     // Nothing is built by itself on load: the panel picks the place over an ocean.
-    expect(files['data/craftattack/function/load.mcfunction']).not.toContain('function craftattack:build');
-    expect(extrasCommands().some((c) => c.includes('stained_glass'))).toBe(true);
-    expect(spawnElytraConfig('world')).toContain('ignoreYInSpawnRadius: false');
+    const load = files['data/craftattack/function/load.mcfunction'] ?? '';
+    expect(load).not.toContain('function craftattack:build');
+    // Repairs run where this island really stands.
+    expect(load).toContain('forceload add 1136 -404 1264 -276');
+    expect(files['data/craftattack/function/fix_fountain.mcfunction']).toContain('positioned 1200 170 -340');
+    expect(extrasCommands().some((c) => c.includes('stained_glass'))).toBe(false);
+    expect(
+      removeRainbowCommands().every((c) => c.includes(' air replace ') && c.includes('stained_glass')),
+    ).toBe(true);
   });
 
-  it('writes /info with all commands, keeps a file the owner wrote, and lets players use the commands', () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-ca-'));
-    const ess = path.join(dir, 'plugins', 'Essentials');
-    fs.mkdirSync(ess, { recursive: true });
-    fs.writeFileSync(path.join(ess, 'info.txt'), 'This is the info file.\nsample');
-    fs.writeFileSync(path.join(ess, 'rules.txt'), 'Unsere eigenen Regeln');
+  it('installs the plugin, switches off what it replaces and writes its settings', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-mc-'));
+    const jar = path.join(dir, 'MorniCraft-build.jar');
+    fs.writeFileSync(jar, 'plugin v1');
+    process.env['MH_MORNICRAFT_JAR'] = jar;
+    const server = path.join(dir, 'server');
+    fs.mkdirSync(path.join(server, 'plugins'), { recursive: true });
+    [
+      'EssentialsX-2.21.2.jar',
+      'EssentialsXSpawn-2.21.2.jar',
+      'SpawnElytra-1.4.jar',
+      'EssentialsXChat-2.21.2.jar',
+    ].forEach((f) => fs.writeFileSync(path.join(server, 'plugins', f), 'x'));
+    expect(installMorniCraft(server)).toBe(true);
+    expect(installMorniCraft(server)).toBe(false);
+    fs.writeFileSync(jar, 'plugin v2');
+    expect(installMorniCraft(server)).toBe(true);
+    expect(retireReplacedPlugins(server).sort()).toEqual([
+      'EssentialsX-2.21.2.jar',
+      'EssentialsXSpawn-2.21.2.jar',
+      'SpawnElytra-1.4.jar',
+    ]);
+    expect(fs.existsSync(path.join(server, 'plugins', 'EssentialsXChat-2.21.2.jar'))).toBe(true);
+
+    const config = morniCraftConfig(withDefaults({ tnt: false, sleepAtSpawn: true }), {
+      language: 'de',
+      serverName: 'Freunde "Craft"',
+      timezone: 'Europe/Berlin',
+      link: personalLink('mornihosting.de', 'freunde'),
+    });
+    // YAML is a superset of JSON: everything after the comment line is the config.
+    const parsed = JSON.parse(config.slice(config.indexOf('\n') + 1)) as Record<string, unknown>;
+    expect(parsed).toMatchObject({
+      tnt: false,
+      'sleep-at-spawn': true,
+      'teleport-delay': 5,
+      'server-name': 'Freunde "Craft"',
+    });
+    expect(parsed['link']).toBe('https://mornihosting.de/befehle/freunde/{name}');
+    expect(JSON.stringify(parsed['groups'])).toContain('/leiste');
+
+    // Homes: MorniCraft's own file, else EssentialsX's (before the plugin took them over).
+    fs.mkdirSync(path.join(server, 'plugins', 'Essentials', 'userdata'), { recursive: true });
     fs.writeFileSync(
-      path.join(ess, 'config.yml'),
-      'a: 1\nuse-bukkit-permissions: true\nteleport-delay: 0\nb: 2\n',
-    );
-    writeHelpFiles(dir, 'de');
-    expect(fs.readFileSync(path.join(ess, 'info.txt'), 'utf8')).toContain('/tpa <spieler>');
-    expect(fs.readFileSync(path.join(ess, 'rules.txt'), 'utf8')).toBe('Unsere eigenen Regeln');
-    expect(fs.readFileSync(path.join(ess, 'motd.txt'), 'utf8')).toContain('/info');
-    expect(openPlayerCommands(dir)).toBe(true);
-    expect(fs.readFileSync(path.join(ess, 'config.yml'), 'utf8')).toContain('use-bukkit-permissions: false');
-    expect(fs.readFileSync(path.join(ess, 'config.yml'), 'utf8')).toContain('teleport-delay: 5');
-    expect(openPlayerCommands(dir)).toBe(false);
-    expect(infoText('en')).toContain('Homes');
-    expect(infoText('de')).not.toContain('/ban');
-    const link = personalLink('mornihosting.de', 'craft-attack');
-    writeHelpFiles(dir, 'de', link);
-    expect(fs.readFileSync(path.join(ess, 'info.txt'), 'utf8')).toContain(
-      'https://mornihosting.de/befehle/craft-attack/{USERNAME}',
-    );
-    fs.mkdirSync(path.join(ess, 'userdata'));
-    fs.writeFileSync(
-      path.join(ess, 'userdata', 'abc.yml'),
+      path.join(server, 'plugins', 'Essentials', 'userdata', 'abc.yml'),
       'money: 0\nhomes:\n  base:\n    world: world\n    x: 1\n  farm:\n    world: world\nlogoutlocation:\n  x: 2\n',
     );
-    expect(homesOf(dir, 'abc')).toEqual(['base', 'farm']);
+    expect(homesOf(server, 'abc')).toEqual(['base', 'farm']);
+    fs.mkdirSync(path.join(server, 'plugins', 'MorniCraft', 'players'), { recursive: true });
+    fs.writeFileSync(
+      path.join(server, 'plugins', 'MorniCraft', 'players', 'abc.yml'),
+      'name: Lena\nhomes:\n  burg:\n    x: 1\n',
+    );
+    expect(homesOf(server, 'abc')).toEqual(['burg']);
+    delete process.env['MH_MORNICRAFT_JAR'];
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
@@ -239,6 +273,25 @@ describe('public statistics page', () => {
     expect(
       (await t.app.inject({ method: 'GET', url: '/api/public/commands/craft-attack/a%2Fb' })).statusCode,
     ).toBe(400);
+
+    // Dashboard settings: saved, written into the plugin's config.
+    const mcUrl = `/api/servers/${server.id}/mornicraft`;
+    const state = (await t.app.inject({ method: 'GET', url: mcUrl, headers: authHeaders(admin) })).json<{
+      active: boolean;
+      settings: Record<string, unknown>;
+    }>();
+    expect(state).toMatchObject({ active: true, settings: { teleportDelay: 5, sleepAtSpawn: false } });
+    const saved = await t.app.inject({
+      method: 'PUT',
+      url: mcUrl,
+      headers: authHeaders(admin),
+      payload: { ...state.settings, tnt: false, teleportDelay: 3 },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toMatchObject({ settings: { tnt: false, teleportDelay: 3 } });
+    const written = fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8');
+    expect(written).toContain('"tnt": false');
+    expect(written).toContain('"teleport-delay": 3');
   });
 });
 

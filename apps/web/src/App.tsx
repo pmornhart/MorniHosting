@@ -35,7 +35,7 @@ const router = createRouter([
   { path: '/forgot', element: <ForgotPage /> },
   { path: '/reset', element: <ResetPage /> },
   { path: '/verify', element: <VerifyPage /> },
-  // Public statistics page of a server (Craft Attack): no login.
+  // Public statistics page of a server (MorniCraft): no login.
   {
     path: '/stats/:slug',
     element: (
@@ -44,7 +44,7 @@ const router = createRouter([
       </Suspense>
     ),
   },
-  // Personal command page of a Craft Attack player (link from /info in the game): no login.
+  // Personal command page of a MorniCraft player (link from /info in the game): no login.
   ...['/befehle/:slug/:name', '/commands/:slug/:name'].map((path) => ({
     path,
     element: (

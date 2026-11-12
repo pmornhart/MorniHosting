@@ -1,9 +1,10 @@
 import type { SoftwareId } from './software.js';
 
 /**
- * "Craft Attack": a ready-made survival server for a group of friends, set up in one go when ordering –
- * the right plugins, settings for a whitelisted friends server, a floating spawn island with a start elytra,
- * /spawn, a pre-generated world and a public statistics page (who died when and how, play time, kills).
+ * "MorniCraft" (in the code still "craft attack"): a ready-made survival server for a group of friends, set up in one
+ * go when ordering – the panel's own MorniCraft plugin (/spawn, homes, teleports, messages, start elytra, protected
+ * spawn, sidebar), settings for a whitelisted friends server, a floating spawn island over the sea, a pre-generated
+ * world, every Minecraft version can join (ViaVersion) and a public statistics page.
  */
 
 /** Plugins come from Modrinth; Paper and Purpur run them. */
@@ -17,13 +18,76 @@ export interface CraftAttackPlugin {
   readonly required: boolean;
 }
 
+/** Plugins from Modrinth besides the panel's own MorniCraft plugin (which comes with the panel). */
 export const CRAFT_ATTACK_PLUGINS: readonly CraftAttackPlugin[] = [
-  { id: 'hXiIvTyT', name: 'EssentialsX', required: true },
-  { id: 'sYpvDxGJ', name: 'EssentialsX Spawn', required: true },
   { id: 'fALzjamp', name: 'Chunky', required: false },
-  // The start elytra: double jump at the spawn to glide down, F (Java) / sneak (Bedrock) to boost.
-  { id: 'NAFqBu99', name: 'SpawnElytra', required: false },
 ];
+
+/** What the admin sets for a MorniCraft server in the dashboard (written into the plugin's config). */
+export interface MorniCraftSettings {
+  /** Seconds to stand still before /spawn, /home, /tpa, /back (0 = at once). */
+  readonly teleportDelay: number;
+  readonly maxHomes: number;
+  /** Nobody but operators builds or breaks on the spawn island. */
+  readonly spawnProtection: boolean;
+  readonly spawnRadius: number;
+  readonly sleepAtSpawn: boolean;
+  readonly pvpAtSpawn: boolean;
+  readonly elytra: boolean;
+  readonly elytraRadius: number;
+  readonly elytraBoost: boolean;
+  readonly tpa: boolean;
+  readonly back: boolean;
+  /** The big welcome, once per player. */
+  readonly welcome: boolean;
+  /** The bar on the right (time, online, commands). */
+  readonly sidebar: boolean;
+  /** Link to the personal command page in /info (needs a panel domain). */
+  readonly showLink: boolean;
+  readonly tnt: boolean;
+  readonly creeperDamage: boolean;
+  readonly fireSpread: boolean;
+  readonly endermanGrief: boolean;
+  readonly rules: readonly string[];
+}
+
+export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
+  teleportDelay: 5,
+  maxHomes: 5,
+  spawnProtection: true,
+  spawnRadius: 55,
+  sleepAtSpawn: false,
+  pvpAtSpawn: false,
+  elytra: true,
+  elytraRadius: 45,
+  elytraBoost: true,
+  tpa: true,
+  back: true,
+  welcome: true,
+  sidebar: true,
+  showLink: true,
+  tnt: true,
+  creeperDamage: true,
+  fireSpread: true,
+  endermanGrief: true,
+  rules: [
+    'Sei nett zu allen.',
+    'Nichts kaputt machen, was anderen gehört.',
+    'Keine Cheats, keine Hacks.',
+    'Viel Spaß!',
+  ],
+};
+
+/** GET /api/servers/:id/mornicraft */
+export interface MorniCraftState {
+  /** A MorniCraft server (its world carries the spawn datapack). */
+  readonly active: boolean;
+  /** Path part of the public pages (/befehle/<slug>/<name>, /stats/<slug>). */
+  readonly slug: string | null;
+  readonly settings: MorniCraftSettings;
+  /** The plugin file the panel brings along is there (an image built without it cannot install it). */
+  readonly pluginAvailable: boolean;
+}
 
 /** server.properties for a friends' survival world. */
 export const CRAFT_ATTACK_PROPERTIES: Readonly<Record<string, string>> = {
@@ -209,6 +273,10 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
         text: { de: 'Deine Verbindung zum Server', en: 'Your connection to the server' },
       },
       { use: same('/rules'), text: { de: 'Die Regeln', en: 'The rules' } },
+      {
+        use: same('/leiste'),
+        text: { de: 'Leiste rechts ein- oder ausblenden', en: 'Show or hide the bar on the right' },
+      },
     ],
   },
   {

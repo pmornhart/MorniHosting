@@ -160,7 +160,7 @@ export function createOrderService(
       {
         key: 'craftattack',
         on: addOns?.craftattack === true && craftAttack !== undefined,
-        label: 'Craft Attack (EssentialsX, /spawn, Spawn-Platz, Statistik-Seite)',
+        label: 'MorniCraft (eigenes Plugin, Spawn-Insel, Einstellungen, Statistik-Seite)',
         run: async () => craftAttack?.setUp(serverId, actor),
       },
       {
@@ -208,10 +208,14 @@ export function createOrderService(
   };
 
   const create: OrderService['create'] = async (rawInput, actor, creator) => {
-    // Craft Attack needs a version its plugins support: the newest one that fits.
+    // MorniCraft: a version its plugins support, and every client version may join (ViaVersion comes with it).
     const input =
       rawInput.addOns?.craftattack && craftAttack
-        ? { ...rawInput, version: await craftAttack.fitVersion(rawInput.software, rawInput.version) }
+        ? {
+            ...rawInput,
+            version: await craftAttack.fitVersion(rawInput.software, rawInput.version),
+            addOns: { ...rawInput.addOns, via: true },
+          }
         : rawInput;
     const wanted =
       input.addOns &&

@@ -7,12 +7,15 @@ import {
   CRAFT_ATTACK_PROPERTIES,
   CRAFT_ATTACK_SOFTWARE,
   type CraftAttackPlayerCommands,
+  type MorniCraftSettings,
+  type MorniCraftState,
   type PublicStats,
   type PublicStatsSetting,
   type SoftwareId,
 } from '@mornihosting/shared';
 import type { Actor } from '../audit/service.js';
 import type { AppContext } from '../context.js';
+import { servers as serverTable } from '../db/schema.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { fetchJson } from '../lib/http-client.js';
 import type { MarketService } from '../market/service.js';
@@ -20,22 +23,34 @@ import type { PlayerDetailService } from '../players/detail.js';
 import { readPropertiesFile, writePropertiesFile } from '../servers/properties-file.js';
 import type { ServerService } from '../servers/service.js';
 import { versionsFor } from '../servers/versions.js';
-import { SPAWN_PACK_DIR, SPAWN_Y, spawnElytraConfig, writeSpawnPack } from './spawn.js';
-import { homesOf, openPlayerCommands, personalLink, writeHelpFiles } from './help.js';
+import { type IslandSpot, SPAWN_PACK_DIR, SPAWN_Y, writeSpawnPack } from './spawn.js';
+import {
+  homesOf,
+  installMorniCraft,
+  morniCraftJar,
+  personalLink,
+  retireReplacedPlugins,
+  withDefaults,
+  writeMorniCraftConfig,
+} from './mornicraft.js';
 import { deathsOf, playerNumbers } from './stats.js';
 
 /**
- * The Craft Attack package and the public statistics page.
+ * The MorniCraft package (in the code "craft attack") and its public pages.
  *
- * Package (ordered as an add-on): EssentialsX + EssentialsX Spawn (/spawn, /home, /tpa …), Chunky and SpawnElytra
- * (the start elytra) from Modrinth, settings for a whitelisted friends' survival world, a datapack that builds the
- * floating spawn island on the first
- * start, the world around it generated in advance, and the statistics page switched on.
+ * Package (ordered as an add-on): the panel's own MorniCraft plugin (see mornicraft.ts) and Chunky, settings for a
+ * whitelisted friends' survival world, a datapack that builds the floating spawn island over the sea after the
+ * first start, the world around it generated in advance, the statistics page switched on. Every client version
+ * can join: the order adds ViaVersion.
  */
 
 const SETTINGS_KEY = 'public_stats';
+/** Where the panel built each server's spawn island (older islands: not stored, they stand at 0/0). */
+const SPOTS_KEY = 'craftattack_spawn';
 const MODRINTH_PROJECT = 'https://api.modrinth.com/v2/project/';
-const MOTD_SUFFIX = ' §7· §aCraft Attack';
+const MOTD_SUFFIX = ' §7· §aMorniCraft';
+/** The dashboard settings of each MorniCraft server. */
+const MORNICRAFT_KEY = 'mornicraft';
 // A server's address name as the page path: "Craft Attack!" → "craft-attack".
 // https://regex101.com/?flavor=javascript&regex=%5B%5Ea-z0-9%5D%2B&flags=g&testString=craft%20attack!
 const NOT_SLUG = /[^a-z0-9]+/g;
@@ -51,6 +66,8 @@ const OCEAN_INSET = 96;
 const BUILD_REACH = 64;
 const LOAD_WAIT_MS = 60_000;
 const LOAD_POLL_MS = 1000;
+/** Bring the plugin and its settings to all MorniCraft servers shortly after the panel started. */
+const REFRESH_DELAY_MS = 5000;
 // "/locate" answer: "The nearest minecraft:deep_ocean is at [1088, 64, 1088] (1538 blocks away)" → 1088, 1088
 // (older versions write "~" instead of the height).
 // https://regex101.com/?flavor=javascript&regex=%5C%5B(-%3F%5Cd%2B)%2C%20(%3F%3A~%7C-%3F%5Cd%2B)%2C%20(-%3F%5Cd%2B)%5C%5D&testString=The%20nearest%20minecraft%3Adeep_ocean%20is%20at%20%5B1088%2C%2064%2C%201088%5D%20(1538%20blocks%20away)%0A%5B-1200%2C%20~%2C%20340%5D
@@ -84,9 +101,6 @@ async function waitUntil(check: () => Promise<boolean>, maxMs: number): Promise<
   await waitUntil(check, maxMs - LOAD_POLL_MS);
 }
 /** The SpawnElytra plugin's data folder (its name in plugin.yml). */
-const ELYTRA_FOLDER = 'SpawnElytra';
-const ELYTRA_ANYWHERE = 'ignoreYInSpawnRadius: true';
-const ELYTRA_AT_SPAWN = 'ignoreYInSpawnRadius: false';
 
 export const publicStatsInputSchema = z.object({
   enabled: z.boolean(),
@@ -112,8 +126,11 @@ export interface CraftAttackService {
   readonly publicStats: (slug: string) => PublicStats;
   /** The personal command page: what this player may use on the server with this slug. */
   readonly playerCommands: (slug: string, name: string) => CraftAttackPlayerCommands;
-  /** A Craft Attack server: its world carries the spawn datapack. */
+  /** A MorniCraft server: its world carries the spawn datapack. */
   readonly isCraftAttack: (serverId: string) => boolean;
+  readonly morniCraft: (serverId: string) => MorniCraftState;
+  /** Saves the dashboard settings, writes the plugin's config and applies it at once on a running server. */
+  readonly setMorniCraft: (serverId: string, settings: MorniCraftSettings) => Promise<MorniCraftState>;
 }
 
 export function createCraftAttackService(
@@ -125,6 +142,8 @@ export function createCraftAttackService(
   },
 ): CraftAttackService {
   const { servers, market, players } = deps;
+  const spots = (): Record<string, IslandSpot> =>
+    ctx.settings.getValue<Record<string, IslandSpot>>(SPOTS_KEY) ?? {};
   const stored = (): Record<string, PublicStatsSetting> =>
     ctx.settings.getValue<Record<string, PublicStatsSetting>>(SETTINGS_KEY) ?? {};
 
@@ -150,11 +169,28 @@ export function createCraftAttackService(
   };
 
   /** The page address for /info (only with a panel domain); older servers get their slug stored here. */
-  const linkFor = (serverId: string): string | undefined => {
+  const linkFor = (serverId: string): string => {
     const domain = ctx.settings.get().panelDomain;
-    if (!domain) return undefined;
+    if (!domain) return '';
     const slug = stored()[serverId]?.slug ?? safeSlug(serverId);
-    return slug ? personalLink(domain, slug) : undefined;
+    return slug ? personalLink(domain, slug) : '';
+  };
+  const mcStored = (): Record<string, Partial<MorniCraftSettings>> =>
+    ctx.settings.getValue<Record<string, Partial<MorniCraftSettings>>>(MORNICRAFT_KEY) ?? {};
+  const settingsOf = (serverId: string): MorniCraftSettings => withDefaults(mcStored()[serverId]);
+  /** The plugin, its config, and the old plugins it replaces switched off. */
+  const equip = (serverId: string): void => {
+    const dir = servers.dir(serverId);
+    installMorniCraft(dir);
+    const retired = retireReplacedPlugins(dir);
+    if (retired.length)
+      servers.note(serverId, `Durch MorniCraft ersetzt und ausgeschaltet: ${retired.join(', ')}`);
+    writeMorniCraftConfig(dir, settingsOf(serverId), {
+      language: locale(),
+      serverName: servers.row(serverId).name,
+      timezone: ctx.settings.get().timezone,
+      link: linkFor(serverId),
+    });
   };
   const safeSlug = (serverId: string): string | undefined => {
     try {
@@ -205,14 +241,8 @@ export function createCraftAttackService(
     writePropertiesFile(dir, { ...CRAFT_ATTACK_PROPERTIES, motd: `§f${row.name}${MOTD_SUFFIX}` });
     const level = readPropertiesFile(dir).values['level-name'] || 'world';
     writeSpawnPack(path.join(dir, path.basename(level)));
-    // The start elytra's settings, before the plugin first starts (it keeps an existing file and fills in the rest).
-    const elytraConfig = path.join(dir, 'plugins', ELYTRA_FOLDER, 'config.yml');
-    if (!fs.existsSync(elytraConfig)) {
-      fs.mkdirSync(path.dirname(elytraConfig), { recursive: true });
-      fs.writeFileSync(elytraConfig, spawnElytraConfig(path.basename(level)));
-    }
     setPublic(serverId, { enabled: true });
-    writeHelpFiles(dir, locale(), linkFor(serverId));
+    equip(serverId);
   };
 
   /**
@@ -246,6 +276,9 @@ export function createCraftAttackService(
       (await Promise.all(corners.map((c) => ask(`execute if loaded ${c}`)))).every((r) => PASSED.test(r));
     await waitUntil(loaded, LOAD_WAIT_MS);
     await ask(`execute positioned ${spot.x} ${SPAWN_Y} ${spot.z} run function craftattack:build`);
+    // Later datapack versions repair this island where it really stands.
+    ctx.settings.setValue(SPOTS_KEY, { ...spots(), [serverId]: spot });
+    writeSpawnPack(worldOf(serverId), spot);
     await ask(`forceload remove ${box}`);
     servers.note(
       serverId,
@@ -259,8 +292,6 @@ export function createCraftAttackService(
   const pregenerate: CraftAttackService['pregenerate'] = async (serverId) => {
     const spot = await buildSpawn(serverId);
     if (spot) await servers.command(serverId, `chunky center ${spot.x} ${spot.z}`, null);
-    // EssentialsX wrote its config on this first start: let players use /home, /tpa … and reload it.
-    if (openPlayerCommands(servers.dir(serverId))) await servers.command(serverId, 'essentials reload', null);
     await servers.command(serverId, `chunky radius ${CRAFT_ATTACK_PREGEN_RADIUS}`, null);
     await servers.command(serverId, 'chunky start', null);
     servers.note(
@@ -346,15 +377,6 @@ export function createCraftAttackService(
     };
   };
 
-  /** Older setups let the start elytra work in the whole column under the island, down to the ground. */
-  const startElytraOnlyAtSpawn = (dir: string): void => {
-    const file = path.join(dir, 'plugins', ELYTRA_FOLDER, 'config.yml');
-    if (!fs.existsSync(file)) return;
-    const text = fs.readFileSync(file, 'utf8');
-    if (text.includes(ELYTRA_ANYWHERE))
-      fs.writeFileSync(file, text.replace(ELYTRA_ANYWHERE, ELYTRA_AT_SPAWN));
-  };
-
   const worldOf = (serverId: string): string => {
     const dir = servers.dir(serverId);
     const level = readPropertiesFile(dir).values['level-name'] || 'world';
@@ -368,19 +390,58 @@ export function createCraftAttackService(
     }
   };
 
-  // Craft Attack servers get the newest datapack before each start (it repairs older islands once and never builds
-  // anything twice), the in-game help (/info, /motd, /rules) and the rights for players to use the commands.
+  const morniCraft: CraftAttackService['morniCraft'] = (serverId) => {
+    const active = isCraftAttack(serverId);
+    return {
+      active,
+      slug: active ? publicSetting(serverId).slug : null,
+      settings: settingsOf(serverId),
+      pluginAvailable: morniCraftJar() !== null,
+    };
+  };
+
+  const setMorniCraft: CraftAttackService['setMorniCraft'] = async (serverId, next) => {
+    if (!isCraftAttack(serverId)) throw badRequest('mornicraft_inactive');
+    ctx.settings.setValue(MORNICRAFT_KEY, { ...mcStored(), [serverId]: next });
+    equip(serverId);
+    if (servers.live(serverId).state === 'running') {
+      await servers.command(serverId, 'mornicraft reload', null).catch(() => undefined);
+    }
+    return morniCraft(serverId);
+  };
+
+  // MorniCraft servers get the newest datapack before each start (it repairs older islands once and never builds
+  // anything twice), the newest plugin and its config.
   servers.onBeforeStart((serverId) => {
     try {
       if (!isCraftAttack(serverId)) return;
-      writeSpawnPack(worldOf(serverId));
-      writeHelpFiles(servers.dir(serverId), locale(), linkFor(serverId));
-      openPlayerCommands(servers.dir(serverId));
-      startElytraOnlyAtSpawn(servers.dir(serverId));
+      writeSpawnPack(worldOf(serverId), spots()[serverId]);
+      equip(serverId);
     } catch (err) {
-      ctx.log.warn({ err, serverId }, 'craft attack datapack update failed');
+      ctx.log.warn({ err, serverId }, 'mornicraft update before start failed');
     }
   });
+
+  // After a panel update: plugin and config are in place at once (the plugin itself loads at the next restart).
+  setTimeout(() => {
+    // The panel may be shutting down by now (tests start and stop it quickly): then there is nothing to do.
+    const ids = (() => {
+      try {
+        return ctx.db.select({ id: serverTable.id }).from(serverTable).all();
+      } catch {
+        return [];
+      }
+    })();
+    ids
+      .filter((row) => isCraftAttack(row.id))
+      .forEach((row) => {
+        try {
+          equip(row.id);
+        } catch (err) {
+          ctx.log.warn({ err, serverId: row.id }, 'mornicraft refresh failed');
+        }
+      });
+  }, REFRESH_DELAY_MS).unref();
 
   return {
     fitVersion,
@@ -391,5 +452,7 @@ export function createCraftAttackService(
     publicStats,
     playerCommands,
     isCraftAttack,
+    morniCraft,
+    setMorniCraft,
   };
 }

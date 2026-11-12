@@ -3,16 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * The Craft Attack spawn: a floating island high above the world, built by a datapack on the world's first start.
+ * The MorniCraft spawn: a floating island high above the sea, built by a datapack when the panel says where.
  *
  * - The island: grass on top, rock below that narrows to a rough point, with ores, glowing spots, dripstone and
- *   hanging lanterns underneath; five small islets float around it.
- * - On top: a round plaza with a fountain whose column carries a beacon (a green beam visible from far away) and
- *   water running down its sides; four paths lead to wooden launch decks ("Absprung") that stick out over the edge –
- *   from there players jump and glide down with the start elytra (the SpawnElytra plugin: double jump to glide,
- *   F / sneak to boost, no fall damage). Between the paths: a lookout tower, a pavilion, a cherry grove and a pond
- *   with a campfire; a flowering azalea hedge runs round the edge, lamps everywhere (and invisible light blocks, so
- *   no monsters spawn up there).
+ *   hanging lanterns underneath; five small islets and a hot-air balloon float around it.
+ * - On top: a round plaza with a fountain in three tiers (basin, bowl with four spouts, a glowing crown with four
+ *   streams); four paths lead to wooden launch decks ("Absprung") that stick out over the edge – from there players
+ *   glide down with the start elytra (the MorniCraft plugin: double jump to glide, F / sneak to boost, no fall
+ *   damage). Between the paths: a lookout tower, a pavilion, a cherry grove and a pond with a campfire; a flowering
+ *   azalea hedge runs round the edge, lamps everywhere (and invisible light blocks, so no monsters spawn up there).
  *
  * Only commands that exist unchanged since 1.20.5 (fill, setblock, forceload, schedule, setworldspawn, scoreboard);
  * a single unknown command would stop a whole function from loading. Game rules whose name changed between
@@ -287,41 +286,7 @@ export function topCommands(): string[] {
     // A compass star in the paving.
     ...DIRECTIONS.flatMap((d) => range(6, 10).map((u) => onPath(d, u, 0, -1, 'polished_deepslate'))),
   ];
-  const fountain = [
-    ...disc(-1, BASIN, 'stone_bricks'),
-    ...disc(-1, BASIN - 1, 'prismarine_bricks'),
-    // Rims of full blocks: walls can hold water themselves (waterlogged) and let it run out over the plaza.
-    ...disc(0, BASIN, RIM),
-    ...disc(0, BASIN - 1, 'water'),
-    ...[
-      [3, 0],
-      [-3, 0],
-      [0, 3],
-      [0, -3],
-    ].map(([x = 0, z = 0]) => set(x, -1, z, 'sea_lantern')),
-    // The column: quartz with glowing bands, an upper bowl that spills water all round into the basin,
-    // iron on top for the beacon, a green beam through the glass.
-    fill(-1, 0, -1, 1, 8, 1, 'quartz_bricks'),
-    fill(-1, 1, -1, 1, 1, 1, 'sea_lantern'),
-    fill(-1, 6, -1, 1, 6, 1, 'sea_lantern'),
-    ...disc(3, 3.6, 'stone_bricks'),
-    ...disc(3, 2.2, 'prismarine_bricks'),
-    fill(-1, 3, -1, 1, 3, 1, 'quartz_bricks'),
-    // A rim round the upper bowl, so its water stays in (it used to spill over the whole plaza).
-    ...disc(4, 3.6, RIM),
-    ...disc(4, 2.6, 'water'),
-    fill(-1, 4, -1, 1, 4, 1, 'quartz_bricks'),
-    fill(-1, 8, -1, 1, 8, 1, 'chiseled_quartz_block'),
-    fill(-1, 9, -1, 1, 9, 1, 'iron_block'),
-    set(0, 10, 0, 'beacon'),
-    set(0, 11, 0, 'lime_stained_glass'),
-    ...[
-      [-1, -1],
-      [1, -1],
-      [-1, 1],
-      [1, 1],
-    ].map(([x = 0, z = 0]) => set(x, 10, z, 'end_rod')),
-  ];
+  const fountain = fountainCommands();
   const plazaLamps = range(0, 7).flatMap((i) => {
     const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
     return lampPost(
@@ -545,7 +510,108 @@ const TOWER_LIGHTS: readonly (readonly [number, number, number, Block])[] = [
 const TOWER_X = -15;
 const TOWER_Z = 15;
 
-/** The fountain's rims: full blocks, which (unlike walls) can never hold water. */
+/**
+ * The fountain in the middle of the plaza: a wide round basin, a chalice-shaped bowl on a pedestal with four
+ * spouts pouring into the basin, and a small crown with a glowing core from which four thin streams fall into the
+ * bowl. Light quartz, prismarine floors with sea lanterns under the water.
+ *
+ * Water never runs out: everything next to water is a full block (stairs, slabs, walls or lanterns could take on
+ * water and pass it on), and every stream falls straight down into a basin – falling water stops on still water.
+ */
+const F_RIM: Block = 'quartz_bricks';
+const F_FLOOR: Block = 'smooth_quartz';
+const F_PILLAR: Block = 'quartz_pillar';
+const F_ACCENT: Block = 'chiseled_quartz_block';
+const F_WATER_FLOOR: Block = 'dark_prismarine';
+const BOWL_Y = 3;
+const BOWL_R = 3.6;
+const CROWN_Y = 7;
+/** Spouts and streams: the four directions. */
+const CARDINAL = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+] as const;
+/** Posts with a light round the rim: eight, evenly round the basin, clear of the streams. */
+const RIM_POSTS = [
+  [5, 2],
+  [2, 5],
+  [-2, 5],
+  [-5, 2],
+  [-5, -2],
+  [-2, -5],
+  [2, -5],
+  [5, -2],
+] as const;
+/** Lily pads on the basin, between the streams and outside the bowl's shadow. */
+const LILIES = [
+  [3, 3],
+  [-3, 3],
+  [3, -3],
+  [-3, -3],
+] as const;
+
+export function fountainCommands(): string[] {
+  const basin = [
+    ...disc(-1, BASIN, F_RIM),
+    ...disc(-1, BASIN - 1, F_WATER_FLOOR),
+    ...range(0, 7).map((i) => {
+      const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
+      return set(Math.round(Math.cos(angle) * 3.4), -1, Math.round(Math.sin(angle) * 3.4), 'sea_lantern');
+    }),
+    ...disc(0, BASIN, F_RIM),
+    ...disc(0, BASIN - 1, 'water'),
+    // Posts on the rim with a light on top, between the spouts' streams.
+    ...RIM_POSTS.flatMap(([x, z]) => [set(x, 1, z, F_ACCENT), set(x, 2, z, 'end_rod')]),
+    ...LILIES.map(([x, z]) => set(x, 1, z, 'lily_pad')),
+  ];
+  const pedestal = [fill(-1, 0, -1, 1, 1, 1, F_PILLAR)];
+  // The bowl: floor, rim, water; in each direction one rim block is water – a spout pouring into the basin.
+  const bowl = [
+    // Narrower underneath, the rim sticks out as a lip: a chalice. The spouts sit on the lip, so their water
+    // falls straight down into the basin.
+    ...disc(1, 1.9, F_FLOOR),
+    ...disc(BOWL_Y - 1, BOWL_R - 1, F_FLOOR),
+    ...disc(BOWL_Y, BOWL_R, F_RIM),
+    ...disc(BOWL_Y, BOWL_R - 1, 'water'),
+    ...CARDINAL.map(([dx, dz]) => set(dx * 3, BOWL_Y, dz * 3, 'water')),
+    set(0, BOWL_Y - 1, 0, 'sea_lantern'),
+    fill(-1, BOWL_Y, -1, 1, BOWL_Y, 1, F_ACCENT),
+  ];
+  // The crown: a slim column, a small top with a glowing core; four streams fall from it into the bowl.
+  const crown = [
+    fill(0, BOWL_Y + 1, 0, 0, CROWN_Y - 2, 0, F_PILLAR),
+    fill(-1, CROWN_Y - 1, -1, 1, CROWN_Y - 1, 1, F_FLOOR),
+    fill(-1, CROWN_Y, -1, 1, CROWN_Y, 1, F_RIM),
+    ...CARDINAL.map(([dx, dz]) => set(dx, CROWN_Y, dz, 'water')),
+    set(0, CROWN_Y, 0, 'sea_lantern'),
+    set(0, CROWN_Y + 1, 0, F_ACCENT),
+    set(0, CROWN_Y + 2, 0, 'end_rod'),
+  ];
+  return [...basin, ...pedestal, ...bowl, ...crown];
+}
+
+/** Old islands: the old fountain (a column with a beacon) makes way for the new one. */
+const OLD_FOUNTAIN_HALF = 6;
+const OLD_FOUNTAIN_HEIGHT = 14;
+
+export function fixFountainCommands(): string[] {
+  return [
+    fill(
+      -OLD_FOUNTAIN_HALF,
+      0,
+      -OLD_FOUNTAIN_HALF,
+      OLD_FOUNTAIN_HALF,
+      OLD_FOUNTAIN_HEIGHT,
+      OLD_FOUNTAIN_HALF,
+      'air',
+    ),
+    ...fountainCommands(),
+  ];
+}
+
+/** The fountain's rims of older islands: full blocks, which (unlike walls) can never hold water. */
 const RIM: Block = 'chiseled_stone_bricks';
 /** Half-size of the box round the fountain whose walls become full blocks (the plaza lamps stand further out). */
 const RIM_BOX = 6;
@@ -657,33 +723,36 @@ export function plazaCommands(): string[] {
   return [...islandCommands(), ...topCommands()];
 }
 
-const AREA = '-64 -64 64 64';
+/** Where an island stands (x/z of its middle). Islands of older versions stand at 0/0. */
+export interface IslandSpot {
+  readonly x: number;
+  readonly z: number;
+}
+const ORIGIN: IslandSpot = { x: 0, z: 0 };
+/** Half the area kept loaded while a repair runs. */
+const AREA_HALF = 64;
+const areaOf = ({ x, z }: IslandSpot): string =>
+  `${x - AREA_HALF} ${z - AREA_HALF} ${x + AREA_HALF} ${z + AREA_HALF}`;
 
-/** Rainbow over the island: seven bands of glass in an arch, standing north of the beacon (its beam stays green). */
-const RAINBOW = ['red', 'orange', 'yellow', 'lime', 'light_blue', 'blue', 'purple'] as const;
-const RAINBOW_INNER = 23;
-const RAINBOW_Z = -12;
-const RAINBOW_DEPTH = 2;
+/** Older islands had a rainbow of glass north of the plaza: it goes again (Philip did not like it). */
+const OLD_RAINBOW = ['red', 'orange', 'yellow', 'lime', 'light_blue', 'blue', 'purple'] as const;
+const OLD_RAINBOW_REACH = 31;
+const OLD_RAINBOW_TOP = 32;
+const OLD_RAINBOW_Z = -12;
 
-function rainbowCommands(): string[] {
-  return RAINBOW.flatMap((colour, band) => {
-    const r = RAINBOW_INNER + (RAINBOW.length - 1 - band);
-    const height = (x: number): number => Math.round(Math.sqrt(Math.max(0, r * r - x * x)));
-    // One column per x, from this height to the next one, so the band has no gaps on its steep ends.
-    return range(-r, r).map((x) => {
-      const y = height(x);
-      const next = Math.abs(x) === r ? 0 : height(x + Math.sign(x || 1));
-      return fill(
-        x,
-        Math.min(y, next),
-        RAINBOW_Z,
-        x,
-        Math.max(y, next),
-        RAINBOW_Z - RAINBOW_DEPTH + 1,
-        `${colour}_stained_glass`,
-      );
-    });
-  });
+export function removeRainbowCommands(): string[] {
+  return OLD_RAINBOW.map((colour) =>
+    fill(
+      -OLD_RAINBOW_REACH,
+      0,
+      OLD_RAINBOW_Z - 1,
+      OLD_RAINBOW_REACH,
+      OLD_RAINBOW_TOP,
+      OLD_RAINBOW_Z,
+      'air',
+      `replace ${colour}_stained_glass`,
+    ),
+  );
 }
 
 /** A hot-air balloon floating beside the island: striped envelope, ropes, a basket with a lantern. */
@@ -721,41 +790,35 @@ function balloonCommands(): string[] {
 
 /** Extras that make the spawn stand out (also added to islands of older versions once). */
 export function extrasCommands(): string[] {
-  return [...rainbowCommands(), ...balloonCommands()];
+  return balloonCommands();
 }
 
 /** A marker entity at the spawn point: the protection follows it wherever the island was built. */
 const CENTER_TAG = 'mh_spawn_center';
-/** Who is this close to the spawn point plays in adventure mode (nothing can be broken there). */
-const PROTECT_RADIUS = 55;
 const summonCenter = `summon marker ~ ~ ~${SPAWN_Z} {Tags:["${CENTER_TAG}"]}`;
 
-/** One-time repairs of islands built by older versions: a flag, and where the commands run. */
-const REPAIRS: readonly { readonly name: string; readonly at: string }[] = [
-  { name: 'water', at: `0 ${SPAWN_Y} 0` },
-  { name: 'hills', at: `0 ${SPAWN_Y} 0` },
-  // Islands of older versions stand at 0/0 and have no marker yet.
-  { name: 'center', at: `0 ${SPAWN_Y} 0` },
-  { name: 'extras', at: `0 ${SPAWN_Y} 0` },
-];
+/** One-time repairs of islands built by older versions (each has a flag and runs at the island's middle). */
+const REPAIRS: readonly string[] = ['water', 'hills', 'center', 'extras', 'rainbow', 'fountain'];
 
 /** The datapack's files (path relative to the pack folder → content). */
-export function spawnPackFiles(): Record<string, string> {
+export function spawnPackFiles(spot: IslandSpot = ORIGIN): Record<string, string> {
+  const area = areaOf(spot);
+  const middle = `${spot.x} ${SPAWN_Y} ${spot.z}`;
   const load = [
     'scoreboard objectives add mh_craftattack dummy',
     // Islands of older versions: each repair runs once.
-    ...REPAIRS.flatMap(({ name }) => [
-      `execute if score #built mh_craftattack matches 1 unless score #${name} mh_craftattack matches 1 run forceload add ${AREA}`,
+    ...REPAIRS.flatMap((name) => [
+      `execute if score #built mh_craftattack matches 1 unless score #${name} mh_craftattack matches 1 run forceload add ${area}`,
       `execute if score #built mh_craftattack matches 1 unless score #${name} mh_craftattack matches 1 run schedule function ${NAMESPACE}:fix_${name} ${BUILD_DELAY_TICKS}t`,
     ]),
   ];
   const repairs = Object.fromEntries(
-    REPAIRS.map(({ name, at }) => [
+    REPAIRS.map((name) => [
       `fix_${name}`,
       [
-        `execute positioned ${at} run function ${NAMESPACE}:${name}`,
+        `execute positioned ${middle} run function ${NAMESPACE}:${name}`,
         `scoreboard players set #${name} mh_craftattack 1`,
-        `forceload remove ${AREA}`,
+        `forceload remove ${area}`,
       ],
     ]),
   );
@@ -767,20 +830,17 @@ export function spawnPackFiles(): Record<string, string> {
     summonCenter,
     `function #${NAMESPACE}:rules`,
     'scoreboard players set #built mh_craftattack 1',
-    ...REPAIRS.map(({ name }) => `scoreboard players set #${name} mh_craftattack 1`),
+    ...REPAIRS.map((name) => `scoreboard players set #${name} mh_craftattack 1`),
   ];
-  // Every tick: survival players on the spawn island play in adventure mode (no breaking, no building – also for
-  // operators); leaving the area gives survival back. Creative and spectator stay as they are.
+  // The MorniCraft plugin protects the spawn now. Earlier versions put players there into adventure mode: whoever
+  // still carries that mark gets survival back once, then the tag is gone.
   const tick = [
-    `execute at @e[type=marker,tag=${CENTER_TAG}] run gamemode adventure @a[gamemode=survival,distance=..${PROTECT_RADIUS}]`,
-    `execute at @e[type=marker,tag=${CENTER_TAG}] run tag @a[gamemode=adventure,distance=..${PROTECT_RADIUS}] add mh_spawn`,
-    // Away from the spawn (or in another dimension, where the marker is not): survival again.
-    `execute as @a[tag=mh_spawn,gamemode=adventure] at @s unless entity @e[type=marker,tag=${CENTER_TAG},distance=..${PROTECT_RADIUS}] run gamemode survival @s`,
-    `tag @a[tag=mh_spawn,gamemode=!adventure] remove mh_spawn`,
+    'gamemode survival @a[tag=mh_spawn,gamemode=adventure]',
+    'tag @a[tag=mh_spawn] remove mh_spawn',
   ];
   const meta = {
     pack: {
-      description: 'MorniHosting Craft Attack: Spawn',
+      description: 'MorniHosting MorniCraft: Spawn',
       pack_format: PACK_FORMAT_OLD,
       supported_formats: { min_inclusive: PACK_FORMAT_OLD, max_inclusive: PACK_FORMAT_MAX },
       min_format: PACK_FORMAT_OLD,
@@ -808,6 +868,8 @@ export function spawnPackFiles(): Record<string, string> {
     hills: fixHillsCommands(),
     center: [summonCenter],
     extras: extrasCommands(),
+    rainbow: removeRainbowCommands(),
+    fountain: fixFountainCommands(),
     rules_old: ['gamerule spawnRadius 0'],
     rules_new: ['gamerule respawn_radius 0'],
   };
@@ -826,33 +888,11 @@ export function spawnPackFiles(): Record<string, string> {
 }
 
 /** Puts the datapack into the world folder; the server loads it when it creates the world. */
-export function writeSpawnPack(worldDir: string): void {
+export function writeSpawnPack(worldDir: string, spot: IslandSpot = ORIGIN): void {
   const root = path.join(worldDir, 'datapacks', SPAWN_PACK_DIR);
-  Object.entries(spawnPackFiles()).forEach(([file, content]) => {
+  Object.entries(spawnPackFiles(spot)).forEach(([file, content]) => {
     const target = path.join(root, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, content);
   });
-}
-
-/**
- * The start elytra (SpawnElytra plugin): only the settings that differ from its defaults; it fills in the rest.
- * Flight starts anywhere above or below the island (players falling off can still glide), no tracking, no update
- * notices (the panel keeps plugins up to date).
- */
-export function spawnElytraConfig(world: string): string {
-  return [
-    '# Set up by MorniHosting for the Craft Attack spawn (floating island).',
-    `world: ${world}`,
-    'spawnRadius: 45',
-    'ignoreYInSpawnRadius: false',
-    'spawnAreaMode: circle',
-    'boostEnabled: true',
-    'multiplyValue: 4',
-    'boostDirection: forward',
-    'totalBoosts: 1',
-    'enableMetrics: false',
-    'checkForUpdates: false',
-    '',
-  ].join('\n');
 }
