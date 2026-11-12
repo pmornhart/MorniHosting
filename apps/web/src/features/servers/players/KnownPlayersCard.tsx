@@ -51,7 +51,7 @@ export function KnownPlayersCard({ serverId, live }: { serverId: string; live: s
               to={p.uuid}
               className="group flex min-w-0 items-center gap-3 rounded-[10px] border border-transparent bg-secondary/40 px-3 py-2 hover:border-primary/40 hover:bg-secondary"
             >
-              <PlayerHead name={p.name} className="size-8 shrink-0 rounded-[6px]" />
+              <PlayerHead name={p.name} skin={p.uuid} className="size-8 shrink-0 rounded-[6px]" />
               <span className="grid min-w-0 flex-1">
                 <span className="flex items-center gap-2">
                   <b className="truncate text-[14px] font-semibold">{p.name}</b>
