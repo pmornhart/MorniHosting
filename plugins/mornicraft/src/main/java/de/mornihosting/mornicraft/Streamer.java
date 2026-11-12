@@ -117,6 +117,7 @@ final class Streamer {
         String option = WORDS.get(word);
         if (!d.streamerOff.remove(option)) d.streamerOff.add(option);
         plugin.store().save(p.getUniqueId(), d);
+        plugin.ranks().paintAll();
       } else {
         p.sendMessage(plugin.ui().fail("usage", Ui.v("usage", "/streamer [an|aus|ip|koordinaten|nachrichten|live]")));
         return;
@@ -137,6 +138,7 @@ final class Streamer {
       Bukkit.getOnlinePlayers().stream().filter(o -> !o.equals(p)).forEach(o -> o.sendMessage(note));
     }
     plugin.sidebar().update();
+    plugin.ranks().paintAll();
   }
 
   /** The menu: the main switch and each part, all clickable (Bedrock: a form with buttons). */
