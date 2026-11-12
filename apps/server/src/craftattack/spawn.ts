@@ -430,7 +430,7 @@ const OLD_FLAG_WIDTH = 13;
 const FLAG_MARGIN = 1;
 export function flagCommands(x: number, y: number, z: number): string[] {
   const top = FLAG_M.length - 1;
-  const width = FLAG_M[0].length + 2 * FLAG_MARGIN;
+  const width = (FLAG_M[0] ?? '').length + 2 * FLAG_MARGIN;
   const field: Voxel[] = FLAG_M.flatMap((row, r) =>
     range(0, width - 1).map((c): Voxel => {
       const cell = row[c - FLAG_MARGIN];
