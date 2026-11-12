@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { formatMemoryMb, versionLabel } from '@/lib/format';
+import { useServerMemoryCap } from '@/lib/my-quota';
 import { cn } from '@/lib/utils';
 import { hostQuery } from '@/features/dashboard/HostStrip';
 import { useServerAction } from '@/features/dashboard/ServerCard';
@@ -110,6 +111,7 @@ export function GeneralCard({ server }: { server: ServerDetail }): ReactElement 
   const [pendingRestart, setPendingRestart] = useState(false);
   const netbird = useAddressAutomation();
   const isAdmin = useSession().me.user.isAdmin;
+  const memoryCap = useServerMemoryCap();
   const managed = server.netbird !== null;
   const managedHint = netbird?.via === 'dns' ? t('netbirdAuto.managedDns') : t('netbirdAuto.managed');
   const { data: host } = useQuery(hostQuery);
@@ -134,7 +136,14 @@ export function GeneralCard({ server }: { server: ServerDetail }): ReactElement 
   const patch = patchOf(server, draft);
   const changed = Object.keys(patch).length > 0;
   const hostTotal = host?.memoryTotalMb ?? FALLBACK_HOST_MB;
-  const maxMemory = Math.max(MEMORY_SLIDER_MIN_MAX_MB, Math.min(MEMORY_CAP_MB, hostTotal), server.memoryMb);
+  // Up to the person's RAM per server (normally 16 GB; admins: no limit). A server an admin made bigger
+  // keeps its RAM: it can be lowered, not raised further.
+  const capped = memoryCap !== null && memoryCap < Math.min(MEMORY_CAP_MB, hostTotal);
+  const maxMemory = Math.max(
+    MEMORY_SLIDER_MIN_MAX_MB,
+    Math.min(MEMORY_CAP_MB, hostTotal, memoryCap ?? MEMORY_CAP_MB),
+    server.memoryMb,
+  );
   const java = SOFTWARE[server.software].edition === 'java' && !SOFTWARE[server.software].proxy;
   const downgrade = compareMcVersions(draft.version, server.version) < 0;
   const versionList = useMemo(() => {
@@ -192,6 +201,7 @@ export function GeneralCard({ server }: { server: ServerDetail }): ReactElement 
             {t('settings.general.memoryHint', {
               recommended: formatMemoryMb(recommendedMemoryMb(server.software)),
             })}
+            {capped ? ` ${t('order.memoryCap', { ram: formatMemoryMb(memoryCap) })}` : null}
           </p>
         </div>
 

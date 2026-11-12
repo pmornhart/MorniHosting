@@ -33,7 +33,11 @@ record Settings(
     boolean endermanGrief,
     List<String> rules,
     List<Group> groups,
-    List<Zone> zones) {
+    List<Zone> zones,
+    List<String> streamerHide,
+    boolean graves,
+    int gravePrivateMinutes,
+    boolean tabStats) {
 
   /** A round spot outside the spawn circle that is protected like it: x/z relative to the world spawn. */
   record Zone(int x, int z, int radius) {}
@@ -73,7 +77,12 @@ record Settings(
         c.getBoolean("enderman-grief", true),
         c.getStringList("rules"),
         groups,
-        c.getMapList("zones").stream().map(Settings::zone).filter(z -> z.radius() > 0).toList());
+        c.getMapList("zones").stream().map(Settings::zone).filter(z -> z.radius() > 0).toList(),
+        // The server's own names (panel domain, server address …): hidden in streamer mode.
+        c.getStringList("streamer.hide"),
+        c.getBoolean("graves", true),
+        Math.max(0, c.getInt("grave-private-minutes", 15)),
+        c.getBoolean("tab-stats", true));
   }
 
   private static int number(Object o) {

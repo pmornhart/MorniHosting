@@ -152,6 +152,8 @@ export interface QuotaGuard {
     serverId: string | null,
     next: { memoryMb: number; cpuLimit: number | null; diskLimitMb: number | null },
   ) => void;
+  /** Throws when one server would get more RAM than the person may give a server (admins: no limit). */
+  readonly checkServerMemory: (person: UserRow, serverId: string | null, memoryMb: number) => void;
   /** The person a server counts against (its owner), or null for admins' servers. */
   readonly ownerOf: (serverId: string) => UserRow | null;
 }
@@ -563,7 +565,13 @@ export function createServerService(ctx: AppContext): ServerService {
       params: { message },
       excerpt: rt(id).logs.slice(-CRASH_EXCERPT_LINES),
     };
-    db.update(servers).set({ crash }).where(eq(servers.id, id)).run();
+    try {
+      db.update(servers).set({ crash }).where(eq(servers.id, id)).run();
+    } catch (dbErr) {
+      // The panel is shutting down (database closed) while a start was still preparing: nothing left to record.
+      log.debug({ err: dbErr, id }, 'start failed during shutdown');
+      return;
+    }
     panelLog(id, `Start fehlgeschlagen: ${message}`);
     setState(id, 'crashed');
     events.emit('server.crashed', { serverId: id, crash });
@@ -1251,6 +1259,8 @@ export function createServerService(ctx: AppContext): ServerService {
       // Only the owner's own changes are held to the quota; an admin may give more.
       const owner = quota?.ownerOf(id);
       if (owner && !acting?.isAdmin) quota?.check(owner, id, { memoryMb, cpuLimit, diskLimitMb });
+      // A server without owner (an admin's) changed by someone else: their own RAM-per-server limit applies.
+      else if (!owner && acting && !acting.isAdmin) quota?.checkServerMemory(acting, id, memoryMb);
       const next = {
         name: patch.name ?? current.name,
         memoryMb,

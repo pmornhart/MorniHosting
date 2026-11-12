@@ -650,6 +650,7 @@
     "quota_memory": "Nicht genug Arbeitsspeicher im Kontingent (schon vergeben: {{used}} MB von {{limit}} MB).",
     "quota_cpus": "Nicht genug CPU-Kerne im Kontingent (schon vergeben: {{used}} von {{limit}}).",
     "quota_disk": "Nicht genug Festplatte im Kontingent (schon vergeben: {{used}} MB von {{limit}} MB).",
+    "quota_server_memory": "Ein Server darf höchstens {{limit}} MB Arbeitsspeicher haben. Mehr kann nur ein Admin freigeben.",
     "disk_limit_reached": "Der Server braucht {{used}} MB und darf nur {{limit}} MB haben. Lösch alte Welten oder Backups, oder ein Admin gibt mehr Platz.",
     "stalwart_unreachable": "Stalwart antwortet nicht. Stimmt die Adresse, und kommt das Panel dorthin (Heimnetz, Firewall)?",
     "stalwart_login": "Stalwart hat die Anmeldung abgelehnt: Admin-Benutzer oder Passwort stimmen nicht.",
@@ -2121,6 +2122,7 @@
     "custom": "Benutzerdefiniert",
     "customize": "Selbst einstellen",
     "customText": "Du brauchst eine andere Größe? Stell den Arbeitsspeicher selbst ein.",
+    "memoryCap": "Mehr als {{ram}} pro Server kann nur ein Admin freigeben.",
     "recommendation": "Für {{software}} empfehlen wir mindestens {{ram}}. Die Spielerzahl ist ein Richtwert – viele Mods brauchen mehr.",
     "software": "Software & Version",
     "softwareText": "Die Server-Software bestimmt, ob Plugins oder Mods laufen. Nicht sicher? Paper passt für die meisten.",
@@ -2782,7 +2784,8 @@
       "servers": "Server",
       "memoryMb": "Arbeitsspeicher (GB)",
       "diskMb": "Festplatte (GB)",
-      "cpus": "CPU-Kerne"
+      "cpus": "CPU-Kerne",
+      "serverMemoryMb": "RAM pro Server (GB)"
     },
     "unlimited": "unbegrenzt",
     "save": "Speichern",
@@ -2797,7 +2800,10 @@
     "nobody": "Noch keine Benutzer außer Admins.",
     "usedOf": "{{used}} von {{limit}}",
     "usedNoLimit": "{{used}} · unbegrenzt",
-    "diskUsed": "Belegt gerade wirklich: {{used}}"
+    "diskUsed": "Belegt gerade wirklich: {{used}}",
+    "serverMemoryHint": "So viel Arbeitsspeicher bekommt ein einzelner Server höchstens. Gilt nicht für Admins.",
+    "serverMemoryLimit": "Pro Server höchstens {{limit}} RAM",
+    "serverMemoryNoLimit": "RAM pro Server: unbegrenzt"
   },
   "serverLimits": {
     "title": "Grenzen (nur Admins)",
@@ -3268,7 +3274,8 @@
       "world": "Welt",
       "show": "Anzeige",
       "rules": "Regeln",
-      "ranks": "Ränge"
+      "ranks": "Ränge",
+      "graves": "Gräber"
     },
     "fields": {
       "tpa": "Teleport-Anfragen (/tpa)",
@@ -3288,7 +3295,10 @@
       "endermanGrief": "Endermen nehmen Blöcke mit",
       "welcome": "Begrüßung beim ersten Betreten",
       "sidebar": "Leiste rechts",
-      "showLink": "Link zur Befehls-Seite"
+      "showLink": "Link zur Befehls-Seite",
+      "tabStats": "Kills und Tode in der Tab-Liste",
+      "graves": "Gräber",
+      "gravePrivateMinutes": "Nur für den Toten"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – mit Knöpfen zum Annehmen",
@@ -3308,13 +3318,17 @@
       "endermanGrief": "Aus: Endermen lassen Blöcke liegen",
       "welcome": "Großer Titel und Karte – einmal pro Spieler",
       "sidebar": "Uhrzeit, Spielzeit, online, Ping, Befehle – jeder kann sie mit /leiste ausblenden",
-      "showLink": "In /info und der Begrüßung (braucht eine Panel-Domain)"
+      "showLink": "In /info und der Begrüßung (braucht eine Panel-Domain)",
+      "tabStats": "⚔ Kills und ☠ Tode neben jedem Namen",
+      "graves": "Wer stirbt, bekommt ein Grab mit Kopf, allen Sachen und Erfahrung – Rechtsklick holt alles zurück",
+      "gravePrivateMinutes": "So lange darf nur der Tote (und das Team) das Grab öffnen, danach alle"
     },
     "units": {
       "teleportDelay": "{{n}} s",
       "maxHomes": "{{n}}",
       "spawnRadius": "{{n}} Blöcke",
-      "elytraRadius": "{{n}} Blöcke"
+      "elytraRadius": "{{n}} Blöcke",
+      "gravePrivateMinutes": "{{n}} Min."
     },
     "rulesHint": "Eine Regel pro Zeile – erscheinen bei /rules.",
     "live": "Speichern gilt sofort, auch während der Server läuft.",
@@ -3363,7 +3377,8 @@
         "teleport": "Zu jedem teleportieren",
         "world": "Zeit und Wetter",
         "whitelist": "Whitelist verwalten",
-        "reload": "MorniCraft neu laden"
+        "reload": "MorniCraft neu laden",
+        "moderate": "Moderieren"
       },
       "permHints": {
         "build": "Spawn-Insel verändern",
@@ -3375,7 +3390,8 @@
         "teleport": "/tp",
         "world": "/time, /weather",
         "whitelist": "/whitelist add …",
-        "reload": "/mornicraft reload"
+        "reload": "/mornicraft reload",
+        "moderate": "Gefängnis, Stumm, Einfrieren, Team-Menü (Ducken + Rechtsklick)"
       },
       "playerCount_one": "{{count}} Spieler",
       "playerCount_other": "{{count}} Spieler",

@@ -135,12 +135,16 @@ describe('MorniCraft spawn, plugin and settings', () => {
     );
     expect(files['data/craftattack/function/fix_renew.mcfunction']).toContain('function craftattack:renew');
     const top = topCommands().join('\n');
-    // A white tower with a red roof and the flag (emerald with a white M, white-and-blue lozenges) …
+    // A white tower with a red roof and the flag (emerald with a white M – no lozenges any more) …
     expect(top).toContain('bricks');
     expect(top).not.toContain('lime_wool');
     const flag = flagCommands(0, 0, 0).join('\n');
     expect(flag).toContain('emerald_block');
-    expect(flag).toContain('light_blue_wool');
+    expect(flag).toContain('white_wool');
+    expect(flag).not.toContain('light_blue_wool');
+    // Older towers lose the lozenges (and the ladder gets a closed wall to hold on to).
+    expect(files['data/craftattack/function/flag.mcfunction']).toContain('air');
+    expect(files['data/craftattack/function/ladder.mcfunction']).toContain('ladder[facing=south]');
     // … a maypole, tulips, and each way out named in the paving in its own colour (O for Ost, E in English).
     expect(top).toContain('light_blue_wall_banner[facing=south]');
     expect(top).toContain('yellow_concrete');

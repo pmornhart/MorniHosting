@@ -162,3 +162,13 @@ ranks:
 
 # Rang-Abzeichen im Chat: Texturpaket (url + sha1) und pro Rang `badge: "<Zeichen>"`. Leer = Symbole.
 pack: { url: '', sha1: '' }
+
+# Gräber: wer stirbt, bekommt ein Grab mit allen Sachen und der Erfahrung (Rechtsklick öffnet es wie eine Truhe).
+graves: true
+# So viele Minuten darf nur der Tote (und das Team) das Grab öffnen, danach alle.
+grave-private-minutes: 15
+# Kills und Tode neben jedem Namen in der Tab-Liste.
+tab-stats: true
+# Streamer-Modus: Namen und Adressen dieses Servers, die zu ••• werden (MorniHosting trägt sie selbst ein).
+streamer:
+  hide: []

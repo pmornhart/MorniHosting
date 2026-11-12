@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Field } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/misc';
 import { confetti } from '@/lib/confetti';
+import { formatMemoryMb } from '@/lib/format';
+import { useServerMemoryCap } from '@/lib/my-quota';
 import { PriceWithCoupon } from './coupon';
 import { errorText } from '@/lib/query';
 import { placeOrder, RequestSent } from './order-submit';
@@ -36,6 +38,7 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
   const { data: servers = [] } = useQuery(serversQuery);
   const { data: host } = useQuery(hostQuery);
   const address = useAddressAutomation();
+  const memoryCap = useServerMemoryCap();
 
   const [gb, setGb] = useState<number | null>(null);
   const [version, setVersion] = useState<string | null>(null);
@@ -55,6 +58,9 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
   const name = displayName.trim() || subdomain.trim();
   const hostname = address && addressName ? `${addressName}.${address.domain}` : null;
   const hostTotalGb = host ? host.memoryTotalMb / MB_PER_GB : null;
+  // Packages above the person's RAM per server (normally 16 GB) cannot be picked; admins have no limit.
+  const overCap = (size: number): boolean => memoryCap !== null && size * MB_PER_GB > memoryCap;
+  const capText = memoryCap === null ? '' : t('order.memoryCap', { ram: formatMemoryMb(memoryCap) });
   const playersFor = (size: number): number =>
     Math.min(game.maxPlayers, Math.round(size * game.playersPerGb));
 
@@ -132,13 +138,14 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {game.packagesGb.map((size) => {
                 const selected = gb === size;
-                const tooBig = hostTotalGb !== null && size > hostTotalGb;
+                const tooBig = (hostTotalGb !== null && size > hostTotalGb) || overCap(size);
                 return (
                   <button
                     key={size}
                     type="button"
                     aria-pressed={selected}
                     disabled={tooBig}
+                    title={overCap(size) ? capText : undefined}
                     style={OWN_TEXT_COLOUR}
                     onClick={() => setGb(size)}
                     className={cn(
@@ -165,6 +172,9 @@ export function GameOrderPage({ game: id }: { game: GameId }): ReactElement {
             <p className="text-sm text-muted-foreground">
               {t(`games.${id}.memoryHint`, { gb: game.recommendedGb })}
             </p>
+            {game.packagesGb.some(overCap) ? (
+              <p className="text-sm text-muted-foreground">{capText}</p>
+            ) : null}
           </Section>
 
           <Section

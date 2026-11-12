@@ -127,10 +127,21 @@ final class Ranks implements Listener {
 
   @EventHandler
   public void onPack(PlayerResourcePackStatusEvent e) {
+    Player p = e.getPlayer();
     String status = e.getStatus().name();
-    UUID id = e.getPlayer().getUniqueId();
-    if (status.equals("SUCCESSFULLY_LOADED")) withPack.add(id);
-    else if (!status.equals("ACCEPTED") && !status.equals("DOWNLOADED")) withPack.remove(id);
+    UUID id = p.getUniqueId();
+    plugin.getLogger().info("Badge pack for " + p.getName() + ": " + status);
+    if (status.equals("ACCEPTED") || status.equals("DOWNLOADED")) return;
+    if (status.equals("SUCCESSFULLY_LOADED")) {
+      withPack.add(id);
+    } else {
+      withPack.remove(id);
+      // Say why the badges don't show: turned off in the server list, or the download didn't work.
+      if (status.equals("DECLINED")) p.sendMessage(plugin.ui().note("ℹ", Ui.SOFT, "pack.declined"));
+      else p.sendMessage(plugin.ui().fail("pack.failed", Ui.v("why", status)));
+    }
+    Scoreboard own = p.getScoreboard();
+    if (own != Bukkit.getScoreboardManager().getMainScoreboard()) paint(own, p);
   }
 
   static List<Rank> parse(List<Map<?, ?>> raw) {
@@ -220,12 +231,32 @@ final class Ranks implements Listener {
       r.permissions().forEach(node -> a.setPermission(node, true));
       granted.put(p.getUniqueId(), a);
     }
-    p.playerListName(r == null ? null : name(p));
+    // The tab list shows the rank through the teams (per viewer: badge or symbol), so no fixed list name.
+    p.playerListName(null);
+    listOrder(p, r == null ? 0 : ranks.size() - ranks.indexOf(r));
     p.updateCommands();
   }
 
-  /** The rank teams on a scoreboard: symbol before the name above the head, sorted by rank in the tab list. */
-  void paint(Scoreboard board) {
+  /** Paper 1.21.2+: higher ranks further up in the tab list. Older servers sort by the team names (mcr00, mcr01 …). */
+  private static void listOrder(Player p, int order) {
+    try {
+      p.getClass().getMethod("setPlayerListOrder", int.class).invoke(p, order);
+    } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
+      // Sorted by team name.
+    }
+  }
+
+  /** In front of a name in the tab list and above the head: the badge for viewers with the pack, else "♛ ". */
+  private Component teamPrefix(Rank r, Player viewer) {
+    if (viewer != null && !r.tag().isEmpty() && seesBadges(viewer)) return Component.text(r.tag() + " ", NamedTextColor.WHITE);
+    return r.prefix();
+  }
+
+  /**
+   * The rank teams on a scoreboard: badge or symbol before the name in the tab list and above the head, sorted by
+   * rank. Every player has a board of their own (see {@link Sidebar}), so each sees it as their game can show it.
+   */
+  void paint(Scoreboard board, Player viewer) {
     List<Rank> list = ranks;
     for (Team t : board.getTeams()) {
       String n = t.getName();
@@ -236,7 +267,7 @@ final class Ranks implements Listener {
       String n = TEAM + String.format("%02d", i);
       Team t = board.getTeam(n);
       if (t == null) t = board.registerNewTeam(n);
-      t.prefix(r.prefix());
+      t.prefix(teamPrefix(r, viewer));
       t.color(NamedTextColor.nearestTo(r.color()));
     }
     for (Player p : Bukkit.getOnlinePlayers()) {
@@ -263,9 +294,9 @@ final class Ranks implements Listener {
   /** The main scoreboard and every player's own one (the bar on the right). */
   void paintAll() {
     Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
-    paint(main);
+    paint(main, null);
     for (Player p : Bukkit.getOnlinePlayers()) {
-      if (p.getScoreboard() != main) paint(p.getScoreboard());
+      if (p.getScoreboard() != main) paint(p.getScoreboard(), p);
     }
   }
 
@@ -303,6 +334,8 @@ final class Ranks implements Listener {
     e.renderer((source, displayName, message, viewer) -> {
       Rank r = of(source);
       Component name = Component.text(source.getName(), r == null ? NamedTextColor.WHITE : r.color());
+      Streamer streamer = plugin.streamer();
+      Component text = streamer.forViewer(viewer, message.colorIfAbsent(NamedTextColor.WHITE));
       Component who = name;
       if (r != null && !r.tag().isEmpty() && seesBadges(viewer)) {
         // With the badge pack: "[♛ OWNER] Morni" (every rank with a badge, also plain players).
@@ -311,7 +344,8 @@ final class Ranks implements Listener {
         // Without: "♛ Owner · Morni".
         who = r.badge().append(Component.text(" · ", NamedTextColor.GRAY)).append(name);
       }
-      return who.append(Component.text(" » ", NamedTextColor.GRAY)).append(message.colorIfAbsent(NamedTextColor.WHITE));
+      if (streamer.showsLive(source)) who = streamer.liveMark().append(who);
+      return who.append(Component.text(" » ", NamedTextColor.GRAY)).append(text);
     });
   }
 }

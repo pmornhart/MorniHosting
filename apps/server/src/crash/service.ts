@@ -25,6 +25,7 @@ import { conflict, forbidden, notFound } from '../lib/errors.js';
 import type { MarketService } from '../market/service.js';
 import type { NotifyService } from '../notify/service.js';
 import { readPropertiesFile } from '../servers/properties-file.js';
+import { missingDependencies } from '../servers/mod-deps.js';
 import type { ServerService } from '../servers/service.js';
 
 /**
@@ -71,6 +72,8 @@ const NEEDS: Readonly<Record<CrashFixId, readonly ServerPermission[]>> = {
 
 export interface CrashHelpService {
   readonly help: (serverId: string) => CrashHelp | null;
+  /** Installs (or switches on) every plugin/mod another one needs – so the server starts right the first time. */
+  readonly ensureDependencies: (serverId: string) => Promise<string[]>;
   readonly fix: (
     serverId: string,
     fix: CrashFixId,
@@ -106,6 +109,49 @@ const MAX_LOOKUPS = 5;
 /** A name shorter than this only counts as an exact match ("ui" must not pick "UItils"). */
 const MIN_PREFIX_LENGTH = 4;
 const LOOKUP_TIMEOUT_MS = 15_000;
+/** Before a start, missing pieces are installed for at most this long (the start never waits for more). */
+const ENSURE_TIMEOUT_MS = 90_000;
+/** Rounds of "install what is missing" (a new mod can need another one). */
+const ENSURE_ROUNDS = 3;
+/**
+ * Libraries that mods and plugins often need, by the id they use in their files (letters and digits only), with their
+ * Modrinth project – found without searching, so "install it" always works.
+ */
+const KNOWN_PROJECTS: Readonly<Record<string, readonly [string, string]>> = {
+  fabricapi: ['P7dR8mSH', 'Fabric API'],
+  fabric: ['P7dR8mSH', 'Fabric API'],
+  viafabric: ['YlKdE5VK', 'ViaFabric'],
+  viaversion: ['P1OZGk5p', 'ViaVersion'],
+  viabackwards: ['NpvuJQoq', 'ViaBackwards'],
+  architectury: ['lhGA9TYQ', 'Architectury API'],
+  architecturyapi: ['lhGA9TYQ', 'Architectury API'],
+  clothconfig: ['9s6osm5g', 'Cloth Config'],
+  clothconfig2: ['9s6osm5g', 'Cloth Config'],
+  geckolib: ['8BmcQJ2H', 'GeckoLib'],
+  geckolib3: ['8BmcQJ2H', 'GeckoLib'],
+  fabriclanguagekotlin: ['Ha28R6CL', 'Fabric Language Kotlin'],
+  owo: ['ccKDOlHs', 'owo-lib'],
+  owolib: ['ccKDOlHs', 'owo-lib'],
+  modmenu: ['mOgUt4GM', 'Mod Menu'],
+  yacl: ['1eAoo2KR', 'YetAnotherConfigLib'],
+  yetanotherconfiglib: ['1eAoo2KR', 'YetAnotherConfigLib'],
+  yetanotherconfiglibv3: ['1eAoo2KR', 'YetAnotherConfigLib'],
+  forgeconfigapiport: ['ohNO6lps', 'Forge Config API Port'],
+  balm: ['MBAkmtvl', 'Balm'],
+  kotlinforforge: ['ordsPcFz', 'Kotlin for Forge'],
+  collective: ['e0M1UDsY', 'Collective'],
+  puzzleslib: ['QAGBst4M', 'Puzzles Lib'],
+  curios: ['vvuO3ImH', 'Curios API'],
+  resourcefullib: ['G1hIVOrD', 'Resourceful Lib'],
+  bookshelf: ['uy4Cnpcm', 'Bookshelf'],
+  creativecore: ['OsZiaDHq', 'CreativeCore'],
+};
+/** Where to get a missing piece: marketplace and project. */
+interface Found {
+  readonly source: ContentSource;
+  readonly id: string;
+  readonly name: string;
+}
 const LIST_SEPARATOR = ',';
 const SOURCE_SEPARATOR = ':';
 const slugOf = (url: string): string => url.split('/').filter(Boolean).at(-1) ?? '';
@@ -140,6 +186,85 @@ export function createCrashHelpService(
   const { db } = ctx;
   const { servers: serverService, backups, files, notify, market } = deps;
 
+  /** A missing plugin/mod in the marketplaces: well-known libraries directly, else by searching for its name. */
+  const lookUp = async (serverId: string, content: 'mods' | 'plugins', id: string): Promise<Found | null> => {
+    const known = KNOWN_PROJECTS[normalise(id)];
+    if (known) return { source: 'modrinth', id: known[0], name: known[1] };
+    return LOOKUP_SOURCES[content].reduce<Promise<Found | null>>(async (previous, source) => {
+      const found = await previous;
+      if (found || source === 'geysermc') return found;
+      try {
+        const result = await market.search(serverId, source, {
+          q: id,
+          sort: 'relevance',
+          page: 0,
+          compatibleOnly: source === 'modrinth',
+        });
+        const hit: MarketProject | null = pickProject(result.hits, id);
+        return hit ? { source: hit.source, id: hit.id, name: hit.name } : null;
+      } catch (err) {
+        ctx.log.debug({ err, serverId, id, source }, 'missing dependency lookup failed');
+        return null;
+      }
+    }, Promise.resolve(null));
+  };
+
+  /**
+   * Before every start: what an installed plugin/mod needs but isn't there is switched on (when it is only off) or
+   * installed fitting this server's version – e.g. ViaFabric for ViaVersion on Fabric, Fabric API for most mods.
+   * Returns what was done (for the console).
+   */
+  const ensureOnce = async (serverId: string): Promise<string[]> => {
+    const content = SOFTWARE[serverService.row(serverId).software].content;
+    if (content !== 'mods' && content !== 'plugins') return [];
+    const dir = serverService.dir(serverId);
+    const missing = await missingDependencies(dir);
+    if (missing.length === 0) return [];
+    const done: string[] = [];
+    const wanted = [...new Map(missing.map((m) => [normalise(m.dependency), m])).values()].slice(
+      0,
+      MAX_LOOKUPS,
+    );
+    await wanted.reduce(async (previous, m) => {
+      await previous;
+      if (m.disabledFile) {
+        const from = path.join(dir, m.disabledFile);
+        if (fs.existsSync(from)) fs.renameSync(from, from.replace(DISABLED_SUFFIX, ''));
+        done.push(`${m.dependency} eingeschaltet (braucht ${m.by})`);
+        return;
+      }
+      const found = await lookUp(serverId, content, m.dependency);
+      if (!found) return;
+      try {
+        await market.installFrom(serverId, found.source, found.id, SYSTEM_ACTOR);
+        done.push(`${m.dependency} installiert (braucht ${m.by})`);
+      } catch (err) {
+        ctx.log.warn({ err, serverId, dependency: m.dependency }, 'could not install a missing dependency');
+      }
+    }, Promise.resolve());
+    return done;
+  };
+  const ensureDependencies: CrashHelpService['ensureDependencies'] = async (serverId) => {
+    const all: string[] = [];
+    // A few rounds: a freshly installed piece may need yet another one.
+    for (const _round of Array.from({ length: ENSURE_ROUNDS })) {
+      const done = await ensureOnce(serverId);
+      all.push(...done);
+      if (done.length === 0) break;
+    }
+    all.forEach((line) => serverService.note(serverId, `Fehlendes Stück ergänzt: ${line}`));
+    return all;
+  };
+  serverService.onStartEnv(async (serverId) => {
+    const timeout = new Promise<string[]>((resolve) =>
+      setTimeout(() => resolve([]), ENSURE_TIMEOUT_MS).unref(),
+    );
+    await Promise.race([ensureDependencies(serverId), timeout]).catch((err: unknown) =>
+      ctx.log.warn({ err, serverId }, 'dependency check before start failed'),
+    );
+    return {};
+  });
+
   /**
    * For a missing plugin/mod: finds it in the marketplaces (fitting this server's software and version) and keeps
    * the result in the crash, so the button can install it with one click – also from Discord.
@@ -152,29 +277,13 @@ export function createCrashHelpService(
     const ids = (params['dependencyIds'] ?? '').split(LIST_SEPARATOR).filter(Boolean).slice(0, MAX_LOOKUPS);
     const switchedOff = (params['disabledFiles'] ?? '').split(LIST_SEPARATOR).filter(Boolean);
     const offIds = new Set(switchedOff.map((f) => normalise(path.basename(f).replace(JAR_SUFFIX, ''))));
-    const lookOne = async (id: string): Promise<MarketProject | null> =>
-      LOOKUP_SOURCES[content].reduce<Promise<MarketProject | null>>(async (previous, source) => {
-        const found = await previous;
-        if (found || source === 'geysermc') return found;
-        try {
-          const result = await market.search(serverId, source, {
-            q: id,
-            sort: 'relevance',
-            page: 0,
-            compatibleOnly: source === 'modrinth',
-          });
-          return pickProject(result.hits, id);
-        } catch (err) {
-          ctx.log.debug({ err, serverId, id, source }, 'missing dependency lookup failed');
-          return null;
-        }
-      }, Promise.resolve(null));
+    const lookOne = (id: string): Promise<Found | null> => lookUp(serverId, content, id);
     const wanted = ids.filter((id) => ![...offIds].some((off) => off.startsWith(normalise(id))));
-    const timeout = new Promise<(MarketProject | null)[]>((resolve) =>
+    const timeout = new Promise<(Found | null)[]>((resolve) =>
       setTimeout(() => resolve([]), LOOKUP_TIMEOUT_MS).unref(),
     );
-    const results: (MarketProject | null)[] = await Promise.race([Promise.all(wanted.map(lookOne)), timeout]);
-    const found = results.filter((p): p is MarketProject => p !== null);
+    const results: (Found | null)[] = await Promise.race([Promise.all(wanted.map(lookOne)), timeout]);
+    const found = results.filter((p): p is Found => p !== null);
     const names = [
       ...switchedOff.map((f) => path.basename(f).replace(DISABLED_JAR, '')),
       ...found.map((p) => p.name),
@@ -475,5 +584,5 @@ export function createCrashHelpService(
     return { title: '✅ Erledigt', text: `${label(known)} – der Server startet gerade neu.` };
   });
 
-  return { help, fix };
+  return { help, fix, ensureDependencies };
 }

@@ -13,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MorniCraft extends JavaPlugin {
   private static final List<String> COMMANDS = List.of("spawn", "sethome", "home", "homes", "delhome", "back", "tpa",
       "tpahere", "tpaccept", "tpdeny", "msg", "r", "mail", "ignore", "afk", "seen", "near", "getpos", "ping", "info",
-      "rules", "leiste", "team", "mornicraft");
+      "rules", "leiste", "team", "streamer", "gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "mod", "mornicraft");
 
   private Settings settings;
   private Ui ui;
@@ -25,6 +25,10 @@ public final class MorniCraft extends JavaPlugin {
   private Bedrock bedrock;
   private Sidebar sidebar;
   private Ranks ranks;
+  private Streamer streamer;
+  private HomeMenu homeMenu;
+  private Moderation moderation;
+  private Graves graves;
 
   @Override
   public void onEnable() {
@@ -39,6 +43,10 @@ public final class MorniCraft extends JavaPlugin {
     ranks = new Ranks(this);
     ranks.load(getConfig());
     sidebar = new Sidebar(this);
+    streamer = new Streamer(this);
+    homeMenu = new HomeMenu(this);
+    moderation = new Moderation(this);
+    graves = new Graves(this);
     var pm = Bukkit.getPluginManager();
     pm.registerEvents(teleporter, this);
     pm.registerEvents(social, this);
@@ -48,6 +56,9 @@ public final class MorniCraft extends JavaPlugin {
     pm.registerEvents(new WorldRules(this), this);
     pm.registerEvents(sidebar, this);
     pm.registerEvents(ranks, this);
+    pm.registerEvents(homeMenu, this);
+    pm.registerEvents(moderation, this);
+    pm.registerEvents(graves, this);
     pm.registerEvents(new UpdateCheck(this), this);
     for (String name : COMMANDS) {
       PluginCommand c = getCommand(name);
@@ -75,6 +86,7 @@ public final class MorniCraft extends JavaPlugin {
   void reload() {
     load();
     if (ranks != null) ranks.load(getConfig());
+    if (streamer != null) streamer.load();
     if (sidebar != null) sidebar.rebuild();
   }
 
@@ -112,5 +124,17 @@ public final class MorniCraft extends JavaPlugin {
 
   Bedrock bedrock() {
     return bedrock;
+  }
+
+  Streamer streamer() {
+    return streamer;
+  }
+
+  HomeMenu homeMenu() {
+    return homeMenu;
+  }
+
+  Moderation moderation() {
+    return moderation;
   }
 }

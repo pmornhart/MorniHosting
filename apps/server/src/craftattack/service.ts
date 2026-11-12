@@ -249,6 +249,18 @@ export function createCraftAttackService(
     const { sha1, chars } = packOf(serverId);
     return { url, sha1, chars };
   };
+  /** Names that give the server away (for the streamer mode): panel domain, the server's address, public/LAN address. */
+  const ownNames = (serverId: string): string[] => {
+    const s = ctx.settings.get();
+    const host = servers.summary(serverId).address.replace(/:\d+$/, ''); // eslint-disable-line ts-patterns/require-regex-example -- "mc.example.de:25566" → "mc.example.de"
+    return [
+      ...new Set(
+        [s.panelDomain, host, s.publicAddress, s.lanIp].filter(
+          (n): n is string => Boolean(n) && n !== 'localhost',
+        ),
+      ),
+    ];
+  };
   const writeConfig = (serverId: string): void =>
     writeMorniCraftConfig(servers.dir(serverId), settingsOf(serverId), {
       pack: packConfig(serverId),
@@ -259,6 +271,7 @@ export function createCraftAttackService(
       members: panelMembers(serverId),
       // The small islands and balloons round the spawn belong to it: nobody takes them apart.
       zones: SPAWN_ZONES,
+      hide: ownNames(serverId),
     });
   /** The MorniCraft picture for the server list: put in once per server (a picture uploaded later stays). */
   const iconOnce = (serverId: string, dir: string): void => {

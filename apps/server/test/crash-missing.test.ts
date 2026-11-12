@@ -317,3 +317,57 @@ describe('the crash helper installs what is missing', () => {
     expect(await help()).toBeNull();
   });
 });
+
+describe('missing pieces are installed before the start (Philip: "von Anfang an")', () => {
+  let t: TestApp;
+  let admin: Session;
+  let id: string;
+  beforeEach(async () => {
+    vi.stubGlobal('fetch', fakeModrinth);
+    t = await createTestApp();
+    admin = await setupAdmin(t);
+    id = (
+      await t.app.inject({
+        method: 'POST',
+        url: '/api/servers',
+        headers: authHeaders(admin),
+        payload: {
+          name: 'Modded',
+          edition: 'java',
+          software: 'fabric',
+          version: '1.21.1',
+          memoryMb: 4096,
+          port: 25565,
+          eula: true,
+          startNow: false,
+        },
+      })
+    ).json<ServerSummary>().id;
+  });
+  afterEach(async () => {
+    vi.unstubAllGlobals();
+    await t.cleanup();
+  });
+
+  test('a mod that needs Fabric API gets it before the server starts – no crash first', async () => {
+    const mods = path.join(t.dataDir, 'servers', id, 'mods');
+    await jar(path.join(mods, 'minimap.jar'), {
+      'fabric.mod.json': JSON.stringify({
+        id: 'xaerominimap',
+        name: "Xaero's Minimap",
+        depends: { 'fabric-api': '*' },
+      }),
+    });
+    expect((await missingDependencies(path.join(t.dataDir, 'servers', id))).map((m) => m.dependency)).toEqual(
+      ['fabric-api'],
+    );
+    const started = await t.app.inject({
+      method: 'POST',
+      url: `/api/servers/${id}/actions/start`,
+      headers: authHeaders(admin),
+    });
+    expect(started.statusCode).toBeLessThan(300);
+    // Installed before the container starts (the fake jar here has no fabric.mod.json, so only the file counts).
+    await waitFor(() => fs.existsSync(path.join(mods, 'fabric-api-0.116.0.jar')));
+  });
+});

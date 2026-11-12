@@ -16,6 +16,7 @@ final class DefaultRanks {
   private static final List<String> WORLD = List.of("minecraft.command.time", "minecraft.command.weather");
   private static final List<String> WHITELIST = List.of("minecraft.command.whitelist");
   private static final List<String> RELOAD = List.of("mornicraft.admin");
+  private static final List<String> MODERATE = List.of("mornicraft.moderate");
 
   private DefaultRanks() {}
 
@@ -29,12 +30,12 @@ final class DefaultRanks {
   }
 
   static List<Ranks.Rank> ranks() {
-    List<String> everything = all(BUILD, INSTANT, HOMES, KICK, BAN, GAMEMODE, TELEPORT, WORLD, WHITELIST, RELOAD);
+    List<String> everything = all(BUILD, INSTANT, HOMES, KICK, BAN, MODERATE, GAMEMODE, TELEPORT, WORLD, WHITELIST, RELOAD);
     return List.of(
         rank("owner", "Owner", "♛", "#ff5555", everything, false),
         rank("admin", "Admin", "✦", "#ff9f1a", everything, false),
-        rank("moderator", "Moderator", "⚔", "#55aaff", all(INSTANT, KICK, BAN, TELEPORT), false),
-        rank("supporter", "Supporter", "✚", "#55ff55", all(INSTANT, KICK), false),
+        rank("moderator", "Moderator", "⚔", "#55aaff", all(INSTANT, KICK, BAN, MODERATE, TELEPORT), false),
+        rank("supporter", "Supporter", "✚", "#55ff55", all(INSTANT, KICK, MODERATE), false),
         rank("builder", "Builder", "⚒", "#c08a5b", all(BUILD, GAMEMODE), false),
         rank("media", "Media", "▶", "#ff6ad5", HOMES, false),
         rank("vip", "VIP", "★", "#ffd23f", HOMES, false),

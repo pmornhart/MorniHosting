@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -59,6 +60,23 @@ final class PlayerStore {
      * so a crash mid-flight never costs a chestplate; null when no start elytra is on.
      */
     String elytraBackup;
+    /** Streamer mode on (/streamer). Read by the chat thread too. */
+    volatile boolean streamer;
+    /** Parts of the streamer mode switched off (see {@link Streamer#OPTIONS}). */
+    final Set<String> streamerOff = ConcurrentHashMap.newKeySet();
+    /** In the jail until then (ms, 0 = free); where they were and their game mode before. */
+    volatile long jailUntil;
+    long jailFrom;
+    String jailReason = "";
+    Home jailReturn;
+    String jailMode;
+    /** Muted until then (ms, 0 = not). Read by the chat thread. */
+    volatile long muteUntil;
+
+    /** How long the whole jail time is (for the bar). */
+    long jailTotal(long now) {
+      return jailUntil - (jailFrom > 0 ? jailFrom : now);
+    }
   }
 
   private final MorniCraft plugin;
@@ -105,6 +123,16 @@ final class PlayerStore {
     d.welcomed = y.getBoolean("welcomed", false);
     d.hideSidebar = y.getBoolean("hide-sidebar", false);
     d.elytraBackup = y.getString("elytra-backup", null);
+    d.streamer = y.getBoolean("streamer", false);
+    d.streamerOff.addAll(y.getStringList("streamer-off"));
+    d.jailUntil = y.getLong("jail.until", 0);
+    d.jailFrom = y.getLong("jail.from", 0);
+    d.jailReason = y.getString("jail.reason", "");
+    d.jailMode = y.getString("jail.mode", null);
+    ConfigurationSection back = y.getConfigurationSection("jail.return");
+    if (back != null) d.jailReturn = new Home(back.getString("world", "world"), back.getDouble("x"), back.getDouble("y"),
+        back.getDouble("z"), (float) back.getDouble("yaw"), (float) back.getDouble("pitch"));
+    d.muteUntil = y.getLong("mute.until", 0);
     ConfigurationSection homes = y.getConfigurationSection("homes");
     if (homes != null) {
       for (String key : homes.getKeys(false)) {
@@ -129,6 +157,24 @@ final class PlayerStore {
     y.set("welcomed", d.welcomed);
     y.set("hide-sidebar", d.hideSidebar);
     if (d.elytraBackup != null) y.set("elytra-backup", d.elytraBackup);
+    y.set("streamer", d.streamer);
+    y.set("streamer-off", new ArrayList<>(d.streamerOff));
+    if (d.jailUntil > 0) {
+      y.set("jail.until", d.jailUntil);
+      y.set("jail.from", d.jailFrom);
+      y.set("jail.reason", d.jailReason);
+      if (d.jailMode != null) y.set("jail.mode", d.jailMode);
+      if (d.jailReturn != null) {
+        Home h = d.jailReturn;
+        y.set("jail.return.world", h.world());
+        y.set("jail.return.x", h.x());
+        y.set("jail.return.y", h.y());
+        y.set("jail.return.z", h.z());
+        y.set("jail.return.yaw", h.yaw());
+        y.set("jail.return.pitch", h.pitch());
+      }
+    }
+    if (d.muteUntil > System.currentTimeMillis()) y.set("mute.until", d.muteUntil);
     d.homes.forEach((key, h) -> {
       String p = "homes." + key + ".";
       y.set(p + "world", h.world());

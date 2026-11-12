@@ -56,6 +56,12 @@ export interface MorniCraftSettings {
    * resource pack when they join). Off, or for players without the pack: the symbols.
    */
   readonly badges: boolean;
+  /** Whoever dies gets a grave with all their things and experience (and their head). */
+  readonly graves: boolean;
+  /** Minutes only the dead player (and the team) may open their grave; then anyone. */
+  readonly gravePrivateMinutes: number;
+  /** Kills and deaths next to every name in the tab list. */
+  readonly tabStats: boolean;
 }
 
 /** What a rank may do (each switch stands for one or more server permissions, see RANK_PERMISSION_NODES). */
@@ -65,6 +71,7 @@ export const RANK_PERMISSIONS = [
   'homes',
   'kick',
   'ban',
+  'moderate',
   'gamemode',
   'teleport',
   'world',
@@ -86,6 +93,7 @@ export const RANK_PERMISSION_NODES: Readonly<Record<RankPermission, readonly str
     'minecraft.command.pardon-ip',
     'minecraft.command.banlist',
   ],
+  moderate: ['mornicraft.moderate'],
   gamemode: ['minecraft.command.gamemode'],
   teleport: ['minecraft.command.teleport', 'minecraft.command.tp'],
   world: ['minecraft.command.time', 'minecraft.command.weather'],
@@ -179,7 +187,7 @@ export const DEFAULT_RANKS: readonly MorniCraftRank[] = [
     name: 'Moderator',
     symbol: '⚔',
     color: '#55aaff',
-    permissions: ['instant', 'kick', 'ban', 'teleport'],
+    permissions: ['instant', 'kick', 'ban', 'moderate', 'teleport'],
     players: [],
     isDefault: false,
     fromPanel: 'moderator',
@@ -189,7 +197,7 @@ export const DEFAULT_RANKS: readonly MorniCraftRank[] = [
     name: 'Supporter',
     symbol: '✚',
     color: '#55ff55',
-    permissions: ['instant', 'kick'],
+    permissions: ['instant', 'kick', 'moderate'],
     players: [],
     isDefault: false,
     fromPanel: 'none',
@@ -263,6 +271,9 @@ export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
   ],
   ranks: DEFAULT_RANKS,
   badges: true,
+  graves: true,
+  gravePrivateMinutes: 15,
+  tabStats: true,
 };
 
 /** GET /api/servers/:id/mornicraft */
@@ -354,7 +365,7 @@ export interface CraftAttackCommand {
 }
 
 export interface CraftAttackCommandGroup {
-  readonly id: 'spawn' | 'home' | 'teleport' | 'chat' | 'info' | 'op';
+  readonly id: 'spawn' | 'home' | 'teleport' | 'chat' | 'info' | 'mod' | 'op';
   readonly title: { readonly de: string; readonly en: string };
   readonly commands: readonly CraftAttackCommand[];
 }
@@ -395,8 +406,14 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
         use: same('/sethome [name]'),
         text: { de: 'Merkt sich, wo du gerade stehst', en: 'Remembers where you are standing' },
       },
-      { use: same('/home [name]'), text: { de: 'Bringt dich nach Hause', en: 'Takes you home' } },
-      { use: same('/home'), text: { de: 'Zeigt alle deine Zuhause', en: 'Lists all your homes' } },
+      { use: same('/home <name>'), text: { de: 'Bringt dich nach Hause', en: 'Takes you home' } },
+      {
+        use: same('/home'),
+        text: {
+          de: 'Deine Zuhause als Betten: hinreisen, neu setzen, löschen',
+          en: 'Your homes as beds: go there, set new ones, delete',
+        },
+      },
       { use: same('/delhome <name>'), text: { de: 'Löscht ein Zuhause', en: 'Deletes a home' } },
       {
         use: same('/back'),
@@ -466,8 +483,59 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
       },
       { use: same('/rules'), text: { de: 'Die Regeln', en: 'The rules' } },
       {
+        use: same('/streamer'),
+        text: {
+          de: 'Streamer-Modus: IPs, Koordinaten und Nachrichten verstecken',
+          en: 'Streamer mode: hide IPs, coordinates and messages',
+        },
+      },
+      {
         use: same('/leiste'),
         text: { de: 'Leiste rechts ein- oder ausblenden', en: 'Show or hide the bar on the right' },
+      },
+    ],
+  },
+  {
+    id: 'mod',
+    title: { de: 'Team (Moderation)', en: 'Team (moderation)' },
+    commands: [
+      {
+        use: { de: 'Ducken + Rechtsklick', en: 'Sneak + right click' },
+        text: {
+          de: 'Auf einen Spieler: Team-Menü (Zuhause, Inventar, Gefängnis, Stumm …)',
+          en: 'On a player: team menu (homes, inventory, jail, mute …)',
+        },
+        opOnly: true,
+      },
+      {
+        use: same('/mod <spieler>'),
+        text: { de: 'Team-Menü für einen Spieler', en: 'Team menu for a player' },
+        opOnly: true,
+      },
+      {
+        use: same('/gefaengnis <spieler> [10m|1h|1d] [grund]'),
+        text: { de: 'Ins Gefängnis (Standard 10 Minuten)', en: 'Send to jail (10 minutes by default)' },
+        opOnly: true,
+      },
+      {
+        use: same('/frei <spieler>'),
+        text: { de: 'Aus dem Gefängnis holen', en: 'Release from jail' },
+        opOnly: true,
+      },
+      {
+        use: same('/stumm <spieler> [10m|1h|1d]'),
+        text: { de: 'Stummschalten', en: 'Mute' },
+        opOnly: true,
+      },
+      {
+        use: same('/entstummen <spieler>'),
+        text: { de: 'Wieder schreiben lassen', en: 'Unmute' },
+        opOnly: true,
+      },
+      {
+        use: same('/einfrieren <spieler>'),
+        text: { de: 'Einfrieren / auftauen', en: 'Freeze / unfreeze' },
+        opOnly: true,
       },
     ],
   },

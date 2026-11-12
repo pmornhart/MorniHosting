@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Feather, Flame, Home, LayoutPanelLeft, Save, Shield, Sparkles } from 'lucide-react';
+import { BookOpen, Feather, Flame, Home, LayoutPanelLeft, Save, Shield, Skull, Sparkles } from 'lucide-react';
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -66,8 +66,14 @@ const SECTIONS: readonly {
   {
     id: 'show',
     icon: LayoutPanelLeft,
-    switches: ['welcome', 'sidebar', 'showLink'],
+    switches: ['welcome', 'sidebar', 'showLink', 'tabStats'],
     numbers: [],
+  },
+  {
+    id: 'graves',
+    icon: Skull,
+    switches: ['graves'],
+    numbers: [{ key: 'gravePrivateMinutes', min: 0, max: 120, step: 5, when: 'graves' }],
   },
 ];
 

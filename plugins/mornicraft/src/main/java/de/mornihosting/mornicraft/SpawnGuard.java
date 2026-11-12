@@ -2,7 +2,9 @@ package de.mornihosting.mornicraft;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.BlockData;
@@ -12,6 +14,7 @@ import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Flying;
 import org.bukkit.entity.Hoglin;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -30,6 +33,7 @@ import org.bukkit.event.block.BlockDispenseEvent;
 import org.bukkit.event.block.BlockFertilizeEvent;
 import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.block.SignChangeEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityPlaceEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.block.BlockFromToEvent;
@@ -50,26 +54,46 @@ import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.persistence.PersistentDataType;
 
 /**
  * The spawn island stays as it is: nobody but operators builds or breaks there, no explosions, fire or flowing
- * liquids reach it, nobody fights there, and nobody sleeps there (no bed respawn on the spawn island).
+ * liquids reach it, nobody fights there, and nobody sleeps there (no bed respawn on the spawn island). No animals or
+ * monsters spawn there either (wandering traders and their llamas, phantoms, animals, fish …).
  */
 final class SpawnGuard implements Listener {
   /** At most one "can't do that" note per player per this many milliseconds. */
   private static final long NOTE_EVERY_MS = 2000;
 
+  /** The island's shadow on the ground reaches a bit beyond its edge (blocks). */
+  private static final int SHADOW_MARGIN = 8;
+  /** How far one drifts sideways while falling off the island (blocks). */
+  private static final int FALL_DRIFT = 24;
+
+  /** How often (in ticks) mobs that are on the spawn anyway are cleared away: every 10 seconds. */
+  private static final long SWEEP_EVERY_TICKS = 200;
+
+  /**
+   * Spawn reasons that stay allowed on the spawn: an operator's /summon, other plugins (NPCs …) and a parrot jumping
+   * off a player's shoulder. Names instead of the enum, so older and newer servers both work.
+   */
+  private static final Set<String> ALLOWED_SPAWNS = Set.of("COMMAND", "CUSTOM", "SHOULDER_ENTITY");
+
   private final MorniCraft plugin;
   private final Map<UUID, Long> lastNote = new HashMap<>();
+  /** Marks mobs that were put on the spawn on purpose (see {@link #ALLOWED_SPAWNS}), so the sweep leaves them. */
+  private final NamespacedKey wanted;
 
   SpawnGuard(MorniCraft plugin) {
     this.plugin = plugin;
+    this.wanted = new NamespacedKey(plugin, "spawn_allowed");
+    plugin.getServer().getScheduler().runTaskTimer(plugin, this::sweep, SWEEP_EVERY_TICKS, SWEEP_EVERY_TICKS);
   }
 
   /** Inside the protected spawn area – only while protection is on. */
   private boolean guarded(Location l) {
     Settings s = plugin.settings();
-    return s.spawnProtection() && (near(l) || SpawnArea.inZone(l, s.zones()));
+    return (s.spawnProtection() && (near(l) || SpawnArea.inZone(l, s.zones()))) || plugin.moderation().inCell(l);
   }
 
   /** Inside the spawn area at all (sleeping and fighting have their own switches). */
@@ -208,6 +232,58 @@ final class SpawnGuard implements Listener {
     } else if (guarded(victim.getLocation()) && !hostile(victim)) {
       stop(attacker, e, "spawn.protected");
     }
+  }
+
+  /** Nothing spawns on the spawn island or the small islands round it – no animals, no monsters, no traders. */
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onCreatureSpawn(CreatureSpawnEvent e) {
+    if (!guarded(e.getLocation())) {
+      // Under the island it is dark all day: no monsters spawn in its shadow down to the ground (animals still do).
+      Settings s = plugin.settings();
+      if (s.spawnProtection() && "NATURAL".equals(e.getSpawnReason().name()) && hostile(e.getEntity())
+          && SpawnArea.below(e.getLocation(), s.spawnRadius(), s.zones(), SHADOW_MARGIN)) {
+        e.setCancelled(true);
+      }
+      return;
+    }
+    if (ALLOWED_SPAWNS.contains(e.getSpawnReason().name())) {
+      e.getEntity().getPersistentDataContainer().set(wanted, PersistentDataType.BYTE, (byte) 1);
+    } else {
+      e.setCancelled(true);
+    }
+  }
+
+  /**
+   * Clears away mobs that are on the spawn anyway: from before this rule, walked or flew in, or came with a trader.
+   * Pets, named or leashed mobs, ridden mobs and those an operator put there stay.
+   */
+  void sweep() {
+    if (!plugin.settings().spawnProtection()) return;
+    for (Mob mob : SpawnArea.world().getEntitiesByClass(Mob.class)) {
+      if (guarded(mob.getLocation()) && unwanted(mob)) mob.remove();
+    }
+  }
+
+  private boolean unwanted(Mob mob) {
+    if (mob.getPersistentDataContainer().has(wanted, PersistentDataType.BYTE)) return false;
+    if (mob.customName() != null || mob.isLeashed() || mob.isInsideVehicle()) return false;
+    if (mob instanceof Tameable t && t.isTamed()) return false;
+    return mob.getPassengers().stream().noneMatch(p -> p instanceof Player);
+  }
+
+  /**
+   * Falling off the spawn (or a small island) never hurts – also when landing far below, on the ground or on
+   * something someone built there. The fall started up at the island: where the player is now plus how far they fell.
+   */
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onFall(org.bukkit.event.entity.EntityDamageEvent e) {
+    if (e.getCause() != org.bukkit.event.entity.EntityDamageEvent.DamageCause.FALL || !(e.getEntity() instanceof Player p)) return;
+    Settings s = plugin.settings();
+    if (!s.spawnProtection()) return;
+    Location l = p.getLocation();
+    double from = l.getY() + p.getFallDistance();
+    double island = SpawnArea.world().getSpawnLocation().getY() - SpawnArea.depth();
+    if (from >= island && SpawnArea.below(l, s.spawnRadius(), s.zones(), FALL_DRIFT)) e.setCancelled(true);
   }
 
   /** Armor stands, boats, minecarts, end crystals … */
