@@ -178,7 +178,10 @@
     "emptyTitle": "Noch keine Server",
     "emptyText": "Erstelle deinen ersten Minecraft-Server. Du wählst Spielversion und Größe, wir kümmern uns um den Rest.",
     "emptyImport": "Du hast schon einen Server? Dann importiere ihn als ZIP.",
-    "noAccess": "Dir wurde noch kein Server freigegeben. Frag den Administrator, ob er dir Zugriff gibt."
+    "noAccess": "Dir wurde noch kein Server freigegeben. Frag den Administrator, ob er dir Zugriff gibt.",
+    "mine": "Meine Server",
+    "others": "Server von anderen",
+    "othersText": "Gehören anderen Leuten, laufen aber über dein Panel."
   },
   "card": {
     "memory": "Arbeitsspeicher",
@@ -192,7 +195,9 @@
     "downloading": "Spieldateien werden geladen",
     "moddedHint": "Modpacks brauchen beim ersten Start oft 2 bis 3 Minuten.",
     "stoppedHint": "Gestoppt. Deine Welt ist gespeichert.",
-    "crashSolution": "Lösung ansehen"
+    "crashSolution": "Lösung ansehen",
+    "ownedBy": "Gehört {{name}}",
+    "ownedByAdmins": "Gehört den Admins"
   },
   "server": {
     "tabs": {
