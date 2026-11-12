@@ -31,9 +31,7 @@ commands:
   leiste: { description: Leiste rechts ein- oder ausblenden, aliases: [sidebar] }
   streamer:
     {
-      description: Streamer-Modus (IPs,
-      Koordinaten,
-      Nachrichten verstecken),
+      description: 'Streamer-Modus: IPs, Koordinaten und Nachrichten verstecken',
       usage: '/streamer [an|aus]',
       aliases: [streamermodus, streamermode, streamer-modus, stream],
     }
