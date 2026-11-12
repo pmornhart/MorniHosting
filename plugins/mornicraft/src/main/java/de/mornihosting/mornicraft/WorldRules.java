@@ -9,6 +9,7 @@ import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.ExplosionPrimeEvent;
 
 /**
  * Switches for the whole world, set in the dashboard: TNT, creepers breaking blocks, fire spreading, endermen
@@ -26,11 +27,20 @@ final class WorldRules implements Listener {
     return plugin.settings();
   }
 
+  private static boolean tnt(EntityType type) {
+    String name = type.name();
+    return name.equals("TNT") || name.equals("PRIMED_TNT") || name.equals("TNT_MINECART") || name.equals("MINECART_TNT");
+  }
+
+  /** TNT fizzles before it blows up – later would be too late, players would already be hurt. */
+  @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+  public void onPrime(ExplosionPrimeEvent e) {
+    if (!s().tnt() && tnt(e.getEntityType())) e.setCancelled(true);
+  }
+
   @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
   public void onExplode(EntityExplodeEvent e) {
-    String type = e.getEntityType().name();
-    if (!s().tnt() && (type.equals("TNT") || type.equals("PRIMED_TNT") || type.equals("TNT_MINECART")
-        || type.equals("MINECART_TNT"))) {
+    if (!s().tnt() && tnt(e.getEntityType())) {
       e.setCancelled(true);
     } else if (!s().creeperDamage() && e.getEntityType() == EntityType.CREEPER) {
       e.blockList().clear();

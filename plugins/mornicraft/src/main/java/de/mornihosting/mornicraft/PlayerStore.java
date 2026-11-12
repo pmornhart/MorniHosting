@@ -2,6 +2,10 @@ package de.mornihosting.mornicraft;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,6 +18,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 /**
@@ -49,6 +54,11 @@ final class PlayerStore {
     boolean welcomed;
     /** Hid the bar on the right with /leiste. */
     boolean hideSidebar;
+    /**
+     * What the player wore on the chest before the start elytra took its place (Base64, "" = nothing). Kept on disk
+     * so a crash mid-flight never costs a chestplate; null when no start elytra is on.
+     */
+    String elytraBackup;
   }
 
   private final MorniCraft plugin;
@@ -81,10 +91,20 @@ final class PlayerStore {
       if (fromEssentials(id, d)) save(id, d);
       return d;
     }
-    YamlConfiguration y = YamlConfiguration.loadConfiguration(f);
+    YamlConfiguration y = new YamlConfiguration();
+    try {
+      y.load(f);
+    } catch (IOException | InvalidConfigurationException e) {
+      // A broken file is kept aside (never overwritten), the player starts fresh.
+      File broken = new File(folder, id + ".broken-" + System.currentTimeMillis() + ".yml");
+      plugin.getLogger().log(Level.WARNING, "Player data " + f.getName() + " is unreadable, kept as " + broken.getName(), e);
+      if (!f.renameTo(broken)) plugin.getLogger().warning("Could not move " + f.getName() + " aside");
+      return d;
+    }
     d.name = y.getString("name", "");
     d.welcomed = y.getBoolean("welcomed", false);
     d.hideSidebar = y.getBoolean("hide-sidebar", false);
+    d.elytraBackup = y.getString("elytra-backup", null);
     ConfigurationSection homes = y.getConfigurationSection("homes");
     if (homes != null) {
       for (String key : homes.getKeys(false)) {
@@ -108,6 +128,7 @@ final class PlayerStore {
     y.set("name", d.name);
     y.set("welcomed", d.welcomed);
     y.set("hide-sidebar", d.hideSidebar);
+    if (d.elytraBackup != null) y.set("elytra-backup", d.elytraBackup);
     d.homes.forEach((key, h) -> {
       String p = "homes." + key + ".";
       y.set(p + "world", h.world());
@@ -121,8 +142,16 @@ final class PlayerStore {
     List<Map<String, Object>> mail = new ArrayList<>();
     for (Mail m : d.mail) mail.add(Map.of("from", m.from(), "at", m.at(), "text", m.text()));
     y.set("mail", mail);
+    // Written next to it first, then moved over in one step: a full disk or a crash never leaves half a file.
+    Path target = file(id).toPath();
+    Path tmp = target.resolveSibling(target.getFileName() + ".tmp");
     try {
-      y.save(file(id));
+      Files.write(tmp, y.saveToString().getBytes(StandardCharsets.UTF_8));
+      try {
+        Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+      } catch (IOException atomicNotPossible) {
+        Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
+      }
     } catch (IOException e) {
       plugin.getLogger().log(Level.WARNING, "Could not save player data " + id, e);
     }

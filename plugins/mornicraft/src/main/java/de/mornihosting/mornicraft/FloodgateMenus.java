@@ -17,6 +17,7 @@ final class FloodgateMenus {
   FloodgateMenus(MorniCraft plugin) {
     this.plugin = plugin;
     this.api = FloodgateApi.getInstance();
+    if (api == null) throw new IllegalStateException("Floodgate did not start");
   }
 
   boolean isBedrock(Player p) {

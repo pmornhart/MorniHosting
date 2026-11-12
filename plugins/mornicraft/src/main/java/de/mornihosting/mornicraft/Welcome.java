@@ -10,6 +10,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -76,7 +77,8 @@ final class Welcome implements Listener {
     ui.card(p, server, lines);
   }
 
-  @EventHandler
+  /** Last of all on quit (the others may still need the data). */
+  @EventHandler(priority = EventPriority.MONITOR)
   public void onQuit(PlayerQuitEvent e) {
     plugin.store().forget(e.getPlayer().getUniqueId());
   }

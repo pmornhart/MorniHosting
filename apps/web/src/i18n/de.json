@@ -3293,7 +3293,7 @@
       "sleepAtSpawn": "Aus: kein Bett und kein Respawn-Punkt am Spawn",
       "pvpAtSpawn": "Aus: am Spawn kann niemand Schaden machen",
       "spawnRadius": "Um den Spawn-Punkt herum gilt der Schutz",
-      "elytra": "Doppelt springen am Spawn = losgleiten, kein Fallschaden",
+      "elytra": "Doppelt springen am Spawn = losgleiten mit echten Flügeln (nur im Überlebensmodus), kein Fallschaden – die eigene Brustplatte kommt nach der Landung zurück",
       "elytraBoost": "Einmal pro Flug ein Schub (Bedrock: Schleichen)",
       "elytraRadius": "Nur in diesem Umkreis kann man losgleiten",
       "tnt": "Aus: TNT verpufft ohne Schaden",

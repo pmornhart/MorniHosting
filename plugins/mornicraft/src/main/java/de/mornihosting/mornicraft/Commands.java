@@ -48,6 +48,10 @@ final class Commands implements TabExecutor {
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
     String name = command.getName().toLowerCase(Locale.ROOT);
     if (name.equals("mornicraft")) {
+      if (args.length != 1 || !args[0].equalsIgnoreCase("reload")) {
+        sender.sendMessage(ui().fail("usage", Ui.v("usage", "/mornicraft reload")));
+        return true;
+      }
       plugin.reload();
       sender.sendMessage(ui().ok("reload"));
       return true;
@@ -165,12 +169,15 @@ final class Commands implements TabExecutor {
       return;
     }
     PlayerStore.Data d = plugin.store().get(p.getUniqueId());
-    boolean exists = d.homes.containsKey(name);
+    // "Base" and "base" are the same home (/home finds them without caring about case, too).
+    String same = d.homes.keySet().stream().filter(k -> k.equalsIgnoreCase(name)).findFirst().orElse(null);
+    boolean exists = same != null;
     int max = s().maxHomes();
     if (!exists && d.homes.size() >= max && !p.hasPermission("mornicraft.unlimitedhomes")) {
       p.sendMessage(ui().fail("home.limit", Ui.v("max", max)));
       return;
     }
+    if (same != null) d.homes.remove(same);
     d.homes.put(name, PlayerStore.Home.of(p.getLocation()));
     d.name = p.getName();
     plugin.store().save(p.getUniqueId(), d);
@@ -392,7 +399,11 @@ final class Commands implements TabExecutor {
       options.addAll(plugin.store().get(p.getUniqueId()).homes.keySet());
     } else if (name.equals("mail") && args.length == 1) {
       options.addAll(List.of("send", "read"));
-    } else if ((args.length == 1 && List.of("tpa", "tpahere", "msg", "ignore", "seen", "tpaccept", "tpdeny").contains(name))
+    } else if (name.equals("mornicraft") && args.length == 1) {
+      options.add("reload");
+    } else if ((name.equals("tpaccept") || name.equals("tpdeny")) && args.length == 1 && sender instanceof Player p) {
+      options.addAll(plugin.social().askers(p));
+    } else if ((args.length == 1 && List.of("tpa", "tpahere", "msg", "ignore", "seen").contains(name))
         || (name.equals("mail") && args.length == 2)) {
       Bukkit.getOnlinePlayers().forEach(o -> options.add(o.getName()));
     }

@@ -296,16 +296,6 @@ export function topCommands(): string[] {
       2,
     );
   });
-  const benches = [
-    set(5, 0, 7, 'oak_stairs[facing=south]'),
-    set(7, 0, 5, 'oak_stairs[facing=east]'),
-    set(-5, 0, 7, 'oak_stairs[facing=south]'),
-    set(-7, 0, 5, 'oak_stairs[facing=west]'),
-    set(5, 0, -7, 'oak_stairs[facing=north]'),
-    set(7, 0, -5, 'oak_stairs[facing=east]'),
-    set(-5, 0, -7, 'oak_stairs[facing=north]'),
-    set(-7, 0, -5, 'oak_stairs[facing=west]'),
-  ];
   // Paths to the edge and the launch decks beyond it.
   const paths = DIRECTIONS.flatMap((d) => [
     strip(d, PATH_FROM, DECK_FROM, -2, 2, -1, -1, 'stone_bricks'),
@@ -482,7 +472,6 @@ export function topCommands(): string[] {
     ...plaza,
     ...fountain,
     ...plazaLamps,
-    ...benches,
     ...paths,
     ...decks,
     ...tower,
@@ -755,6 +744,22 @@ export function removeRainbowCommands(): string[] {
   );
 }
 
+/** Older islands had wooden benches on the plaza: they go again (Philip did not like them). */
+const OLD_BENCHES: readonly (readonly [number, number])[] = [
+  [5, 7],
+  [7, 5],
+  [-5, 7],
+  [-7, 5],
+  [5, -7],
+  [7, -5],
+  [-5, -7],
+  [-7, -5],
+];
+
+export function removeBenchesCommands(): string[] {
+  return OLD_BENCHES.map(([x, z]) => fill(x, 0, z, x, 0, z, 'air', 'replace oak_stairs'));
+}
+
 /** A hot-air balloon floating beside the island: striped envelope, ropes, a basket with a lantern. */
 const BALLOON = { x: 38, y: 24, z: 22 } as const;
 const BALLOON_STRIPES = ['red_wool', 'red_wool', 'yellow_wool', 'yellow_wool', 'white_wool'] as const;
@@ -798,7 +803,7 @@ const CENTER_TAG = 'mh_spawn_center';
 const summonCenter = `summon marker ~ ~ ~${SPAWN_Z} {Tags:["${CENTER_TAG}"]}`;
 
 /** One-time repairs of islands built by older versions (each has a flag and runs at the island's middle). */
-const REPAIRS: readonly string[] = ['water', 'hills', 'center', 'extras', 'rainbow', 'fountain'];
+const REPAIRS: readonly string[] = ['water', 'hills', 'center', 'extras', 'rainbow', 'fountain', 'benches'];
 
 /** The datapack's files (path relative to the pack folder → content). */
 export function spawnPackFiles(spot: IslandSpot = ORIGIN): Record<string, string> {
@@ -870,6 +875,7 @@ export function spawnPackFiles(spot: IslandSpot = ORIGIN): Record<string, string
     extras: extrasCommands(),
     rainbow: removeRainbowCommands(),
     fountain: fixFountainCommands(),
+    benches: removeBenchesCommands(),
     rules_old: ['gamerule spawnRadius 0'],
     rules_new: ['gamerule respawn_radius 0'],
   };

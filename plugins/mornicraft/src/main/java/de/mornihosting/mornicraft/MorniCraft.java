@@ -57,6 +57,8 @@ public final class MorniCraft extends JavaPlugin {
   @Override
   public void onDisable() {
     if (elytra != null) elytra.release();
+    if (teleporter != null) teleporter.release();
+    if (sidebar != null) sidebar.release();
   }
 
   private void load() {

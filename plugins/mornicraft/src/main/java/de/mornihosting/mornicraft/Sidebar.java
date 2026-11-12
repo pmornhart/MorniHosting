@@ -165,6 +165,11 @@ final class Sidebar implements Listener {
     }
   }
 
+  /** On shutdown/reload everyone gets the normal scoreboard back. */
+  void release() {
+    for (Player p : Bukkit.getOnlinePlayers()) hide(p);
+  }
+
   /** After a reload (new server name, switched off …) the bars are built anew. */
   void rebuild() {
     for (Player p : Bukkit.getOnlinePlayers()) hide(p);
