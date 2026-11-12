@@ -105,9 +105,10 @@ final class Sidebar implements Listener {
     lines.add(Component.empty());
     Ranks.Rank rank = plugin.ranks().of(p);
     if (rank != null && !rank.fallback()) {
+      boolean picture = !rank.tag().isEmpty() && plugin.ranks().seesBadges(p);
       lines.add(Component.text((rank.symbol().isEmpty() ? "◆" : rank.symbol()) + " ", rank.color())
           .append(Component.text(ui.flat("sidebar.rank") + " ", Ui.SOFT))
-          .append(Component.text(rank.name(), rank.color())));
+          .append(picture ? plugin.ranks().label(rank, p) : Component.text(rank.name(), rank.color())));
     }
     lines.add(row("◷", Ui.ACCENT_2, ui.flat("sidebar.clock"), clock));
     lines.add(row(night ? "☾" : "☀", night ? Ui.MAIL : Ui.GOLD, ui.flat("sidebar.day", Ui.v("n", day)), gameTime));

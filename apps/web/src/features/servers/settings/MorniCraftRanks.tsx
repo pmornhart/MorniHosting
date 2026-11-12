@@ -49,18 +49,46 @@ function newId(name: string, taken: readonly string[]): string {
 }
 
 /** "♛ Owner · Morni » Hallo!" as the chat shows it. */
-export function ChatPreview({ rank, player }: { rank: MorniCraftRank; player: string }): ReactElement {
+/** The rank in front of the name: a badge (with the resource pack) or the symbol and name in colour. */
+function RankLabel({ rank, badge }: { rank: MorniCraftRank; badge: boolean }): ReactElement | null {
+  if (!rank.symbol) return null;
+  if (badge) {
+    return (
+      <span
+        className="mr-1.5 inline-flex items-center gap-1 rounded-[3px] px-1.5 align-middle text-[11px] font-bold tracking-wide text-white uppercase"
+        style={{
+          background: `color-mix(in srgb, ${rank.color} 50%, black)`,
+          boxShadow: `inset 0 -1px 0 ${rank.color}`,
+        }}
+      >
+        <span style={{ color: rank.color }}>{rank.symbol}</span>
+        {rank.name}
+      </span>
+    );
+  }
+  return (
+    <>
+      <span style={{ color: rank.color }}>
+        {rank.symbol} {rank.name}
+      </span>
+      <span className="text-[#6b7570]"> · </span>
+    </>
+  );
+}
+
+export function ChatPreview({
+  rank,
+  player,
+  badge = false,
+}: {
+  rank: MorniCraftRank;
+  player: string;
+  badge?: boolean;
+}): ReactElement {
   const { t } = useTranslation();
   return (
     <div className="overflow-x-auto rounded-[8px] bg-[#1d1f1e]/90 px-3 py-2 font-mono text-[13px] leading-snug text-white shadow-inner">
-      {rank.symbol ? (
-        <>
-          <span style={{ color: rank.color }}>
-            {rank.symbol} {rank.name}
-          </span>
-          <span className="text-[#6b7570]"> · </span>
-        </>
-      ) : null}
+      <RankLabel rank={rank} badge={badge} />
       <span style={{ color: rank.color }}>{player}</span>
       <span className="text-[#aaaaaa]"> » </span>
       <span>{t('mornicraft.ranks.previewText')}</span>
@@ -277,11 +305,18 @@ export function MorniCraftRanks({
   serverId,
   ranks,
   panelMembers,
+  badges,
+  badgesReady,
+  onBadges,
   onChange,
 }: {
   serverId: string;
   ranks: readonly MorniCraftRank[];
   panelMembers: Readonly<Record<'owner' | 'moderator', readonly string[]>>;
+  /** Ranks as small pictures in the chat (needs the panel's domain: players load a tiny resource pack). */
+  badges: boolean;
+  badgesReady: boolean;
+  onBadges: (on: boolean) => void;
   onChange: (ranks: MorniCraftRank[]) => void;
 }): ReactElement {
   const { t } = useTranslation();
@@ -352,6 +387,15 @@ export function MorniCraftRanks({
           <Plus aria-hidden />
           {t('mornicraft.ranks.addRank')}
         </Button>
+      </div>
+      <div className="flex items-center justify-between gap-3 rounded-[10px] border bg-card px-3 py-2.5">
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium">{t('mornicraft.ranks.badges')}</div>
+          <div className="text-[12px] text-muted-foreground">
+            {badgesReady ? t('mornicraft.ranks.badgesHint') : t('mornicraft.ranks.badgesNoDomain')}
+          </div>
+        </div>
+        <Switch checked={badges} onCheckedChange={onBadges} aria-label={t('mornicraft.ranks.badges')} />
       </div>
       <div className="grid gap-2">
         {list.map((r, i) => {
@@ -424,7 +468,7 @@ export function MorniCraftRanks({
               {isOpen ? (
                 <>
                   <div className="px-4 pb-3">
-                    <ChatPreview rank={r} player={previewName(r)} />
+                    <ChatPreview rank={r} player={previewName(r)} badge={badges && badgesReady} />
                   </div>
                   <div className="flex items-center justify-between gap-3 border-t px-4 py-2.5">
                     <div className="min-w-0">

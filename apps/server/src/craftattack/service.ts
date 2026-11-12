@@ -27,6 +27,7 @@ import type { ServerService } from '../servers/service.js';
 import { versionsFor } from '../servers/versions.js';
 import { type IslandSpot, SPAWN_PACK_DIR, SPAWN_Y, SPAWN_ZONES, writeSpawnPack } from './spawn.js';
 import {
+  type ConfigContext,
   homesOf,
   installMorniCraft,
   type LinkedPlayer,
@@ -36,6 +37,7 @@ import {
   withDefaults,
   writeMorniCraftConfig,
 } from './mornicraft.js';
+import { type BadgePack, badgePack } from './badges.js';
 import { MORNICRAFT_ICON_VERSION, writeMorniCraftIcon } from './icon.js';
 import { deathsOf, playerNumbers } from './stats.js';
 
@@ -59,6 +61,8 @@ const MORNICRAFT_KEY = 'mornicraft';
 const VIA_DONE_KEY = 'mornicraft_via';
 /** Which MorniCraft servers already got the server icon (server id → picture version). */
 const ICON_DONE_KEY = 'mornicraft_icon';
+/** Letters of the pack's checksum in its link: a changed pack gets a new address. */
+const PACK_VERSION_LENGTH = 10;
 // A server's address name as the page path: "Craft Attack!" → "craft-attack".
 // https://regex101.com/?flavor=javascript&regex=%5B%5Ea-z0-9%5D%2B&flags=g&testString=craft%20attack!
 const NOT_SLUG = /[^a-z0-9]+/g;
@@ -138,6 +142,8 @@ export interface CraftAttackService {
   readonly playerCommands: (slug: string, name: string) => CraftAttackPlayerCommands;
   /** A MorniCraft server: its world carries the spawn datapack. */
   readonly isCraftAttack: (serverId: string) => boolean;
+  /** The badges' resource pack of the server with this public slug (the zip file), or null. */
+  readonly badgePack: (slug: string) => Buffer | null;
   readonly morniCraft: (serverId: string) => MorniCraftState;
   /** Saves the dashboard settings, writes the plugin's config and applies it at once on a running server. */
   readonly setMorniCraft: (serverId: string, settings: MorniCraftSettings) => Promise<MorniCraftState>;
@@ -218,8 +224,33 @@ export function createCraftAttackService(
       moderator: linked.filter((u) => !u.isAdmin && !owners.has(u.id) && moderators.has(u.id)).map(player),
     };
   };
+  /** The badges' resource pack of a server, built from its ranks (kept until the ranks change). */
+  const packs = new Map<string, { key: string; pack: BadgePack }>();
+  const packOf = (serverId: string): BadgePack => {
+    const ranks = settingsOf(serverId).ranks.filter((r) => r.symbol);
+    const key = JSON.stringify(ranks.map((r) => [r.id, r.name, r.symbol, r.color]));
+    const cached = packs.get(serverId);
+    if (cached?.key === key) return cached.pack;
+    const pack = badgePack(ranks);
+    packs.set(serverId, { key, pack });
+    return pack;
+  };
+  /** Where players load the pack from – only with a panel domain (the link has to work from everywhere). */
+  const packUrl = (serverId: string): string | null => {
+    const domain = ctx.settings.get().panelDomain;
+    const slug = stored()[serverId]?.slug ?? safeSlug(serverId);
+    if (!domain || !slug) return null;
+    return `https://${domain}/api/public/packs/${slug}.zip?v=${packOf(serverId).sha1.slice(0, PACK_VERSION_LENGTH)}`;
+  };
+  const packConfig = (serverId: string): ConfigContext['pack'] => {
+    const url = settingsOf(serverId).badges ? packUrl(serverId) : null;
+    if (!url) return undefined;
+    const { sha1, chars } = packOf(serverId);
+    return { url, sha1, chars };
+  };
   const writeConfig = (serverId: string): void =>
     writeMorniCraftConfig(servers.dir(serverId), settingsOf(serverId), {
+      pack: packConfig(serverId),
       language: locale(),
       serverName: servers.row(serverId).name,
       timezone: ctx.settings.get().timezone,
@@ -454,11 +485,18 @@ export function createCraftAttackService(
       slug: active ? publicSetting(serverId).slug : null,
       settings: settingsOf(serverId),
       pluginAvailable: morniCraftJar() !== null,
+      badgePackUrl: active ? packUrl(serverId) : null,
       panelMembers: (() => {
         const m = panelMembers(serverId);
         return { owner: m.owner.map((p) => p.name), moderator: m.moderator.map((p) => p.name) };
       })(),
     };
+  };
+
+  const badgePackFile: CraftAttackService['badgePack'] = (slug) => {
+    const wanted = slug.toLowerCase();
+    const found = Object.entries(stored()).find(([id, st]) => st.slug === wanted && isCraftAttack(id));
+    return found ? packOf(found[0]).zip : null;
   };
 
   const setMorniCraft: CraftAttackService['setMorniCraft'] = async (serverId, next) => {
@@ -585,5 +623,6 @@ export function createCraftAttackService(
     isCraftAttack,
     morniCraft,
     setMorniCraft,
+    badgePack: badgePackFile,
   };
 }

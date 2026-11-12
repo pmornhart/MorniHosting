@@ -3375,7 +3375,10 @@
       "playerCount_one": "{{count}} Spieler",
       "playerCount_other": "{{count}} Spieler",
       "permCount_one": "{{count}} Recht",
-      "permCount_other": "{{count}} Rechte"
+      "permCount_other": "{{count}} Rechte",
+      "badges": "Abzeichen im Chat",
+      "badgesHint": "Farbiges Schild mit eigenem Pixel-Icon und Rang-Name. Spieler bekommen beim Betreten ein winziges Texturpaket angeboten; wer ablehnt (und Bedrock), sieht die Symbole.",
+      "badgesNoDomain": "Braucht die Domain des Panels (Admin-Bereich → Domain), damit Spieler das Texturpaket laden können. Bis dahin: Symbole."
     }
   }
 }

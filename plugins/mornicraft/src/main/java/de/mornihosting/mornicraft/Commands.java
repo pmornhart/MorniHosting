@@ -408,7 +408,8 @@ final class Commands implements TabExecutor {
         names = names.append(Component.text(shown, online != null ? NamedTextColor.WHITE : Ui.DIM));
         first = false;
       }
-      lines.add(r.badge().append(Component.text("  ", Ui.DIM)).append(names));
+      Component label = to instanceof Player viewer ? plugin.ranks().label(r, viewer) : r.badge();
+      lines.add(label.append(Component.text("  ", Ui.DIM)).append(names));
     }
     if (lines.isEmpty()) lines.add(ui().words("team.empty"));
     ui().card(to, ui().flat("team.title"), lines);

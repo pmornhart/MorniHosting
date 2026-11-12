@@ -126,6 +126,7 @@ final class Texts {
       Map.entry("menu.back", new String[] {"Zurück zum letzten Ort", "Back to the last place"}),
       Map.entry("welcome.bedrock", new String[] {
           "Tippe <hl>/info</hl> – dann öffnet sich ein Menü mit allem", "Type <hl>/info</hl> – a menu with everything opens"}),
+      Map.entry("pack.prompt", new String[] {"Kleine Rang-Abzeichen für den Chat – nur ein paar Bilder von diesem Server.", "Small rank badges for the chat – just a few pictures from this server."}),
       Map.entry("team.title", new String[] {"Das Team", "The team"}),
       Map.entry("team.empty", new String[] {"Noch hat niemand einen Rang", "Nobody has a rank yet"}),
       Map.entry("sidebar.rank", new String[] {"Rang", "Rank"}),

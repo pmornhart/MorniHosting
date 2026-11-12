@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 /* eslint-disable ts-patterns/no-magic-numbers -- tests compare against literal expected values */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -28,6 +29,7 @@ import {
   retireReplacedPlugins,
   withDefaults,
 } from '../src/craftattack/mornicraft.js';
+import { badgePack, badgePicture, pngOf } from '../src/craftattack/badges.js';
 import { deathOf, deathsOf } from '../src/craftattack/stats.js';
 import { DEFAULT_RANKS } from '@mornihosting/shared';
 import { users } from '../src/db/schema.js';
@@ -396,6 +398,76 @@ describe('public statistics page', () => {
     expect(ranked).toContain('"r": 11');
     const icon = fs.readFileSync(path.join(dir, 'server-icon.png'));
     expect(icon.subarray(1, 4).toString()).toBe('PNG');
+
+    // Badges: without a panel domain there is no address for the resource pack – the plugin keeps the symbols.
+    expect(withOwner).toMatchObject({ badgePackUrl: null });
+    expect(ranked).toContain('"badge": ""');
+    await t.app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      headers: authHeaders(admin),
+      payload: { panelDomain: 'mornihosting.de' },
+    });
+    const withPack = await t.app.inject({
+      method: 'PUT',
+      url: mcUrl,
+      headers: authHeaders(admin),
+      payload: { ...state.settings, badges: true },
+    });
+    const packUrl = withPack.json<{ badgePackUrl: string }>().badgePackUrl;
+    expect(packUrl).toMatch(
+      /^https:\/\/mornihosting\.de\/api\/public\/packs\/craft-attack\.zip\?v=[0-9a-f]{10}$/,
+    ); // eslint-disable-line ts-patterns/require-regex-example -- "https://mornihosting.de/api/public/packs/craft-attack.zip?v=0402fc9a41"
+    const badged = fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8');
+    expect(badged).toContain(`"url": "${packUrl}"`);
+    expect(badged).toContain('"badge": "\ue700"');
+    // Anyone may load the pack (the game does, without logging in): a zip with the font and one picture per rank.
+    const zip = await t.app.inject({ method: 'GET', url: '/api/public/packs/craft-attack.zip' });
+    expect(zip.statusCode).toBe(200);
+    expect(zip.headers['content-type']).toBe('application/zip');
+    expect(zip.rawPayload.subarray(0, 2).toString()).toBe('PK');
+    expect(badged).toContain(`"sha1": "${crypto.createHash('sha1').update(zip.rawPayload).digest('hex')}"`);
+    expect(zip.rawPayload.includes('assets/minecraft/font/default.json')).toBe(true);
+    expect((await t.app.inject({ method: 'GET', url: '/api/public/packs/gibts-nicht.zip' })).statusCode).toBe(
+      404,
+    );
+    // Switched off: no pack in the config any more.
+    await t.app.inject({
+      method: 'PUT',
+      url: mcUrl,
+      headers: authHeaders(admin),
+      payload: { ...state.settings, badges: false },
+    });
+    expect(fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8')).toContain(
+      '"url": ""',
+    );
+  });
+});
+
+describe('rank badges', () => {
+  it('draws a tag per rank and packs them as a resource pack that stays the same for the same ranks', () => {
+    const owner = badgePicture({ name: 'Owner', symbol: '♛', color: '#ff5555' });
+    // 2 + icon 7 + 2 + "OWNER" (5 letters of 5 px + 4 gaps) + 2
+    expect([owner.width, owner.height]).toEqual([42, 9]);
+    // Rounded corners are see-through, the tag is the rank's colour darkened, the letters white.
+    expect(owner.pixels[3]).toBe(0);
+    expect([...owner.pixels.subarray(4, 8)]).toEqual([128, 43, 43, 255]);
+    expect(pngOf(owner).subarray(1, 4).toString()).toBe('PNG');
+    // Names the font does not know lose those letters; without a symbol there is no icon.
+    expect(badgePicture({ name: 'V.I.P★', symbol: '', color: '#ffd23f' }).width).toBe(2 + 15 + 2);
+    const pack = badgePack(DEFAULT_RANKS.filter((r) => r.symbol));
+    expect(Object.keys(pack.chars)).toEqual([
+      'owner',
+      'admin',
+      'moderator',
+      'supporter',
+      'builder',
+      'media',
+      'vip',
+    ]);
+    expect(pack.chars['owner']).toBe('\ue700');
+    expect(badgePack(DEFAULT_RANKS.filter((r) => r.symbol)).sha1).toBe(pack.sha1);
+    expect(pack.sha1).toMatch(/^[0-9a-f]{40}$/); // eslint-disable-line ts-patterns/require-regex-example -- "0402fc9a41332c12c2f987ecee454125040c3732"
   });
 });
 

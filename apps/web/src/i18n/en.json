@@ -3375,7 +3375,10 @@
       "playerCount_one": "{{count}} player",
       "playerCount_other": "{{count}} players",
       "permCount_one": "{{count}} permission",
-      "permCount_other": "{{count}} permissions"
+      "permCount_other": "{{count}} permissions",
+      "badges": "Badges in chat",
+      "badgesHint": "A coloured tag with an own pixel icon and the rank's name. Players are offered a tiny resource pack when they join; whoever declines (and Bedrock) sees the symbols.",
+      "badgesNoDomain": "Needs the panel's domain (admin area → Domain) so players can load the resource pack. Until then: symbols."
     }
   }
 }

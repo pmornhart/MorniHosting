@@ -1,12 +1,14 @@
 import { z } from 'zod';
 import { actorOf, requireAuth } from '../auth/context.js';
 import type { Api, AppContext } from '../context.js';
+import { notFound } from '../lib/errors.js';
 import { morniCraftSettingsSchema } from './mornicraft.js';
 import { publicStatsInputSchema, type CraftAttackService } from './service.js';
 
 const params = z.object({ id: z.string().min(1) });
 /** The public page is open to everyone; it refreshes itself, so a generous limit per visitor. */
 const PUBLIC_LIMIT = { rateLimit: { max: 60, timeWindow: '1 minute' } };
+const ZIP_SUFFIX = '.zip';
 
 export function registerCraftAttackRoutes(app: Api, ctx: AppContext, craftAttack: CraftAttackService): void {
   app.get('/api/servers/:id/public-stats', { schema: { params } }, async (request) => {
@@ -60,5 +62,24 @@ export function registerCraftAttackRoutes(app: Api, ctx: AppContext, craftAttack
       config: PUBLIC_LIMIT,
     },
     async (request) => craftAttack.playerCommands(request.params.slug, request.params.name),
+  );
+  // The badges' resource pack: Minecraft clients load it without logging in (the address is in the plugin's config).
+  app.get(
+    '/api/public/packs/:file',
+    {
+      schema: {
+        // "freunde.zip": the server's public name. https://regex101.com/?flavor=javascript&regex=%5E%5Ba-z0-9-%5D%7B1%2C60%7D%5C.zip%24&testString=freunde.zip
+        params: z.object({ file: z.string().regex(/^[a-z0-9-]{1,60}\.zip$/) }),
+      },
+      config: PUBLIC_LIMIT,
+    },
+    async (request, reply) => {
+      const pack = craftAttack.badgePack(request.params.file.slice(0, -ZIP_SUFFIX.length));
+      if (!pack) throw notFound('pack_not_found');
+      return reply
+        .header('content-type', 'application/zip')
+        .header('cache-control', 'public, max-age=31536000, immutable')
+        .send(pack);
+    },
   );
 }
