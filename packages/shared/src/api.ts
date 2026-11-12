@@ -335,6 +335,13 @@ export interface ServerSummary {
   readonly live: ServerLive;
   readonly crash: CrashInfo | null;
   readonly createdAt: string;
+  /** Who owns the server (the role "owner"); empty = the panel's admins (they create servers without the role). */
+  readonly owners?: readonly ServerOwner[];
+}
+
+export interface ServerOwner {
+  readonly id: number;
+  readonly name: string;
 }
 
 export interface ServerDetail extends ServerSummary {

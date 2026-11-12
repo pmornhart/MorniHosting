@@ -16,6 +16,7 @@ import {
   type ServerDetail,
   type ServerLive,
   type ServerState,
+  type ServerOwner,
   type ServerSummary,
   type UpdateServerInput,
 } from '@mornihosting/shared';
@@ -453,6 +454,17 @@ export function createServerService(ctx: AppContext): ServerService {
 
   const gameOfRow = (r: ServerRow): GameInfo | null => gameOf(r.software);
 
+  /** Holders of the built-in owner role on a server (display name, else user name). */
+  const ownersOf = (serverId: string): ServerOwner[] =>
+    db
+      .select({ id: users.id, username: users.username, displayName: users.displayName })
+      .from(serverAccess)
+      .innerJoin(roles, eq(roles.id, serverAccess.roleId))
+      .innerJoin(users, eq(users.id, serverAccess.userId))
+      .where(and(eq(serverAccess.serverId, serverId), eq(roles.builtIn, 'owner')))
+      .all()
+      .map((u) => ({ id: u.id, name: u.displayName || u.username }));
+
   const summaryOf = (r: ServerRow): ServerSummary => ({
     id: r.id,
     name: r.name,
@@ -469,6 +481,7 @@ export function createServerService(ctx: AppContext): ServerService {
     live: live(r.id),
     crash: r.crash ?? null,
     createdAt: r.createdAt,
+    owners: ownersOf(r.id),
   });
 
   /** Ports a game uses with the main port's number but the other protocol (they are not stored). */

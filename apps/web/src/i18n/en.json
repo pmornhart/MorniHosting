@@ -178,7 +178,10 @@
     "emptyTitle": "No servers yet",
     "emptyText": "Create your first Minecraft server. You pick the game version and size, we take care of the rest.",
     "emptyImport": "Already have a server? Import it as a ZIP.",
-    "noAccess": "No server has been shared with you yet. Ask your administrator for access."
+    "noAccess": "No server has been shared with you yet. Ask your administrator for access.",
+    "mine": "My servers",
+    "others": "Other people's servers",
+    "othersText": "They belong to other people but run on your panel."
   },
   "card": {
     "memory": "Memory",
@@ -192,7 +195,9 @@
     "downloading": "Downloading game files",
     "moddedHint": "Modpacks often need 2 to 3 minutes on their first start.",
     "stoppedHint": "Stopped. Your world is saved.",
-    "crashSolution": "See the fix"
+    "crashSolution": "See the fix",
+    "ownedBy": "Belongs to {{name}}",
+    "ownedByAdmins": "Belongs to the admins"
   },
   "server": {
     "tabs": {

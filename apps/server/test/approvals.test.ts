@@ -260,6 +260,10 @@ describe('approvals: accounts and server requests, by panel, mail and Discord DM
     expect(mine[0]).toMatchObject({ status: 'approved', decidedBy: 'philip' });
     const servers = (await as(lena, 'GET', '/api/servers')).json<ServerSummary[]>();
     expect(servers.map((s) => s.name)).toEqual(['Lenas Welt']);
+    // Lena owns it; the admin's overview shows it under "other people's servers", with Lena's name.
+    expect(servers[0]?.owners?.map((o) => o.name)).toEqual(['lena']);
+    const adminView = (await as(admin, 'GET', '/api/servers')).json<ServerSummary[]>();
+    expect(adminView.find((s) => s.name === 'Lenas Welt')?.owners).toHaveLength(1);
 
     const approve =
       discord.dms.find((d) => d.message.title.includes('Server-Anfrage'))?.message.buttons?.[0]?.id ?? '';

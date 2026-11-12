@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowUpCircle, Clock, Play, Square, SquareTerminal, TriangleAlert } from 'lucide-react';
+import { ArrowUpCircle, Clock, Play, Square, SquareTerminal, TriangleAlert, User } from 'lucide-react';
 import type { ReactElement, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContentUpdates } from '@/features/servers/content/updates';
@@ -110,7 +110,14 @@ function Body({ server }: { server: ServerSummary }): ReactElement {
   );
 }
 
-export function ServerCard({ server }: { server: ServerSummary }): ReactElement {
+export function ServerCard({
+  server,
+  showOwner = false,
+}: {
+  server: ServerSummary;
+  /** Says whose server it is (servers of other people that run on this panel). */
+  showOwner?: boolean;
+}): ReactElement {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { can } = useSession();
@@ -178,6 +185,14 @@ export function ServerCard({ server }: { server: ServerSummary }): ReactElement 
         </Link>
         <StatePill state={live.state} className="shrink-0 self-start" />
       </div>
+      {showOwner ? (
+        <span className="-mt-1 inline-flex w-fit items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[12px] text-muted-foreground">
+          <User className="size-3.5" aria-hidden />
+          {server.owners?.length
+            ? t('card.ownedBy', { name: server.owners.map((o) => o.name).join(', ') })
+            : t('card.ownedByAdmins')}
+        </span>
+      ) : null}
       {updateCount ? (
         <Link
           to={`/servers/${server.id}/content?view=installed`}
