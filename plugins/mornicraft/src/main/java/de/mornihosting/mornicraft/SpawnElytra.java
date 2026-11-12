@@ -66,6 +66,9 @@ final class SpawnElytra implements Listener {
   /** Marks a backup of "nothing on the chest". */
   private static final String EMPTY = "";
 
+  /** The vanilla advancement for getting an elytra ("end/elytra"). */
+  private static final String ELYTRA_ADVANCEMENT = "end/elytra";
+
   private final MorniCraft plugin;
   private final NamespacedKey mark;
   /** Players we allowed to "fly" (only to catch the double jump). */
@@ -172,6 +175,19 @@ final class SpawnElytra implements Listener {
   }
 
   // ---------------------------------------------------------------- the wings
+
+  /**
+   * The start elytra is not a real elytra: putting it on must not count as "Sky's the limit" (Hinterm Horizont geht's
+   * weiter). The advancement only comes with a real elytra somewhere in the inventory.
+   */
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onAdvancement(com.destroystokyo.paper.event.player.PlayerAdvancementCriterionGrantEvent e) {
+    if (!ELYTRA_ADVANCEMENT.equals(e.getAdvancement().getKey().getKey())) return;
+    Player p = e.getPlayer();
+    boolean real = java.util.Arrays.stream(p.getInventory().getContents())
+        .anyMatch(i -> i != null && i.getType() == Material.ELYTRA && !isStartElytra(i));
+    if (!real) e.setCancelled(true);
+  }
 
   boolean isStartElytra(ItemStack item) {
     if (item == null || item.getType() != Material.ELYTRA || !item.hasItemMeta()) return false;
