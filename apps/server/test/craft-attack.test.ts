@@ -14,6 +14,7 @@ import {
   spawnPackFiles,
   fountainCommands,
   removeRainbowCommands,
+  removeBenchesCommands,
 } from '../src/craftattack/spawn.js';
 import {
   homesOf,
@@ -113,6 +114,12 @@ describe('MorniCraft spawn, plugin and settings', () => {
     expect(
       removeRainbowCommands().every((c) => c.includes(' air replace ') && c.includes('stained_glass')),
     ).toBe(true);
+    // No more benches on the plaza; older islands lose theirs once (only oak stairs, nothing else).
+    expect(topCommands().some((c) => c.includes('oak_stairs'))).toBe(false);
+    expect(removeBenchesCommands().every((c) => c.endsWith(' air replace oak_stairs'))).toBe(true);
+    expect(files['data/craftattack/function/fix_benches.mcfunction']).toContain(
+      'function craftattack:benches',
+    );
   });
 
   it('installs the plugin, switches off what it replaces and writes its settings', () => {

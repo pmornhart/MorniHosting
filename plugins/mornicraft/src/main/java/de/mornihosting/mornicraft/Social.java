@@ -6,12 +6,12 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
@@ -24,13 +24,17 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 /** Everything between players: teleport requests, private messages, mail for later, ignoring, "away". */
 final class Social implements Listener {
   private static final long REQUEST_MS = 120_000;
-  private static final DateTimeFormatter WHEN = DateTimeFormatter.ofPattern("dd.MM. HH:mm").withZone(ZoneId.systemDefault());
+  /** One sender fills at most this many places in someone's mailbox (the rest stays free for others). */
+  private static final int MAIL_PER_SENDER = 10;
+  /** /afk tells everyone – at most this often per player. */
+  private static final long AFK_EVERY_MS = 10_000;
   private static final Sound PING = Sound.sound(Key.key("block.note_block.pling"), Sound.Source.PLAYER, 0.6f, 1.6f);
   private static final Sound MESSAGE = Sound.sound(Key.key("entity.experience_orb.pickup"), Sound.Source.PLAYER, 0.4f, 1.4f);
 
@@ -40,7 +44,9 @@ final class Social implements Listener {
   /** Open requests per target, oldest first. */
   private final Map<UUID, LinkedHashMap<UUID, Request>> requests = new HashMap<>();
   private final Map<UUID, UUID> lastFrom = new HashMap<>();
-  private final Set<UUID> away = new HashSet<>();
+  /** Read by the chat thread too. */
+  private final Set<UUID> away = ConcurrentHashMap.newKeySet();
+  private final Map<UUID, Long> lastAfk = new HashMap<>();
 
   Social(MorniCraft plugin) {
     this.plugin = plugin;
@@ -61,8 +67,15 @@ final class Social implements Listener {
       from.sendMessage(ui().fail("tpa.blocked", Ui.v("name", to.getName())));
       return;
     }
-    requests.computeIfAbsent(to.getUniqueId(), k -> new LinkedHashMap<>())
-        .put(from.getUniqueId(), new Request(from.getUniqueId(), here, System.currentTimeMillis()));
+    // One open request per pair: a second one could swap /tpa for /tpahere behind the card already shown.
+    LinkedHashMap<UUID, Request> open = requests.computeIfAbsent(to.getUniqueId(), k -> new LinkedHashMap<>());
+    Request old = open.get(from.getUniqueId());
+    if (old != null && System.currentTimeMillis() - old.at() <= REQUEST_MS) {
+      from.sendMessage(ui().fail("tpa.already", Ui.v("name", to.getName())));
+      return;
+    }
+    open.remove(from.getUniqueId());
+    open.put(from.getUniqueId(), new Request(from.getUniqueId(), here, System.currentTimeMillis()));
     from.sendMessage(ui().ok("tpa.sent", Ui.v("name", to.getName())));
     Component accept = Ui.button(ui().bare("tpa.accept"), Ui.ACCENT, ui().bare("tpa.accept.hover"),
         ClickEvent.runCommand("/tpaccept " + from.getName()));
@@ -162,7 +175,8 @@ final class Social implements Listener {
       from.sendMessage(ui().fail("tpa.blocked", Ui.v("name", String.valueOf(to.getName()))));
       return;
     }
-    if (d.mail.size() >= PlayerStore.MAX_MAIL) {
+    long fromThem = d.mail.stream().filter(m -> m.from().equals(from.getName())).count();
+    if (d.mail.size() >= PlayerStore.MAX_MAIL || fromThem >= MAIL_PER_SENDER) {
       from.sendMessage(ui().fail("mail.full", Ui.v("name", String.valueOf(to.getName()))));
       return;
     }
@@ -171,6 +185,7 @@ final class Social implements Listener {
     from.sendMessage(ui().ok("mail.sent", Ui.v("name", String.valueOf(to.getName()))));
     Player online = to.getPlayer();
     if (online != null) waiting(online);
+    else plugin.store().forget(to.getUniqueId()); // not kept in memory for players who are away
   }
 
   /** "2 new messages [ ✉ Read ]" – or nothing when there are none. */
@@ -196,8 +211,9 @@ final class Social implements Listener {
       return;
     }
     List<Component> lines = new ArrayList<>();
+    DateTimeFormatter when = DateTimeFormatter.ofPattern("dd.MM. HH:mm").withZone(zone());
     for (PlayerStore.Mail m : d.mail) {
-      lines.add(Component.text(WHEN.format(Instant.ofEpochMilli(m.at())) + "  ", Ui.DIM)
+      lines.add(Component.text(when.format(Instant.ofEpochMilli(m.at())) + "  ", Ui.DIM)
           .append(Component.text(m.from(), net.kyori.adventure.text.format.NamedTextColor.WHITE))
           .append(Component.text(": ", Ui.SOFT))
           .append(Component.text(m.text(), Ui.SOFT)));
@@ -222,7 +238,22 @@ final class Social implements Listener {
 
   // ── Away ─────────────────────────────────────────────────────────────────────────────
 
+  private ZoneId zone() {
+    try {
+      return ZoneId.of(plugin.settings().timezone());
+    } catch (RuntimeException e) {
+      return ZoneId.systemDefault();
+    }
+  }
+
   void toggleAway(Player p) {
+    long now = System.currentTimeMillis();
+    Long last = lastAfk.get(p.getUniqueId());
+    if (last != null && now - last < AFK_EVERY_MS) {
+      p.sendMessage(ui().fail("afk.wait"));
+      return;
+    }
+    lastAfk.put(p.getUniqueId(), now);
     if (away.remove(p.getUniqueId())) {
       Bukkit.broadcast(ui().note("☀", Ui.GOLD, "afk.off", Ui.v("name", p.getName())));
     } else {
@@ -248,10 +279,30 @@ final class Social implements Listener {
     if (away.contains(sender)) Bukkit.getScheduler().runTask(plugin, () -> backAgain(e.getPlayer()));
   }
 
+  /** Load the player's data now, on the main thread – not later from the chat thread. */
+  @EventHandler(priority = EventPriority.LOWEST)
+  public void onJoin(PlayerJoinEvent e) {
+    plugin.store().get(e.getPlayer().getUniqueId());
+  }
+
   @EventHandler
   public void onQuit(PlayerQuitEvent e) {
     UUID id = e.getPlayer().getUniqueId();
     away.remove(id);
     requests.remove(id);
+    lastFrom.remove(id);
+    lastAfk.remove(id);
+  }
+
+  /** Who may still answer `target` with /tpaccept (for the tab list). */
+  List<String> askers(Player target) {
+    LinkedHashMap<UUID, Request> open = requests.get(target.getUniqueId());
+    if (open == null) return List.of();
+    List<String> names = new ArrayList<>();
+    for (Request r : open.values()) {
+      Player p = Bukkit.getPlayer(r.from());
+      if (p != null && System.currentTimeMillis() - r.at() <= REQUEST_MS) names.add(p.getName());
+    }
+    return names;
   }
 }

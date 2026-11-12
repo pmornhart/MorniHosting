@@ -16,7 +16,7 @@ final class Bedrock {
 
   Bedrock(MorniCraft plugin) {
     FloodgateMenus found = null;
-    if (Bukkit.getPluginManager().getPlugin("floodgate") != null) {
+    if (Bukkit.getPluginManager().isPluginEnabled("floodgate")) {
       try {
         found = new FloodgateMenus(plugin);
       } catch (LinkageError | RuntimeException e) {

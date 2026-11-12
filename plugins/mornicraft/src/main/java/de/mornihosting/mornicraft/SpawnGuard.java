@@ -5,9 +5,20 @@ import java.util.Map;
 import java.util.UUID;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Directional;
+import org.bukkit.entity.AreaEffectCloud;
+import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Flying;
+import org.bukkit.entity.Hoglin;
+import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Shulker;
+import org.bukkit.entity.Slime;
+import org.bukkit.entity.TNTPrimed;
+import org.bukkit.entity.Tameable;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -15,6 +26,12 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockDispenseEvent;
+import org.bukkit.event.block.BlockFertilizeEvent;
+import org.bukkit.event.block.EntityBlockFormEvent;
+import org.bukkit.event.block.SignChangeEvent;
+import org.bukkit.event.entity.EntityPlaceEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
@@ -118,7 +135,11 @@ final class SpawnGuard implements Listener {
         || type.equals("CAMPFIRE") || type.equals("COMPOSTER") || type.equals("FLOWER_POT")
         || type.equals("GRASS_BLOCK") || type.equals("DIRT") || type.endsWith("_CANDLE") || type.equals("CAKE")
         || type.equals("SWEET_BERRY_BUSH") || type.equals("CAVE_VINES") || type.equals("CAVE_VINES_PLANT")
-        || type.equals("RESPAWN_ANCHOR");
+        || type.equals("RESPAWN_ANCHOR") || type.equals("CANDLE") || type.endsWith("CANDLE_CAKE")
+        || type.equals("SOUL_CAMPFIRE") || type.equals("COARSE_DIRT") || type.equals("ROOTED_DIRT")
+        || type.contains("COPPER") || type.equals("PUMPKIN") || type.endsWith("_SIGN") || type.equals("LECTERN")
+        || type.equals("CHISELED_BOOKSHELF") || type.equals("DECORATED_POT") || type.equals("BEEHIVE")
+        || type.equals("BEE_NEST") || type.equals("JUKEBOX") || type.equals("MOSS_BLOCK");
     if (changes) stop(e.getPlayer(), e, "spawn.protected");
   }
 
@@ -155,17 +176,76 @@ final class SpawnGuard implements Listener {
     stop(remover instanceof Player p ? p : null, e, "spawn.protected");
   }
 
-  /** No fighting on the spawn island: players (also with arrows) can't hurt players or the animals there. */
+  /** Who is really behind a hit: the player, the archer, the owner of the wolf, whoever lit the TNT … */
+  private static Player attackerOf(Entity damager) {
+    if (damager instanceof Player p) return p;
+    if (damager instanceof Projectile pr && pr.getShooter() instanceof Player p) return p;
+    if (damager instanceof Tameable t && t.getOwner() instanceof Player p) return p;
+    if (damager instanceof TNTPrimed tnt && tnt.getSource() instanceof Player p) return p;
+    if (damager instanceof AreaEffectCloud cloud && cloud.getSource() instanceof Player p) return p;
+    return null;
+  }
+
+  /** Monsters may always be fought, also those the game doesn't count as "Monster" (phantoms, slimes …). */
+  private static boolean hostile(Entity e) {
+    return e instanceof Monster || e instanceof Flying || e instanceof Slime || e instanceof Shulker
+        || e instanceof Hoglin || e instanceof EnderDragon;
+  }
+
+  /**
+   * No fighting on the spawn island: nobody hurts players there, and nobody standing there hurts players outside
+   * (no shooting from the safe zone). Animals on the island are safe too; monsters are not.
+   */
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onDamage(EntityDamageByEntityEvent e) {
-    Player attacker = e.getDamager() instanceof Player p ? p
-        : e.getDamager() instanceof Projectile pr && pr.getShooter() instanceof Player p2 ? p2 : null;
-    if (attacker == null || !near(e.getEntity().getLocation())) return;
-    if (e.getEntity() instanceof Player) {
-      if (!plugin.settings().pvpAtSpawn()) stop(attacker, e, "spawn.nopvp");
-    } else if (guarded(e.getEntity().getLocation()) && !(e.getEntity() instanceof org.bukkit.entity.Monster)) {
+    Player attacker = attackerOf(e.getDamager());
+    if (attacker == null) return;
+    Entity victim = e.getEntity();
+    if (victim instanceof Player) {
+      if (victim.equals(attacker) || plugin.settings().pvpAtSpawn()) return;
+      if (near(victim.getLocation()) || near(attacker.getLocation())) stop(attacker, e, "spawn.nopvp");
+    } else if (guarded(victim.getLocation()) && !hostile(victim)) {
       stop(attacker, e, "spawn.protected");
     }
+  }
+
+  /** Armor stands, boats, minecarts, end crystals … */
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onEntityPlace(EntityPlaceEvent e) {
+    if (guarded(e.getEntity().getLocation())) stop(e.getPlayer(), e, "spawn.protected");
+  }
+
+  /** Bone meal (moss and grass would spread over the island). */
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onFertilize(BlockFertilizeEvent e) {
+    if (guarded(e.getBlock()) || e.getBlocks().stream().anyMatch(st -> guarded(st.getLocation()))) {
+      stop(e.getPlayer(), e, "spawn.protected");
+    }
+  }
+
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onSign(SignChangeEvent e) {
+    if (guarded(e.getBlock())) stop(e.getPlayer(), e, "spawn.protected");
+  }
+
+  /** Frost walker boots don't freeze the fountain. */
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onFreeze(EntityBlockFormEvent e) {
+    if (guarded(e.getBlock())) e.setCancelled(true);
+  }
+
+  /** A dispenser outside, facing in, doesn't pour, place or shoot anything onto the island. */
+  @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+  public void onDispense(BlockDispenseEvent e) {
+    Block b = e.getBlock();
+    BlockData data = b.getBlockData();
+    if (!(data instanceof Directional d) || guarded(b)) return;
+    if (guarded(b.getRelative(d.getFacing()))) e.setCancelled(true);
+  }
+
+  @EventHandler
+  public void onQuit(PlayerQuitEvent e) {
+    lastNote.remove(e.getPlayer().getUniqueId());
   }
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
@@ -209,7 +289,7 @@ final class SpawnGuard implements Listener {
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
   public void onPiston(BlockPistonExtendEvent e) {
-    if (e.getBlocks().stream().anyMatch(this::guarded)
+    if (e.getBlocks().stream().anyMatch(b -> guarded(b) || guarded(b.getRelative(e.getDirection())))
         || guarded(e.getBlock().getRelative(e.getDirection()))) {
       e.setCancelled(true);
     }

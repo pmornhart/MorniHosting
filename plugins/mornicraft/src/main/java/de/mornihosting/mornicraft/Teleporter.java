@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -74,9 +75,15 @@ final class Teleporter implements Listener {
 
   private void go(Player p, Component dest, Supplier<Location> target, Runnable done) {
     Location to = target.get();
-    if (to == null) return;
+    if (to == null) {
+      p.sendMessage(plugin.ui().fail("tp.failed"));
+      return;
+    }
     p.teleportAsync(to, PlayerTeleportEvent.TeleportCause.PLUGIN).thenAccept(ok -> {
-      if (!ok) return;
+      if (!ok) {
+        p.sendMessage(plugin.ui().fail("tp.failed"));
+        return;
+      }
       p.playSound(GONE);
       p.showTitle(Ui.title(Component.empty(), Component.text("➜ ", Ui.ACCENT).append(dest.colorIfAbsent(Ui.ACCENT)),
           FADE_IN, STAY, FADE_OUT));
@@ -97,9 +104,7 @@ final class Teleporter implements Listener {
       Location now = p.getLocation();
       if (!now.getWorld().equals(w.start().getWorld()) || now.distanceSquared(w.start()) > STILL) {
         it.remove();
-        w.bar().color(BossBar.Color.RED).progress(1f).name(plugin.ui().bare("tp.cancel"));
-        p.playSound(STOP);
-        Bukkit.getScheduler().runTaskLater(plugin, () -> p.hideBossBar(w.bar()), RED_BAR_TICKS);
+        abort(p, w, "tp.cancel");
         continue;
       }
       int left = w.left() - (int) CHECK_TICKS;
@@ -118,6 +123,30 @@ final class Teleporter implements Listener {
       }
       e.setValue(new Pending(w.start(), w.dest(), w.target(), w.done(), w.total(), left, w.bar()));
     }
+  }
+
+  /** The bar turns red and says why, then goes. */
+  private void abort(Player p, Pending w, String why) {
+    w.bar().color(BossBar.Color.RED).progress(1f).name(plugin.ui().bare(why));
+    p.playSound(STOP);
+    Bukkit.getScheduler().runTaskLater(plugin, () -> p.hideBossBar(w.bar()), RED_BAR_TICKS);
+  }
+
+  /** Taking damage cancels: no /home out of a fight. */
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  public void onHurt(EntityDamageEvent event) {
+    if (!(event.getEntity() instanceof Player p) || event.getFinalDamage() <= 0) return;
+    Pending w = pending.remove(p.getUniqueId());
+    if (w != null) abort(p, w, "tp.hurt");
+  }
+
+  /** On shutdown/reload no bar stays stuck on the screen. */
+  void release() {
+    pending.forEach((id, w) -> {
+      Player p = Bukkit.getPlayer(id);
+      if (p != null) p.hideBossBar(w.bar());
+    });
+    pending.clear();
   }
 
   @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
