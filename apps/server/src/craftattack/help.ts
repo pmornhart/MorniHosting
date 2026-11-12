@@ -37,6 +37,7 @@ const TEXTS: Readonly<
       '&aWillkommen, &f{PLAYER}&a!',
       '&7Auf der Spawn-Insel: &f2× Leertaste &7zum Gleiten, &fF &7für Schub.',
       '&7Alle Befehle: &f/info &7· Regeln: &f/rules',
+      '&7Teleports (/spawn, /home, /tpa): &f5 Sekunden stillstehen&7.',
     ],
     rules: [
       '&a1. &fSei nett zu allen.',
@@ -53,6 +54,7 @@ const TEXTS: Readonly<
       '&aWelcome, &f{PLAYER}&a!',
       '&7On the spawn island: &fspace twice &7to glide, &fF &7to boost.',
       '&7All commands: &f/info &7· Rules: &f/rules',
+      '&7Teleports (/spawn, /home, /tpa): &fstand still for 5 seconds&7.',
     ],
     rules: [
       '&a1. &fBe nice to everyone.',
@@ -105,16 +107,25 @@ export function writeHelpFiles(serverDir: string, locale: Locale, link?: string)
   });
 }
 
+/** Seconds to stand still before a teleport (/spawn, /home, /tpa, /back); moving cancels it. OPs skip it. */
+export const TELEPORT_DELAY_SECONDS = 5;
+/** EssentialsX defaults we change – only while they are still the default, so an owner's own value stays. */
+const CONFIG_CHANGES: readonly (readonly [string, string])[] = [
+  [BUKKIT_PERMISSIONS_ON, BUKKIT_PERMISSIONS_OFF],
+  ['teleport-delay: 0\n', `teleport-delay: ${TELEPORT_DELAY_SECONDS} ${MARKER}: 5 Sekunden stillstehen\n`],
+];
+
 /**
- * Lets normal players use the everyday commands. Only EssentialsX's default setting is changed; true when the
- * file was changed (EssentialsX must reload it then).
+ * Lets normal players use the everyday commands and adds the teleport wait. Only EssentialsX's default settings
+ * are changed; true when the file was changed (EssentialsX must reload it then).
  */
 export function openPlayerCommands(serverDir: string): boolean {
   const file = path.join(serverDir, ESSENTIALS, 'config.yml');
   if (!fs.existsSync(file)) return false;
   const text = fs.readFileSync(file, 'utf8');
-  if (!text.includes(BUKKIT_PERMISSIONS_ON)) return false;
-  fs.writeFileSync(file, text.replace(BUKKIT_PERMISSIONS_ON, BUKKIT_PERMISSIONS_OFF));
+  const next = CONFIG_CHANGES.reduce((current, [from, to]) => current.replace(from, to), text);
+  if (next === text) return false;
+  fs.writeFileSync(file, next);
   return true;
 }
 

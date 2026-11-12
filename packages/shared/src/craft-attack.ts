@@ -112,7 +112,13 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
     id: 'spawn',
     title: { de: 'Spawn & Fliegen', en: 'Spawn & flying' },
     commands: [
-      { use: same('/spawn'), text: { de: 'Zurück zur Spawn-Insel', en: 'Back to the spawn island' } },
+      {
+        use: same('/spawn'),
+        text: {
+          de: 'Zurück zur Spawn-Insel (5 Sekunden stillstehen)',
+          en: 'Back to the spawn island (stand still for 5 seconds)',
+        },
+      },
       {
         use: { de: '2× Leertaste', en: 'Space twice' },
         text: {

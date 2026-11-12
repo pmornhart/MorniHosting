@@ -111,13 +111,17 @@ describe('Craft Attack protection, build and help', () => {
     fs.mkdirSync(ess, { recursive: true });
     fs.writeFileSync(path.join(ess, 'info.txt'), 'This is the info file.\nsample');
     fs.writeFileSync(path.join(ess, 'rules.txt'), 'Unsere eigenen Regeln');
-    fs.writeFileSync(path.join(ess, 'config.yml'), 'a: 1\nuse-bukkit-permissions: true\nb: 2\n');
+    fs.writeFileSync(
+      path.join(ess, 'config.yml'),
+      'a: 1\nuse-bukkit-permissions: true\nteleport-delay: 0\nb: 2\n',
+    );
     writeHelpFiles(dir, 'de');
     expect(fs.readFileSync(path.join(ess, 'info.txt'), 'utf8')).toContain('/tpa <spieler>');
     expect(fs.readFileSync(path.join(ess, 'rules.txt'), 'utf8')).toBe('Unsere eigenen Regeln');
     expect(fs.readFileSync(path.join(ess, 'motd.txt'), 'utf8')).toContain('/info');
     expect(openPlayerCommands(dir)).toBe(true);
     expect(fs.readFileSync(path.join(ess, 'config.yml'), 'utf8')).toContain('use-bukkit-permissions: false');
+    expect(fs.readFileSync(path.join(ess, 'config.yml'), 'utf8')).toContain('teleport-delay: 5');
     expect(openPlayerCommands(dir)).toBe(false);
     expect(infoText('en')).toContain('Homes');
     expect(infoText('de')).not.toContain('/ban');
