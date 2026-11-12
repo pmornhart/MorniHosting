@@ -3294,7 +3294,7 @@
       "sleepAtSpawn": "Off: no bed and no respawn point at the spawn",
       "pvpAtSpawn": "Off: nobody can hurt anyone at the spawn",
       "spawnRadius": "The protection applies around the spawn point",
-      "elytra": "Double jump at the spawn = glide with real wings (survival mode only), no fall damage – your own chestplate comes back after landing",
+      "elytra": "Jump off at the spawn and double jump = glide with real wings (survival mode only, no push upwards), no fall damage – your own chestplate comes back after landing",
       "elytraBoost": "One boost per flight (Bedrock: sneak)",
       "elytraRadius": "Gliding can only start within this distance",
       "tnt": "Off: TNT fizzles without damage",
