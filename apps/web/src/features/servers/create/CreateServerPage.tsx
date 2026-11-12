@@ -49,6 +49,7 @@ import { confetti } from '@/lib/confetti';
 import { PriceWithCoupon } from './coupon';
 import { api } from '@/lib/api';
 import { formatMemoryMb } from '@/lib/format';
+import { useServerMemoryCap } from '@/lib/my-quota';
 import { errorText } from '@/lib/query';
 import { useSession } from '@/features/auth/session';
 import { cn } from '@/lib/utils';
@@ -158,6 +159,7 @@ export function CreateServerPage(): ReactElement {
   const { data: servers = [] } = useQuery(serversQuery);
   const { data: host } = useQuery(hostQuery);
   const address = useAddressAutomation();
+  const memoryCap = useServerMemoryCap();
 
   const edition = game === 'bedrock' ? 'bedrock' : 'java';
   const softwareChoices = CREATABLE_SOFTWARE[edition].filter(
@@ -213,10 +215,17 @@ export function CreateServerPage(): ReactElement {
   const memoryMb = memoryPick;
   const hostTotal = host?.memoryTotalMb ?? FALLBACK_HOST_MB;
   const hostFree = host ? host.memoryTotalMb - host.memoryUsedMb : null;
-  const maxMemory = Math.max(
+  const hostMax = Math.max(
     MEMORY_MIN_MB,
     Math.min(MEMORY_CAP_MB, Math.floor(hostTotal / MEMORY_STEP_MB) * MEMORY_STEP_MB),
   );
+  // More RAM per server than the person may give (normally 16 GB) is not offered; admins have no limit.
+  const capped = memoryCap !== null && memoryCap < hostMax;
+  const maxMemory = capped
+    ? Math.max(MEMORY_MIN_MB, Math.floor(memoryCap / MEMORY_STEP_MB) * MEMORY_STEP_MB)
+    : hostMax;
+  const capText = t('order.memoryCap', { ram: formatMemoryMb(maxMemory) });
+  const someOverCap = memoryCap !== null && PLANS.some((p) => p.gb * MB_PER_GB > memoryCap);
   const plan = custom ? undefined : PLANS.find((p) => p.gb * MB_PER_GB === memoryMb);
   const players =
     memoryMb === null
@@ -330,13 +339,15 @@ export function CreateServerPage(): ReactElement {
               {PLANS.map((p) => {
                 const mb = p.gb * MB_PER_GB;
                 const selected = !custom && memoryMb === mb;
-                const tooBig = mb > hostTotal;
+                const overCap = memoryCap !== null && mb > memoryCap;
+                const tooBig = mb > hostTotal || overCap;
                 return (
                   <button
                     key={p.gb}
                     type="button"
                     aria-pressed={selected}
                     disabled={tooBig}
+                    title={overCap ? capText : undefined}
                     style={OWN_TEXT_COLOUR}
                     onClick={() => {
                       setCustom(false);
@@ -377,6 +388,7 @@ export function CreateServerPage(): ReactElement {
                 );
               })}
             </div>
+            {someOverCap && !custom ? <p className="text-sm text-muted-foreground">{capText}</p> : null}
             <div
               className={cn(
                 'grid gap-3 rounded-[14px] border border-dashed border-border p-4',
@@ -397,7 +409,7 @@ export function CreateServerPage(): ReactElement {
                     variant="secondary"
                     onClick={() => {
                       setCustom(true);
-                      setMemoryPick(memoryMb ?? recommendedMb);
+                      setMemoryPick(Math.min(memoryMb ?? recommendedMb, maxMemory));
                     }}
                   >
                     {t('order.customize')}
@@ -407,7 +419,7 @@ export function CreateServerPage(): ReactElement {
               {custom ? (
                 <>
                   <Slider
-                    value={[memoryMb ?? recommendedMb]}
+                    value={[Math.min(memoryMb ?? recommendedMb, maxMemory)]}
                     min={MEMORY_MIN_MB}
                     max={maxMemory}
                     step={MEMORY_STEP_MB}
@@ -418,6 +430,7 @@ export function CreateServerPage(): ReactElement {
                     <span>{formatMemoryMb(MEMORY_MIN_MB)}</span>
                     <span>{formatMemoryMb(maxMemory)}</span>
                   </div>
+                  {capped ? <p className="text-xs text-muted-foreground">{capText}</p> : null}
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">{t('order.customText')}</p>

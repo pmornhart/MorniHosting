@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Cpu, HardDrive, MemoryStick, RotateCcw, Save, Server, Users } from 'lucide-react';
+import { Cpu, Gauge, HardDrive, MemoryStick, RotateCcw, Save, Server, Users } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -20,15 +20,18 @@ const PERCENT = 100;
 const FULL_FROM = 90;
 
 type Key = keyof Quota;
-const KEYS: readonly Key[] = ['servers', 'memoryMb', 'diskMb', 'cpus'];
-const ICONS: Readonly<Record<Key, typeof Server>> = {
+const KEYS: readonly Key[] = ['servers', 'memoryMb', 'diskMb', 'cpus', 'serverMemoryMb'];
+/** Totals with a usage bar; "RAM per server" is a limit for each single server, not a sum. */
+type TotalKey = Exclude<Key, 'serverMemoryMb'>;
+const TOTAL_KEYS: readonly TotalKey[] = ['servers', 'memoryMb', 'diskMb', 'cpus'];
+const ICONS: Readonly<Record<TotalKey, typeof Server>> = {
   servers: Server,
   memoryMb: MemoryStick,
   diskMb: HardDrive,
   cpus: Cpu,
 };
 /** RAM and disk are typed in GB, stored in MB. */
-const IN_GB: ReadonlySet<Key> = new Set(['memoryMb', 'diskMb']);
+const IN_GB: ReadonlySet<Key> = new Set(['memoryMb', 'diskMb', 'serverMemoryMb']);
 
 type Draft = Readonly<Record<Key, string>>;
 
@@ -37,6 +40,7 @@ const toDraft = (q: Quota): Draft => ({
   memoryMb: q.memoryMb === null ? '' : String(q.memoryMb / MB_PER_GB),
   diskMb: q.diskMb === null ? '' : String(q.diskMb / MB_PER_GB),
   cpus: q.cpus === null ? '' : String(q.cpus),
+  serverMemoryMb: q.serverMemoryMb === null ? '' : String(q.serverMemoryMb / MB_PER_GB),
 });
 const toQuota = (d: Draft): Quota => {
   const num = (key: Key): number | null => {
@@ -46,12 +50,18 @@ const toQuota = (d: Draft): Quota => {
     if (key === 'cpus') return Math.round(value / CPU_STEP) * CPU_STEP;
     return IN_GB.has(key) ? Math.round(value * MB_PER_GB) : Math.round(value);
   };
-  return { servers: num('servers'), memoryMb: num('memoryMb'), diskMb: num('diskMb'), cpus: num('cpus') };
+  return {
+    servers: num('servers'),
+    memoryMb: num('memoryMb'),
+    diskMb: num('diskMb'),
+    cpus: num('cpus'),
+    serverMemoryMb: num('serverMemoryMb'),
+  };
 };
 const shown = (key: Key, value: number): string =>
   IN_GB.has(key) ? `${Math.round((value / MB_PER_GB) * 10) / 10} GB` : String(value); // eslint-disable-line ts-patterns/no-magic-numbers -- one decimal
 
-/** Four number fields; empty means "no limit". */
+/** Five number fields; empty means "no limit". */
 function QuotaFields({
   id,
   draft,
@@ -63,9 +73,14 @@ function QuotaFields({
 }): ReactElement {
   const { t } = useTranslation();
   return (
-    <div className="grid gap-3 sm:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {KEYS.map((key) => (
-        <Field key={key} id={`${id}-${key}`} label={t(`quota.fields.${key}`)}>
+        <Field
+          key={key}
+          id={`${id}-${key}`}
+          label={t(`quota.fields.${key}`)}
+          hint={key === 'serverMemoryMb' ? t('quota.serverMemoryHint') : undefined}
+        >
           <Input
             id={`${id}-${key}`}
             inputMode="decimal"
@@ -89,7 +104,7 @@ function UsageBar({
   label: string;
   used: number;
   limit: number | null;
-  keyName: Key;
+  keyName: TotalKey;
 }): ReactElement {
   const { t } = useTranslation();
   const Icon = ICONS[keyName];
@@ -130,7 +145,7 @@ function PersonRow({ person }: { person: QuotaUserView }): ReactElement {
     },
   });
   const usage = person.usage;
-  const used: Readonly<Record<Key, number>> = {
+  const used: Readonly<Record<TotalKey, number>> = {
     servers: usage.servers,
     memoryMb: usage.memoryMb,
     diskMb: usage.diskMb,
@@ -148,7 +163,7 @@ function PersonRow({ person }: { person: QuotaUserView }): ReactElement {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {KEYS.map((key) => (
+        {TOTAL_KEYS.map((key) => (
           <UsageBar
             key={key}
             keyName={key}
@@ -158,6 +173,12 @@ function PersonRow({ person }: { person: QuotaUserView }): ReactElement {
           />
         ))}
       </div>
+      <p className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+        <Gauge className="size-3.5 shrink-0" aria-hidden />
+        {person.effective.serverMemoryMb === null
+          ? t('quota.serverMemoryNoLimit')
+          : t('quota.serverMemoryLimit', { limit: shown('serverMemoryMb', person.effective.serverMemoryMb) })}
+      </p>
       {usage.diskUsedMb > 0 ? (
         <p className="text-[12px] text-muted-foreground">
           {t('quota.diskUsed', { used: shown('diskMb', usage.diskUsedMb) })}

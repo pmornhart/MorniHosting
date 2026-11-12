@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { api, upload, type UploadProgress } from '@/lib/api';
 import { formatBytes } from '@/lib/format';
 import { errorText } from '@/lib/query';
+import { useServerMemoryCap } from '@/lib/my-quota';
 import { cn } from '@/lib/utils';
 import { hostQuery } from '@/features/dashboard/HostStrip';
 import { serversQuery } from '../live';
@@ -42,8 +43,11 @@ export function ImportServerPage(): ReactElement {
   const { data: servers = [] } = useQuery(serversQuery);
   const { data: host } = useQuery(hostQuery);
   const hostGb = host ? Math.floor(host.memoryTotalMb / MB_PER_GB) : FALLBACK_HOST_GB;
+  // No more than the person may give one server (normally 16 GB); admins have no limit.
+  const memoryCap = useServerMemoryCap();
+  const capGb = memoryCap === null ? MAX_MEMORY_GB : Math.floor(memoryCap / MB_PER_GB);
   const memoryOptionsGb = Array.from(
-    { length: Math.max(1, Math.min(MAX_MEMORY_GB, hostGb)) },
+    { length: Math.max(1, Math.min(MAX_MEMORY_GB, hostGb, capGb)) },
     (_, i) => i + 1,
   );
   const [dragging, setDragging] = useState(false);

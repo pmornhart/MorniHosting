@@ -1,7 +1,16 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import { and, eq } from 'drizzle-orm';
-import { CPU_STEP, NO_QUOTA, type Quota, type QuotaUsage, type QuotaView } from '@mornihosting/shared';
+import {
+  CPU_STEP,
+  DEFAULT_QUOTA,
+  NO_QUOTA,
+  withServerMemory,
+  type MyQuota,
+  type Quota,
+  type QuotaUsage,
+  type QuotaView,
+} from '@mornihosting/shared';
 import type { Actor } from '../audit/service.js';
 import type { UserRow } from '../auth/context.js';
 import type { AppContext } from '../context.js';
@@ -23,6 +32,8 @@ const BYTES_PER_MB = 1024 * 1024;
 
 export interface QuotaService extends QuotaGuard {
   readonly view: () => QuotaView;
+  /** What the person may order (RAM per server), for the order pages and server settings. */
+  readonly mine: (user: UserRow) => MyQuota;
   readonly setDefaults: (quota: Quota, actor: Actor) => QuotaView;
   readonly setUserQuota: (userId: number, quota: Quota | null, actor: Actor) => QuotaView;
 }
@@ -42,8 +53,14 @@ function hostOf(dataDir: string): QuotaView['host'] {
 
 export function createQuotaService(ctx: AppContext, servers: ServerService): QuotaService {
   const { db } = ctx;
-  const defaults = (): Quota => ctx.settings.getValue<Quota>(DEFAULTS_KEY) ?? NO_QUOTA;
-  const effective = (user: UserRow): Quota => (user.isAdmin ? NO_QUOTA : (user.quota ?? defaults()));
+  const defaults = (): Quota => {
+    const stored = ctx.settings.getValue<Quota>(DEFAULTS_KEY);
+    return stored ? withServerMemory(stored, DEFAULT_QUOTA.serverMemoryMb) : DEFAULT_QUOTA;
+  };
+  /** Own limits saved before "RAM per server" existed take the default for it. */
+  const own = (user: UserRow): Quota | null =>
+    user.quota ? withServerMemory(user.quota, defaults().serverMemoryMb) : null;
+  const effective = (user: UserRow): Quota => (user.isAdmin ? NO_QUOTA : (own(user) ?? defaults()));
 
   /** Servers a person owns (role "Besitzer"); admins' own servers have no owner entry. */
   const ownedIds = (userId: number): string[] =>
@@ -99,8 +116,26 @@ export function createQuotaService(ctx: AppContext, servers: ServerService): Quo
     };
   };
 
+  // RAM per server: only more than the limit is refused. A server that already has more (an admin gave
+  // it) keeps it, and making it smaller is always fine.
+  const checkServerMemory: QuotaGuard['checkServerMemory'] = (person, serverId, memoryMb) => {
+    if (person.isAdmin) return;
+    const limit = effective(person).serverMemoryMb;
+    if (limit === null || memoryMb <= limit) return;
+    const current =
+      serverId === null
+        ? 0
+        : (db
+            .select({ memoryMb: serverTable.memoryMb })
+            .from(serverTable)
+            .where(eq(serverTable.id, serverId))
+            .get()?.memoryMb ?? 0);
+    if (memoryMb > current) throw conflict('quota_server_memory', { limit });
+  };
+
   const check: QuotaGuard['check'] = (owner, serverId, next) => {
     if (owner.isAdmin) return;
+    checkServerMemory(owner, serverId, next.memoryMb);
     const quota = effective(owner);
     const used = usage(owner.id, serverId);
     const over = (code: string, limit: number | null, wanted: number, already: number): void => {
@@ -130,18 +165,19 @@ export function createQuotaService(ctx: AppContext, servers: ServerService): Quo
         username: u.username,
         displayName: u.displayName || u.username,
         isAdmin: u.isAdmin,
-        own: u.quota ?? null,
+        own: own(u),
         effective: effective(u),
         usage: usage(u.id),
       })),
   });
 
-  const guard: QuotaGuard = { limitsFor, check, ownerOf };
+  const guard: QuotaGuard = { limitsFor, check, checkServerMemory, ownerOf };
   servers.useQuota(guard);
 
   return {
     ...guard,
     view,
+    mine: (user) => ({ serverMemoryMb: effective(user).serverMemoryMb }),
     setDefaults: (quota, actor) => {
       ctx.settings.setValue(DEFAULTS_KEY, quota);
       ctx.audit.record(actor, 'quota.defaults', null, quota);

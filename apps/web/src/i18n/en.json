@@ -650,6 +650,7 @@
     "quota_memory": "Not enough RAM left in the quota (already given: {{used}} MB of {{limit}} MB).",
     "quota_cpus": "Not enough CPU cores left in the quota (already given: {{used}} of {{limit}}).",
     "quota_disk": "Not enough disk left in the quota (already given: {{used}} MB of {{limit}} MB).",
+    "quota_server_memory": "A server may have at most {{limit}} MB RAM. Only an admin can allow more.",
     "disk_limit_reached": "The server needs {{used}} MB and may only have {{limit}} MB. Delete old worlds or backups, or an admin gives more space.",
     "stalwart_unreachable": "Stalwart does not answer. Is the address right, and can the panel reach it (home network, firewall)?",
     "stalwart_login": "Stalwart refused the login: admin user or password is wrong.",
@@ -2121,6 +2122,7 @@
     "custom": "Custom",
     "customize": "Set it yourself",
     "customText": "Need a different size? Set the memory yourself.",
+    "memoryCap": "More than {{ram}} per server can only be allowed by an admin.",
     "recommendation": "For {{software}} we recommend at least {{ram}}. The player count is a guide – many mods need more.",
     "software": "Software & version",
     "softwareText": "The server software decides whether plugins or mods run. Not sure? Paper suits most servers.",
@@ -2782,7 +2784,8 @@
       "servers": "Servers",
       "memoryMb": "RAM (GB)",
       "diskMb": "Disk (GB)",
-      "cpus": "CPU cores"
+      "cpus": "CPU cores",
+      "serverMemoryMb": "RAM per server (GB)"
     },
     "unlimited": "no limit",
     "save": "Save",
@@ -2797,7 +2800,10 @@
     "nobody": "No users besides admins yet.",
     "usedOf": "{{used}} of {{limit}}",
     "usedNoLimit": "{{used}} · no limit",
-    "diskUsed": "Actually in use right now: {{used}}"
+    "diskUsed": "Actually in use right now: {{used}}",
+    "serverMemoryHint": "The most RAM a single server can get. Does not apply to admins.",
+    "serverMemoryLimit": "At most {{limit}} RAM per server",
+    "serverMemoryNoLimit": "RAM per server: no limit"
   },
   "serverLimits": {
     "title": "Limits (admins only)",
