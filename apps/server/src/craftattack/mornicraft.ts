@@ -123,6 +123,7 @@ export const morniCraftSettingsSchema = z.object({
   endermanGrief: z.boolean(),
   rules: z.array(z.string().trim().min(1).max(120)).max(15),
   ranks: ranksSchema,
+  badges: z.boolean(),
 });
 
 /** Stored settings, completed with the defaults (older or partial entries). */
@@ -138,6 +139,12 @@ export interface ConfigContext {
   readonly link: string;
   /** Round spots outside the spawn circle that are protected too (x/z from the world spawn, radius). */
   readonly zones?: readonly { readonly x: number; readonly z: number; readonly r: number }[];
+  /** The badges' resource pack (where to load it, its SHA-1, the character per rank id), when it can be offered. */
+  readonly pack?: {
+    readonly url: string;
+    readonly sha1: string;
+    readonly chars: Readonly<Record<string, string>>;
+  };
   /** Players the panel gives a rank by itself: owners and moderators of the server with a linked account. */
   readonly members?: Readonly<Record<'owner' | 'moderator', readonly LinkedPlayer[]>>;
 }
@@ -146,6 +153,9 @@ export interface LinkedPlayer {
   readonly uuid: string;
   readonly name: string;
 }
+
+/** Ranks with a symbol get a badge – and the rank for everyone else (it shows the little player). */
+export const hasBadge = (r: MorniCraftRank): boolean => Boolean(r.symbol) || r.isDefault;
 
 /** A rank as the plugin reads it: the permission nodes spelled out, players from the panel added (by UUID). */
 function rankConfig(r: MorniCraftRank, c: ConfigContext) {
@@ -157,6 +167,8 @@ function rankConfig(r: MorniCraftRank, c: ConfigContext) {
     symbol: r.symbol,
     color: r.color,
     default: r.isDefault,
+    // The character that shows the rank's badge to players with the resource pack.
+    badge: (hasBadge(r) && c.pack?.chars[r.id]) || '',
     permissions: [...new Set(r.permissions.flatMap((p) => RANK_PERMISSION_NODES[p]))],
     players: [...auto.map((a) => ({ uuid: a.uuid, name: a.name })), ...named.map((name) => ({ name }))],
   };
@@ -203,6 +215,7 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     groups,
     ranks: s.ranks.map((r) => rankConfig(r, c)),
     zones: c.zones ?? [],
+    pack: c.pack ? { url: c.pack.url, sha1: c.pack.sha1 } : { url: '', sha1: '' },
   };
   return `# MorniCraft – written by MorniHosting (Dashboard → server → MorniCraft). Changes here are overwritten.\n${JSON.stringify(config, null, 2)}\n`;
 }

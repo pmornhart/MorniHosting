@@ -6,8 +6,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -20,6 +23,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
@@ -37,6 +41,8 @@ final class Ranks implements Listener {
   private static final Pattern ID = Pattern.compile("[a-z0-9_-]{1,24}");
   private static final int MAX_SYMBOL = 4;
   private static final int MAX_NAME = 20;
+  /** The pack is offered a moment after joining (the game is busy loading the world before). */
+  private static final long PACK_DELAY_TICKS = 40;
 
   record Member(UUID uuid, String name) {
     boolean is(Player p) {
@@ -51,7 +57,7 @@ final class Ranks implements Listener {
   }
 
   record Rank(String id, String name, String symbol, TextColor color, List<String> permissions, List<Member> players,
-      boolean fallback) {
+      boolean fallback, String tag) {
     /** "♛ Owner" in the rank's colour (just the name when there is no symbol). */
     Component badge() {
       return Component.text(symbol.isEmpty() ? name : symbol + " " + name, color);
@@ -66,6 +72,10 @@ final class Ranks implements Listener {
   private final MorniCraft plugin;
   private volatile List<Rank> ranks = List.of();
   private final Map<UUID, PermissionAttachment> granted = new HashMap<>();
+  /** Players whose game has loaded the badges' resource pack (read by the chat thread too). */
+  private final Set<UUID> withPack = ConcurrentHashMap.newKeySet();
+  private volatile String packUrl = "";
+  private volatile String packSha = "";
 
   Ranks(MorniCraft plugin) {
     this.plugin = plugin;
@@ -80,6 +90,47 @@ final class Ranks implements Listener {
     ranks = c.isSet("ranks") ? parse(c.getMapList("ranks")) : DefaultRanks.ranks();
     for (Player p : Bukkit.getOnlinePlayers()) apply(p);
     paintAll();
+    // The badges' resource pack: a new one (other ranks, names, colours) is offered to everyone again.
+    String url = c.getString("pack.url", "");
+    String sha = c.getString("pack.sha1", "");
+    boolean changed = !sha.equals(packSha) || !url.equals(packUrl);
+    packUrl = url;
+    packSha = sha;
+    if (changed) {
+      withPack.clear();
+      for (Player p : Bukkit.getOnlinePlayers()) offerPack(p);
+    }
+  }
+
+  // ---------------------------------------------------------------- badges (a tiny resource pack)
+
+  /** Asks the player's game to load the badges (never forced; Bedrock can't use Java packs). */
+  private void offerPack(Player p) {
+    if (packUrl.isEmpty() || packSha.isEmpty() || plugin.bedrock().is(p)) return;
+    try {
+      p.setResourcePack(packUrl, packSha, false, plugin.ui().bare("pack.prompt"));
+    } catch (RuntimeException | LinkageError e) {
+      plugin.getLogger().warning("Could not offer the badge pack to " + p.getName() + ": " + e);
+    }
+  }
+
+  /** True when this viewer sees the badge pictures (others get the symbols). */
+  boolean seesBadges(Audience viewer) {
+    return viewer instanceof Player p && withPack.contains(p.getUniqueId());
+  }
+
+  /** The rank in front of a name, as this viewer can see it: the badge picture, or "♛ Owner" in colour. */
+  Component label(Rank r, Audience viewer) {
+    if (!r.tag().isEmpty() && seesBadges(viewer)) return Component.text(r.tag(), NamedTextColor.WHITE);
+    return r.badge();
+  }
+
+  @EventHandler
+  public void onPack(PlayerResourcePackStatusEvent e) {
+    String status = e.getStatus().name();
+    UUID id = e.getPlayer().getUniqueId();
+    if (status.equals("SUCCESSFULLY_LOADED")) withPack.add(id);
+    else if (!status.equals("ACCEPTED") && !status.equals("DOWNLOADED")) withPack.remove(id);
   }
 
   static List<Rank> parse(List<Map<?, ?>> raw) {
@@ -91,7 +142,7 @@ final class Ranks implements Listener {
       String name = cut(text(m.get("name"), id), MAX_NAME);
       String symbol = cut(text(m.get("symbol"), ""), MAX_SYMBOL);
       out.add(new Rank(id, name, symbol, color(text(m.get("color"), "")), strings(m.get("permissions")),
-          members(m.get("players")), Boolean.TRUE.equals(m.get("default"))));
+          members(m.get("players")), Boolean.TRUE.equals(m.get("default")), text(m.get("badge"), "")));
     }
     return List.copyOf(out);
   }
@@ -230,11 +281,16 @@ final class Ranks implements Listener {
   public void onJoin(PlayerJoinEvent e) {
     apply(e.getPlayer());
     paintAll();
+    Player p = e.getPlayer();
+    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+      if (p.isOnline()) offerPack(p);
+    }, PACK_DELAY_TICKS);
   }
 
   @EventHandler
   public void onQuit(PlayerQuitEvent e) {
     granted.remove(e.getPlayer().getUniqueId());
+    withPack.remove(e.getPlayer().getUniqueId());
     String name = e.getPlayer().getName();
     Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
     Team t = main.getEntryTeam(name);
@@ -246,9 +302,15 @@ final class Ranks implements Listener {
   public void onChat(AsyncChatEvent e) {
     e.renderer((source, displayName, message, viewer) -> {
       Rank r = of(source);
-      Component who = r == null || r.symbol().isEmpty()
-          ? Component.text(source.getName(), r == null ? NamedTextColor.WHITE : r.color())
-          : r.badge().append(Component.text(" · ", NamedTextColor.GRAY)).append(Component.text(source.getName(), r.color()));
+      Component name = Component.text(source.getName(), r == null ? NamedTextColor.WHITE : r.color());
+      Component who = name;
+      if (r != null && !r.tag().isEmpty() && seesBadges(viewer)) {
+        // With the badge pack: "[♛ OWNER] Morni" (every rank with a badge, also plain players).
+        who = label(r, viewer).append(Component.text(" ")).append(name);
+      } else if (r != null && !r.symbol().isEmpty()) {
+        // Without: "♛ Owner · Morni".
+        who = r.badge().append(Component.text(" · ", NamedTextColor.GRAY)).append(name);
+      }
       return who.append(Component.text(" » ", NamedTextColor.GRAY)).append(message.colorIfAbsent(NamedTextColor.WHITE));
     });
   }

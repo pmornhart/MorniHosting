@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 /* eslint-disable ts-patterns/no-magic-numbers -- tests compare against literal expected values */
 import fs from 'node:fs';
 import os from 'node:os';
@@ -16,6 +17,7 @@ import {
   removeRainbowCommands,
   removeBenchesCommands,
   flagCommands,
+  reedCommands,
   renewCommands,
   SPAWN_ZONES,
 } from '../src/craftattack/spawn.js';
@@ -28,6 +30,7 @@ import {
   retireReplacedPlugins,
   withDefaults,
 } from '../src/craftattack/mornicraft.js';
+import { badgePack, badgePicture, pngOf } from '../src/craftattack/badges.js';
 import { deathOf, deathsOf } from '../src/craftattack/stats.js';
 import { DEFAULT_RANKS } from '@mornihosting/shared';
 import { users } from '../src/db/schema.js';
@@ -142,6 +145,11 @@ describe('MorniCraft spawn, plugin and settings', () => {
     expect(top).toContain('light_blue_wall_banner[facing=south]');
     expect(top).toContain('yellow_concrete');
     expect(topCommands('en').join('\n')).not.toEqual(top);
+    // Sugar cane stands on earth with water right beside it (else it falls off); older islands get it planted again.
+    expect(reedCommands()).toEqual(
+      expect.arrayContaining(['setblock ~17 ~-1 ~12 water', 'setblock ~18 ~-1 ~12 grass_block']),
+    );
+    expect(files['data/craftattack/function/fix_reeds.mcfunction']).toContain('function craftattack:reeds');
     // Five balloons; they and the small islands are protected like the island itself.
     expect(extrasCommands().some((c) => c.includes('magenta_wool'))).toBe(true);
     expect(SPAWN_ZONES).toHaveLength(10);
@@ -396,6 +404,72 @@ describe('public statistics page', () => {
     expect(ranked).toContain('"r": 11');
     const icon = fs.readFileSync(path.join(dir, 'server-icon.png'));
     expect(icon.subarray(1, 4).toString()).toBe('PNG');
+
+    // Badges: without a panel domain there is no address for the resource pack – the plugin keeps the symbols.
+    expect(withOwner).toMatchObject({ badgePackUrl: null });
+    expect(ranked).toContain('"badge": ""');
+    await t.app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      headers: authHeaders(admin),
+      payload: { panelDomain: 'mornihosting.de' },
+    });
+    const withPack = await t.app.inject({
+      method: 'PUT',
+      url: mcUrl,
+      headers: authHeaders(admin),
+      payload: { ...state.settings, badges: true },
+    });
+    const packUrl = withPack.json<{ badgePackUrl: string }>().badgePackUrl;
+    expect(packUrl).toMatch(
+      /^https:\/\/mornihosting\.de\/api\/public\/packs\/craft-attack\.zip\?v=[0-9a-f]{10}$/,
+    ); // eslint-disable-line ts-patterns/require-regex-example -- "https://mornihosting.de/api/public/packs/craft-attack.zip?v=0402fc9a41"
+    const badged = fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8');
+    expect(badged).toContain(`"url": "${packUrl}"`);
+    expect(badged).toContain('"badge": "\ue700"');
+    // Anyone may load the pack (the game does, without logging in): a zip with the font and one picture per rank.
+    const zip = await t.app.inject({ method: 'GET', url: '/api/public/packs/craft-attack.zip' });
+    expect(zip.statusCode).toBe(200);
+    expect(zip.headers['content-type']).toBe('application/zip');
+    expect(zip.rawPayload.subarray(0, 2).toString()).toBe('PK');
+    expect(badged).toContain(`"sha1": "${crypto.createHash('sha1').update(zip.rawPayload).digest('hex')}"`);
+    expect(zip.rawPayload.includes('assets/minecraft/font/default.json')).toBe(true);
+    expect((await t.app.inject({ method: 'GET', url: '/api/public/packs/gibts-nicht.zip' })).statusCode).toBe(
+      404,
+    );
+    // Switched off: no pack in the config any more.
+    await t.app.inject({
+      method: 'PUT',
+      url: mcUrl,
+      headers: authHeaders(admin),
+      payload: { ...state.settings, badges: false },
+    });
+    expect(fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8')).toContain(
+      '"url": ""',
+    );
+  });
+});
+
+describe('rank badges', () => {
+  it('draws a tag per rank and packs them as a resource pack that stays the same for the same ranks', () => {
+    const owner = badgePicture({ name: 'Owner', symbol: '♛', color: '#ff5555' });
+    // 2 + icon 7 + 2 + "OWNER" (3 + 5 + 4 + 3 + 3 pixels and 4 gaps) + 2; as tall as a line of chat.
+    expect([owner.width, owner.height]).toEqual([35, 9]);
+    // The top row stays free (tags of two chat lines don't touch); the tag is the rank's colour, darkened.
+    expect(owner.pixels[7]).toBe(0);
+    const tagStart = (owner.width + 1) * 4;
+    expect([...owner.pixels.subarray(tagStart, tagStart + 4)]).toEqual([128, 43, 43, 255]);
+    expect(pngOf(owner).subarray(1, 4).toString()).toBe('PNG');
+    // Letters the font does not know are left out; without a symbol there is no icon …
+    expect(badgePicture({ name: 'V.I.P★', symbol: '', color: '#ffd23f' }).width).toBe(2 + 11 + 2);
+    // … except for the rank everyone else has: plain players get the little player.
+    const plain = badgePicture({ name: 'Spieler', symbol: '', color: '#aaaaaa', isDefault: true });
+    expect(plain.width).toBe(2 + 7 + 2 + 27 + 2);
+    const pack = badgePack(DEFAULT_RANKS);
+    expect(Object.keys(pack.chars)).toEqual(DEFAULT_RANKS.map((r) => r.id));
+    expect(pack.chars['owner']).toBe('\ue700');
+    expect(badgePack(DEFAULT_RANKS).sha1).toBe(pack.sha1);
+    expect(pack.sha1).toMatch(/^[0-9a-f]{40}$/); // eslint-disable-line ts-patterns/require-regex-example -- "0402fc9a41332c12c2f987ecee454125040c3732"
   });
 });
 

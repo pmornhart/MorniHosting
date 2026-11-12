@@ -95,6 +95,23 @@ const SUNFLOWERS = [
   [19, 10],
 ] as const;
 
+/**
+ * Sugar cane by the pond: where it stands, how tall, and the water block right beside it. Sugar cane only stays
+ * on earth with water next to it – so both are set here, whatever shape the pond's edge has at that spot.
+ */
+const REEDS: readonly (readonly [number, number, number, number, number])[] = [
+  [18, 12, 2, 17, 12],
+  [12, 16, 3, 13, 16],
+];
+
+export function reedCommands(): string[] {
+  return REEDS.flatMap(([x, z, height, wx, wz]) => [
+    set(wx, -1, wz, 'water'),
+    set(x, -1, z, 'grass_block'),
+    fill(x, 0, z, x, height - 1, z, 'sugar_cane'),
+  ]);
+}
+
 /** Language of what is written into the paving (the letter for east: O or E). */
 export type SpawnLang = 'de' | 'en';
 
@@ -679,8 +696,7 @@ export function topCommands(lang: SpawnLang = 'de'): string[] {
     ...disc(-2, 2.5, 'clay', 15, 14),
     set(14, 0, 13, 'lily_pad'),
     set(16, 0, 15, 'lily_pad'),
-    fill(18, 0, 12, 18, 1, 12, 'sugar_cane'),
-    fill(12, 0, 16, 12, 2, 16, 'sugar_cane'),
+    ...reedCommands(),
     ...tree(8, 20, 'oak', 7),
     set(20, 0, 6, 'campfire[lit=true]'),
     set(22, 0, 6, 'oak_log[axis=z]'),
@@ -1152,6 +1168,7 @@ const REPAIRS: readonly string[] = [
   'fountain',
   'benches',
   'renew',
+  'reeds',
 ];
 
 /** The datapack's files (path relative to the pack folder → content). */
@@ -1226,6 +1243,8 @@ export function spawnPackFiles(spot: IslandSpot = ORIGIN, lang: SpawnLang = 'de'
     fountain: fixFountainCommands(),
     benches: removeBenchesCommands(),
     renew: renewCommands(),
+    // The sugar cane sometimes had no water beside it and fell off: planted again, properly.
+    reeds: [...reedCommands(), `kill @e[type=item,distance=..${TIDY_REACH}]`],
     rules_old: ['gamerule spawnRadius 0'],
     rules_new: ['gamerule respawn_radius 0'],
   };

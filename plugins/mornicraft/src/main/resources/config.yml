@@ -159,3 +159,6 @@ ranks:
       permissions: [mornicraft.unlimitedhomes],
     }
   - { id: player, name: Spieler, symbol: '', color: '#aaaaaa', players: [], permissions: [], default: true }
+
+# Rang-Abzeichen im Chat: Texturpaket (url + sha1) und pro Rang `badge: "<Zeichen>"`. Leer = Symbole.
+pack: { url: '', sha1: '' }

@@ -51,6 +51,11 @@ export interface MorniCraftSettings {
   readonly rules: readonly string[];
   /** Highest first; shown as symbol + colour in chat, tab list and above the head. */
   readonly ranks: readonly MorniCraftRank[];
+  /**
+   * Ranks as small coloured badges in the chat (own pixel icons; needs the panel's domain – players get a tiny
+   * resource pack when they join). Off, or for players without the pack: the symbols.
+   */
+  readonly badges: boolean;
 }
 
 /** What a rank may do (each switch stands for one or more server permissions, see RANK_PERMISSION_NODES). */
@@ -257,6 +262,7 @@ export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
     'Viel Spaß!',
   ],
   ranks: DEFAULT_RANKS,
+  badges: true,
 };
 
 /** GET /api/servers/:id/mornicraft */
@@ -270,6 +276,8 @@ export interface MorniCraftState {
   readonly pluginAvailable: boolean;
   /** Minecraft names the panel gives a rank by itself (owners and moderators with a linked account). */
   readonly panelMembers: Readonly<Record<'owner' | 'moderator', readonly string[]>>;
+  /** Where players get the badges' resource pack from, or null (no panel domain yet: badges can't be shown). */
+  readonly badgePackUrl: string | null;
 }
 
 /** server.properties for a friends' survival world. */
