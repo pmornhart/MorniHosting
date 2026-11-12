@@ -75,6 +75,7 @@ final class Ranks implements Listener {
   /** Players whose game has loaded the badges' resource pack (read by the chat thread too). */
   private final Set<UUID> withPack = ConcurrentHashMap.newKeySet();
   private volatile String packUrl = "";
+  private volatile boolean packRequired = true;
   /** What each player's game last said about the pack (for /abzeichen). */
   private final Map<UUID, String> lastStatus = new ConcurrentHashMap<>();
   /** How often the pack was sent again to each player since they joined. */
@@ -102,6 +103,7 @@ final class Ranks implements Listener {
     // The badges' resource pack: a new one (other ranks, names, colours) is offered to everyone again.
     String url = c.getString("pack.url", "");
     String sha = c.getString("pack.sha1", "");
+    packRequired = c.getBoolean("pack.required", true);
     boolean changed = !sha.equals(packSha) || !url.equals(packUrl);
     packUrl = url;
     packSha = sha;
@@ -117,7 +119,8 @@ final class Ranks implements Listener {
   private void offerPack(Player p) {
     if (packUrl.isEmpty() || packSha.isEmpty() || plugin.bedrock().is(p)) return;
     try {
-      p.setResourcePack(packUrl, packSha, false, plugin.ui().bare("pack.prompt"));
+      // Required (default): the game loads it without a "no" button, so everyone sees the badges.
+      p.setResourcePack(packUrl, packSha, packRequired, plugin.ui().bare(packRequired ? "pack.prompt.required" : "pack.prompt"));
       watchAnswer(p);
     } catch (RuntimeException | LinkageError e) {
       plugin.getLogger().warning("Could not offer the badge pack to " + p.getName() + ": " + e);

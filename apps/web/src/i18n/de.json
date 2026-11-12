@@ -3403,7 +3403,9 @@
       "permCount_other": "{{count}} Rechte",
       "badges": "Abzeichen im Chat",
       "badgesHint": "Farbiges Schild mit eigenem Pixel-Icon und Rang-Name. Spieler bekommen beim Betreten ein winziges Texturpaket angeboten; wer ablehnt (und Bedrock), sieht die Symbole.",
-      "badgesNoDomain": "Braucht die Domain des Panels (Admin-Bereich → Domain), damit Spieler das Texturpaket laden können. Bis dahin: Symbole."
+      "badgesNoDomain": "Braucht die Domain des Panels (Admin-Bereich → Domain), damit Spieler das Texturpaket laden können. Bis dahin: Symbole.",
+      "badgesRequired": "Abzeichen für alle (Pflicht)",
+      "badgesRequiredHint": "Java-Spieler laden die Abzeichen beim Betreten automatisch – ohne „Nein“-Knopf. So sieht jeder die Abzeichen. Bedrock zeigt Symbole."
     }
   }
 }
