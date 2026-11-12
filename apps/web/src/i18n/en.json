@@ -680,10 +680,11 @@
     "public_stats_java_only": "The statistics page is only for Minecraft Java.",
     "public_stats_slug_taken": "Another server already uses /stats/{{slug}}.",
     "public_stats_unknown": "This statistics page does not exist.",
-    "craft_attack_software": "Craft Attack only works with Paper or Purpur.",
+    "craft_attack_software": "MorniCraft only works with Paper or Purpur.",
     "impressum_not_image": "That is not a picture (PNG, JPG or WebP).",
     "impressum_too_big": "The picture is too big (at most {{mb}} MB).",
-    "via_unsupported": "There is no ViaVersion for this software."
+    "via_unsupported": "There is no ViaVersion for this software.",
+    "mornicraft_inactive": "This is not a MorniCraft server."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -1648,7 +1649,8 @@
       "server_crash_fix": "Crash fixed",
       "impressum_update": "Imprint changed",
       "via_enable": "All versions (ViaVersion) switched on",
-      "via_disable": "All versions (ViaVersion) switched off"
+      "via_disable": "All versions (ViaVersion) switched off",
+      "server_mornicraft": "MorniCraft settings changed"
     }
   },
   "ddos": {
@@ -2174,8 +2176,8 @@
       "appliedText": "From now on you pay {{payee}} {{price}} a month for this server, directly to {{payee}}.",
       "paid": "€9,999.99 / month"
     },
-    "craftAttack": "Craft Attack",
-    "craftAttackText": "A ready friends’ server: a floating spawn island high in the sky with a start elytra (double jump to glide, F to boost), /spawn, /home and /tpa (EssentialsX), whitelist, pre-generated world and a public statistics page. The panel picks a version the plugins support.",
+    "craftAttack": "MorniCraft",
+    "craftAttackText": "A ready friends' server with the own MorniCraft plugin: a floating spawn island over the sea with a fountain and start elytra (double jump, F to boost), /spawn, /home, /tpa, messages, a sidebar with the time, whitelist, every Minecraft version can join, a pre-generated world and a public statistics page. Everything set in the dashboard.",
     "craftAttackSoftware": "Only with Paper or Purpur.",
     "via": "All versions (ViaVersion)",
     "viaText": "Players on older and newer Minecraft versions get in anyway. Kept up to date automatically.",
@@ -3146,7 +3148,7 @@
       "voice": "Simple Voice Chat",
       "backups": "Daily backup at 04:00",
       "start": "First start (creating the world)",
-      "craftattack": "Craft Attack: plugins, settings, spawn",
+      "craftattack": "MorniCraft: plugins, settings, spawn",
       "pregen": "Generate the world around the spawn",
       "via": "All versions (ViaVersion)"
     }
@@ -3238,15 +3240,6 @@
     "pillOn": "On",
     "pillOff": "Off"
   },
-  "craftAttackHelp": {
-    "title": "Craft Attack – all commands",
-    "text": "What your players can do on the server – most commands without OP rights.",
-    "ingame": "In the game, /info shows the same list.",
-    "copy": "Copy list",
-    "personal": "A personal page for each player",
-    "personalText": "In the game, /info (and the welcome) shows each player a link to their own page – with exactly the commands they may use. Nobody has to type a name. (Needs a panel domain.)",
-    "playerName": "<playername>"
-  },
   "playerCommands": {
     "title": "Commands for {{name}}",
     "online": "Online now",
@@ -3257,6 +3250,72 @@
     "yours": "What you can use",
     "allYours": "You're an admin – you can use everything",
     "missing": "Page not found",
-    "missingText": "This server doesn't exist or isn't a Craft Attack server."
+    "missingText": "This server doesn't exist or isn't a MorniCraft server."
+  },
+  "mornicraft": {
+    "title": "MorniCraft",
+    "text": "The panel's own plugin on this server: spawn, homes, teleports, messages, start elytra and sidebar. Set everything here – applies at once.",
+    "noPlugin": "This panel lacks the plugin file (built without MorniCraft). The next update brings it.",
+    "sections": {
+      "teleport": "Teleports & homes",
+      "spawn": "Spawn",
+      "elytra": "Start elytra",
+      "world": "World",
+      "show": "Display",
+      "rules": "Rules"
+    },
+    "fields": {
+      "tpa": "Teleport requests (/tpa)",
+      "back": "Back to the last place (/back)",
+      "teleportDelay": "Wait before teleporting",
+      "maxHomes": "Homes per player",
+      "spawnProtection": "Spawn protected",
+      "sleepAtSpawn": "Sleep at the spawn",
+      "pvpAtSpawn": "Fight at the spawn",
+      "spawnRadius": "Size of the spawn area",
+      "elytra": "Start elytra",
+      "elytraBoost": "Boost with F",
+      "elytraRadius": "Where the elytra starts",
+      "tnt": "TNT",
+      "creeperDamage": "Creepers break blocks",
+      "fireSpread": "Fire spreads",
+      "endermanGrief": "Endermen take blocks",
+      "welcome": "Welcome on the first join",
+      "sidebar": "Bar on the right",
+      "showLink": "Link to the command page"
+    },
+    "hints": {
+      "tpa": "/tpa, /tpahere, /tpaccept – with buttons to accept",
+      "back": "Also back to where you died",
+      "teleportDelay": "How long to stand still (/spawn, /home, /tpa, /back). Admins go at once.",
+      "maxHomes": "How many places everyone may save with /sethome",
+      "spawnProtection": "Only admins build or break at the spawn",
+      "sleepAtSpawn": "Off: no bed and no respawn point at the spawn",
+      "pvpAtSpawn": "Off: nobody can hurt anyone at the spawn",
+      "spawnRadius": "The protection applies around the spawn point",
+      "elytra": "Double jump at the spawn = glide, no fall damage",
+      "elytraBoost": "One boost per flight (Bedrock: sneak)",
+      "elytraRadius": "Gliding can only start within this distance",
+      "tnt": "Off: TNT fizzles without damage",
+      "creeperDamage": "Off: creepers explode, the ground stays whole",
+      "fireSpread": "Off: fire stays where it was lit",
+      "endermanGrief": "Off: endermen leave blocks alone",
+      "welcome": "Big title and card – once per player",
+      "sidebar": "Time, game time, online, ping, commands – everyone can hide it with /leiste",
+      "showLink": "In /info and the welcome (needs a panel domain)"
+    },
+    "units": {
+      "teleportDelay": "{{n}} s",
+      "maxHomes": "{{n}}",
+      "spawnRadius": "{{n}} blocks",
+      "elytraRadius": "{{n}} blocks"
+    },
+    "rulesHint": "One rule per line – shown with /rules.",
+    "live": "Saving applies at once, also while the server runs.",
+    "save": "Save",
+    "saved": "MorniCraft settings saved",
+    "commands": "All commands",
+    "personal": "Every player has a page with exactly their commands:",
+    "playerName": "<playername>"
   }
 }

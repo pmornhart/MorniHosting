@@ -158,34 +158,35 @@ deiner Domain und Add-ons wie Bedrock-Spieler, Voice-Chat oder tägliche Backups
 <details>
 <summary><b>Alle Funktionen als Liste</b></summary>
 
-| Bereich                   | Was du bekommst                                                                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 🖥️ **Server**             | Java (Vanilla, Paper, Purpur, Fabric, Forge, NeoForge), Velocity-Proxy und Bedrock. Bestellseite wie bei einem Hoster, bis 128 GB RAM pro Server.     |
-| 🎮 **Weitere Spiele**     | Factorio, Counter-Strike 2, Garry's Mod, Satisfactory, Euro Truck Simulator 2 und Hytale – mit Einstellungen und Konsole im selben Panel.             |
-| 📦 **Import**             | Vorhandenen Server als ZIP hochladen – Software und Version werden erkannt.                                                                           |
-| 🔗 **Adresse**            | Oben auf jeder Server-Seite: Adresse zum Kopieren, öffentliche und lokale IP, Prüfung „Von außen erreichbar?“ mit Hilfe zur Portfreigabe.             |
-| ⌨️ **Konsole**            | Live, mit Farben, Befehlsverlauf (↑/↓), Tab-Ergänzung, Suche und Kopieren.                                                                            |
-| 🩺 **Absturz-Helfer**     | Erkennt typische Fehler (falsche Java-Version, zu wenig RAM, fehlende Abhängigkeit) und erklärt die Lösung mit einem Knopf.                           |
-| 🧩 **Marktplatz**         | Plugins, Mods und Modpacks aus Modrinth, Hangar, SpigotMC und (mit eigenem Schlüssel) CurseForge. Nur passende Versionen, Abhängigkeiten automatisch. |
-| 🔌 **Plugins**            | Liste mit An/Aus-Schalter, Updates per Klick, eigene `.jar` per Drag & Drop.                                                                          |
-| 📁 **Dateien**            | Ordnerbaum, Drag & Drop, Editor mit Syntaxfarben, ZIP packen und entpacken, Papierkorb (7 Tage).                                                      |
-| ⚙️ **Einstellungen**      | `server.properties` als Formular mit Erklärung zu jeder Einstellung, MOTD-Editor mit Farbvorschau, Server-Bild.                                       |
-| 👥 **Spieler**            | Online-Liste mit Köpfen, OP, Kick, Bann und Whitelist per Klick – auch für Spieler, die gerade offline sind.                                          |
-| 🌍 **Welten**             | Welt hochladen, wechseln oder neu erzeugen (mit Seed).                                                                                                |
-| 📱 **Bedrock-Spieler**    | Geyser und Floodgate mit einem Schalter: Freunde auf Handy, Konsole oder Windows spielen auf deinem Java-Server mit.                                  |
-| 💾 **Backups**            | Per Klick oder geplant, Welt wird vorher gespeichert, Aufbewahrung, Ausschlüsse, Download, Wiederherstellen mit Sicherheitskopie.                     |
-| ⏰ **Zeitpläne**          | Neustart, Backup oder Befehl – „jeden Tag um 04:00“ statt Cron-Syntax, mit Vorwarnung im Spiel-Chat.                                                  |
-| 📊 **Statistik**          | CPU, RAM, TPS und Spieler über die letzte Stunde, 24 Stunden oder 7 Tage.                                                                             |
-| 🔔 **Benachrichtigungen** | Discord, Slack, Microsoft Teams oder eigene Webhooks: Server gestartet oder abgestürzt, Backup fertig, Spieler beigetreten.                           |
-| 🔐 **Benutzer & Rollen**  | Rollen pro Server (Besitzer, Moderator, Zuschauer oder eigene), Passkeys, 2FA per App, Protokoll aller Aktionen.                                      |
-| 🛡️ **Admin-Bereich**      | Domain des Panels, Updates per Klick, Passwörter anderer zurücksetzen, Einstellungen für das ganze Panel.                                             |
-| 🙋 **Freigaben**          | Registrierung auf der Startseite („Konto anfragen“) und Server-Anfragen – du gibst sie im Panel, per Mail oder per Discord-Knopf frei, in Echtzeit.   |
-| 💬 **Discord-Bot**        | Private Nachrichten bei neuen Anfragen und Abstürzen, `/verbinden` mit einem Klick, Profilbild und Beschreibung stellt das Panel selbst ein.          |
-| ✉️ **E-Mail**             | Willkommen, Bestätigung, „Passwort vergessen“, Bestellungen. Schnellstart mit zwei Angaben, **Postausgang** zeigt jede Mail und warum sie hängt.      |
-| 🛡️ **DDoS-Schutz**        | Grenzen pro Absender für Verbindungen und Pakete auf allen Server-Ports, mit einem Schalter im Admin-Bereich.                                         |
-| 📦 **Umzug**              | Alle Einstellungen und Verbindungen per Code (mit Passwort) auf ein anderes MorniHosting übertragen.                                                  |
-| ⬆️ **Updates**            | Das Panel zeigt neue Versionen an und aktualisiert sich per Knopfdruck. Deine Minecraft-Server laufen dabei weiter.                                   |
-| 🌗 **Bedienung**          | Dunkel und hell, Deutsch und Englisch, auch auf dem Handy gut bedienbar.                                                                              |
+| Bereich                   | Was du bekommst                                                                                                                                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🖥️ **Server**             | Java (Vanilla, Paper, Purpur, Fabric, Forge, NeoForge), Velocity-Proxy und Bedrock. Bestellseite wie bei einem Hoster, bis 128 GB RAM pro Server.                                                                   |
+| 🎮 **Weitere Spiele**     | Factorio, Counter-Strike 2, Garry's Mod, Satisfactory, Euro Truck Simulator 2 und Hytale – mit Einstellungen und Konsole im selben Panel.                                                                           |
+| 📦 **Import**             | Vorhandenen Server als ZIP hochladen – Software und Version werden erkannt.                                                                                                                                         |
+| 🔗 **Adresse**            | Oben auf jeder Server-Seite: Adresse zum Kopieren, öffentliche und lokale IP, Prüfung „Von außen erreichbar?“ mit Hilfe zur Portfreigabe.                                                                           |
+| ⌨️ **Konsole**            | Live, mit Farben, Befehlsverlauf (↑/↓), Tab-Ergänzung, Suche und Kopieren.                                                                                                                                          |
+| 🩺 **Absturz-Helfer**     | Erkennt typische Fehler (falsche Java-Version, zu wenig RAM, fehlende Abhängigkeit) und erklärt die Lösung mit einem Knopf.                                                                                         |
+| 🧩 **Marktplatz**         | Plugins, Mods und Modpacks aus Modrinth, Hangar, SpigotMC und (mit eigenem Schlüssel) CurseForge. Nur passende Versionen, Abhängigkeiten automatisch.                                                               |
+| 🔌 **Plugins**            | Liste mit An/Aus-Schalter, Updates per Klick, eigene `.jar` per Drag & Drop.                                                                                                                                        |
+| 📁 **Dateien**            | Ordnerbaum, Drag & Drop, Editor mit Syntaxfarben, ZIP packen und entpacken, Papierkorb (7 Tage).                                                                                                                    |
+| ⚙️ **Einstellungen**      | `server.properties` als Formular mit Erklärung zu jeder Einstellung, MOTD-Editor mit Farbvorschau, Server-Bild.                                                                                                     |
+| 👥 **Spieler**            | Online-Liste mit Köpfen, OP, Kick, Bann und Whitelist per Klick – auch für Spieler, die gerade offline sind.                                                                                                        |
+| 🌍 **Welten**             | Welt hochladen, wechseln oder neu erzeugen (mit Seed).                                                                                                                                                              |
+| ✦ **MorniCraft**          | Fertiger Freunde-Server mit unserem eigenen Plugin ([auch einzeln](https://github.com/pmornhart/MorniCraft)): Spawn-Insel über dem Meer, /home, /tpa, Start-Elytra, Leiste rechts – alles im Dashboard einstellbar. |
+| 📱 **Bedrock-Spieler**    | Geyser und Floodgate mit einem Schalter: Freunde auf Handy, Konsole oder Windows spielen auf deinem Java-Server mit.                                                                                                |
+| 💾 **Backups**            | Per Klick oder geplant, Welt wird vorher gespeichert, Aufbewahrung, Ausschlüsse, Download, Wiederherstellen mit Sicherheitskopie.                                                                                   |
+| ⏰ **Zeitpläne**          | Neustart, Backup oder Befehl – „jeden Tag um 04:00“ statt Cron-Syntax, mit Vorwarnung im Spiel-Chat.                                                                                                                |
+| 📊 **Statistik**          | CPU, RAM, TPS und Spieler über die letzte Stunde, 24 Stunden oder 7 Tage.                                                                                                                                           |
+| 🔔 **Benachrichtigungen** | Discord, Slack, Microsoft Teams oder eigene Webhooks: Server gestartet oder abgestürzt, Backup fertig, Spieler beigetreten.                                                                                         |
+| 🔐 **Benutzer & Rollen**  | Rollen pro Server (Besitzer, Moderator, Zuschauer oder eigene), Passkeys, 2FA per App, Protokoll aller Aktionen.                                                                                                    |
+| 🛡️ **Admin-Bereich**      | Domain des Panels, Updates per Klick, Passwörter anderer zurücksetzen, Einstellungen für das ganze Panel.                                                                                                           |
+| 🙋 **Freigaben**          | Registrierung auf der Startseite („Konto anfragen“) und Server-Anfragen – du gibst sie im Panel, per Mail oder per Discord-Knopf frei, in Echtzeit.                                                                 |
+| 💬 **Discord-Bot**        | Private Nachrichten bei neuen Anfragen und Abstürzen, `/verbinden` mit einem Klick, Profilbild und Beschreibung stellt das Panel selbst ein.                                                                        |
+| ✉️ **E-Mail**             | Willkommen, Bestätigung, „Passwort vergessen“, Bestellungen. Schnellstart mit zwei Angaben, **Postausgang** zeigt jede Mail und warum sie hängt.                                                                    |
+| 🛡️ **DDoS-Schutz**        | Grenzen pro Absender für Verbindungen und Pakete auf allen Server-Ports, mit einem Schalter im Admin-Bereich.                                                                                                       |
+| 📦 **Umzug**              | Alle Einstellungen und Verbindungen per Code (mit Passwort) auf ein anderes MorniHosting übertragen.                                                                                                                |
+| ⬆️ **Updates**            | Das Panel zeigt neue Versionen an und aktualisiert sich per Knopfdruck. Deine Minecraft-Server laufen dabei weiter.                                                                                                 |
+| 🌗 **Bedienung**          | Dunkel und hell, Deutsch und Englisch, auch auf dem Handy gut bedienbar.                                                                                                                                            |
 
 </details>
 

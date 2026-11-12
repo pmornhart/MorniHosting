@@ -1,0 +1,58 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  MorniCraft – Einstellungen
+#  Nach einer Änderung: /mornicraft reload (oder Server neu starten).
+#  Läuft der Server über MorniHosting, schreibt das Panel diese Datei selbst
+#  (Dashboard → Server → Einstellungen → MorniCraft) – dann dort ändern.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Sprache der Texte im Spiel: de oder en
+language: de
+# Name oben in der Leiste rechts und im Begrüßungs-Titel
+server-name: MorniCraft
+# Zeitzone für die Uhrzeit in der Leiste
+timezone: Europe/Berlin
+# Link zu einer Befehls-Seite pro Spieler ({name} = Spielername). Leer = kein Link.
+link: ''
+
+# Sekunden stillstehen vor /spawn, /home, /tpa, /back (Admins sofort). 0 = sofort.
+teleport-delay: 5
+# Wie viele Zuhause jeder mit /sethome speichern darf (Admins unbegrenzt)
+max-homes: 5
+tpa: true
+back: true
+
+# Rund um den Spawn-Punkt der Welt: nur Admins bauen oder abbauen.
+spawn-protection: true
+spawn-radius: 55
+# Am Spawn schlafen (und dort einen Respawn-Punkt setzen)?
+sleep-at-spawn: false
+# Am Spawn kämpfen?
+pvp-at-spawn: false
+
+# Start-Elytra: am Spawn 2× Leertaste = losgleiten, kein Fallschaden, F (Bedrock: Schleichen) = ein Schub
+elytra: true
+elytra-radius: 45
+elytra-boost: true
+
+# Für die ganze Welt
+tnt: true
+creeper-damage: true
+fire-spread: true
+enderman-grief: true
+
+# Große Begrüßung – einmal pro Spieler
+welcome: true
+# Leiste rechts mit Uhrzeit, Spielzeit, Online, Ping, Befehlen (jeder kann sie mit /leiste ausblenden)
+sidebar: true
+# Auf GitHub nach neuen Versionen schauen und Admins Bescheid geben
+update-check: true
+
+# Regeln für /rules – eine pro Zeile
+rules:
+  - Sei nett zu allen.
+  - Nichts kaputt machen, was anderen gehört.
+  - Keine Cheats, keine Hacks.
+  - Viel Spaß!
+
+# Befehlsliste für /info. Leer = die eingebaute Liste.
+groups: []

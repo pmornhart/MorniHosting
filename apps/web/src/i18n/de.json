@@ -680,10 +680,11 @@
     "public_stats_java_only": "Die Statistik-Seite gibt es nur für Minecraft Java.",
     "public_stats_slug_taken": "Die Adresse /stats/{{slug}} hat schon ein anderer Server.",
     "public_stats_unknown": "Diese Statistik-Seite gibt es nicht.",
-    "craft_attack_software": "Craft Attack geht nur mit Paper oder Purpur.",
+    "craft_attack_software": "MorniCraft geht nur mit Paper oder Purpur.",
     "impressum_not_image": "Das ist kein Bild (PNG, JPG oder WebP).",
     "impressum_too_big": "Das Bild ist zu groß (höchstens {{mb}} MB).",
-    "via_unsupported": "Für diese Software gibt es ViaVersion nicht."
+    "via_unsupported": "Für diese Software gibt es ViaVersion nicht.",
+    "mornicraft_inactive": "Das ist kein MorniCraft-Server."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -1648,7 +1649,8 @@
       "server_crash_fix": "Absturz behoben",
       "impressum_update": "Impressum geändert",
       "via_enable": "Alle Versionen (ViaVersion) eingeschaltet",
-      "via_disable": "Alle Versionen (ViaVersion) ausgeschaltet"
+      "via_disable": "Alle Versionen (ViaVersion) ausgeschaltet",
+      "server_mornicraft": "MorniCraft-Einstellungen geändert"
     }
   },
   "ddos": {
@@ -2174,8 +2176,8 @@
       "appliedText": "Ab jetzt zahlst du {{payee}} {{price}} im Monat für diesen Server. Bezahlt wird direkt bei {{payee}}.",
       "paid": "9.999,99 € / Monat"
     },
-    "craftAttack": "Craft Attack",
-    "craftAttackText": "Fertiger Freunde-Server: schwebende Spawn-Insel hoch in der Luft mit Start-Elytra (doppelt springen zum Gleiten, F für Schub), /spawn, /home und /tpa (EssentialsX), Whitelist, vorgenerierte Welt und eine öffentliche Statistik-Seite. Die Version passt das Panel an die Plugins an.",
+    "craftAttack": "MorniCraft",
+    "craftAttackText": "Fertiger Freunde-Server mit dem eigenen MorniCraft-Plugin: schwebende Spawn-Insel über dem Meer mit Brunnen und Start-Elytra (doppelt springen, F für Schub), /spawn, /home, /tpa, Nachrichten, Leiste mit Uhrzeit, Whitelist, jede Minecraft-Version kann rein, vorgenerierte Welt und eine öffentliche Statistik-Seite. Alles im Dashboard einstellbar.",
     "craftAttackSoftware": "Nur mit Paper oder Purpur.",
     "via": "Alle Versionen (ViaVersion)",
     "viaText": "Spieler mit älteren und neueren Minecraft-Versionen kommen trotzdem rein. Bleibt automatisch aktuell.",
@@ -3146,7 +3148,7 @@
       "voice": "Simple Voice Chat",
       "backups": "Tägliches Backup um 04:00",
       "start": "Erster Start (Welt wird erstellt)",
-      "craftattack": "Craft Attack: Plugins, Einstellungen, Spawn",
+      "craftattack": "MorniCraft: Plugins, Einstellungen, Spawn",
       "pregen": "Welt um den Spawn vorgenerieren",
       "via": "Alle Versionen (ViaVersion)"
     }
@@ -3238,15 +3240,6 @@
     "pillOn": "An",
     "pillOff": "Aus"
   },
-  "craftAttackHelp": {
-    "title": "Craft Attack – alle Befehle",
-    "text": "Das können deine Spieler auf dem Server – die meisten Befehle ganz ohne OP-Rechte.",
-    "ingame": "Im Spiel zeigt /info dieselbe Liste.",
-    "copy": "Liste kopieren",
-    "personal": "Persönliche Seite für jeden Spieler",
-    "personalText": "Im Spiel zeigt /info (und die Begrüßung) jedem Spieler einen Link zu seiner eigenen Seite – mit genau den Befehlen, die er nutzen darf. Name eintippen muss niemand. (Braucht eine Panel-Domain.)",
-    "playerName": "<spielername>"
-  },
   "playerCommands": {
     "title": "Befehle für {{name}}",
     "online": "Gerade online",
@@ -3257,6 +3250,72 @@
     "yours": "Das kannst du nutzen",
     "allYours": "Du bist Admin – du kannst alles nutzen",
     "missing": "Seite nicht gefunden",
-    "missingText": "Diesen Server gibt es nicht oder er ist kein Craft-Attack-Server."
+    "missingText": "Diesen Server gibt es nicht oder er ist kein MorniCraft-Server."
+  },
+  "mornicraft": {
+    "title": "MorniCraft",
+    "text": "Das eigene Plugin des Panels auf diesem Server: Spawn, Zuhause, Teleports, Nachrichten, Start-Elytra und Leiste. Alles hier stellst du ein – gilt sofort.",
+    "noPlugin": "Diesem Panel fehlt die Plugin-Datei (Build ohne MorniCraft). Nach dem nächsten Update ist sie dabei.",
+    "sections": {
+      "teleport": "Teleports & Zuhause",
+      "spawn": "Spawn",
+      "elytra": "Start-Elytra",
+      "world": "Welt",
+      "show": "Anzeige",
+      "rules": "Regeln"
+    },
+    "fields": {
+      "tpa": "Teleport-Anfragen (/tpa)",
+      "back": "Zurück zum letzten Ort (/back)",
+      "teleportDelay": "Wartezeit vor dem Teleport",
+      "maxHomes": "Zuhause pro Spieler",
+      "spawnProtection": "Spawn geschützt",
+      "sleepAtSpawn": "Am Spawn schlafen",
+      "pvpAtSpawn": "Am Spawn kämpfen",
+      "spawnRadius": "Größe des Spawn-Bereichs",
+      "elytra": "Start-Elytra",
+      "elytraBoost": "Schub mit F",
+      "elytraRadius": "Wo die Elytra startet",
+      "tnt": "TNT",
+      "creeperDamage": "Creeper zerstören Blöcke",
+      "fireSpread": "Feuer breitet sich aus",
+      "endermanGrief": "Endermen nehmen Blöcke mit",
+      "welcome": "Begrüßung beim ersten Betreten",
+      "sidebar": "Leiste rechts",
+      "showLink": "Link zur Befehls-Seite"
+    },
+    "hints": {
+      "tpa": "/tpa, /tpahere, /tpaccept – mit Knöpfen zum Annehmen",
+      "back": "Auch zurück zum Todesort",
+      "teleportDelay": "So lange muss man stillstehen (/spawn, /home, /tpa, /back). Admins geht's sofort.",
+      "maxHomes": "Wie viele Orte jeder mit /sethome speichern darf",
+      "spawnProtection": "Nur Admins bauen oder abbauen am Spawn",
+      "sleepAtSpawn": "Aus: kein Bett und kein Respawn-Punkt am Spawn",
+      "pvpAtSpawn": "Aus: am Spawn kann niemand Schaden machen",
+      "spawnRadius": "Um den Spawn-Punkt herum gilt der Schutz",
+      "elytra": "Doppelt springen am Spawn = losgleiten, kein Fallschaden",
+      "elytraBoost": "Einmal pro Flug ein Schub (Bedrock: Schleichen)",
+      "elytraRadius": "Nur in diesem Umkreis kann man losgleiten",
+      "tnt": "Aus: TNT verpufft ohne Schaden",
+      "creeperDamage": "Aus: Creeper explodieren, aber der Boden bleibt heil",
+      "fireSpread": "Aus: Feuer bleibt, wo es angezündet wurde",
+      "endermanGrief": "Aus: Endermen lassen Blöcke liegen",
+      "welcome": "Großer Titel und Karte – einmal pro Spieler",
+      "sidebar": "Uhrzeit, Spielzeit, online, Ping, Befehle – jeder kann sie mit /leiste ausblenden",
+      "showLink": "In /info und der Begrüßung (braucht eine Panel-Domain)"
+    },
+    "units": {
+      "teleportDelay": "{{n}} s",
+      "maxHomes": "{{n}}",
+      "spawnRadius": "{{n}} Blöcke",
+      "elytraRadius": "{{n}} Blöcke"
+    },
+    "rulesHint": "Eine Regel pro Zeile – erscheinen bei /rules.",
+    "live": "Speichern gilt sofort, auch während der Server läuft.",
+    "save": "Speichern",
+    "saved": "MorniCraft-Einstellungen gespeichert",
+    "commands": "Alle Befehle",
+    "personal": "Jeder Spieler hat eine eigene Seite mit genau seinen Befehlen:",
+    "playerName": "<spielername>"
   }
 }

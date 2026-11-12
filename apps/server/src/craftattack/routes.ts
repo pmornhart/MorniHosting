@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { requireAuth } from '../auth/context.js';
+import { actorOf, requireAuth } from '../auth/context.js';
 import type { Api, AppContext } from '../context.js';
+import { morniCraftSettingsSchema } from './mornicraft.js';
 import { publicStatsInputSchema, type CraftAttackService } from './service.js';
 
 const params = z.object({ id: z.string().min(1) });
@@ -13,11 +14,21 @@ export function registerCraftAttackRoutes(app: Api, ctx: AppContext, craftAttack
     return craftAttack.publicSetting(request.params.id);
   });
 
-  app.get('/api/servers/:id/craftattack', { schema: { params } }, async (request) => {
+  app.get('/api/servers/:id/mornicraft', { schema: { params } }, async (request) => {
     ctx.access.assertAny(requireAuth(request).user, request.params.id);
-    const active = craftAttack.isCraftAttack(request.params.id);
-    return { active, slug: active ? craftAttack.publicSetting(request.params.id).slug : null };
+    return craftAttack.morniCraft(request.params.id);
   });
+
+  app.put(
+    '/api/servers/:id/mornicraft',
+    { schema: { params, body: morniCraftSettingsSchema } },
+    async (request) => {
+      ctx.access.assert(requireAuth(request).user, request.params.id, 'config');
+      const state = await craftAttack.setMorniCraft(request.params.id, request.body);
+      ctx.audit.record(actorOf(request), 'server.mornicraft', request.params.id, {});
+      return state;
+    },
+  );
 
   app.put(
     '/api/servers/:id/public-stats',

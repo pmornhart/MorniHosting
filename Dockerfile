@@ -1,6 +1,14 @@
 # syntax=docker/dockerfile:1.7
 # MorniHosting: one image with the web app and the API.
 
+# The panel's own Minecraft plugin (MorniCraft). If its build fails (e.g. a library source is down), the panel is
+# still built – it then says that the plugin is missing instead of breaking the update.
+FROM maven:3.9.9-eclipse-temurin-21 AS plugin
+WORKDIR /src
+COPY plugins/mornicraft/pom.xml ./
+COPY plugins/mornicraft/src ./src
+RUN mkdir -p target && (mvn -B -q package || echo "MorniCraft konnte nicht gebaut werden" > target/BUILD_FAILED.txt)
+
 FROM node:22-alpine AS build
 # Nur Bauwerkzeuge für native Module in der Bau-Stufe; ihre Versionen folgen dem Alpine-Stand des Node-Images
 # (feste apk-Versionen verschwinden aus dem Alpine-Index und würden den Bau brechen).
@@ -33,6 +41,7 @@ ENV NODE_ENV=production \
 WORKDIR /app
 COPY --from=build /out /app/server
 COPY --from=build /src/apps/web/dist /app/web
+COPY --from=plugin /src/target/ /app/plugins/
 # The node user (uid 1000) is the same user the Minecraft images write files as.
 RUN mkdir -p /data && chown 1000:1000 /data
 USER 1000:1000

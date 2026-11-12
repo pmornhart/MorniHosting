@@ -1,0 +1,46 @@
+name: MorniCraft
+version: '${project.version}'
+main: de.mornihosting.mornicraft.MorniCraft
+api-version: '1.17'
+softdepend: [floodgate]
+description: Spawn, Zuhause, Teleports, Nachrichten und Start-Elytra für MorniCraft-Server (MorniHosting).
+author: MorniHosting
+website: https://github.com/pmornhart/MorniCraft
+commands:
+  spawn: { description: Zurück zum Spawn }
+  sethome: { description: Merkt sich diesen Ort als Zuhause, usage: '/sethome [name]' }
+  home: { description: Bringt dich nach Hause, usage: '/home [name]' }
+  homes: { description: Zeigt alle deine Zuhause }
+  delhome: { description: Löscht ein Zuhause, usage: '/delhome <name>' }
+  back: { description: Zurück zum letzten Ort }
+  tpa: { description: Fragt, ob du zu jemandem darfst, usage: '/tpa <spieler>' }
+  tpahere: { description: Fragt, ob jemand zu dir kommt, usage: '/tpahere <spieler>' }
+  tpaccept: { description: Anfrage annehmen, aliases: [tpyes] }
+  tpdeny: { description: Anfrage ablehnen, aliases: [tpno] }
+  msg: { description: Private Nachricht, usage: '/msg <spieler> <text>', aliases: [tell, w, whisper] }
+  r: { description: Auf die letzte Nachricht antworten, usage: '/r <text>', aliases: [reply] }
+  mail: { description: Nachrichten für später, usage: '/mail send <spieler> <text> | /mail read' }
+  ignore: { description: Jemanden ausblenden, usage: '/ignore <spieler>' }
+  afk: { description: Zeigt, dass du kurz weg bist }
+  seen: { description: Wann jemand zuletzt da war, usage: '/seen <spieler>' }
+  near: { description: Wer in deiner Nähe ist }
+  getpos: { description: Deine Koordinaten, aliases: [coords] }
+  ping: { description: Deine Verbindung zum Server }
+  info: { description: Alle Befehle, aliases: [befehle, commands] }
+  rules: { description: Die Regeln, aliases: [regeln] }
+  leiste: { description: Leiste rechts ein- oder ausblenden, aliases: [sidebar, scoreboard] }
+  mornicraft:
+    { description: Einstellungen neu laden, permission: mornicraft.admin, usage: '/mornicraft reload' }
+permissions:
+  mornicraft.admin:
+    description: Darf die Einstellungen neu laden.
+    default: op
+  mornicraft.instant:
+    description: Teleportiert ohne Wartezeit.
+    default: op
+  mornicraft.build:
+    description: Darf den Spawn verändern.
+    default: op
+  mornicraft.unlimitedhomes:
+    description: Beliebig viele Zuhause.
+    default: op

@@ -37,3 +37,6 @@ e2e/.auth.json
 playwright-report/
 test-results/
 dist-demo/
+
+# MorniCraft-Plugin (Maven)
+plugins/mornicraft/target/

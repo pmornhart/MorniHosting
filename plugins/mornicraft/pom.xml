@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MorniCraft: the panel's own Paper plugin for MorniCraft servers (friends' survival). Built into the panel image. -->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>de.mornihosting</groupId>
+  <artifactId>mornicraft</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+  <name>MorniCraft</name>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>papermc</id>
+      <url>https://repo.papermc.io/repository/maven-public/</url>
+    </repository>
+    <!-- Floodgate (Bedrock players via Geyser): real Bedrock menus. Optional at runtime (softdepend). -->
+    <repository>
+      <id>opencollab</id>
+      <url>https://repo.opencollab.dev/main/</url>
+      <snapshots><enabled>true</enabled></snapshots>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <!-- The oldest API we support: the plugin then runs on Paper/Purpur 1.17 up to the newest (also 26.x). -->
+    <dependency>
+      <groupId>io.papermc.paper</groupId>
+      <artifactId>paper-api</artifactId>
+      <version>1.17.1-R0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.geysermc.floodgate</groupId>
+      <artifactId>api</artifactId>
+      <version>2.2.4-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>MorniCraft</finalName>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+  </build>
+</project>
