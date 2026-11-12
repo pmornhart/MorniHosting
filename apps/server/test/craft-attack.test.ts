@@ -17,6 +17,7 @@ import {
   removeRainbowCommands,
   removeBenchesCommands,
   flagCommands,
+  reedCommands,
   renewCommands,
   SPAWN_ZONES,
 } from '../src/craftattack/spawn.js';
@@ -144,6 +145,11 @@ describe('MorniCraft spawn, plugin and settings', () => {
     expect(top).toContain('light_blue_wall_banner[facing=south]');
     expect(top).toContain('yellow_concrete');
     expect(topCommands('en').join('\n')).not.toEqual(top);
+    // Sugar cane stands on earth with water right beside it (else it falls off); older islands get it planted again.
+    expect(reedCommands()).toEqual(
+      expect.arrayContaining(['setblock ~17 ~-1 ~12 water', 'setblock ~18 ~-1 ~12 grass_block']),
+    );
+    expect(files['data/craftattack/function/fix_reeds.mcfunction']).toContain('function craftattack:reeds');
     // Five balloons; they and the small islands are protected like the island itself.
     expect(extrasCommands().some((c) => c.includes('magenta_wool'))).toBe(true);
     expect(SPAWN_ZONES).toHaveLength(10);
