@@ -43,6 +43,7 @@ final class DefaultCommands {
             c(en, "/info", "Diese Liste", "This list"),
             c(en, "/seen <spieler>", "Wann jemand zuletzt da war", "When someone was last online"),
             c(en, "/near", "Wer in deiner Nähe ist", "Who is near you"),
+            c(en, "/team", "Wer im Team ist (Ränge)", "Who is on the team (ranks)"),
             c(en, "/getpos", "Deine Koordinaten", "Your coordinates"),
             c(en, "/ping", "Deine Verbindung zum Server", "Your connection to the server"),
             c(en, "/rules", "Die Regeln", "The rules"),

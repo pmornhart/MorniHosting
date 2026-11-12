@@ -49,7 +49,187 @@ export interface MorniCraftSettings {
   readonly fireSpread: boolean;
   readonly endermanGrief: boolean;
   readonly rules: readonly string[];
+  /** Highest first; shown as symbol + colour in chat, tab list and above the head. */
+  readonly ranks: readonly MorniCraftRank[];
 }
+
+/** What a rank may do (each switch stands for one or more server permissions, see RANK_PERMISSION_NODES). */
+export const RANK_PERMISSIONS = [
+  'build',
+  'instant',
+  'homes',
+  'kick',
+  'ban',
+  'gamemode',
+  'teleport',
+  'world',
+  'whitelist',
+  'reload',
+] as const;
+export type RankPermission = (typeof RANK_PERMISSIONS)[number];
+
+/** The permission nodes behind each switch (MorniCraft's own and the vanilla commands Paper guards with them). */
+export const RANK_PERMISSION_NODES: Readonly<Record<RankPermission, readonly string[]>> = {
+  build: ['mornicraft.build'],
+  instant: ['mornicraft.instant'],
+  homes: ['mornicraft.unlimitedhomes'],
+  kick: ['minecraft.command.kick'],
+  ban: [
+    'minecraft.command.ban',
+    'minecraft.command.ban-ip',
+    'minecraft.command.pardon',
+    'minecraft.command.pardon-ip',
+    'minecraft.command.banlist',
+  ],
+  gamemode: ['minecraft.command.gamemode'],
+  teleport: ['minecraft.command.teleport', 'minecraft.command.tp'],
+  world: ['minecraft.command.time', 'minecraft.command.weather'],
+  whitelist: ['minecraft.command.whitelist'],
+  reload: ['mornicraft.admin'],
+};
+
+/** Panel roles whose members (with a linked Minecraft account) get a rank by themselves. */
+export const RANK_SOURCES = ['none', 'owner', 'moderator'] as const;
+export type RankSource = (typeof RANK_SOURCES)[number];
+
+export interface MorniCraftRank {
+  /** a-z, 0-9, _ and - (stays the same when the name changes). */
+  readonly id: string;
+  readonly name: string;
+  /** One symbol in front of the name ("♛"), or empty. */
+  readonly symbol: string;
+  /** #rrggbb */
+  readonly color: string;
+  readonly permissions: readonly RankPermission[];
+  /** Minecraft names of the players with this rank. */
+  readonly players: readonly string[];
+  /** Everyone without another rank has this one (at most one rank). */
+  readonly isDefault: boolean;
+  /** Also everyone with this role on the server in the panel (with a linked Minecraft account). */
+  readonly fromPanel: RankSource;
+}
+
+/** Symbols that look right in Java and Bedrock. */
+export const RANK_SYMBOLS = [
+  '♛',
+  '✦',
+  '⚔',
+  '✚',
+  '⚒',
+  '▶',
+  '★',
+  '❤',
+  '☀',
+  '☘',
+  '⚡',
+  '♪',
+  '✎',
+  '⚑',
+  '❖',
+  '✿',
+] as const;
+
+/** Colours to pick from (any #rrggbb works). */
+export const RANK_COLORS = [
+  '#ff5555',
+  '#ff9f1a',
+  '#ffd23f',
+  '#55ff55',
+  '#3dd6c4',
+  '#55aaff',
+  '#a78bfa',
+  '#ff6ad5',
+  '#c08a5b',
+  '#aaaaaa',
+] as const;
+
+export const MAX_RANKS = 20;
+
+const ALL_RANK_PERMISSIONS: readonly RankPermission[] = RANK_PERMISSIONS;
+
+/** The ranks every MorniCraft server starts with. */
+export const DEFAULT_RANKS: readonly MorniCraftRank[] = [
+  {
+    id: 'owner',
+    name: 'Owner',
+    symbol: '♛',
+    color: '#ff5555',
+    permissions: ALL_RANK_PERMISSIONS,
+    players: [],
+    isDefault: false,
+    fromPanel: 'owner',
+  },
+  {
+    id: 'admin',
+    name: 'Admin',
+    symbol: '✦',
+    color: '#ff9f1a',
+    permissions: ALL_RANK_PERMISSIONS,
+    players: [],
+    isDefault: false,
+    fromPanel: 'none',
+  },
+  {
+    id: 'moderator',
+    name: 'Moderator',
+    symbol: '⚔',
+    color: '#55aaff',
+    permissions: ['instant', 'kick', 'ban', 'teleport'],
+    players: [],
+    isDefault: false,
+    fromPanel: 'moderator',
+  },
+  {
+    id: 'supporter',
+    name: 'Supporter',
+    symbol: '✚',
+    color: '#55ff55',
+    permissions: ['instant', 'kick'],
+    players: [],
+    isDefault: false,
+    fromPanel: 'none',
+  },
+  {
+    id: 'builder',
+    name: 'Builder',
+    symbol: '⚒',
+    color: '#c08a5b',
+    permissions: ['build', 'gamemode'],
+    players: [],
+    isDefault: false,
+    fromPanel: 'none',
+  },
+  {
+    id: 'media',
+    name: 'Media',
+    symbol: '▶',
+    color: '#ff6ad5',
+    permissions: ['homes'],
+    players: [],
+    isDefault: false,
+    fromPanel: 'none',
+  },
+  {
+    id: 'vip',
+    name: 'VIP',
+    symbol: '★',
+    color: '#ffd23f',
+    permissions: ['homes'],
+    players: [],
+    isDefault: false,
+    fromPanel: 'none',
+  },
+  {
+    id: 'player',
+    name: 'Spieler',
+    symbol: '',
+    color: '#aaaaaa',
+    permissions: [],
+    players: [],
+    isDefault: true,
+    fromPanel: 'none',
+  },
+];
 
 export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
   teleportDelay: 5,
@@ -76,6 +256,7 @@ export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
     'Keine Cheats, keine Hacks.',
     'Viel Spaß!',
   ],
+  ranks: DEFAULT_RANKS,
 };
 
 /** GET /api/servers/:id/mornicraft */
@@ -87,6 +268,8 @@ export interface MorniCraftState {
   readonly settings: MorniCraftSettings;
   /** The plugin file the panel brings along is there (an image built without it cannot install it). */
   readonly pluginAvailable: boolean;
+  /** Minecraft names the panel gives a rank by itself (owners and moderators with a linked account). */
+  readonly panelMembers: Readonly<Record<'owner' | 'moderator', readonly string[]>>;
 }
 
 /** server.properties for a friends' survival world. */
@@ -262,6 +445,7 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
     commands: [
       { use: same('/info'), text: { de: 'Diese Liste im Spiel', en: 'This list in the game' } },
       { use: same('/list'), text: { de: 'Wer gerade online ist', en: 'Who is online' } },
+      { use: same('/team'), text: { de: 'Wer im Team ist (Ränge)', en: 'Who is on the team (ranks)' } },
       {
         use: same('/seen <spieler>'),
         text: { de: 'Wann jemand zuletzt da war', en: 'When someone was last online' },

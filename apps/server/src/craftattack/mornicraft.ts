@@ -3,7 +3,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { CRAFT_ATTACK_COMMANDS, MORNICRAFT_DEFAULTS, type MorniCraftSettings } from '@mornihosting/shared';
+import {
+  CRAFT_ATTACK_COMMANDS,
+  MAX_RANKS,
+  MORNICRAFT_DEFAULTS,
+  RANK_PERMISSION_NODES,
+  RANK_PERMISSIONS,
+  RANK_SOURCES,
+  type MorniCraftRank,
+  type MorniCraftSettings,
+} from '@mornihosting/shared';
 
 /**
  * The panel's own MorniCraft plugin (Java, plugins/mornicraft in the repo): it comes with the panel image and is
@@ -63,6 +72,36 @@ export function retireReplacedPlugins(serverDir: string): string[] {
     });
 }
 
+// Rank ids: "owner", "mod-2", "vip_plus". https://regex101.com/?flavor=javascript&regex=%5E%5Ba-z0-9_-%5D%7B1%2C24%7D%24&testString=owner%0Amod-2
+const RANK_ID = /^[a-z0-9_-]{1,24}$/;
+// "#ff5555". https://regex101.com/?flavor=javascript&regex=%5E%23%5B0-9a-fA-F%5D%7B6%7D%24&testString=%23ff5555
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+// Java names (Morni_23), Bedrock names behind Floodgate (.Morni). https://regex101.com/?flavor=javascript&regex=%5E%5BA-Za-z0-9_.*-%5D%7B1%2C32%7D%24&testString=Morni_23%0A.Morni
+const PLAYER_NAME = /^[A-Za-z0-9_.*-]{1,32}$/;
+const MAX_SYMBOL = 4;
+const MAX_RANK_NAME = 20;
+const MAX_RANK_PLAYERS = 200;
+
+const rankSchema = z.object({
+  id: z.string().regex(RANK_ID),
+  name: z.string().trim().min(1).max(MAX_RANK_NAME),
+  symbol: z
+    .string()
+    .trim()
+    .refine((v) => Array.from(v).length <= MAX_SYMBOL),
+  color: z.string().regex(HEX_COLOR),
+  permissions: z.array(z.enum(RANK_PERMISSIONS)).max(RANK_PERMISSIONS.length),
+  players: z.array(z.string().trim().regex(PLAYER_NAME)).max(MAX_RANK_PLAYERS),
+  isDefault: z.boolean(),
+  fromPanel: z.enum(RANK_SOURCES),
+});
+
+const ranksSchema = z
+  .array(rankSchema)
+  .max(MAX_RANKS)
+  .refine((ranks) => new Set(ranks.map((r) => r.id)).size === ranks.length, 'rank ids must be unique')
+  .refine((ranks) => ranks.filter((r) => r.isDefault).length <= 1, 'only one default rank');
+
 export const morniCraftSettingsSchema = z.object({
   teleportDelay: z.number().int().min(0).max(30),
   maxHomes: z.number().int().min(1).max(50),
@@ -83,6 +122,7 @@ export const morniCraftSettingsSchema = z.object({
   fireSpread: z.boolean(),
   endermanGrief: z.boolean(),
   rules: z.array(z.string().trim().min(1).max(120)).max(15),
+  ranks: ranksSchema,
 });
 
 /** Stored settings, completed with the defaults (older or partial entries). */
@@ -96,6 +136,28 @@ export interface ConfigContext {
   readonly timezone: string;
   /** The personal command page with "{name}" for the player, or empty. */
   readonly link: string;
+  /** Players the panel gives a rank by itself: owners and moderators of the server with a linked account. */
+  readonly members?: Readonly<Record<'owner' | 'moderator', readonly LinkedPlayer[]>>;
+}
+
+export interface LinkedPlayer {
+  readonly uuid: string;
+  readonly name: string;
+}
+
+/** A rank as the plugin reads it: the permission nodes spelled out, players from the panel added (by UUID). */
+function rankConfig(r: MorniCraftRank, c: ConfigContext) {
+  const auto = r.fromPanel === 'none' ? [] : (c.members?.[r.fromPanel] ?? []);
+  const named = r.players.filter((n) => !auto.some((a) => a.name.toLowerCase() === n.toLowerCase()));
+  return {
+    id: r.id,
+    name: r.name,
+    symbol: r.symbol,
+    color: r.color,
+    default: r.isDefault,
+    permissions: [...new Set(r.permissions.flatMap((p) => RANK_PERMISSION_NODES[p]))],
+    players: [...auto.map((a) => ({ uuid: a.uuid, name: a.name })), ...named.map((name) => ({ name }))],
+  };
 }
 
 /**
@@ -137,6 +199,7 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     'enderman-grief': s.endermanGrief,
     rules: s.rules,
     groups,
+    ranks: s.ranks.map((r) => rankConfig(r, c)),
   };
   return `# MorniCraft – written by MorniHosting (Dashboard → server → MorniCraft). Changes here are overwritten.\n${JSON.stringify(config, null, 2)}\n`;
 }

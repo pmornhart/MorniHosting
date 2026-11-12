@@ -164,6 +164,7 @@ export function createMinecraftLinkService(ctx: AppContext, servers: ServerServi
         .run();
       ctx.audit.record(actor, 'account.minecraft_link', null, { name: profile.name });
       await syncAll();
+      ctx.events.emit('minecraft.linked', { userId: user.id });
       return userRow(user.id) ?? user;
     },
     unlink: async (user, actor) => {
@@ -174,6 +175,7 @@ export function createMinecraftLinkService(ctx: AppContext, servers: ServerServi
         .run();
       ctx.audit.record(actor, 'account.minecraft_unlink', null, { name: user.minecraftName });
       await syncAll();
+      ctx.events.emit('minecraft.linked', { userId: user.id });
       return userRow(user.id) ?? user;
     },
   };

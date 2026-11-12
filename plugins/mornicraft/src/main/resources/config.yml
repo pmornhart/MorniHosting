@@ -56,3 +56,103 @@ rules:
 
 # Befehlsliste für /info. Leer = die eingebaute Liste.
 groups: []
+
+# Ränge: Symbol und Farbe vor dem Namen (Chat, Tab-Liste, über dem Kopf) und die Rechte dazu.
+# Der oberste passende gilt. players: Minecraft-Namen (oder UUIDs). default: true = alle anderen.
+# Rechte: mornicraft.build (Spawn bauen), mornicraft.instant (ohne Wartezeit), mornicraft.unlimitedhomes,
+# mornicraft.admin (/mornicraft reload) und Minecraft-Befehle wie minecraft.command.kick.
+ranks:
+  - {
+      id: owner,
+      name: Owner,
+      symbol: '♛',
+      color: '#ff5555',
+      players: [],
+      permissions:
+        [
+          mornicraft.build,
+          mornicraft.instant,
+          mornicraft.unlimitedhomes,
+          mornicraft.admin,
+          minecraft.command.kick,
+          minecraft.command.ban,
+          minecraft.command.pardon,
+          minecraft.command.gamemode,
+          minecraft.command.teleport,
+          minecraft.command.tp,
+          minecraft.command.time,
+          minecraft.command.weather,
+          minecraft.command.whitelist,
+        ],
+    }
+  - {
+      id: admin,
+      name: Admin,
+      symbol: '✦',
+      color: '#ff9f1a',
+      players: [],
+      permissions:
+        [
+          mornicraft.build,
+          mornicraft.instant,
+          mornicraft.unlimitedhomes,
+          minecraft.command.kick,
+          minecraft.command.ban,
+          minecraft.command.pardon,
+          minecraft.command.gamemode,
+          minecraft.command.teleport,
+          minecraft.command.tp,
+          minecraft.command.time,
+          minecraft.command.weather,
+          minecraft.command.whitelist,
+        ],
+    }
+  - {
+      id: moderator,
+      name: Moderator,
+      symbol: '⚔',
+      color: '#55aaff',
+      players: [],
+      permissions:
+        [
+          mornicraft.instant,
+          minecraft.command.kick,
+          minecraft.command.ban,
+          minecraft.command.pardon,
+          minecraft.command.teleport,
+          minecraft.command.tp,
+        ],
+    }
+  - {
+      id: supporter,
+      name: Supporter,
+      symbol: '✚',
+      color: '#55ff55',
+      players: [],
+      permissions: [mornicraft.instant, minecraft.command.kick],
+    }
+  - {
+      id: builder,
+      name: Builder,
+      symbol: '⚒',
+      color: '#c08a5b',
+      players: [],
+      permissions: [mornicraft.build, minecraft.command.gamemode],
+    }
+  - {
+      id: media,
+      name: Media,
+      symbol: '▶',
+      color: '#ff6ad5',
+      players: [],
+      permissions: [mornicraft.unlimitedhomes],
+    }
+  - {
+      id: vip,
+      name: VIP,
+      symbol: '★',
+      color: '#ffd23f',
+      players: [],
+      permissions: [mornicraft.unlimitedhomes],
+    }
+  - { id: player, name: Spieler, symbol: '', color: '#aaaaaa', players: [], permissions: [], default: true }

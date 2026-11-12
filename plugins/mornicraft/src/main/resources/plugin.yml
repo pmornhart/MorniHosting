@@ -29,6 +29,7 @@ commands:
   info: { description: Alle Befehle, aliases: [befehle, commands] }
   rules: { description: Die Regeln, aliases: [regeln] }
   leiste: { description: Leiste rechts ein- oder ausblenden, aliases: [sidebar, scoreboard] }
+  team: { description: Wer im Team ist (Ränge), aliases: [staff, ränge, raenge] }
   mornicraft:
     { description: Einstellungen neu laden, permission: mornicraft.admin, usage: '/mornicraft reload' }
 permissions:

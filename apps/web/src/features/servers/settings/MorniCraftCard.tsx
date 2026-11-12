@@ -11,6 +11,7 @@ import { Slider } from '@/components/ui/misc';
 import { Switch } from '@/components/ui/switch';
 import { CommandGroups } from '@/features/public/command-groups';
 import { api } from '@/lib/api';
+import { MorniCraftRanks } from './MorniCraftRanks';
 
 type BoolKey = {
   [K in keyof MorniCraftSettings]: MorniCraftSettings[K] extends boolean ? K : never;
@@ -199,6 +200,12 @@ export function MorniCraftCard({ serverId }: { serverId: string }): ReactElement
           <span className="text-[12.5px] text-muted-foreground">{t('mornicraft.rulesHint')}</span>
         </section>
       </div>
+      <MorniCraftRanks
+        serverId={serverId}
+        ranks={draft.ranks}
+        panelMembers={data.panelMembers}
+        onChange={(ranks) => set('ranks', ranks)}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-[12.5px] text-muted-foreground">{t('mornicraft.live')}</span>
         <Button disabled={!dirty || save.isPending} onClick={() => save.mutate(next)}>

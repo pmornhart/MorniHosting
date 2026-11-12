@@ -126,6 +126,9 @@ final class Texts {
       Map.entry("menu.back", new String[] {"Zurück zum letzten Ort", "Back to the last place"}),
       Map.entry("welcome.bedrock", new String[] {
           "Tippe <hl>/info</hl> – dann öffnet sich ein Menü mit allem", "Type <hl>/info</hl> – a menu with everything opens"}),
+      Map.entry("team.title", new String[] {"Das Team", "The team"}),
+      Map.entry("team.empty", new String[] {"Noch hat niemand einen Rang", "Nobody has a rank yet"}),
+      Map.entry("sidebar.rank", new String[] {"Rang", "Rank"}),
       Map.entry("sidebar.clock", new String[] {"Uhrzeit", "Time"}),
       Map.entry("sidebar.day", new String[] {"Tag <n>", "Day <n>"}),
       Map.entry("sidebar.online", new String[] {"Online", "Online"}),
