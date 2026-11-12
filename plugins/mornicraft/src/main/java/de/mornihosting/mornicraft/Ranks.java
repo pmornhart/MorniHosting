@@ -75,6 +75,15 @@ final class Ranks implements Listener {
   /** Players whose game has loaded the badges' resource pack (read by the chat thread too). */
   private final Set<UUID> withPack = ConcurrentHashMap.newKeySet();
   private volatile String packUrl = "";
+  /** What each player's game last said about the pack (for /abzeichen). */
+  private final Map<UUID, String> lastStatus = new ConcurrentHashMap<>();
+  /** How often the pack was sent again to each player since they joined. */
+  private final Map<UUID, Integer> tries = new ConcurrentHashMap<>();
+  /** Sent again at most this often per visit, waiting longer each time (10 s, 20 s, 40 s …). */
+  private static final int PACK_MAX_TRIES = 5;
+  private static final long PACK_RETRY_TICKS = 200;
+  /** No answer from the game after this long: send it again. */
+  private static final long PACK_ANSWER_TICKS = 1200;
   private volatile String packSha = "";
 
   Ranks(MorniCraft plugin) {
@@ -109,9 +118,56 @@ final class Ranks implements Listener {
     if (packUrl.isEmpty() || packSha.isEmpty() || plugin.bedrock().is(p)) return;
     try {
       p.setResourcePack(packUrl, packSha, false, plugin.ui().bare("pack.prompt"));
+      watchAnswer(p);
     } catch (RuntimeException | LinkageError e) {
       plugin.getLogger().warning("Could not offer the badge pack to " + p.getName() + ": " + e);
     }
+  }
+
+  /** /abzeichen: the pack once more, and what the game said last time. */
+  void badgesCommand(Player p) {
+    if (packUrl.isEmpty() || packSha.isEmpty()) {
+      p.sendMessage(plugin.ui().note("ℹ", Ui.SOFT, "pack.none"));
+      return;
+    }
+    if (plugin.bedrock().is(p)) {
+      p.sendMessage(plugin.ui().note("ℹ", Ui.SOFT, "pack.bedrock"));
+      return;
+    }
+    String last = lastStatus.getOrDefault(p.getUniqueId(), "–");
+    p.sendMessage(plugin.ui().note("ℹ", Ui.SOFT, withPack.contains(p.getUniqueId()) ? "pack.status.ok" : "pack.status",
+        Ui.v("status", last)));
+    tries.remove(p.getUniqueId());
+    offerPack(p);
+  }
+
+  /**
+   * The pack once more, a little later, while the player is here and hasn't loaded it (failed download, no answer).
+   * False when it was tried often enough this visit.
+   */
+  private boolean retryLater(Player p) {
+    UUID id = p.getUniqueId();
+    int n = tries.merge(id, 1, Integer::sum);
+    if (n > PACK_MAX_TRIES) return false;
+    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+      if (sameVisit(p) && !withPack.contains(id)) offerPack(p);
+    }, PACK_RETRY_TICKS << (n - 1));
+    return true;
+  }
+
+  /** Still the same visit (not a later one after leaving and coming back). */
+  private static boolean sameVisit(Player p) {
+    return p.isOnline() && Bukkit.getPlayer(p.getUniqueId()) == p;
+  }
+
+  /** After each offer: no "loaded" within a minute (and not declined) → try again. */
+  private void watchAnswer(Player p) {
+    UUID id = p.getUniqueId();
+    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+      if (!sameVisit(p) || withPack.contains(id) || "DECLINED".equals(lastStatus.get(id))) return;
+      plugin.getLogger().info("Badge pack for " + p.getName() + ": no answer, sending again");
+      retryLater(p);
+    }, PACK_ANSWER_TICKS);
   }
 
   /** True when this viewer sees the badge pictures (others get the symbols). */
@@ -131,14 +187,18 @@ final class Ranks implements Listener {
     String status = e.getStatus().name();
     UUID id = p.getUniqueId();
     plugin.getLogger().info("Badge pack for " + p.getName() + ": " + status);
+    lastStatus.put(id, status);
     if (status.equals("ACCEPTED") || status.equals("DOWNLOADED")) return;
     if (status.equals("SUCCESSFULLY_LOADED")) {
       withPack.add(id);
     } else {
       withPack.remove(id);
       // Say why the badges don't show: turned off in the server list, or the download didn't work.
-      if (status.equals("DECLINED")) p.sendMessage(plugin.ui().note("ℹ", Ui.SOFT, "pack.declined"));
-      else p.sendMessage(plugin.ui().fail("pack.failed", Ui.v("why", status)));
+      if (status.equals("DECLINED")) {
+        p.sendMessage(plugin.ui().note("ℹ", Ui.SOFT, "pack.declined"));
+      } else if (!retryLater(p)) {
+        p.sendMessage(plugin.ui().fail("pack.failed", Ui.v("why", status)));
+      }
     }
     Scoreboard own = p.getScoreboard();
     if (own != Bukkit.getScoreboardManager().getMainScoreboard()) paint(own, p);
@@ -261,6 +321,9 @@ final class Ranks implements Listener {
     for (Team t : board.getTeams()) {
       String n = t.getName();
       if (n.startsWith(TEAM) && n.length() == TEAM.length() + 2 && indexOf(n) >= list.size()) t.unregister();
+      // A streamer's own team ("mcr03L1a2b3c4d") goes when they stop or leave.
+      if (n.startsWith(TEAM) && n.length() > TEAM.length() + 2 && n.charAt(TEAM.length() + 2) == LIVE_MARK
+          && !liveTeamWanted(n)) t.unregister();
     }
     for (int i = 0; i < list.size(); i++) {
       Rank r = list.get(i);
@@ -278,9 +341,36 @@ final class Ranks implements Listener {
         if (t != null && t.getName().startsWith(TEAM)) t.removeEntry(p.getName());
         continue;
       }
-      Team t = board.getTeam(TEAM + String.format("%02d", i));
+      Team t;
+      if (plugin.streamer().showsLive(p)) {
+        // Streamers: an own team (sorted with their rank), "● LIVE" behind the name in the tab list and above the head.
+        String n = liveTeam(i, p);
+        t = board.getTeam(n);
+        if (t == null) t = board.registerNewTeam(n);
+        t.prefix(teamPrefix(r, viewer));
+        t.color(NamedTextColor.nearestTo(r.color()));
+        t.suffix(Component.text(" ● LIVE", NamedTextColor.RED));
+      } else {
+        t = board.getTeam(TEAM + String.format("%02d", i));
+      }
       if (t != null && !t.hasEntry(p.getName())) t.addEntry(p.getName());
     }
+  }
+
+  private static final char LIVE_MARK = 'L';
+  private static final int LIVE_ID_CHARS = 8;
+
+  private static String liveTeam(int rankIndex, Player p) {
+    return TEAM + String.format("%02d", rankIndex) + LIVE_MARK + p.getUniqueId().toString().substring(0, LIVE_ID_CHARS);
+  }
+
+  /** Still someone streaming with this team name (same rank). */
+  private boolean liveTeamWanted(String team) {
+    return Bukkit.getOnlinePlayers().stream().anyMatch(p -> {
+      Rank r = of(p);
+      int i = r == null ? -1 : ranks.indexOf(r);
+      return i >= 0 && plugin.streamer().showsLive(p) && liveTeam(i, p).equals(team);
+    });
   }
 
   private static int indexOf(String team) {
@@ -322,6 +412,8 @@ final class Ranks implements Listener {
   public void onQuit(PlayerQuitEvent e) {
     granted.remove(e.getPlayer().getUniqueId());
     withPack.remove(e.getPlayer().getUniqueId());
+    lastStatus.remove(e.getPlayer().getUniqueId());
+    tries.remove(e.getPlayer().getUniqueId());
     String name = e.getPlayer().getName();
     Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
     Team t = main.getEntryTeam(name);

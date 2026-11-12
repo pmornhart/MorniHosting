@@ -35,6 +35,8 @@ commands:
       usage: '/streamer [an|aus]',
       aliases: [streamermodus, streamermode, streamer-modus, stream],
     }
+  abzeichen:
+    { description: Rang-Abzeichen neu laden und zeigen, was dein Spiel meldet, aliases: [badges, pack] }
   gefaengnis:
     {
       description: Jemanden ins Gefängnis stecken (Team),

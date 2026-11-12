@@ -94,6 +94,7 @@ final class Commands implements TabExecutor {
       case "home" -> home(p, args.length > 0 ? args[0] : null);
       case "homes" -> plugin.homeMenu().open(p);
       case "streamer" -> plugin.streamer().command(p, args);
+      case "abzeichen" -> plugin.ranks().badgesCommand(p);
       case "delhome" -> {
         if (args.length < 1) return usage(p, "/delhome <name>");
         delHome(p, args[0]);
