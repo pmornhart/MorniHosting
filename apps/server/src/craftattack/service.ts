@@ -13,7 +13,8 @@ import {
   type PublicStatsSetting,
   type SoftwareId,
 } from '@mornihosting/shared';
-import type { Actor } from '../audit/service.js';
+import { SYSTEM_ACTOR, type Actor } from '../audit/service.js';
+import type { GeyserService } from '../geyser/service.js';
 import type { AppContext } from '../context.js';
 import { servers as serverTable } from '../db/schema.js';
 import { badRequest, notFound } from '../lib/errors.js';
@@ -51,6 +52,8 @@ const MODRINTH_PROJECT = 'https://api.modrinth.com/v2/project/';
 const MOTD_SUFFIX = ' §7· §aMorniCraft';
 /** The dashboard settings of each MorniCraft server. */
 const MORNICRAFT_KEY = 'mornicraft';
+/** MorniCraft servers on which the panel switched on "all versions" once (switching it off later stays off). */
+const VIA_DONE_KEY = 'mornicraft_via';
 // A server's address name as the page path: "Craft Attack!" → "craft-attack".
 // https://regex101.com/?flavor=javascript&regex=%5B%5Ea-z0-9%5D%2B&flags=g&testString=craft%20attack!
 const NOT_SLUG = /[^a-z0-9]+/g;
@@ -139,9 +142,11 @@ export function createCraftAttackService(
     readonly servers: ServerService;
     readonly market: MarketService;
     readonly players: PlayerDetailService;
+    /** Switches on "all versions" (ViaVersion) once on MorniCraft servers set up before it came with the order. */
+    readonly geyser?: GeyserService;
   },
 ): CraftAttackService {
-  const { servers, market, players } = deps;
+  const { servers, market, players, geyser } = deps;
   const spots = (): Record<string, IslandSpot> =>
     ctx.settings.getValue<Record<string, IslandSpot>>(SPOTS_KEY) ?? {};
   const stored = (): Record<string, PublicStatsSetting> =>
@@ -243,6 +248,8 @@ export function createCraftAttackService(
     writeSpawnPack(path.join(dir, path.basename(level)));
     setPublic(serverId, { enabled: true });
     equip(serverId);
+    // New orders bring ViaVersion themselves: nothing to switch on later.
+    ctx.settings.setValue(VIA_DONE_KEY, [...(ctx.settings.getValue<string[]>(VIA_DONE_KEY) ?? []), serverId]);
   };
 
   /**
@@ -410,6 +417,24 @@ export function createCraftAttackService(
     return morniCraft(serverId);
   };
 
+  /** Every client version may join: older MorniCraft servers get ViaVersion once (an admin may switch it off). */
+  const allVersionsOnce = async (serverId: string): Promise<void> => {
+    const done = ctx.settings.getValue<string[]>(VIA_DONE_KEY) ?? [];
+    if (!geyser || done.includes(serverId)) return;
+    ctx.settings.setValue(VIA_DONE_KEY, [...done, serverId]);
+    try {
+      if (!geyser.via(serverId).enabled) {
+        await geyser.setVia(serverId, true, SYSTEM_ACTOR);
+        servers.note(
+          serverId,
+          'MorniCraft: alle Minecraft-Versionen eingeschaltet (ViaVersion) – gilt nach dem nächsten Neustart.',
+        );
+      }
+    } catch (err) {
+      ctx.log.warn({ err, serverId }, 'mornicraft: switching on all versions failed');
+    }
+  };
+
   // MorniCraft servers get the newest datapack before each start (it repairs older islands once and never builds
   // anything twice), the newest plugin and its config.
   servers.onBeforeStart((serverId) => {
@@ -440,6 +465,7 @@ export function createCraftAttackService(
         } catch (err) {
           ctx.log.warn({ err, serverId: row.id }, 'mornicraft refresh failed');
         }
+        void allVersionsOnce(row.id);
       });
   }, REFRESH_DELAY_MS).unref();
 
