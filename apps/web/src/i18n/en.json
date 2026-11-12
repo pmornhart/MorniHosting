@@ -3237,5 +3237,26 @@
     "restart": "Takes effect at the next restart.",
     "pillOn": "On",
     "pillOff": "Off"
+  },
+  "craftAttackHelp": {
+    "title": "Craft Attack – all commands",
+    "text": "What your players can do on the server – most commands without OP rights.",
+    "ingame": "In the game, /info shows the same list.",
+    "copy": "Copy list",
+    "personal": "A personal page for each player",
+    "personalText": "In the game, /info (and the welcome) shows each player a link to their own page – with exactly the commands they may use. Nobody has to type a name. (Needs a panel domain.)",
+    "playerName": "<playername>"
+  },
+  "playerCommands": {
+    "title": "Commands for {{name}}",
+    "online": "Online now",
+    "op": "Admin (OP)",
+    "locked": "You're not on this server's whitelist yet. Ask an admin to let you in – then everything here works.",
+    "unknown": "You haven't been on the server with this name yet – here's what awaits you.",
+    "homes": "Your homes",
+    "yours": "What you can use",
+    "allYours": "You're an admin – you can use everything",
+    "missing": "Page not found",
+    "missingText": "This server doesn't exist or isn't a Craft Attack server."
   }
 }

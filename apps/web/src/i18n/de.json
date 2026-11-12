@@ -3237,5 +3237,26 @@
     "restart": "Wird beim nächsten Neustart aktiv.",
     "pillOn": "An",
     "pillOff": "Aus"
+  },
+  "craftAttackHelp": {
+    "title": "Craft Attack – alle Befehle",
+    "text": "Das können deine Spieler auf dem Server – die meisten Befehle ganz ohne OP-Rechte.",
+    "ingame": "Im Spiel zeigt /info dieselbe Liste.",
+    "copy": "Liste kopieren",
+    "personal": "Persönliche Seite für jeden Spieler",
+    "personalText": "Im Spiel zeigt /info (und die Begrüßung) jedem Spieler einen Link zu seiner eigenen Seite – mit genau den Befehlen, die er nutzen darf. Name eintippen muss niemand. (Braucht eine Panel-Domain.)",
+    "playerName": "<spielername>"
+  },
+  "playerCommands": {
+    "title": "Befehle für {{name}}",
+    "online": "Gerade online",
+    "op": "Admin (OP)",
+    "locked": "Du stehst noch nicht auf der Whitelist dieses Servers. Frag einen Admin, dich freizuschalten – danach geht alles hier.",
+    "unknown": "Mit diesem Namen warst du noch nicht auf dem Server – hier siehst du, was dich erwartet.",
+    "homes": "Deine Homes",
+    "yours": "Das kannst du nutzen",
+    "allYours": "Du bist Admin – du kannst alles nutzen",
+    "missing": "Seite nicht gefunden",
+    "missingText": "Diesen Server gibt es nicht oder er ist kein Craft-Attack-Server."
   }
 }

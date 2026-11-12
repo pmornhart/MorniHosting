@@ -499,19 +499,6 @@ export function topCommands(): string[] {
     ...islet(-48, -12, -22, 4.6, 'tree'),
     ...islet(24, 12, -46, 3.2, 'azalea'),
   ];
-  // Gentle grass hills, so the open lawns are not flat; rocks with moss here and there.
-  const hills = (
-    [
-      [22, -20, 3.6],
-      [-24, 2, 3.2],
-      [6, 26, 3],
-      [-6, -26, 2.8],
-    ] as const
-  ).flatMap(([x, z, r]) => [
-    ...disc(0, r, 'grass_block', x, z, 0.8),
-    ...disc(1, r - 1.4, 'grass_block', x, z, 0.6),
-    set(x, 2, z, 'flowering_azalea', 'keep'),
-  ]);
   const rocks = (
     [
       [-25, -8],
@@ -541,7 +528,6 @@ export function topCommands(): string[] {
     ...flowers,
     ...lights,
     ...islets,
-    ...hills,
     ...rocks,
     `setworldspawn ${at(0, 0, SPAWN_Z)}`,
   ];
@@ -578,6 +564,39 @@ function lightGrid(): string[] {
       return distance > RT - 2 || distance < LIGHT_FREE ? [] : [set(x, 0, z, 'light[level=15]', 'keep')];
     }),
   );
+}
+
+/** Grass hills of the first version (taken off again: blocky, and two reached onto the paths). */
+const OLD_HILLS: readonly (readonly [number, number])[] = [
+  [22, -20],
+  [-24, 2],
+  [6, 26],
+  [-6, -26],
+];
+const OLD_HILL_REACH = 5;
+
+/** Takes the old grass hills off again (only grass blocks and the bush on top; lamps and paths stay). */
+export function fixHillsCommands(): string[] {
+  return OLD_HILLS.flatMap(([x, z]) => {
+    const box = (y1: number, y2: number, block: Block, mode: string): string =>
+      fill(
+        x - OLD_HILL_REACH,
+        y1,
+        z - OLD_HILL_REACH,
+        x + OLD_HILL_REACH,
+        y2,
+        z + OLD_HILL_REACH,
+        block,
+        mode,
+      );
+    return [
+      fill(x - 1, 1, z - 1, x + 1, 3, z + 1, 'air', 'replace flowering_azalea'),
+      // Covered grass turned into dirt: both go, and the lawn underneath is grass again.
+      box(0, 2, 'air', 'replace grass_block'),
+      box(0, 2, 'air', 'replace dirt'),
+      box(-1, -1, 'grass_block', 'replace dirt'),
+    ];
+  });
 }
 
 /** Where the two springs of the first version sat (removed: their water never ran off cleanly). */
@@ -640,28 +659,124 @@ export function plazaCommands(): string[] {
 
 const AREA = '-64 -64 64 64';
 
+/** Rainbow over the island: seven bands of glass in an arch, standing north of the beacon (its beam stays green). */
+const RAINBOW = ['red', 'orange', 'yellow', 'lime', 'light_blue', 'blue', 'purple'] as const;
+const RAINBOW_INNER = 23;
+const RAINBOW_Z = -12;
+const RAINBOW_DEPTH = 2;
+
+function rainbowCommands(): string[] {
+  return RAINBOW.flatMap((colour, band) => {
+    const r = RAINBOW_INNER + (RAINBOW.length - 1 - band);
+    const height = (x: number): number => Math.round(Math.sqrt(Math.max(0, r * r - x * x)));
+    // One column per x, from this height to the next one, so the band has no gaps on its steep ends.
+    return range(-r, r).map((x) => {
+      const y = height(x);
+      const next = Math.abs(x) === r ? 0 : height(x + Math.sign(x || 1));
+      return fill(
+        x,
+        Math.min(y, next),
+        RAINBOW_Z,
+        x,
+        Math.max(y, next),
+        RAINBOW_Z - RAINBOW_DEPTH + 1,
+        `${colour}_stained_glass`,
+      );
+    });
+  });
+}
+
+/** A hot-air balloon floating beside the island: striped envelope, ropes, a basket with a lantern. */
+const BALLOON = { x: 38, y: 24, z: 22 } as const;
+const BALLOON_STRIPES = ['red_wool', 'red_wool', 'yellow_wool', 'yellow_wool', 'white_wool'] as const;
+
+function balloonCommands(): string[] {
+  const { x, y, z } = BALLOON;
+  const envelope = range(0, 12).flatMap((layer) => {
+    // Wide in the middle, narrower towards the top, a small opening at the bottom.
+    const r = 6.2 * Math.sin(((layer + 1) / 14) * Math.PI) + (layer < 3 ? 0.6 : 0);
+    return disc(
+      y + 6 + layer,
+      Math.max(1.2, r),
+      BALLOON_STRIPES[layer % BALLOON_STRIPES.length] ?? 'white_wool',
+      x,
+      z,
+    );
+  });
+  const ropes = [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ].map(([dx = 0, dz = 0]) => fill(x + dx, y + 1, z + dz, x + dx, y + 6, z + dz, 'spruce_fence'));
+  const basket = [
+    fill(x - 1, y - 1, z - 1, x + 1, y - 1, z + 1, 'spruce_planks'),
+    fill(x - 1, y, z - 1, x + 1, y, z + 1, 'spruce_trapdoor[half=top,open=true,facing=north]'),
+    set(x, y, z, 'air'),
+    set(x, y - 2, z, 'lantern[hanging=true]'),
+    set(x, y + 5, z, 'lantern[hanging=true]'),
+  ];
+  return [...envelope, ...ropes, ...basket];
+}
+
+/** Extras that make the spawn stand out (also added to islands of older versions once). */
+export function extrasCommands(): string[] {
+  return [...rainbowCommands(), ...balloonCommands()];
+}
+
+/** A marker entity at the spawn point: the protection follows it wherever the island was built. */
+const CENTER_TAG = 'mh_spawn_center';
+/** Who is this close to the spawn point plays in adventure mode (nothing can be broken there). */
+const PROTECT_RADIUS = 55;
+const summonCenter = `summon marker ~ ~ ~${SPAWN_Z} {Tags:["${CENTER_TAG}"]}`;
+
+/** One-time repairs of islands built by older versions: a flag, and where the commands run. */
+const REPAIRS: readonly { readonly name: string; readonly at: string }[] = [
+  { name: 'water', at: `0 ${SPAWN_Y} 0` },
+  { name: 'hills', at: `0 ${SPAWN_Y} 0` },
+  // Islands of older versions stand at 0/0 and have no marker yet.
+  { name: 'center', at: `0 ${SPAWN_Y} 0` },
+  { name: 'extras', at: `0 ${SPAWN_Y} 0` },
+];
+
 /** The datapack's files (path relative to the pack folder → content). */
 export function spawnPackFiles(): Record<string, string> {
   const load = [
     'scoreboard objectives add mh_craftattack dummy',
-    `execute unless score #built mh_craftattack matches 1 run forceload add ${AREA}`,
-    `execute unless score #built mh_craftattack matches 1 run schedule function ${NAMESPACE}:build ${BUILD_DELAY_TICKS}t`,
-    // Islands of the first version: clear the spilled water once.
-    `execute if score #built mh_craftattack matches 1 unless score #water mh_craftattack matches 1 run forceload add ${AREA}`,
-    `execute if score #built mh_craftattack matches 1 unless score #water mh_craftattack matches 1 run schedule function ${NAMESPACE}:fix_water ${BUILD_DELAY_TICKS}t`,
+    // Islands of older versions: each repair runs once.
+    ...REPAIRS.flatMap(({ name }) => [
+      `execute if score #built mh_craftattack matches 1 unless score #${name} mh_craftattack matches 1 run forceload add ${AREA}`,
+      `execute if score #built mh_craftattack matches 1 unless score #${name} mh_craftattack matches 1 run schedule function ${NAMESPACE}:fix_${name} ${BUILD_DELAY_TICKS}t`,
+    ]),
   ];
-  const fixWater = [
-    `execute positioned 0 ${SPAWN_Y} 0 run function ${NAMESPACE}:water`,
-    'scoreboard players set #water mh_craftattack 1',
-    `forceload remove ${AREA}`,
-  ];
+  const repairs = Object.fromEntries(
+    REPAIRS.map(({ name, at }) => [
+      `fix_${name}`,
+      [
+        `execute positioned ${at} run function ${NAMESPACE}:${name}`,
+        `scoreboard players set #${name} mh_craftattack 1`,
+        `forceload remove ${AREA}`,
+      ],
+    ]),
+  );
+  // Run by the panel at the chosen place (over an ocean): `execute positioned <x> ${SPAWN_Y} <z> run function …:build`.
   const build = [
-    `execute positioned 0 ${SPAWN_Y} 0 run function ${NAMESPACE}:island`,
-    `execute positioned 0 ${SPAWN_Y} 0 run function ${NAMESPACE}:top`,
+    `function ${NAMESPACE}:island`,
+    `function ${NAMESPACE}:top`,
+    `function ${NAMESPACE}:extras`,
+    summonCenter,
     `function #${NAMESPACE}:rules`,
     'scoreboard players set #built mh_craftattack 1',
-    'scoreboard players set #water mh_craftattack 1',
-    `forceload remove ${AREA}`,
+    ...REPAIRS.map(({ name }) => `scoreboard players set #${name} mh_craftattack 1`),
+  ];
+  // Every tick: survival players on the spawn island play in adventure mode (no breaking, no building – also for
+  // operators); leaving the area gives survival back. Creative and spectator stay as they are.
+  const tick = [
+    `execute at @e[type=marker,tag=${CENTER_TAG}] run gamemode adventure @a[gamemode=survival,distance=..${PROTECT_RADIUS}]`,
+    `execute at @e[type=marker,tag=${CENTER_TAG}] run tag @a[gamemode=adventure,distance=..${PROTECT_RADIUS}] add mh_spawn`,
+    // Away from the spawn (or in another dimension, where the marker is not): survival again.
+    `execute as @a[tag=mh_spawn,gamemode=adventure] at @s unless entity @e[type=marker,tag=${CENTER_TAG},distance=..${PROTECT_RADIUS}] run gamemode survival @s`,
+    `tag @a[tag=mh_spawn,gamemode=!adventure] remove mh_spawn`,
   ];
   const meta = {
     pack: {
@@ -673,6 +788,7 @@ export function spawnPackFiles(): Record<string, string> {
     },
   };
   const loadTag = JSON.stringify({ values: [`${NAMESPACE}:load`] });
+  const tickTag = JSON.stringify({ values: [`${NAMESPACE}:tick`] });
   // Players appear exactly at the spawn point (not somewhere around it, maybe off the island). The game rule was
   // renamed in newer versions; each name sits in its own function, so the one that does not exist only skips itself.
   const rulesTag = JSON.stringify({
@@ -686,8 +802,12 @@ export function spawnPackFiles(): Record<string, string> {
     build,
     island: islandCommands(),
     top: topCommands(),
-    fix_water: fixWater,
+    tick,
+    ...repairs,
     water: fixWaterCommands(),
+    hills: fixHillsCommands(),
+    center: [summonCenter],
+    extras: extrasCommands(),
     rules_old: ['gamerule spawnRadius 0'],
     rules_new: ['gamerule respawn_radius 0'],
   };
@@ -699,6 +819,7 @@ export function spawnPackFiles(): Record<string, string> {
   );
   const tags = ['function', 'functions'].flatMap((dir) => [
     [`data/minecraft/tags/${dir}/load.json`, loadTag] as const,
+    [`data/minecraft/tags/${dir}/tick.json`, tickTag] as const,
     [`data/${NAMESPACE}/tags/${dir}/rules.json`, rulesTag] as const,
   ]);
   return Object.fromEntries([['pack.mcmeta', `${JSON.stringify(meta, null, 2)}\n`], ...tags, ...files]);
@@ -724,7 +845,7 @@ export function spawnElytraConfig(world: string): string {
     '# Set up by MorniHosting for the Craft Attack spawn (floating island).',
     `world: ${world}`,
     'spawnRadius: 45',
-    'ignoreYInSpawnRadius: true',
+    'ignoreYInSpawnRadius: false',
     'spawnAreaMode: circle',
     'boostEnabled: true',
     'multiplyValue: 4',

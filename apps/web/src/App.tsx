@@ -17,6 +17,10 @@ const PublicStatsPage = lazyPage(async () => ({
   default: (await import('@/features/public/PublicStatsPage')).PublicStatsPage,
 }));
 
+const PlayerCommandsPage = lazyPage(async () => ({
+  default: (await import('@/features/public/PlayerCommandsPage')).PlayerCommandsPage,
+}));
+
 const ImpressumPage = lazyPage(async () => ({
   default: (await import('@/features/public/ImpressumPage')).ImpressumPage,
 }));
@@ -40,6 +44,15 @@ const router = createRouter([
       </Suspense>
     ),
   },
+  // Personal command page of a Craft Attack player (link from /info in the game): no login.
+  ...['/befehle/:slug/:name', '/commands/:slug/:name'].map((path) => ({
+    path,
+    element: (
+      <Suspense fallback={null}>
+        <PlayerCommandsPage />
+      </Suspense>
+    ),
+  })),
   // Imprint (picture from the admin area): no login.
   {
     path: '/impressum',

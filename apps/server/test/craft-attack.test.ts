@@ -1,5 +1,6 @@
 /* eslint-disable ts-patterns/no-magic-numbers -- tests compare against literal expected values */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, test } from 'vitest';
 import type { PublicStats, ServerSummary } from '@mornihosting/shared';
@@ -7,11 +8,19 @@ import {
   SPAWN_Y,
   fixWaterCommands,
   islandRadius,
+  extrasCommands,
   topCommands,
   plazaCommands,
   spawnElytraConfig,
   spawnPackFiles,
 } from '../src/craftattack/spawn.js';
+import {
+  homesOf,
+  infoText,
+  openPlayerCommands,
+  personalLink,
+  writeHelpFiles,
+} from '../src/craftattack/help.js';
 import { deathOf, deathsOf } from '../src/craftattack/stats.js';
 import { authHeaders, createTestApp, setupAdmin, type Session, type TestApp } from './helpers.js';
 
@@ -49,9 +58,10 @@ describe('Craft Attack spawn', () => {
         'data/craftattack/function/top.mcfunction',
       ]),
     );
-    expect(files['data/craftattack/function/load.mcfunction']).toContain('unless score #built');
-    // High in the sky, not on the ground: a floating island.
-    expect(files['data/craftattack/function/build.mcfunction']).toContain(`positioned 0 ${SPAWN_Y} 0`);
+    // Repairs of older islands run once each, only where an island was built.
+    expect(files['data/craftattack/function/load.mcfunction']).toContain('if score #built');
+    // High in the sky, not on the ground: a floating island (built at SPAWN_Y by the panel).
+    expect(SPAWN_Y).toBeGreaterThan(150);
     // The renamed game rule: each name in its own optional function, so an unknown one cannot break the build.
     expect(files['data/craftattack/tags/function/rules.json']).toContain('"required":false');
     expect(files['data/craftattack/function/rules_new.mcfunction']).toBe('gamerule respawn_radius 0\n');
@@ -64,7 +74,6 @@ describe('Craft Attack spawn', () => {
     expect(all).toContain('beacon');
     expect(all).toContain('spruce_planks');
     expect(all).toContain('pointed_dripstone[vertical_direction=down');
-    expect(spawnElytraConfig('world')).toContain('ignoreYInSpawnRadius: true');
   });
 
   it('keeps all water in the fountain and repairs islands of the first version once', () => {
@@ -76,6 +85,54 @@ describe('Craft Attack spawn', () => {
     expect(files['data/craftattack/function/load.mcfunction']).toContain('unless score #water');
     expect(files['data/craftattack/function/build.mcfunction']).toContain('#water mh_craftattack 1');
     expect(fixWaterCommands()[0]).toContain('replace light');
+  });
+});
+
+describe('Craft Attack protection, build and help', () => {
+  it('protects the spawn (adventure mode there), builds where the panel says and keeps the elytra at the spawn', () => {
+    const files = spawnPackFiles();
+    expect(files['data/minecraft/tags/function/tick.json']).toContain('craftattack:tick');
+    expect(files['data/craftattack/function/tick.mcfunction']).toContain(
+      'gamemode adventure @a[gamemode=survival',
+    );
+    const build = files['data/craftattack/function/build.mcfunction'] ?? '';
+    expect(build).toContain('function craftattack:island');
+    expect(build).toContain('function craftattack:extras');
+    expect(build).toContain('summon marker ~ ~ ~9 {Tags:["mh_spawn_center"]}');
+    // Nothing is built by itself on load: the panel picks the place over an ocean.
+    expect(files['data/craftattack/function/load.mcfunction']).not.toContain('function craftattack:build');
+    expect(extrasCommands().some((c) => c.includes('stained_glass'))).toBe(true);
+    expect(spawnElytraConfig('world')).toContain('ignoreYInSpawnRadius: false');
+  });
+
+  it('writes /info with all commands, keeps a file the owner wrote, and lets players use the commands', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-ca-'));
+    const ess = path.join(dir, 'plugins', 'Essentials');
+    fs.mkdirSync(ess, { recursive: true });
+    fs.writeFileSync(path.join(ess, 'info.txt'), 'This is the info file.\nsample');
+    fs.writeFileSync(path.join(ess, 'rules.txt'), 'Unsere eigenen Regeln');
+    fs.writeFileSync(path.join(ess, 'config.yml'), 'a: 1\nuse-bukkit-permissions: true\nb: 2\n');
+    writeHelpFiles(dir, 'de');
+    expect(fs.readFileSync(path.join(ess, 'info.txt'), 'utf8')).toContain('/tpa <spieler>');
+    expect(fs.readFileSync(path.join(ess, 'rules.txt'), 'utf8')).toBe('Unsere eigenen Regeln');
+    expect(fs.readFileSync(path.join(ess, 'motd.txt'), 'utf8')).toContain('/info');
+    expect(openPlayerCommands(dir)).toBe(true);
+    expect(fs.readFileSync(path.join(ess, 'config.yml'), 'utf8')).toContain('use-bukkit-permissions: false');
+    expect(openPlayerCommands(dir)).toBe(false);
+    expect(infoText('en')).toContain('Homes');
+    expect(infoText('de')).not.toContain('/ban');
+    const link = personalLink('mornihosting.de', 'craft-attack');
+    writeHelpFiles(dir, 'de', link);
+    expect(fs.readFileSync(path.join(ess, 'info.txt'), 'utf8')).toContain(
+      'https://mornihosting.de/befehle/craft-attack/{USERNAME}',
+    );
+    fs.mkdirSync(path.join(ess, 'userdata'));
+    fs.writeFileSync(
+      path.join(ess, 'userdata', 'abc.yml'),
+      'money: 0\nhomes:\n  base:\n    world: world\n    x: 1\n  farm:\n    world: world\nlogoutlocation:\n  x: 2\n',
+    );
+    expect(homesOf(dir, 'abc')).toEqual(['base', 'farm']);
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 });
 
@@ -164,6 +221,20 @@ describe('public statistics page', () => {
     expect(stats.players[0]).toMatchObject({ name: 'Lena', playTimeSeconds: 3600, deaths: 2, mobKills: 9 });
     expect(stats.deaths[0]).toMatchObject({ player: 'Lena', how: 'wurde von Creeper in die Luft gesprengt' });
     expect(deathsOf(dir, ['Lena'])).toHaveLength(1);
+
+    // Personal command page: only for Craft Attack servers (the world carries the datapack).
+    const url = '/api/public/commands/craft-attack/lena';
+    expect((await t.app.inject({ method: 'GET', url })).statusCode).toBe(404);
+    fs.mkdirSync(path.join(dir, 'world', 'datapacks', 'mornihosting-craftattack'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'ops.json'), JSON.stringify([{ uuid, name: 'Lena', level: 4 }]));
+    const mine = await t.app.inject({ method: 'GET', url });
+    expect(mine.statusCode).toBe(200);
+    expect(mine.json()).toMatchObject({ name: 'Lena', known: true, op: true, locked: false, bedrock: false });
+    const stranger = await t.app.inject({ method: 'GET', url: '/api/public/commands/craft-attack/Tom' });
+    expect(stranger.json()).toMatchObject({ name: 'Tom', known: false, op: false });
+    expect(
+      (await t.app.inject({ method: 'GET', url: '/api/public/commands/craft-attack/a%2Fb' })).statusCode,
+    ).toBe(400);
   });
 });
 

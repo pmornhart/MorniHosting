@@ -41,6 +41,11 @@ const VANILLA_MSPT = /Average time per tick: ([\d.]+) ?ms/;
 // https://regex101.com/?flavor=javascript&regex=Thread%20RCON%20Client%20%5CS%2B%20(%3F%3Astarted%7Cshutting%20down)&flags=gm&testString=%5B23%3A48%3A05%20INFO%5D%3A%20Thread%20RCON%20Client%20%2F172.19.0.2%20started%0A%5B23%3A48%3A05%20INFO%5D%3A%20Thread%20RCON%20Client%20%2F172.19.0.2%20shutting%20down%0AThread%20RCON%20Listener%20started
 const RCON_NOISE = /Thread RCON Client \S+ (?:started|shutting down)/;
 
+// EssentialsX logs every RCON command; the panel's own status polls (/list, /tps …) are noise, typed ones are not.
+// Matches "[10:48:55 INFO]: [Essentials] Rcon issued server command: /list"; rejects "… command: /say hi".
+// https://regex101.com/?flavor=javascript&regex=Rcon%20issued%20server%20command%3A%20%5C%2F(%3F%3Alist%7Ctps%7Cmspt%7C(%3F%3Aneo)%3Fforge%20tps%7Ctick%20query)%5Cs*%24&flags=gm&testString=%5B10%3A48%3A55%20INFO%5D%3A%20%5BEssentials%5D%20Rcon%20issued%20server%20command%3A%20%2Flist%0A%5B10%3A48%3A55%20INFO%5D%3A%20%5BEssentials%5D%20Rcon%20issued%20server%20command%3A%20%2Fsay%20hi
+const RCON_POLL_ECHO = /Rcon issued server command: \/(?:list|tps|mspt|(?:neo)?forge tps|tick query)\s*$/;
+
 const MS_PER_SECOND = 1000;
 const MAX_TPS = 20;
 
@@ -51,7 +56,7 @@ export function stripColours(text: string): string {
 }
 
 export function isPanelNoise(line: string): boolean {
-  return RCON_NOISE.test(line);
+  return RCON_NOISE.test(line) || RCON_POLL_ECHO.test(line);
 }
 
 export function isStartFinished(line: string): boolean {

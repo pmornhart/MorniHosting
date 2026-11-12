@@ -57,6 +57,8 @@ describe('log parsing', () => {
 
   test('rcon polling noise is hidden', () => {
     expect(isPanelNoise('[23:48:05 INFO]: Thread RCON Client /172.19.0.2 started')).toBe(true);
+    expect(isPanelNoise('[10:48:55 INFO]: [Essentials] Rcon issued server command: /list')).toBe(true);
+    expect(isPanelNoise('[10:48:55 INFO]: [Essentials] Rcon issued server command: /say hi')).toBe(false);
     expect(isPanelNoise('[23:48:05 INFO]: Thread RCON Listener started')).toBe(false);
   });
 });

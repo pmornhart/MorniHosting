@@ -5,6 +5,7 @@ import { SOFTWARE, isGameId } from '@mornihosting/shared';
 import { EmptyState } from '@/components/page';
 import { TabIntro } from '@/components/tab-intro';
 import { useServer } from '../ServerLayout';
+import { CraftAttackHelpCard } from './CraftAttackHelpCard';
 import { GameFilesCard } from './GameFilesCard';
 import { GameSettingsCard } from './GameSettingsCard';
 import { GeneralCard } from './GeneralCard';
@@ -62,7 +63,8 @@ export default function SettingsTab(): ReactElement {
             </section>
           ) : null}
           {proxy || otherGame ? null : (
-            <section id="s-game" className="scroll-mt-4">
+            <section id="s-game" className="grid scroll-mt-4 gap-5">
+              <CraftAttackHelpCard serverId={server.id} />
               <PropertiesCard server={server} />
             </section>
           )}
