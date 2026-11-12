@@ -120,7 +120,7 @@ final class Ranks implements Listener {
 
   /** Asks the player's game to load the badges (never forced; Bedrock can't use Java packs). */
   private void offerPack(Player p) {
-    if (packUrl.isEmpty() || packSha.isEmpty() || plugin.bedrock().is(p) || packFromServer) return;
+    if (packUrl.isEmpty() || packSha.isEmpty() || plugin.bedrock().is(p) || serverSendsIt()) return;
     try {
       // Required (default): the game loads it without a "no" button, so everyone sees the badges.
       p.setResourcePack(packUrl, packSha, packRequired, plugin.ui().bare(packRequired ? "pack.prompt.required" : "pack.prompt"));
@@ -174,6 +174,21 @@ final class Ranks implements Listener {
       plugin.getLogger().info("Badge pack for " + p.getName() + ": no answer, sending again");
       retryLater(p);
     }, PACK_ANSWER_TICKS);
+  }
+
+  /**
+   * The server sends this very pack itself (server.properties). Right after switching "required" on that only
+   * happens from the next start – until then the plugin sends it (also required).
+   */
+  private boolean serverSendsIt() {
+    if (!packFromServer) return false;
+    try {
+      // Server#getResourcePack (newer than the API this is built against).
+      Object own = Bukkit.getServer().getClass().getMethod("getResourcePack").invoke(Bukkit.getServer());
+      return own instanceof String url && !url.isEmpty() && url.equals(packUrl);
+    } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
+      return false;
+    }
   }
 
   /** True when this viewer sees the badge pictures (others get the symbols). */

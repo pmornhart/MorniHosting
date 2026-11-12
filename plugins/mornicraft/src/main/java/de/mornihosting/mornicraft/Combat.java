@@ -154,7 +154,17 @@ final class Combat implements Listener {
   /** Killed: the fight is over for both. */
   @EventHandler(priority = EventPriority.MONITOR)
   public void onDeath(PlayerDeathEvent e) {
-    clear(e.getEntity());
+    Player dead = e.getEntity();
+    UUID foeId = opponent.get(dead.getUniqueId());
+    clear(dead);
+    // The one fighting them (the killer, or whoever they fought last) is free too.
+    Player killer = dead.getKiller();
+    for (Player foe : new Player[] {killer, foeId == null ? null : Bukkit.getPlayer(foeId)}) {
+      if (foe != null && dead.getUniqueId().equals(opponent.get(foe.getUniqueId()))) {
+        clear(foe);
+        foe.sendActionBar(ui().ok("combat.over"));
+      }
+    }
   }
 
   private void clear(Player p) {
