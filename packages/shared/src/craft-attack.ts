@@ -365,7 +365,7 @@ export interface CraftAttackCommand {
 }
 
 export interface CraftAttackCommandGroup {
-  readonly id: 'spawn' | 'home' | 'teleport' | 'chat' | 'info' | 'op';
+  readonly id: 'spawn' | 'home' | 'teleport' | 'chat' | 'info' | 'mod' | 'op';
   readonly title: { readonly de: string; readonly en: string };
   readonly commands: readonly CraftAttackCommand[];
 }

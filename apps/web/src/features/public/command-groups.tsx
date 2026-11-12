@@ -1,9 +1,10 @@
-import { Feather, Home, Info, Lock, MessageCircle, ShieldCheck, Users } from 'lucide-react';
+import { Feather, Gavel, Home, Info, Lock, MessageCircle, ShieldCheck, Users } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { CRAFT_ATTACK_COMMANDS, type CraftAttackCommandGroup } from '@mornihosting/shared';
 import { cn } from '@/lib/utils';
 
 const ICONS: Readonly<Record<CraftAttackCommandGroup['id'], typeof Home>> = {
+  mod: Gavel,
   spawn: Feather,
   home: Home,
   teleport: Users,
@@ -31,7 +32,7 @@ export function CommandGroups({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {groups.map((group) => {
-        const Icon = ICONS[group.id];
+        const Icon = ICONS[group.id] ?? Info;
         return (
           <section
             key={group.id}
