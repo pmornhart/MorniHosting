@@ -51,7 +51,17 @@ final class Teleporter implements Listener {
   }
 
   /** Sends the player to the target after the wait; `done` runs once they arrived. */
+  /** A running teleport (with its bar) stops – e.g. when a fight starts. */
+  void cancel(Player p) {
+    Pending old = pending.remove(p.getUniqueId());
+    if (old != null) p.hideBossBar(old.bar());
+  }
+
   void teleport(Player p, Component dest, Supplier<Location> target, Runnable done) {
+    if (plugin.combat().inCombat(p) && !p.hasPermission(Moderation.PERMISSION)) {
+      p.sendMessage(plugin.ui().fail("combat.noteleport", Ui.v("sec", plugin.combat().left(p))));
+      return;
+    }
     Pending old = pending.remove(p.getUniqueId());
     if (old != null) p.hideBossBar(old.bar());
     int delay = plugin.settings().teleportDelay();

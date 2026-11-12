@@ -172,3 +172,6 @@ tab-stats: true
 # Streamer-Modus: Namen und Adressen dieses Servers, die zu ••• werden (MorniHosting trägt sie selbst ein).
 streamer:
   hide: []
+# Kampf-System: so viele Sekunden ist man nach einem Treffer zwischen Spielern "im Kampf" (kein Teleport,
+# keine Befehle außer Chat, Ausloggen = Tod). 0 = aus.
+combat-seconds: 15

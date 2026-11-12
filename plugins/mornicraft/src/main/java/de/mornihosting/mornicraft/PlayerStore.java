@@ -72,6 +72,8 @@ final class PlayerStore {
     String jailMode;
     /** Muted until then (ms, 0 = not). Read by the chat thread. */
     volatile long muteUntil;
+    /** Logged out in a fight (and died for it): told once when back. */
+    boolean combatLogged;
 
     /** How long the whole jail time is (for the bar). */
     long jailTotal(long now) {
@@ -133,6 +135,7 @@ final class PlayerStore {
     if (back != null) d.jailReturn = new Home(back.getString("world", "world"), back.getDouble("x"), back.getDouble("y"),
         back.getDouble("z"), (float) back.getDouble("yaw"), (float) back.getDouble("pitch"));
     d.muteUntil = y.getLong("mute.until", 0);
+    d.combatLogged = y.getBoolean("combat-logged", false);
     ConfigurationSection homes = y.getConfigurationSection("homes");
     if (homes != null) {
       for (String key : homes.getKeys(false)) {
@@ -175,6 +178,7 @@ final class PlayerStore {
       }
     }
     if (d.muteUntil > System.currentTimeMillis()) y.set("mute.until", d.muteUntil);
+    if (d.combatLogged) y.set("combat-logged", true);
     d.homes.forEach((key, h) -> {
       String p = "homes." + key + ".";
       y.set(p + "world", h.world());

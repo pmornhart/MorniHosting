@@ -37,7 +37,8 @@ record Settings(
     List<String> streamerHide,
     boolean graves,
     int gravePrivateMinutes,
-    boolean tabStats) {
+    boolean tabStats,
+    int combatSeconds) {
 
   /** A round spot outside the spawn circle that is protected like it: x/z relative to the world spawn. */
   record Zone(int x, int z, int radius) {}
@@ -45,6 +46,8 @@ record Settings(
   record Command(String use, String text, boolean opOnly) {}
 
   record Group(String title, List<Command> commands) {}
+
+  private static final int MAX_COMBAT_SECONDS = 120;
 
   static Settings from(FileConfiguration c) {
     List<Group> configured = c.getMapList("groups").stream().map(Settings::group).toList();
@@ -82,7 +85,9 @@ record Settings(
         c.getStringList("streamer.hide"),
         c.getBoolean("graves", true),
         Math.max(0, c.getInt("grave-private-minutes", 15)),
-        c.getBoolean("tab-stats", true));
+        c.getBoolean("tab-stats", true),
+        // Combat log: seconds "in combat" after a hit between players; 0 = off.
+        Math.max(0, Math.min(MAX_COMBAT_SECONDS, c.getInt("combat-seconds", 15))));
   }
 
   private static int number(Object o) {

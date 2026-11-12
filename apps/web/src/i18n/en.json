@@ -3275,7 +3275,8 @@
       "show": "Display",
       "rules": "Rules",
       "ranks": "Ranks",
-      "graves": "Graves"
+      "graves": "Graves",
+      "combat": "Combat log"
     },
     "fields": {
       "tpa": "Teleport requests (/tpa)",
@@ -3298,7 +3299,8 @@
       "showLink": "Link to the command page",
       "tabStats": "Kills and deaths in the tab list",
       "graves": "Graves",
-      "gravePrivateMinutes": "Only for the dead player"
+      "gravePrivateMinutes": "Only for the dead player",
+      "combatSeconds": "In combat after a hit"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – with buttons to accept",
@@ -3321,14 +3323,16 @@
       "showLink": "In /info and the welcome (needs a panel domain)",
       "tabStats": "⚔ kills and ☠ deaths next to every name",
       "graves": "Whoever dies gets a grave with their head, all their things and experience – right click gets it all back",
-      "gravePrivateMinutes": "For this long only the dead player (and the team) may open the grave, then anyone"
+      "gravePrivateMinutes": "For this long only the dead player (and the team) may open the grave, then anyone",
+      "combatSeconds": "Whoever hits a player or is hit stays in combat this long: no teleports, only chat commands, no start elytra – logging out then means death (things go into the grave). 0 = off."
     },
     "units": {
       "teleportDelay": "{{n}} s",
       "maxHomes": "{{n}}",
       "spawnRadius": "{{n}} blocks",
       "elytraRadius": "{{n}} blocks",
-      "gravePrivateMinutes": "{{n}} min"
+      "gravePrivateMinutes": "{{n}} min",
+      "combatSeconds": "{{n}} s"
     },
     "rulesHint": "One rule per line – shown with /rules.",
     "live": "Saving applies at once, also while the server runs.",

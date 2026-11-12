@@ -147,6 +147,9 @@ final class Sidebar implements Listener {
     String clock = ZonedDateTime.now(zone()).format(CLOCK);
     List<Component> lines = new ArrayList<>();
     lines.add(Component.empty());
+    if (plugin.combat().inCombat(p)) {
+      lines.add(Component.text("⚔ ", NamedTextColor.RED).append(Component.text(ui.flat("sidebar.combat", Ui.v("sec", plugin.combat().left(p))), NamedTextColor.RED)));
+    }
     if (plugin.streamer().on(p)) lines.add(Component.text("● ", NamedTextColor.RED).append(Component.text(ui.flat("sidebar.live"), NamedTextColor.RED)));
     // Icon, label, value – the values all start in one column (Minecraft's character widths).
     List<Component[]> rows = new ArrayList<>();

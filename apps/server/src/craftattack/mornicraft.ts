@@ -127,6 +127,7 @@ export const morniCraftSettingsSchema = z.object({
   graves: z.boolean(),
   gravePrivateMinutes: z.number().int().min(0).max(120),
   tabStats: z.boolean(),
+  combatSeconds: z.number().int().min(0).max(60),
 });
 
 /** Stored settings, completed with the defaults (older or partial entries). */
@@ -224,6 +225,7 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     graves: s.graves,
     'grave-private-minutes': s.gravePrivateMinutes,
     'tab-stats': s.tabStats,
+    'combat-seconds': s.combatSeconds,
     streamer: { hide: c.hide ?? [] },
   };
   return `# MorniCraft – written by MorniHosting (Dashboard → server → MorniCraft). Changes here are overwritten.\n${JSON.stringify(config, null, 2)}\n`;
