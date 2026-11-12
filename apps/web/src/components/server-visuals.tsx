@@ -81,9 +81,12 @@ const DEMO = import.meta.env.MODE === 'demo';
 // Java account names: "Lena_Baut" has a skin to show, "Finn 2015" (a Bedrock gamertag) does not.
 // https://regex101.com/?flavor=javascript&regex=%5E%5BA-Za-z0-9_%5D%7B3%2C16%7D%24&flags=gm&testString=Lena_Baut%0AFinn%202015
 const JAVA_NAME = /^[A-Za-z0-9_]{3,16}$/;
+const FLOODGATE_UUID = '00000000-0000-0000-';
 
 /** What mc-heads.net should look up: the given skin (a name or uuid), by default the name if it is a Java name. */
 function skinOf(name: string, skin: string | null | undefined): string | null {
+  // Bedrock players (Floodgate) have made-up UUIDs starting with zeros: no Java skin behind them.
+  if (skin?.startsWith(FLOODGATE_UUID)) return null;
   if (skin !== undefined) return skin;
   return JAVA_NAME.test(name) ? name : null;
 }
@@ -136,6 +139,10 @@ function GamePlayer({
   );
 }
 
+/** Changes every hour: a new skin shows up without the browser holding on to the old picture. */
+const SKIN_REFRESH_MS = 3_600_000;
+const skinRound = (): number => Math.floor(Date.now() / SKIN_REFRESH_MS);
+
 export function PlayerHead({
   name,
   skin,
@@ -155,7 +162,11 @@ export function PlayerHead({
   const usable = !failed && !DEMO && lookup !== null;
   return (
     <img
-      src={usable ? `https://mc-heads.net/avatar/${encodeURIComponent(lookup)}/32` : playerFace(name)}
+      src={
+        usable
+          ? `https://mc-heads.net/avatar/${encodeURIComponent(lookup)}/32?v=${skinRound()}`
+          : playerFace(name)
+      }
       alt=""
       loading="lazy"
       referrerPolicy="no-referrer"

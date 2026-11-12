@@ -241,6 +241,8 @@ export interface CraftAttackPlayerCommands {
   /** The panel's language (visitors have no account). */
   readonly locale: 'de' | 'en';
   readonly name: string;
+  /** Account UUID (null if never on the server): the head follows skin changes faster than by name. */
+  readonly uuid: string | null;
   /** Has played on the server before. */
   readonly known: boolean;
   readonly online: boolean;

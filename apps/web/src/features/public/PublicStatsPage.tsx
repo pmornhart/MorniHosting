@@ -66,7 +66,7 @@ function Leaderboard({ board, players }: { board: Board; players: readonly Publi
               <span className="w-5 text-center text-xs font-bold text-muted-foreground">
                 {i === 0 ? <Crown className="mx-auto size-4 text-amber-400" aria-hidden /> : i + 1}
               </span>
-              <PlayerHead name={p.name} className="size-7 rounded-[6px]" />
+              <PlayerHead name={p.name} skin={p.uuid} className="size-7 rounded-[6px]" />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">{p.name}</span>
               <span className="text-sm tabular-nums text-muted-foreground">
                 {board.format(board.value(p))}
@@ -243,7 +243,7 @@ export function PublicStatsPage(): ReactElement {
                   {data.players.map((p) => (
                     <li key={p.uuid} className="flex items-center gap-2.5">
                       <span className="relative">
-                        <PlayerHead name={p.name} className="size-8 rounded-[7px]" />
+                        <PlayerHead name={p.name} skin={p.uuid} className="size-8 rounded-[7px]" />
                         {p.online ? (
                           <span className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border-2 border-card bg-primary" />
                         ) : null}

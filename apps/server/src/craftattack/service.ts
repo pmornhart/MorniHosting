@@ -335,6 +335,7 @@ export function createCraftAttackService(
       server: servers.row(serverId).name,
       locale: locale(),
       name: player?.name ?? name,
+      uuid: player?.uuid ?? null,
       known: Boolean(player),
       online: player?.online ?? false,
       op,

@@ -49,7 +49,11 @@ export function PlayerCommandsPage(): ReactElement {
       <div className="mx-auto grid max-w-3xl gap-5">
         {data ? (
           <Card className="flex flex-wrap items-center gap-4 p-5">
-            <PlayerHead name={data.name} className="size-16 rounded-[12px]" />
+            <PlayerHead
+              name={data.name}
+              skin={data.uuid && !data.bedrock ? data.uuid : undefined}
+              className="size-16 rounded-[12px]"
+            />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {data.server}

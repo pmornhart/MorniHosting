@@ -544,7 +544,7 @@ export default function PlayerDetailPage(): ReactElement {
         >
           <div className="grid min-w-0 content-start gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <PlayerHead name={player.name} className="size-12 shrink-0 rounded-[6px]" />
+              <PlayerHead name={player.name} skin={player.uuid} className="size-12 shrink-0 rounded-[6px]" />
               <div className="grid min-w-0">
                 <span className="flex flex-wrap items-center gap-2">
                   <b className="truncate text-[17px] font-bold">{player.name}</b>
