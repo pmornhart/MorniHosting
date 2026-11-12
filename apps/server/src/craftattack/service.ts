@@ -71,6 +71,8 @@ const LOAD_WAIT_MS = 60_000;
 const LOAD_POLL_MS = 1000;
 /** Bring the plugin and its settings to all MorniCraft servers shortly after the panel started. */
 const REFRESH_DELAY_MS = 5000;
+/** How often a server waiting for a restart (new plugin version) is checked for players. */
+const RESTART_CHECK_MS = 60_000;
 // "/locate" answer: "The nearest minecraft:deep_ocean is at [1088, 64, 1088] (1538 blocks away)" → 1088, 1088
 // (older versions write "~" instead of the height).
 // https://regex101.com/?flavor=javascript&regex=%5C%5B(-%3F%5Cd%2B)%2C%20(%3F%3A~%7C-%3F%5Cd%2B)%2C%20(-%3F%5Cd%2B)%5C%5D&testString=The%20nearest%20minecraft%3Adeep_ocean%20is%20at%20%5B1088%2C%2064%2C%201088%5D%20(1538%20blocks%20away)%0A%5B-1200%2C%20~%2C%20340%5D
@@ -184,9 +186,10 @@ export function createCraftAttackService(
     ctx.settings.getValue<Record<string, Partial<MorniCraftSettings>>>(MORNICRAFT_KEY) ?? {};
   const settingsOf = (serverId: string): MorniCraftSettings => withDefaults(mcStored()[serverId]);
   /** The plugin, its config, and the old plugins it replaces switched off. */
-  const equip = (serverId: string): void => {
+  /** True when a new plugin version was put in (a running server loads it at its next start). */
+  const equip = (serverId: string): boolean => {
     const dir = servers.dir(serverId);
-    installMorniCraft(dir);
+    const newPlugin = installMorniCraft(dir);
     const retired = retireReplacedPlugins(dir);
     if (retired.length)
       servers.note(serverId, `Durch MorniCraft ersetzt und ausgeschaltet: ${retired.join(', ')}`);
@@ -196,6 +199,7 @@ export function createCraftAttackService(
       timezone: ctx.settings.get().timezone,
       link: linkFor(serverId),
     });
+    return newPlugin;
   };
   const safeSlug = (serverId: string): string | undefined => {
     try {
@@ -417,6 +421,36 @@ export function createCraftAttackService(
     return morniCraft(serverId);
   };
 
+  // A new plugin version on a running server: restart it as soon as nobody plays, so every existing server is up
+  // to date without anyone being thrown out.
+  const restartWhenEmpty = new Set<string>();
+  const waitToRestart = (serverId: string): void => {
+    restartWhenEmpty.add(serverId);
+    servers.note(
+      serverId,
+      'Neue MorniCraft-Version liegt bereit – der Server startet kurz neu, sobald niemand online ist.',
+    );
+  };
+  setInterval(() => {
+    [...restartWhenEmpty].forEach((serverId) => {
+      try {
+        const live = servers.live(serverId);
+        if (live.state !== 'running') {
+          // Stopped or starting anyway: the next start loads the new version.
+          restartWhenEmpty.delete(serverId);
+        } else if (live.playersOnline === 0) {
+          restartWhenEmpty.delete(serverId);
+          servers.note(serverId, 'Niemand online – Neustart für die neue MorniCraft-Version.');
+          void servers.restart(serverId, SYSTEM_ACTOR).catch((err: unknown) => {
+            ctx.log.warn({ err, serverId }, 'mornicraft: restart for the new version failed');
+          });
+        }
+      } catch {
+        restartWhenEmpty.delete(serverId);
+      }
+    });
+  }, RESTART_CHECK_MS).unref();
+
   /** Every client version may join: older MorniCraft servers get ViaVersion once (an admin may switch it off). */
   const allVersionsOnce = async (serverId: string): Promise<void> => {
     const done = ctx.settings.getValue<string[]>(VIA_DONE_KEY) ?? [];
@@ -461,7 +495,7 @@ export function createCraftAttackService(
       .filter((row) => isCraftAttack(row.id))
       .forEach((row) => {
         try {
-          equip(row.id);
+          if (equip(row.id) && servers.live(row.id).state === 'running') waitToRestart(row.id);
         } catch (err) {
           ctx.log.warn({ err, serverId: row.id }, 'mornicraft refresh failed');
         }

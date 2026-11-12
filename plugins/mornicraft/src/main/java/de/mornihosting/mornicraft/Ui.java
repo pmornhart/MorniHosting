@@ -1,5 +1,7 @@
 package de.mornihosting.mornicraft;
 
+import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
@@ -13,6 +15,7 @@ import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.title.Title;
 import org.bukkit.entity.Player;
 
 /**
@@ -268,6 +271,36 @@ final class Ui {
     if (hover != null) b.hoverEvent(HoverEvent.showText(hover));
     if (click != null) b.clickEvent(click);
     return b.build();
+  }
+
+  /**
+   * A title with fade in, stay and fade out. Adventure named the factory "of" (Paper 1.17 … 1.21) and "times"
+   * (newer, Paper 26 has only that one): whichever exists is used, so the plugin runs on all of them.
+   */
+  static Title title(Component main, Component sub, Duration in, Duration stay, Duration out) {
+    Title.Times times = TITLE_TIMES == null ? null : timesOf(in, stay, out);
+    return times == null ? Title.title(main, sub) : Title.title(main, sub, times);
+  }
+
+  private static final Method TITLE_TIMES = findTitleTimes();
+
+  private static Method findTitleTimes() {
+    for (String name : new String[] {"times", "of"}) {
+      try {
+        return Title.Times.class.getMethod(name, Duration.class, Duration.class, Duration.class);
+      } catch (NoSuchMethodException | RuntimeException missing) {
+        // try the other name
+      }
+    }
+    return null;
+  }
+
+  private static Title.Times timesOf(Duration in, Duration stay, Duration out) {
+    try {
+      return (Title.Times) TITLE_TIMES.invoke(null, in, stay, out);
+    } catch (ReflectiveOperationException | RuntimeException e) {
+      return null;
+    }
   }
 
   static Component gap() {
