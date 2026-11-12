@@ -29,4 +29,18 @@ final class SpawnArea {
     double dz = l.getZ() - c.getZ();
     return dx * dx + dz * dz <= (double) radius * radius && l.getY() >= c.getY() - DEPTH;
   }
+
+  /** In one of the extra spots that belong to the spawn (small islands, balloons floating round it). */
+  static boolean inZone(Location l, java.util.List<Settings.Zone> zones) {
+    if (zones.isEmpty() || l == null || l.getWorld() == null || !l.getWorld().equals(world())) return false;
+    Location c = world().getSpawnLocation();
+    if (l.getY() < c.getY() - DEPTH) return false;
+    double x = l.getX() - c.getX();
+    double z = l.getZ() - c.getZ();
+    return zones.stream().anyMatch(zone -> {
+      double dx = x - zone.x();
+      double dz = z - zone.z();
+      return dx * dx + dz * dz <= (double) zone.radius() * zone.radius();
+    });
+  }
 }

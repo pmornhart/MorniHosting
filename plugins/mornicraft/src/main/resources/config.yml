@@ -57,6 +57,9 @@ rules:
 # Befehlsliste für /info. Leer = die eingebaute Liste.
 groups: []
 
+# Weitere geschützte Stellen außerhalb des Spawn-Kreises (z. B. kleine Inseln): x/z vom Welt-Spawn aus, r = Radius
+zones: []
+
 # Ränge: Symbol und Farbe vor dem Namen (Chat, Tab-Liste, über dem Kopf) und die Rechte dazu.
 # Der oberste passende gilt. players: Minecraft-Namen (oder UUIDs). default: true = alle anderen.
 # Rechte: mornicraft.build (Spawn bauen), mornicraft.instant (ohne Wartezeit), mornicraft.unlimitedhomes,

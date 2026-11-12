@@ -68,7 +68,8 @@ final class SpawnGuard implements Listener {
 
   /** Inside the protected spawn area – only while protection is on. */
   private boolean guarded(Location l) {
-    return plugin.settings().spawnProtection() && near(l);
+    Settings s = plugin.settings();
+    return s.spawnProtection() && (near(l) || SpawnArea.inZone(l, s.zones()));
   }
 
   /** Inside the spawn area at all (sleeping and fighting have their own switches). */

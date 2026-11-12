@@ -32,7 +32,7 @@ const PATH_FROM = 11;
 const DECK_FROM = 30;
 const DECK_TO = 39;
 /** Room cleared above the island before building (blocks). */
-const CLEAR_HEIGHT = 30;
+const CLEAR_HEIGHT = 40;
 const CLEAR_HALF = 41;
 const CLEAR_SLAB = 8;
 /** Ticks after loading before building: the forced chunks are loaded by then. */
@@ -84,14 +84,50 @@ const BUSY: readonly ((x: number, z: number) => boolean)[] = [
   (x, z) => Math.abs(x + 15) <= 4 && Math.abs(z - 15) <= 4,
   (x, z) => Math.abs(x + 14) <= 6 && Math.abs(z + 14) <= 6,
   (x, z) => Math.abs(x - 20) <= 3 && Math.abs(z - 6) <= 3,
+  (x, z) => Math.hypot(x - MAYPOLE.x, z - MAYPOLE.z) < 3.5,
 ];
+/** The maypole stands on the lawn in the west, between tower and pavilion. */
+const MAYPOLE = { x: -24, z: 6 } as const;
+const SUNFLOWERS = [
+  [11, 11],
+  [19, 17],
+  [12, 18],
+  [19, 10],
+] as const;
+
+/** Language of what is written into the paving (the letter for east: O or E). */
+export type SpawnLang = 'de' | 'en';
 
 /** Directions of the four paths: u runs outwards along the path, v across it. */
 const DIRECTIONS = [
-  { name: 'north', axis: 'x', pos: (u: number, v: number): [number, number] => [v, -u] },
-  { name: 'south', axis: 'x', pos: (u: number, v: number): [number, number] => [-v, u] },
-  { name: 'east', axis: 'z', pos: (u: number, v: number): [number, number] => [u, v] },
-  { name: 'west', axis: 'z', pos: (u: number, v: number): [number, number] => [-u, -v] },
+  {
+    name: 'north',
+    axis: 'x',
+    colour: 'light_blue',
+    inward: 'south',
+    pos: (u: number, v: number): [number, number] => [v, -u],
+  },
+  {
+    name: 'south',
+    axis: 'x',
+    colour: 'red',
+    inward: 'north',
+    pos: (u: number, v: number): [number, number] => [-v, u],
+  },
+  {
+    name: 'east',
+    axis: 'z',
+    colour: 'yellow',
+    inward: 'west',
+    pos: (u: number, v: number): [number, number] => [u, v],
+  },
+  {
+    name: 'west',
+    axis: 'z',
+    colour: 'lime',
+    inward: 'east',
+    pos: (u: number, v: number): [number, number] => [-u, -v],
+  },
 ] as const;
 type Direction = (typeof DIRECTIONS)[number];
 
@@ -110,9 +146,9 @@ function strip(
   const [x2, z2] = d.pos(u2, v2);
   return fill(Math.min(x1, x2), y1, Math.min(z1, z2), Math.max(x1, x2), y2, Math.max(z1, z2), block);
 }
-const onPath = (d: Direction, u: number, v: number, y: number, block: Block): string => {
+const onPath = (d: Direction, u: number, v: number, y: number, block: Block, mode = ''): string => {
   const [x, z] = d.pos(u, v);
-  return set(x, y, z, block);
+  return set(x, y, z, block, mode);
 };
 
 /** The island's radius at a depth below the grass (0 = the grass layer). */
@@ -227,7 +263,7 @@ function tree(x: number, z: number, wood: 'oak' | 'cherry' | 'dark_oak', height 
   ];
 }
 
-function lampPost(x: number, z: number, post = 'dark_oak_fence', height = 3): string[] {
+function lampPost(x: number, z: number, post = 'oak_fence', height = 3): string[] {
   return [fill(x, 0, z, x, height - 1, z, post), set(x, height, z, 'lantern')];
 }
 
@@ -249,8 +285,300 @@ function islet(cx: number, cy: number, cz: number, r: number, top: 'tree' | 'aza
   return [...layers, ...crown];
 }
 
+/** The small islands floating round the big one: x, y, z of the top's middle, radius, what grows on it. */
+const ISLETS: readonly (readonly [number, number, number, number, 'tree' | 'azalea'])[] = [
+  [46, -6, -20, 5, 'tree'],
+  [-40, 8, 34, 3.8, 'azalea'],
+  [14, -16, 50, 4.2, 'tree'],
+  [-48, -12, -22, 4.6, 'tree'],
+  [24, 12, -46, 3.2, 'azalea'],
+];
+
+type Voxel = readonly [number, number, number, Block];
+
+/** Single blocks as few commands: neighbours in a row (along x) with the same block become one fill. */
+function paint(voxels: readonly Voxel[]): string[] {
+  const rows = new Map<string, Voxel[]>();
+  voxels.forEach((v) => {
+    const key = `${v[1]}|${v[2]}|${v[3]}`;
+    const row = rows.get(key) ?? [];
+    row.push(v);
+    rows.set(key, row);
+  });
+  return [...rows.values()].flatMap((row) => {
+    const [first] = row;
+    if (!first) return [];
+    const [, y, z, block] = first;
+    const xs = row.map((v) => v[0]).sort((a, b) => a - b);
+    const runs = xs.reduce<[number, number][]>((acc, x) => {
+      const last = acc.at(-1);
+      return last && x <= last[1] + 1
+        ? [...acc.slice(0, -1), [last[0], x] as [number, number]]
+        : [...acc, [x, x] as [number, number]];
+    }, []);
+    return runs.map(([a, b]) => fill(a, y, z, b, y, z, block));
+  });
+}
+
+const TULIPS: readonly Block[] = ['red_tulip', 'white_tulip', 'orange_tulip', 'pink_tulip'];
+/** Close to a path: nothing may stand in the way there. */
+const nearPath = (x: number, z: number): boolean => Math.abs(x) <= 4 || Math.abs(z) <= 4;
+
+/**
+ * The rim: an azalea hedge that flowers every third step, behind it (towards the middle) a band of tulips in four
+ * colours, and every few steps a short post with a lantern.
+ */
+function rimCommands(): string[] {
+  const ring = (count: number, r: number, turn: number): [number, number, number][] =>
+    range(0, count - 1).map((i) => {
+      const angle = (i / count) * Math.PI * 2 + turn;
+      return [Math.round(Math.cos(angle) * r), Math.round(Math.sin(angle) * r), i];
+    });
+  return [
+    ...disc(0, RT - 0.5, LEAVES('azalea'), 0, 0, 1),
+    ...disc(0, RT - 2, 'air'),
+    ...ring(64, RT - 1.3, 0.05).map(([x, z]) => set(x, 0, z, LEAVES('flowering_azalea'))),
+    ...ring(120, RT - 3.2, 0.02)
+      .filter(([x, z]) => !nearPath(x, z))
+      .map(([x, z, i]) => set(x, 0, z, TULIPS[i % TULIPS.length] ?? 'red_tulip', 'keep')),
+    ...ring(16, RT - 4.4, Math.PI / 16)
+      .filter(([x, z]) => !nearPath(x, z))
+      .flatMap(([x, z]) => lampPost(x, z, 'oak_fence', 2)),
+  ];
+}
+
+/** Tulips along both sides of a path (not where the lamp posts stand). */
+function tulipRows(d: Direction): string[] {
+  return range(PATH_FROM + 1, DECK_FROM - 2)
+    .filter((u) => u !== 15 && u !== 21)
+    .flatMap((u) =>
+      [-3, 3].map((v) =>
+        onPath(d, u, v, 0, TULIPS[(u + (v > 0 ? 2 : 0)) % TULIPS.length] ?? 'red_tulip', 'keep'),
+      ),
+    );
+}
+
+/** 5 × 5 letters for the paving: N, O (Ost) / E (east), S, W. */
+const LETTERS: Readonly<Record<string, readonly string[]>> = {
+  N: ['X...X', 'XX..X', 'X.X.X', 'X..XX', 'X...X'],
+  O: ['.XXX.', 'X...X', 'X...X', 'X...X', '.XXX.'],
+  E: ['XXXXX', 'X....', 'XXXX.', 'X....', 'XXXXX'],
+  S: ['.XXXX', 'X....', '.XXX.', '....X', 'XXXX.'],
+  W: ['X...X', 'X...X', 'X.X.X', 'XX.XX', 'X...X'],
+};
+const LETTER_OF: Readonly<Record<SpawnLang, Readonly<Record<Direction['name'], string>>>> = {
+  de: { north: 'N', south: 'S', east: 'O', west: 'W' },
+  en: { north: 'N', south: 'S', east: 'E', west: 'W' },
+};
+/** Where the letter's top row lies on the path (it reads right way up when walking outwards). */
+const LETTER_TOP = DECK_FROM - 2;
+
+/** The direction, written into the path in its colour on white – readable on the way out to the deck. */
+function directionLetter(d: Direction, lang: SpawnLang): string[] {
+  const rows = LETTERS[LETTER_OF[lang][d.name]] ?? [];
+  return rows.flatMap((row, r) =>
+    [...row].map((cell, c) =>
+      onPath(d, LETTER_TOP - r, c - 2, -1, cell === 'X' ? `${d.colour}_concrete` : 'white_concrete'),
+    ),
+  );
+}
+
+/**
+ * The MorniCraft flag: an emerald field with a white M at the pole, then white-and-blue lozenges (a little
+ * Bavaria). `x` is the column next to the pole, `y` the bottom row; it flies towards +x.
+ */
+const FLAG_M: readonly string[] = [
+  '.......',
+  '.X...X.',
+  '.XX.XX.',
+  '.X.X.X.',
+  '.X...X.',
+  '.X...X.',
+  '.......',
+];
+const FLAG_LOZENGES = 6;
+export function flagCommands(x: number, y: number, z: number): string[] {
+  const top = FLAG_M.length - 1;
+  const field: Voxel[] = FLAG_M.flatMap((row, r) =>
+    [...row].map((cell, c): Voxel => [x + c, y + top - r, z, cell === 'X' ? 'white_wool' : 'emerald_block']),
+  );
+  const lozenges: Voxel[] = range(0, FLAG_LOZENGES - 1).flatMap((c) =>
+    range(0, top).map((r): Voxel => [
+      x + FLAG_M.length + c,
+      y + r,
+      z,
+      (c + r) % 2 === 0 ? 'light_blue_wool' : 'white_wool',
+    ]),
+  );
+  return paint([...field, ...lozenges]);
+}
+
+/**
+ * The lookout tower: a stone foot, white walls with dark timber at the corners and round the floors, windows with
+ * flowers below them, an open lookout under a pointed red roof, and the flag on top. Inside a ladder; on the
+ * lookout a plank sticks out over the edge to jump from.
+ */
+function towerCommands(): string[] {
+  const tx = TOWER_X;
+  const tz = TOWER_Z;
+  const corners: readonly [number, number][] = [
+    [-2, -2],
+    [2, -2],
+    [-2, 2],
+    [2, 2],
+  ];
+  const sides: readonly [number, number][] = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+  ];
+  const ringAt = (y: number, half: number, block: Block): string[] => [
+    fill(tx - half, y, tz - half, tx + half, y, tz + half, block),
+    fill(tx - half + 1, y, tz - half + 1, tx + half - 1, y, tz + half - 1, 'air'),
+  ];
+  const windows = [6, 12].flatMap((y) =>
+    sides.flatMap(([dx, dz]) => [
+      set(tx + dx * 2, y, tz + dz * 2, 'glass_pane'),
+      set(tx + dx * 2, y + 1, tz + dz * 2, 'glass_pane'),
+      // The flower box below the window.
+      set(tx + dx * 3, y - 1, tz + dz * 3, LEAVES('flowering_azalea')),
+    ]),
+  );
+  const roof = [
+    fill(tx - 4, 20, tz - 4, tx + 4, 20, tz + 4, 'brick_slab'),
+    fill(tx - 3, 20, tz - 3, tx + 3, 21, tz + 3, 'bricks'),
+    fill(tx - 2, 22, tz - 2, tx + 2, 23, tz + 2, 'bricks'),
+    fill(tx - 1, 24, tz - 1, tx + 1, 25, tz + 1, 'bricks'),
+    set(tx, 26, tz, 'bricks'),
+    // Hollow inside, with a lantern under the ridge.
+    fill(tx - 2, 20, tz - 2, tx + 2, 21, tz + 2, 'air'),
+    set(tx, 21, tz, 'lantern[hanging=true]'),
+  ];
+  return [
+    fill(tx - 2, -1, tz - 2, tx + 2, 2, tz + 2, 'stone_bricks'),
+    fill(tx - 2, 3, tz - 2, tx + 2, 15, tz + 2, 'white_concrete'),
+    fill(tx - 1, 0, tz - 1, tx + 1, 15, tz + 1, 'air'),
+    ...[3, 9, 15].flatMap((y) => [
+      fill(tx - 2, y, tz - 2, tx + 2, y, tz + 2, 'spruce_planks', 'replace white_concrete'),
+    ]),
+    ...corners.map(([dx, dz]) => fill(tx + dx, 0, tz + dz, tx + dx, 15, tz + dz, 'stripped_spruce_log')),
+    ...windows,
+    // The door (towards the plaza) and the ladder up the inside.
+    fill(tx + 2, 0, tz, tx + 2, 1, tz, 'air'),
+    fill(tx, 0, tz - 1, tx, 16, tz - 1, 'ladder[facing=south]'),
+    // The lookout: a floor, a railing, four posts carrying the roof.
+    fill(tx - 3, 16, tz - 3, tx + 3, 16, tz + 3, 'spruce_planks'),
+    set(tx, 16, tz - 1, 'ladder[facing=south]'),
+    ...ringAt(17, 3, 'spruce_fence'),
+    ...corners.map(([dx, dz]) =>
+      fill(
+        tx + Math.sign(dx) * 3,
+        17,
+        tz + Math.sign(dz) * 3,
+        tx + Math.sign(dx) * 3,
+        19,
+        tz + Math.sign(dz) * 3,
+        'stripped_spruce_log',
+      ),
+    ),
+    // A gap in the railing and a plank out over the edge: the place to jump from.
+    set(tx - 3, 17, tz, 'air'),
+    fill(tx - 5, 16, tz, tx - 4, 16, tz, 'spruce_slab[type=top]'),
+    ...roof,
+    // The flagpole on the ridge and the flag.
+    fill(tx, 27, tz, tx, 37, tz, 'spruce_fence'),
+    ...flagCommands(tx + 1, 30, tz),
+    // Invisible light in the shaft and on the lookout.
+    ...TOWER_LIGHTS.map(([x, y, z, block]) => set(tx + x, y, tz + z, block)),
+    set(tx + 1, 17, tz + 1, 'light[level=15]'),
+  ];
+}
+
+/**
+ * The pavilion: a wooden floor, four posts, a tent roof in white and blue stripes; benches round a table with a
+ * cake, a candle and flowers.
+ */
+function pavilionCommands(): string[] {
+  const px = -14;
+  const pz = -14;
+  const stripe = (x: number): Block => (Math.abs(x) % 2 === 0 ? 'white_wool' : 'light_blue_wool');
+  const roofLayer = (y: number, half: number): string[] =>
+    range(px - half, px + half).map((x) => fill(x, y, pz - half, x, y, pz + half, stripe(x)));
+  return [
+    fill(px - 4, -1, pz - 4, px + 4, -1, pz + 4, 'oak_planks'),
+    fill(px - 3, -1, pz - 3, px + 3, -1, pz + 3, 'birch_planks'),
+    ...[
+      [-4, -4],
+      [4, -4],
+      [-4, 4],
+      [4, 4],
+    ].map(([dx = 0, dz = 0]) => fill(px + dx, 0, pz + dz, px + dx, 3, pz + dz, 'stripped_oak_log')),
+    ...roofLayer(4, 5),
+    ...roofLayer(5, 3),
+    ...roofLayer(6, 1),
+    set(px, 7, pz, 'lantern'),
+    set(px, 3, pz + 3, 'lantern[hanging=true]'),
+    set(px, 3, pz - 3, 'lantern[hanging=true]'),
+    fill(px - 3, 0, pz - 3, px + 3, 0, pz - 3, 'birch_stairs[facing=north]'),
+    fill(px - 3, 0, pz + 3, px - 1, 0, pz + 3, 'birch_stairs[facing=south]'),
+    fill(px - 3, 0, pz - 2, px - 3, 0, pz + 2, 'birch_stairs[facing=west]'),
+    // The table: three by two, with something on it.
+    fill(px - 1, 0, pz - 1, px + 1, 0, pz, 'oak_slab[type=top]'),
+    set(px, 1, pz - 1, 'cake'),
+    set(px - 1, 1, pz, 'candle[candles=3,lit=true]'),
+    set(px + 1, 1, pz, 'potted_cornflower'),
+    set(px + 1, 1, pz - 1, 'potted_red_tulip'),
+    set(px + 4, 0, pz + 2, 'potted_red_tulip'),
+    set(px + 4, 0, pz - 2, 'potted_blue_orchid'),
+  ];
+}
+
+/** A maypole: white-and-blue pole, a green wreath on four arms, little banners, a light on top. */
+function maypoleCommands(): string[] {
+  const { x, z } = MAYPOLE;
+  const height = 13;
+  const wreathY = 10;
+  const pole = range(0, height).map((y) =>
+    set(x, y, z, y % 2 === 0 ? 'white_concrete' : 'light_blue_concrete'),
+  );
+  const arms: readonly [number, number, string][] = [
+    [1, 0, 'east'],
+    [-1, 0, 'west'],
+    [0, 1, 'south'],
+    [0, -1, 'north'],
+  ];
+  const wreath: readonly [number, number][] = [
+    [2, 0],
+    [-2, 0],
+    [0, 2],
+    [0, -2],
+    [2, 1],
+    [2, -1],
+    [-2, 1],
+    [-2, -1],
+    [1, 2],
+    [-1, 2],
+    [1, -2],
+    [-1, -2],
+  ];
+  return [
+    set(x, -1, z, 'stone_bricks'),
+    ...pole,
+    set(x, height + 1, z, 'lantern'),
+    ...arms.map(([dx, dz]) => set(x + dx, wreathY, z + dz, 'oak_fence')),
+    ...wreath.map(([dx, dz]) => set(x + dx, wreathY, z + dz, LEAVES('oak'))),
+    ...arms.map(([dx, dz, facing], i) =>
+      set(x + dx, 7, z + dz, `${i % 2 === 0 ? 'light_blue' : 'white'}_wall_banner[facing=${facing}]`),
+    ),
+    ...wreath
+      .slice(0, 8)
+      .map(([dx, dz], i) => set(x + dx, 0, z + dz, TULIPS[i % TULIPS.length] ?? 'red_tulip', 'keep')),
+  ];
+}
+
 /** Everything on top of the island, relative to the plaza (y = 0 is where players stand). */
-export function topCommands(): string[] {
+export function topCommands(lang: SpawnLang = 'de'): string[] {
   const clear = range(0, Math.ceil((2 * CLEAR_HALF + 1) / CLEAR_SLAB) - 1).map((i) => {
     const z1 = -CLEAR_HALF + i * CLEAR_SLAB;
     return fill(
@@ -263,28 +591,15 @@ export function topCommands(): string[] {
       'air',
     );
   });
-  // Hedge round the edge: a ring of azalea, flowering here and there.
-  const hedge = [
-    ...disc(0, RT - 0.5, LEAVES('azalea'), 0, 0, 1),
-    ...disc(0, RT - 2, 'air'),
-    ...range(0, 23).map((i) => {
-      const angle = (i / 24) * Math.PI * 2 + 0.13;
-      const r = RT - 1.3;
-      return set(
-        Math.round(Math.cos(angle) * r),
-        0,
-        Math.round(Math.sin(angle) * r),
-        LEAVES('flowering_azalea'),
-      );
-    }),
-  ];
+  // The rim: a flowering hedge with a post and a lantern every few steps, tulips in all colours along its inside.
+  const hedge = rimCommands();
   const plaza = [
     ...disc(-1, PLAZA, 'stone_bricks'),
     ...disc(-1, PLAZA - 1.5, 'polished_andesite'),
     ...disc(-1, 8.5, 'chiseled_stone_bricks'),
     ...disc(-1, 7.6, 'smooth_stone'),
-    // A compass star in the paving.
-    ...DIRECTIONS.flatMap((d) => range(6, 10).map((u) => onPath(d, u, 0, -1, 'polished_deepslate'))),
+    // A compass star in the paving, each ray in its direction's colour.
+    ...DIRECTIONS.flatMap((d) => range(6, 10).map((u) => onPath(d, u, 0, -1, `${d.colour}_concrete`))),
   ];
   const fountain = fountainCommands();
   const plazaLamps = range(0, 7).flatMap((i) => {
@@ -307,19 +622,25 @@ export function topCommands(): string[] {
         return lampPost(x, z);
       }),
     ),
-    ...[13, 18, 23].map((u) => onPath(d, u, (u % 3) - 1, -1, 'cracked_stone_bricks')),
+    ...[13, 18].map((u) => onPath(d, u, (u % 3) - 1, -1, 'cracked_stone_bricks')),
+    // Tulips along both sides, and the direction written into the paving just before the gate.
+    ...tulipRows(d),
+    ...directionLetter(d, lang),
   ]);
   const decks = DIRECTIONS.flatMap((d) => {
-    const beam = `spruce_log[axis=${d.axis}]`;
+    const beam = `stripped_spruce_log[axis=${d.axis}]`;
     return [
       strip(d, DECK_FROM, DECK_TO, -2, 2, -1, -1, 'spruce_planks'),
       strip(d, DECK_FROM, DECK_TO, 0, 0, -1, -1, 'stripped_spruce_log'),
       strip(d, DECK_FROM, DECK_TO - 1, -3, -3, 0, 0, 'spruce_fence'),
       strip(d, DECK_FROM, DECK_TO - 1, 3, 3, 0, 0, 'spruce_fence'),
-      strip(d, DECK_TO, DECK_TO, -2, 2, 0, 0, 'lime_carpet'),
+      strip(d, DECK_TO, DECK_TO, -2, 2, 0, 0, `${d.colour}_carpet`),
+      // Banners in the direction's colour on the gate, looking back at the plaza.
+      onPath(d, DECK_FROM - 1, -3, 2, `${d.colour}_wall_banner[facing=${d.inward}]`),
+      onPath(d, DECK_FROM - 1, 3, 2, `${d.colour}_wall_banner[facing=${d.inward}]`),
       // The gate at the start of the deck.
-      strip(d, DECK_FROM, DECK_FROM, -3, -3, 0, 3, 'spruce_log'),
-      strip(d, DECK_FROM, DECK_FROM, 3, 3, 0, 3, 'spruce_log'),
+      strip(d, DECK_FROM, DECK_FROM, -3, -3, 0, 3, 'stripped_spruce_log'),
+      strip(d, DECK_FROM, DECK_FROM, 3, 3, 0, 3, 'stripped_spruce_log'),
       strip(d, DECK_FROM, DECK_FROM, -4, 4, 4, 4, beam),
       strip(d, DECK_FROM, DECK_FROM, -2, 2, 5, 5, 'spruce_slab'),
       onPath(d, DECK_FROM, 0, 3, 'lantern[hanging=true]'),
@@ -337,62 +658,10 @@ export function topCommands(): string[] {
       strip(d, DECK_FROM + 3, DECK_FROM + 3, 2, 2, -4, -2, 'spruce_log'),
     ];
   });
-  // North-west: the lookout tower (players jump off its top too).
-  const tx = TOWER_X;
-  const tz = TOWER_Z;
-  const tower = [
-    fill(tx - 2, -1, tz - 2, tx + 2, 15, tz + 2, 'stone_bricks'),
-    fill(tx - 1, 0, tz - 1, tx + 1, 15, tz + 1, 'air'),
-    ...[3, 8, 13].flatMap((y) => [
-      fill(tx - 2, y, tz - 2, tx + 2, y, tz + 2, 'mossy_stone_bricks', 'replace stone_bricks'),
-      set(tx - 2, y + 1, tz, 'glass_pane'),
-      set(tx, y + 1, tz + 2, 'glass_pane'),
-    ]),
-    fill(tx + 2, 0, tz, tx + 2, 1, tz, 'air'),
-    fill(tx, 0, tz - 1, tx, 16, tz - 1, 'ladder[facing=south]'),
-    fill(tx - 3, 16, tz - 3, tx + 3, 16, tz + 3, 'stone_bricks'),
-    set(tx, 16, tz - 1, 'ladder[facing=south]'),
-    fill(tx - 3, 17, tz - 3, tx + 3, 17, tz + 3, 'stone_brick_wall'),
-    fill(tx - 2, 17, tz - 2, tx + 2, 17, tz + 2, 'air'),
-    ...[
-      [tx - 3, tz - 3],
-      [tx + 3, tz - 3],
-      [tx - 3, tz + 3],
-      [tx + 3, tz + 3],
-    ].map(([x = 0, z = 0]) => set(x, 18, z, 'lantern')),
-    fill(tx + 2, 17, tz + 2, tx + 2, 21, tz + 2, 'spruce_fence'),
-    fill(tx + 2, 20, tz + 3, tx + 2, 21, tz + 5, 'lime_wool'),
-    // Light inside without anything in the way: glowing blocks in the walls, invisible light in the shaft.
-    ...TOWER_LIGHTS.map(([x, y, z, block]) => set(tx + x, y, tz + z, block)),
-  ];
-  // South-west … north-west: the pavilion with benches.
-  const px = -14;
-  const pz = -14;
-  const pavilion = [
-    fill(px - 4, -1, pz - 4, px + 4, -1, pz + 4, 'dark_oak_planks'),
-    fill(px - 3, -1, pz - 3, px + 3, -1, pz + 3, 'spruce_planks'),
-    ...[
-      [-4, -4],
-      [4, -4],
-      [-4, 4],
-      [4, 4],
-    ].map(([dx = 0, dz = 0]) => fill(px + dx, 0, pz + dz, px + dx, 3, pz + dz, 'dark_oak_log')),
-    fill(px - 5, 4, pz - 5, px + 5, 4, pz + 5, 'dark_oak_slab'),
-    fill(px - 4, 4, pz - 4, px + 4, 4, pz + 4, 'dark_oak_planks'),
-    fill(px - 3, 5, pz - 3, px + 3, 5, pz + 3, 'dark_oak_slab'),
-    fill(px - 2, 5, pz - 2, px + 2, 5, pz + 2, 'dark_oak_planks'),
-    fill(px - 1, 6, pz - 1, px + 1, 6, pz + 1, 'dark_oak_slab'),
-    set(px, 6, pz, 'dark_oak_planks'),
-    set(px, 7, pz, 'lantern'),
-    set(px, 3, pz, 'lantern[hanging=true]'),
-    fill(px - 3, 0, pz - 3, px + 3, 0, pz - 3, 'spruce_stairs[facing=north]'),
-    fill(px - 3, 0, pz + 3, px - 1, 0, pz + 3, 'spruce_stairs[facing=south]'),
-    fill(px - 3, 0, pz - 2, px - 3, 0, pz + 2, 'spruce_stairs[facing=west]'),
-    set(px, 0, pz, 'spruce_fence'),
-    set(px, 1, pz, 'spruce_pressure_plate'),
-    set(px + 4, 0, pz + 2, 'potted_red_tulip'),
-    set(px + 4, 0, pz - 2, 'potted_blue_orchid'),
-  ];
+  // South-west: the lookout tower – white with dark timber, a red roof and the MorniCraft flag.
+  const tower = towerCommands();
+  // North-west: the pavilion – a white-and-blue tent roof, benches and a table with cake.
+  const pavilion = pavilionCommands();
   // North-east: a cherry grove with petals on the ground.
   const cherries = [
     ...tree(14, -15, 'cherry', 6),
@@ -417,6 +686,11 @@ export function topCommands(): string[] {
     set(22, 0, 6, 'oak_log[axis=z]'),
     set(18, 0, 6, 'oak_log[axis=z]'),
     set(20, 0, 8, 'oak_log[axis=x]'),
+    // Sunflowers by the water.
+    ...SUNFLOWERS.flatMap(([x, z]) => [
+      set(x, 0, z, 'sunflower[half=lower]'),
+      set(x, 1, z, 'sunflower[half=upper]'),
+    ]),
   ];
   // Flowers on the open grass (only where it is still free).
   const flowerKinds = [
@@ -428,32 +702,24 @@ export function topCommands(): string[] {
     'azure_bluet',
     'lily_of_the_valley',
     'red_tulip',
+    'orange_tulip',
+    'pink_tulip',
+    'white_tulip',
   ];
   const flowers = range(0, 119).flatMap((i) => {
     const angle = noise(i, 11) * Math.PI * 2;
     const rho = 13 + noise(11, i) * (RT - 16);
     const x = Math.round(Math.cos(angle) * rho);
     const z = Math.round(Math.sin(angle) * rho);
-    if (Math.abs(x) <= 3 || Math.abs(z) <= 3 || BUSY.some((b) => b(x, z))) return [];
+    if (Math.abs(x) <= 4 || Math.abs(z) <= 4 || BUSY.some((b) => b(x, z))) return [];
     return [
       set(x, 0, z, i % 9 === 0 ? 'short_grass' : (flowerKinds[i % flowerKinds.length] ?? 'poppy'), 'keep'),
     ];
   });
-  // Lamps along the rim, between the paths.
-  const rimLamps = range(0, 7).flatMap((i) => {
-    const angle = (i / 8) * Math.PI * 2 + Math.PI / 8;
-    return lampPost(Math.round(Math.cos(angle) * (RT - 4)), Math.round(Math.sin(angle) * (RT - 4)));
-  });
   // Invisible light everywhere on top, so no monsters spawn on the island.
   const lights = lightGrid();
 
-  const islets = [
-    ...islet(46, -6, -20, 5, 'tree'),
-    ...islet(-40, 8, 34, 3.8, 'azalea'),
-    ...islet(14, -16, 50, 4.2, 'tree'),
-    ...islet(-48, -12, -22, 4.6, 'tree'),
-    ...islet(24, 12, -46, 3.2, 'azalea'),
-  ];
+  const islets = ISLETS.flatMap(([x, y, z, r, crown]) => islet(x, y, z, r, crown));
   const rocks = (
     [
       [-25, -8],
@@ -478,7 +744,7 @@ export function topCommands(): string[] {
     ...pavilion,
     ...cherries,
     ...pond,
-    ...rimLamps,
+    ...maypoleCommands(),
     ...flowers,
     ...lights,
     ...islets,
@@ -489,8 +755,6 @@ export function topCommands(): string[] {
 
 /** Lights of the lookout tower, relative to its middle: glowing blocks set into the walls, light blocks inside. */
 const TOWER_LIGHTS: readonly (readonly [number, number, number, Block])[] = [
-  [-2, 5, 1, 'shroomlight'],
-  [2, 10, -1, 'shroomlight'],
   [0, 1, 1, 'light[level=15]'],
   [0, 8, 1, 'light[level=15]'],
   [0, 13, 1, 'light[level=15]'],
@@ -760,42 +1024,118 @@ export function removeBenchesCommands(): string[] {
   return OLD_BENCHES.map(([x, z]) => fill(x, 0, z, x, 0, z, 'air', 'replace oak_stairs'));
 }
 
-/** A hot-air balloon floating beside the island: striped envelope, ropes, a basket with a lantern. */
-const BALLOON = { x: 38, y: 24, z: 22 } as const;
-const BALLOON_STRIPES = ['red_wool', 'red_wool', 'yellow_wool', 'yellow_wool', 'white_wool'] as const;
+/** Dropped items this close to the island's middle are swept up after a rebuild. */
+const TIDY_REACH = 90;
 
-function balloonCommands(): string[] {
-  const { x, y, z } = BALLOON;
-  const envelope = range(0, 12).flatMap((layer) => {
-    // Wide in the middle, narrower towards the top, a small opening at the bottom.
-    const r = 6.2 * Math.sin(((layer + 1) / 14) * Math.PI) + (layer < 3 ? 0.6 : 0);
-    return disc(
-      y + 6 + layer,
-      Math.max(1.2, r),
-      BALLOON_STRIPES[layer % BALLOON_STRIPES.length] ?? 'white_wool',
-      x,
-      z,
-    );
-  });
-  const ropes = [
+/** The first balloon (one, with ropes far too long): where it stood, so it can be taken away again. */
+const OLD_BALLOON = { x: 38, y: 24, z: 22 } as const;
+
+/** Hot-air balloons floating round the island, each in its own colours (the white-and-blue one for Bavaria). */
+interface Balloon {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly r: number;
+  readonly a: Block;
+  readonly b: Block;
+  readonly band: Block;
+}
+const BALLOONS: readonly Balloon[] = [
+  { x: 40, y: 26, z: 24, r: 6, a: 'red_wool', b: 'white_wool', band: 'yellow_wool' },
+  { x: -46, y: 30, z: 6, r: 5, a: 'light_blue_wool', b: 'white_wool', band: 'blue_wool' },
+  { x: 4, y: 38, z: -52, r: 6.5, a: 'orange_wool', b: 'yellow_wool', band: 'red_wool' },
+  { x: -22, y: 20, z: 48, r: 5, a: 'lime_wool', b: 'white_wool', band: 'green_wool' },
+  { x: 52, y: 42, z: -36, r: 5.5, a: 'magenta_wool', b: 'pink_wool', band: 'purple_wool' },
+];
+/** Radius of the opening at the bottom of the envelope. */
+const MOUTH = 1.7;
+/** Coloured panels round the envelope. */
+const GORES = 8;
+/** The envelope starts this far above the basket's floor. */
+const ROPES = 3;
+
+function balloonCommands(balloon: Balloon): string[] {
+  const { x, y, z, r, a, b, band } = balloon;
+  // A teardrop: from the narrow mouth out to the widest ring, then a round top.
+  const widest = Math.round(r * 1.15);
+  const top = widest + Math.round(r * 0.9);
+  const radius = (layer: number): number => {
+    if (layer < 0 || layer > top) return 0;
+    if (layer <= widest) return MOUTH + (r - MOUTH) * Math.sin((layer / widest) * (Math.PI / 2));
+    return r * Math.cos(((layer - widest) / (top - widest + 0.6)) * (Math.PI / 2));
+  };
+  const inside = (layer: number, dx: number, dz: number): boolean =>
+    Math.hypot(dx, dz) <= radius(layer) + 0.3;
+  const half = Math.ceil(r) + 1;
+  const colour = (layer: number, dx: number, dz: number): Block => {
+    if (layer === Math.round(widest * 0.5) || layer >= top - 1) return band;
+    const gore = Math.floor(((Math.atan2(dz, dx) + Math.PI) / (Math.PI * 2)) * GORES + 0.5) % GORES;
+    return gore % 2 === 0 ? a : b;
+  };
+  // Only the skin: a block of the shape with at least one neighbour outside it (the mouth stays open).
+  const skin: Voxel[] = range(0, top).flatMap((layer) =>
+    range(-half, half).flatMap((dx) =>
+      range(-half, half)
+        .filter((dz) => inside(layer, dx, dz))
+        .filter(
+          (dz) =>
+            !inside(layer + 1, dx, dz) ||
+            (layer > 0 && !inside(layer - 1, dx, dz)) ||
+            !inside(layer, dx + 1, dz) ||
+            !inside(layer, dx - 1, dz) ||
+            !inside(layer, dx, dz + 1) ||
+            !inside(layer, dx, dz - 1),
+        )
+        .map((dz): Voxel => [x + dx, y + ROPES + 1 + layer, z + dz, colour(layer, dx, dz)]),
+    ),
+  );
+  const corners: readonly [number, number][] = [
     [-1, -1],
     [1, -1],
     [-1, 1],
     [1, 1],
-  ].map(([dx = 0, dz = 0]) => fill(x + dx, y + 1, z + dz, x + dx, y + 6, z + dz, 'spruce_fence'));
-  const basket = [
-    fill(x - 1, y - 1, z - 1, x + 1, y - 1, z + 1, 'spruce_planks'),
-    fill(x - 1, y, z - 1, x + 1, y, z + 1, 'spruce_trapdoor[half=top,open=true,facing=north]'),
-    set(x, y, z, 'air'),
-    set(x, y - 2, z, 'lantern[hanging=true]'),
-    set(x, y + 5, z, 'lantern[hanging=true]'),
   ];
-  return [...envelope, ...ropes, ...basket];
+  const basket = [
+    fill(x - 1, y, z - 1, x + 1, y, z + 1, 'oak_planks'),
+    fill(x - 1, y + 1, z - 1, x + 1, y + 1, z + 1, 'oak_fence'),
+    set(x, y + 1, z, 'lantern'),
+    ...corners.map(([dx, dz]) => fill(x + dx, y + 2, z + dz, x + dx, y + ROPES, z + dz, 'oak_fence')),
+  ];
+  return [...paint(skin), ...basket];
 }
+
+/** Takes the first balloon away (wool, its long ropes, the basket). */
+function removeOldBalloon(): string[] {
+  const { x, y, z } = OLD_BALLOON;
+  return [fill(x - 8, y - 3, z - 8, x + 8, y + 20, z + 8, 'air')];
+}
+
+/**
+ * Round spots that belong to the spawn although they float outside its circle (the small islands, the balloons):
+ * x and z relative to the world spawn, with a radius. The plugin protects them like the island itself.
+ */
+export const SPAWN_ZONES: readonly { readonly x: number; readonly z: number; readonly r: number }[] = [
+  ...ISLETS.map(([x, , z, r]) => ({ x, z: z - SPAWN_Z, r: Math.ceil(r) + 6 })),
+  ...BALLOONS.map(({ x, z, r }) => ({ x, z: z - SPAWN_Z, r: Math.ceil(r) + 3 })),
+];
 
 /** Extras that make the spawn stand out (also added to islands of older versions once). */
 export function extrasCommands(): string[] {
-  return balloonCommands();
+  return BALLOONS.flatMap(balloonCommands);
+}
+
+/**
+ * Islands of older versions become the new spawn (brighter: white tower with a red roof and the flag, tent roof,
+ * maypole, tulips, directions in the paving, five balloons): everything above the ground is cleared and built anew.
+ */
+export function renewCommands(): string[] {
+  return [
+    ...removeOldBalloon(),
+    `function ${NAMESPACE}:top`,
+    `function ${NAMESPACE}:extras`,
+    // Whatever fell off while clearing (lanterns, ladders …) is swept up.
+    `kill @e[type=item,distance=..${TIDY_REACH}]`,
+  ];
 }
 
 /** A marker entity at the spawn point: the protection follows it wherever the island was built. */
@@ -803,10 +1143,19 @@ const CENTER_TAG = 'mh_spawn_center';
 const summonCenter = `summon marker ~ ~ ~${SPAWN_Z} {Tags:["${CENTER_TAG}"]}`;
 
 /** One-time repairs of islands built by older versions (each has a flag and runs at the island's middle). */
-const REPAIRS: readonly string[] = ['water', 'hills', 'center', 'extras', 'rainbow', 'fountain', 'benches'];
+const REPAIRS: readonly string[] = [
+  'water',
+  'hills',
+  'center',
+  'extras',
+  'rainbow',
+  'fountain',
+  'benches',
+  'renew',
+];
 
 /** The datapack's files (path relative to the pack folder → content). */
-export function spawnPackFiles(spot: IslandSpot = ORIGIN): Record<string, string> {
+export function spawnPackFiles(spot: IslandSpot = ORIGIN, lang: SpawnLang = 'de'): Record<string, string> {
   const area = areaOf(spot);
   const middle = `${spot.x} ${SPAWN_Y} ${spot.z}`;
   const load = [
@@ -866,7 +1215,7 @@ export function spawnPackFiles(spot: IslandSpot = ORIGIN): Record<string, string
     load,
     build,
     island: islandCommands(),
-    top: topCommands(),
+    top: topCommands(lang),
     tick,
     ...repairs,
     water: fixWaterCommands(),
@@ -876,6 +1225,7 @@ export function spawnPackFiles(spot: IslandSpot = ORIGIN): Record<string, string
     rainbow: removeRainbowCommands(),
     fountain: fixFountainCommands(),
     benches: removeBenchesCommands(),
+    renew: renewCommands(),
     rules_old: ['gamerule spawnRadius 0'],
     rules_new: ['gamerule respawn_radius 0'],
   };
@@ -894,9 +1244,9 @@ export function spawnPackFiles(spot: IslandSpot = ORIGIN): Record<string, string
 }
 
 /** Puts the datapack into the world folder; the server loads it when it creates the world. */
-export function writeSpawnPack(worldDir: string, spot: IslandSpot = ORIGIN): void {
+export function writeSpawnPack(worldDir: string, spot: IslandSpot = ORIGIN, lang: SpawnLang = 'de'): void {
   const root = path.join(worldDir, 'datapacks', SPAWN_PACK_DIR);
-  Object.entries(spawnPackFiles(spot)).forEach(([file, content]) => {
+  Object.entries(spawnPackFiles(spot, lang)).forEach(([file, content]) => {
     const target = path.join(root, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, content);

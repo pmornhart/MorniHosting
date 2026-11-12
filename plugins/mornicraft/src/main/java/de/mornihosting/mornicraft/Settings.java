@@ -32,7 +32,11 @@ record Settings(
     boolean fireSpread,
     boolean endermanGrief,
     List<String> rules,
-    List<Group> groups) {
+    List<Group> groups,
+    List<Zone> zones) {
+
+  /** A round spot outside the spawn circle that is protected like it: x/z relative to the world spawn. */
+  record Zone(int x, int z, int radius) {}
 
   record Command(String use, String text, boolean opOnly) {}
 
@@ -68,7 +72,16 @@ record Settings(
         c.getBoolean("fire-spread", true),
         c.getBoolean("enderman-grief", true),
         c.getStringList("rules"),
-        groups);
+        groups,
+        c.getMapList("zones").stream().map(Settings::zone).filter(z -> z.radius() > 0).toList());
+  }
+
+  private static int number(Object o) {
+    return o instanceof Number n ? n.intValue() : 0;
+  }
+
+  private static Zone zone(Map<?, ?> raw) {
+    return new Zone(number(raw.get("x")), number(raw.get("z")), number(raw.get("r")));
   }
 
   private static Group group(Map<?, ?> raw) {
