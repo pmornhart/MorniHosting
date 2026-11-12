@@ -42,8 +42,8 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 
 /**
- * The start elytra: on the spawn island a double jump lifts you up and you glide – no elytra of your own needed, no
- * fall damage. Once in the air, F (Bedrock: sneak) gives one boost forward. The glide lasts until you land.
+ * The start elytra: on the spawn island a double jump puts wings on and you glide (no lift – jump off the edge) – no
+ * elytra of your own needed, no fall damage. Once in the air, F (Bedrock: sneak) gives one boost forward. The glide lasts until you land.
  *
  * <p>For the flight the player wears a real elytra (marked, unbreakable, cursed so it can't be taken off and vanishes
  * on death): since Minecraft 1.21.2 the game only lets you glide with a glider on, and Bedrock never glides without
@@ -59,7 +59,6 @@ final class SpawnElytra implements Listener {
   /** Nobody glides forever (stuck somewhere without ever touching ground): the wings go after this. */
   private static final long MAX_GLIDE_MS = 5 * 60 * 1000;
   private static final long GLIDE_START_TICKS = 2;
-  private static final double LIFT = 0.9;
   private static final double BOOST = 1.7;
   private static final double BOOST_LIFT = 0.25;
   private static final Sound WHOOSH = Sound.sound(Key.key("entity.phantom.flap"), Sound.Source.PLAYER, 0.7f, 1.2f);
@@ -149,7 +148,7 @@ final class SpawnElytra implements Listener {
     takeOff(p);
   }
 
-  /** The double jump: instead of flying, a lift, the wings and the glide. */
+  /** The double jump: instead of flying, the wings and the glide – no lift, the player keeps their own swing. */
   @EventHandler(priority = EventPriority.HIGH)
   public void onDoubleJump(PlayerToggleFlightEvent e) {
     Player p = e.getPlayer();
@@ -160,7 +159,7 @@ final class SpawnElytra implements Listener {
     p.setAllowFlight(false);
     armed.remove(id);
     putOn(p);
-    p.setVelocity(p.getVelocity().setY(LIFT));
+    // No push upwards (Philip): the glide simply goes on with the swing the player has – best jumping off the edge.
     gliding.put(id, System.currentTimeMillis());
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
       if (p.isOnline() && gliding.containsKey(id)) p.setGliding(true);

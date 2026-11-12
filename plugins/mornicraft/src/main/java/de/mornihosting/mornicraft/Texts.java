@@ -109,7 +109,7 @@ final class Texts {
       Map.entry("spawn.protected", new String[] {"Der Spawn bleibt, wie er ist", "The spawn stays as it is"}),
       Map.entry("spawn.nosleep", new String[] {"Am Spawn kann man nicht schlafen", "You can't sleep at the spawn"}),
       Map.entry("spawn.nopvp", new String[] {"Am Spawn wird nicht gekämpft", "No fighting at the spawn"}),
-      Map.entry("elytra.ready", new String[] {"<hl>2× Leertaste</hl> zum Losgleiten", "<hl>Space twice</hl> to glide"}),
+      Map.entry("elytra.ready", new String[] {"Spring ab und drück <hl>2× Leertaste</hl> zum Gleiten", "Jump off and press <hl>space twice</hl> to glide"}),
       Map.entry("elytra.ready.bedrock", new String[] {"<hl>2× springen</hl>, dann in der Luft nochmal <hl>springen</hl> zum Gleiten", "<hl>Jump twice</hl>, then <hl>jump</hl> again in the air to glide"}),
       Map.entry("elytra.creative", new String[] {"Die Start-Elytra gibt es im <hl>Überlebensmodus</hl>", "The start elytra works in <hl>survival mode</hl>"}),
       Map.entry("elytra.item", new String[] {"Start-Elytra", "Start elytra"}),
