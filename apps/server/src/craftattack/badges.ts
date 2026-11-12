@@ -14,8 +14,12 @@ import type { MorniCraftRank } from '@mornihosting/shared';
 
 type Rgb = readonly [number, number, number];
 
-/** Badges are as tall as a line of chat. */
+/** The picture is as tall as a line of chat; the tag itself leaves a row free above and below. */
 const HEIGHT = 9;
+const TAG_TOP = 1;
+const TAG_BOTTOM = 7;
+/** The name starts one row below the tag's top edge. */
+const TEXT_TOP = 2;
 const PAD = 2;
 const ICON = 7;
 const WHITE: Rgb = [255, 255, 255];
@@ -26,50 +30,53 @@ const MAX_TEXT = 16;
 /** First of the private-use characters the badges live on. */
 const FIRST_CHAR = 0xe700;
 
-/** 5 × 7 letters (I and the blank are narrower). */
+/**
+ * Small capitals, 5 pixels tall (most 3 wide; M, N and W wider): the name sits inside the tag with a pixel of
+ * room above and below, and the tags of two chat lines don't touch.
+ */
 const FONT: Readonly<Record<string, readonly string[]>> = {
-  A: ['.XXX.', 'X...X', 'X...X', 'XXXXX', 'X...X', 'X...X', 'X...X'],
-  B: ['XXXX.', 'X...X', 'X...X', 'XXXX.', 'X...X', 'X...X', 'XXXX.'],
-  C: ['.XXX.', 'X...X', 'X....', 'X....', 'X....', 'X...X', '.XXX.'],
-  D: ['XXXX.', 'X...X', 'X...X', 'X...X', 'X...X', 'X...X', 'XXXX.'],
-  E: ['XXXXX', 'X....', 'X....', 'XXXX.', 'X....', 'X....', 'XXXXX'],
-  F: ['XXXXX', 'X....', 'X....', 'XXXX.', 'X....', 'X....', 'X....'],
-  G: ['.XXX.', 'X...X', 'X....', 'X.XXX', 'X...X', 'X...X', '.XXX.'],
-  H: ['X...X', 'X...X', 'X...X', 'XXXXX', 'X...X', 'X...X', 'X...X'],
-  I: ['XXX', '.X.', '.X.', '.X.', '.X.', '.X.', 'XXX'],
-  J: ['..XXX', '...X.', '...X.', '...X.', '...X.', 'X..X.', '.XX..'],
-  K: ['X...X', 'X..X.', 'X.X..', 'XX...', 'X.X..', 'X..X.', 'X...X'],
-  L: ['X....', 'X....', 'X....', 'X....', 'X....', 'X....', 'XXXXX'],
-  M: ['X...X', 'XX.XX', 'X.X.X', 'X.X.X', 'X...X', 'X...X', 'X...X'],
-  N: ['X...X', 'XX..X', 'X.X.X', 'X..XX', 'X...X', 'X...X', 'X...X'],
-  O: ['.XXX.', 'X...X', 'X...X', 'X...X', 'X...X', 'X...X', '.XXX.'],
-  P: ['XXXX.', 'X...X', 'X...X', 'XXXX.', 'X....', 'X....', 'X....'],
-  Q: ['.XXX.', 'X...X', 'X...X', 'X...X', 'X.X.X', 'X..X.', '.XX.X'],
-  R: ['XXXX.', 'X...X', 'X...X', 'XXXX.', 'X.X..', 'X..X.', 'X...X'],
-  S: ['.XXXX', 'X....', 'X....', '.XXX.', '....X', '....X', 'XXXX.'],
-  T: ['XXXXX', '..X..', '..X..', '..X..', '..X..', '..X..', '..X..'],
-  U: ['X...X', 'X...X', 'X...X', 'X...X', 'X...X', 'X...X', '.XXX.'],
-  V: ['X...X', 'X...X', 'X...X', 'X...X', 'X...X', '.X.X.', '..X..'],
-  W: ['X...X', 'X...X', 'X...X', 'X.X.X', 'X.X.X', 'XX.XX', 'X...X'],
-  X: ['X...X', 'X...X', '.X.X.', '..X..', '.X.X.', 'X...X', 'X...X'],
-  Y: ['X...X', 'X...X', '.X.X.', '..X..', '..X..', '..X..', '..X..'],
-  Z: ['XXXXX', '....X', '...X.', '..X..', '.X...', 'X....', 'XXXXX'],
-  Ä: ['X...X', '.XXX.', 'X...X', 'X...X', 'XXXXX', 'X...X', 'X...X'],
-  Ö: ['X...X', '.XXX.', 'X...X', 'X...X', 'X...X', 'X...X', '.XXX.'],
-  Ü: ['X...X', '.....', 'X...X', 'X...X', 'X...X', 'X...X', '.XXX.'],
-  '0': ['.XXX.', 'X...X', 'X..XX', 'X.X.X', 'XX..X', 'X...X', '.XXX.'],
-  '1': ['..X..', '.XX..', '..X..', '..X..', '..X..', '..X..', '.XXX.'],
-  '2': ['.XXX.', 'X...X', '....X', '...X.', '..X..', '.X...', 'XXXXX'],
-  '3': ['XXXX.', '....X', '....X', '.XXX.', '....X', '....X', 'XXXX.'],
-  '4': ['...X.', '..XX.', '.X.X.', 'X..X.', 'XXXXX', '...X.', '...X.'],
-  '5': ['XXXXX', 'X....', 'XXXX.', '....X', '....X', 'X...X', '.XXX.'],
-  '6': ['.XXX.', 'X....', 'X....', 'XXXX.', 'X...X', 'X...X', '.XXX.'],
-  '7': ['XXXXX', '....X', '...X.', '..X..', '..X..', '..X..', '..X..'],
-  '8': ['.XXX.', 'X...X', 'X...X', '.XXX.', 'X...X', 'X...X', '.XXX.'],
-  '9': ['.XXX.', 'X...X', 'X...X', '.XXXX', '....X', '....X', '.XXX.'],
-  '-': ['.....', '.....', '.....', 'XXXXX', '.....', '.....', '.....'],
-  '+': ['.....', '..X..', '..X..', 'XXXXX', '..X..', '..X..', '.....'],
-  ' ': ['...', '...', '...', '...', '...', '...', '...'],
+  A: ['.X.', 'X.X', 'XXX', 'X.X', 'X.X'],
+  B: ['XX.', 'X.X', 'XX.', 'X.X', 'XX.'],
+  C: ['.XX', 'X..', 'X..', 'X..', '.XX'],
+  D: ['XX.', 'X.X', 'X.X', 'X.X', 'XX.'],
+  E: ['XXX', 'X..', 'XX.', 'X..', 'XXX'],
+  F: ['XXX', 'X..', 'XX.', 'X..', 'X..'],
+  G: ['.XX', 'X..', 'X.X', 'X.X', '.XX'],
+  H: ['X.X', 'X.X', 'XXX', 'X.X', 'X.X'],
+  I: ['XXX', '.X.', '.X.', '.X.', 'XXX'],
+  J: ['..X', '..X', '..X', 'X.X', '.X.'],
+  K: ['X.X', 'X.X', 'XX.', 'X.X', 'X.X'],
+  L: ['X..', 'X..', 'X..', 'X..', 'XXX'],
+  M: ['X...X', 'XX.XX', 'X.X.X', 'X...X', 'X...X'],
+  N: ['X..X', 'XX.X', 'X.XX', 'X..X', 'X..X'],
+  O: ['XXX', 'X.X', 'X.X', 'X.X', 'XXX'],
+  P: ['XX.', 'X.X', 'XX.', 'X..', 'X..'],
+  Q: ['.X.', 'X.X', 'X.X', 'XXX', '.XX'],
+  R: ['XX.', 'X.X', 'XX.', 'X.X', 'X.X'],
+  S: ['.XX', 'X..', '.X.', '..X', 'XX.'],
+  T: ['XXX', '.X.', '.X.', '.X.', '.X.'],
+  U: ['X.X', 'X.X', 'X.X', 'X.X', 'XXX'],
+  V: ['X.X', 'X.X', 'X.X', 'X.X', '.X.'],
+  W: ['X...X', 'X...X', 'X.X.X', 'XX.XX', 'X...X'],
+  X: ['X.X', 'X.X', '.X.', 'X.X', 'X.X'],
+  Y: ['X.X', 'X.X', '.X.', '.X.', '.X.'],
+  Z: ['XXX', '..X', '.X.', 'X..', 'XXX'],
+  Ä: ['X.X', '.X.', 'X.X', 'XXX', 'X.X'],
+  Ö: ['X.X', 'XXX', 'X.X', 'X.X', 'XXX'],
+  Ü: ['X.X', '...', 'X.X', 'X.X', 'XXX'],
+  '0': ['XXX', 'X.X', 'X.X', 'X.X', 'XXX'],
+  '1': ['.X.', 'XX.', '.X.', '.X.', 'XXX'],
+  '2': ['XX.', '..X', '.X.', 'X..', 'XXX'],
+  '3': ['XX.', '..X', '.X.', '..X', 'XX.'],
+  '4': ['X.X', 'X.X', 'XXX', '..X', '..X'],
+  '5': ['XXX', 'X..', 'XX.', '..X', 'XX.'],
+  '6': ['.XX', 'X..', 'XXX', 'X.X', 'XXX'],
+  '7': ['XXX', '..X', '.X.', '.X.', '.X.'],
+  '8': ['XXX', 'X.X', 'XXX', 'X.X', 'XXX'],
+  '9': ['XXX', 'X.X', 'XXX', '..X', 'XX.'],
+  '-': ['...', '...', 'XXX', '...', '...'],
+  '+': ['...', '.X.', 'XXX', '.X.', '...'],
+  ' ': ['..', '..', '..', '..', '..'],
 };
 
 /** Colours of the icons (one letter per pixel). */
@@ -99,6 +106,8 @@ const ICONS: Readonly<Record<string, readonly string[]>> = {
   heart: ['.RR.RR.', 'RWRRRRR', 'RRRRRRR', 'RRRRRRR', '.RRRRR.', '..RRR..', '...R...'],
   bolt: ['...YY..', '..YY...', '.YYYY..', '...YY..', '..YY...', '.YY....', '.Y.....'],
   gem: ['..LLL..', '.LWLLL.', 'LLLLLLL', '.LLLLL.', '..LLL..', '...L...', '.......'],
+  // Head and shoulders: everyone without another rank.
+  player: ['..WWW..', '.WWWWW.', '.WWWWW.', '..WWW..', '.WWWWW.', 'WWWWWWW', 'WWWWWWW'],
 };
 
 /** Which icon stands for which symbol of the dashboard's picker (others get the gem). */
@@ -113,6 +122,12 @@ const ICON_OF: Readonly<Record<string, string>> = {
   '❤': 'heart',
   '⚡': 'bolt',
 };
+
+/** The icon of a rank: by its symbol; the rank for everyone else gets the player; no symbol, no icon. */
+function iconOf(rank: Pick<MorniCraftRank, 'symbol'> & { readonly isDefault?: boolean }): string {
+  if (rank.symbol) return ICON_OF[rank.symbol] ?? 'gem';
+  return rank.isDefault ? 'player' : 'none';
+}
 
 interface Picture {
   readonly width: number;
@@ -136,9 +151,11 @@ function lettersOf(name: string): string[] {
 }
 
 /** One badge: a tag in the rank's (darkened) colour with rounded corners, the icon, the name in white. */
-export function badgePicture(rank: Pick<MorniCraftRank, 'name' | 'symbol' | 'color'>): Picture {
+export function badgePicture(
+  rank: Pick<MorniCraftRank, 'name' | 'symbol' | 'color'> & { readonly isDefault?: boolean },
+): Picture {
   const letters = lettersOf(rank.name);
-  const icon = rank.symbol ? (ICONS[ICON_OF[rank.symbol] ?? 'gem'] ?? null) : null;
+  const icon = ICONS[iconOf(rank)] ?? null;
   const glyphs = letters.map((ch) => FONT[ch] ?? []);
   const textWidth = glyphs.reduce((sum, g) => sum + (g[0]?.length ?? 0) + 1, 0) - (glyphs.length ? 1 : 0);
   const iconWidth = icon ? ICON + PAD : 0;
@@ -150,24 +167,24 @@ export function badgePicture(rank: Pick<MorniCraftRank, 'name' | 'symbol' | 'col
   const [r, g, b] = rgbOf(rank.color);
   const tag: Rgb = [Math.round(r * SHADE), Math.round(g * SHADE), Math.round(b * SHADE)];
   const corner = (x: number, y: number): boolean =>
-    (x === 0 || x === width - 1) && (y === 0 || y === HEIGHT - 1);
-  Array.from({ length: HEIGHT }, (_, y) => y).forEach((y) =>
+    (x === 0 || x === width - 1) && (y === TAG_TOP || y === TAG_BOTTOM);
+  Array.from({ length: TAG_BOTTOM - TAG_TOP + 1 }, (_, i) => TAG_TOP + i).forEach((y) =>
     Array.from({ length: width }, (_, x) => x)
       .filter((x) => !corner(x, y))
       .forEach((x) => put(x, y, tag)),
   );
   // A thin line of the rank's own colour along the bottom lifts the tag off the chat's background.
-  Array.from({ length: width - 2 }, (_, x) => x + 1).forEach((x) => put(x, HEIGHT - 1, [r, g, b]));
+  Array.from({ length: width - 2 }, (_, x) => x + 1).forEach((x) => put(x, TAG_BOTTOM, [r, g, b]));
   (icon ?? []).forEach((row, y) =>
     [...row].forEach((cell, x) => {
       const ink = INK[cell];
-      if (ink) put(PAD + x, 1 + y, ink);
+      if (ink) put(PAD + x, TAG_TOP + y, ink);
     }),
   );
   glyphs.reduce((left, glyph) => {
     glyph.forEach((row, y) =>
       [...row].forEach((cell, x) => {
-        if (cell === 'X') put(left + x, 1 + y, WHITE);
+        if (cell === 'X') put(left + x, TEXT_TOP + y, WHITE);
       }),
     );
     return left + (glyph[0]?.length ?? 0) + 1;

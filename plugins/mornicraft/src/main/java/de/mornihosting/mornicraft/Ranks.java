@@ -304,11 +304,12 @@ final class Ranks implements Listener {
       Rank r = of(source);
       Component name = Component.text(source.getName(), r == null ? NamedTextColor.WHITE : r.color());
       Component who = name;
-      if (r != null && !r.symbol().isEmpty()) {
-        // With the badge pack: "[♛ OWNER] Morni"; without: "♛ Owner · Morni".
-        who = !r.tag().isEmpty() && seesBadges(viewer)
-            ? label(r, viewer).append(Component.text(" ")).append(name)
-            : r.badge().append(Component.text(" · ", NamedTextColor.GRAY)).append(name);
+      if (r != null && !r.tag().isEmpty() && seesBadges(viewer)) {
+        // With the badge pack: "[♛ OWNER] Morni" (every rank with a badge, also plain players).
+        who = label(r, viewer).append(Component.text(" ")).append(name);
+      } else if (r != null && !r.symbol().isEmpty()) {
+        // Without: "♛ Owner · Morni".
+        who = r.badge().append(Component.text(" · ", NamedTextColor.GRAY)).append(name);
       }
       return who.append(Component.text(" » ", NamedTextColor.GRAY)).append(message.colorIfAbsent(NamedTextColor.WHITE));
     });

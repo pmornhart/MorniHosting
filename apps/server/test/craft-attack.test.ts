@@ -447,26 +447,22 @@ describe('public statistics page', () => {
 describe('rank badges', () => {
   it('draws a tag per rank and packs them as a resource pack that stays the same for the same ranks', () => {
     const owner = badgePicture({ name: 'Owner', symbol: '♛', color: '#ff5555' });
-    // 2 + icon 7 + 2 + "OWNER" (5 letters of 5 px + 4 gaps) + 2
-    expect([owner.width, owner.height]).toEqual([42, 9]);
-    // Rounded corners are see-through, the tag is the rank's colour darkened, the letters white.
-    expect(owner.pixels[3]).toBe(0);
-    expect([...owner.pixels.subarray(4, 8)]).toEqual([128, 43, 43, 255]);
+    // 2 + icon 7 + 2 + "OWNER" (3 + 5 + 4 + 3 + 3 pixels and 4 gaps) + 2; as tall as a line of chat.
+    expect([owner.width, owner.height]).toEqual([35, 9]);
+    // The top row stays free (tags of two chat lines don't touch); the tag is the rank's colour, darkened.
+    expect(owner.pixels[7]).toBe(0);
+    const tagStart = (owner.width + 1) * 4;
+    expect([...owner.pixels.subarray(tagStart, tagStart + 4)]).toEqual([128, 43, 43, 255]);
     expect(pngOf(owner).subarray(1, 4).toString()).toBe('PNG');
-    // Names the font does not know lose those letters; without a symbol there is no icon.
-    expect(badgePicture({ name: 'V.I.P★', symbol: '', color: '#ffd23f' }).width).toBe(2 + 15 + 2);
-    const pack = badgePack(DEFAULT_RANKS.filter((r) => r.symbol));
-    expect(Object.keys(pack.chars)).toEqual([
-      'owner',
-      'admin',
-      'moderator',
-      'supporter',
-      'builder',
-      'media',
-      'vip',
-    ]);
+    // Letters the font does not know are left out; without a symbol there is no icon …
+    expect(badgePicture({ name: 'V.I.P★', symbol: '', color: '#ffd23f' }).width).toBe(2 + 11 + 2);
+    // … except for the rank everyone else has: plain players get the little player.
+    const plain = badgePicture({ name: 'Spieler', symbol: '', color: '#aaaaaa', isDefault: true });
+    expect(plain.width).toBe(2 + 7 + 2 + 27 + 2);
+    const pack = badgePack(DEFAULT_RANKS);
+    expect(Object.keys(pack.chars)).toEqual(DEFAULT_RANKS.map((r) => r.id));
     expect(pack.chars['owner']).toBe('\ue700');
-    expect(badgePack(DEFAULT_RANKS.filter((r) => r.symbol)).sha1).toBe(pack.sha1);
+    expect(badgePack(DEFAULT_RANKS).sha1).toBe(pack.sha1);
     expect(pack.sha1).toMatch(/^[0-9a-f]{40}$/); // eslint-disable-line ts-patterns/require-regex-example -- "0402fc9a41332c12c2f987ecee454125040c3732"
   });
 });

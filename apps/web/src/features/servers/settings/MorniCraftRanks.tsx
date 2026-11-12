@@ -51,7 +51,8 @@ function newId(name: string, taken: readonly string[]): string {
 /** "♛ Owner · Morni » Hallo!" as the chat shows it. */
 /** The rank in front of the name: a badge (with the resource pack) or the symbol and name in colour. */
 function RankLabel({ rank, badge }: { rank: MorniCraftRank; badge: boolean }): ReactElement | null {
-  if (!rank.symbol) return null;
+  // With badges everyone has one, also plain players (the rank for everyone else); symbols only with a symbol.
+  if (!rank.symbol && !(badge && rank.isDefault)) return null;
   if (badge) {
     return (
       <span
@@ -61,7 +62,7 @@ function RankLabel({ rank, badge }: { rank: MorniCraftRank; badge: boolean }): R
           boxShadow: `inset 0 -1px 0 ${rank.color}`,
         }}
       >
-        <span style={{ color: rank.color }}>{rank.symbol}</span>
+        <span style={{ color: rank.color }}>{rank.symbol || '☺'}</span>
         {rank.name}
       </span>
     );

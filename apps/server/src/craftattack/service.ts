@@ -28,6 +28,7 @@ import { versionsFor } from '../servers/versions.js';
 import { type IslandSpot, SPAWN_PACK_DIR, SPAWN_Y, SPAWN_ZONES, writeSpawnPack } from './spawn.js';
 import {
   type ConfigContext,
+  hasBadge,
   homesOf,
   installMorniCraft,
   type LinkedPlayer,
@@ -227,8 +228,8 @@ export function createCraftAttackService(
   /** The badges' resource pack of a server, built from its ranks (kept until the ranks change). */
   const packs = new Map<string, { key: string; pack: BadgePack }>();
   const packOf = (serverId: string): BadgePack => {
-    const ranks = settingsOf(serverId).ranks.filter((r) => r.symbol);
-    const key = JSON.stringify(ranks.map((r) => [r.id, r.name, r.symbol, r.color]));
+    const ranks = settingsOf(serverId).ranks.filter(hasBadge);
+    const key = JSON.stringify(ranks.map((r) => [r.id, r.name, r.symbol, r.color, r.isDefault]));
     const cached = packs.get(serverId);
     if (cached?.key === key) return cached.pack;
     const pack = badgePack(ranks);

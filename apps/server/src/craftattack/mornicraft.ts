@@ -154,6 +154,9 @@ export interface LinkedPlayer {
   readonly name: string;
 }
 
+/** Ranks with a symbol get a badge – and the rank for everyone else (it shows the little player). */
+export const hasBadge = (r: MorniCraftRank): boolean => Boolean(r.symbol) || r.isDefault;
+
 /** A rank as the plugin reads it: the permission nodes spelled out, players from the panel added (by UUID). */
 function rankConfig(r: MorniCraftRank, c: ConfigContext) {
   const auto = r.fromPanel === 'none' ? [] : (c.members?.[r.fromPanel] ?? []);
@@ -164,8 +167,8 @@ function rankConfig(r: MorniCraftRank, c: ConfigContext) {
     symbol: r.symbol,
     color: r.color,
     default: r.isDefault,
-    // The character that shows the rank's badge to players with the resource pack (only ranks with a symbol).
-    badge: (r.symbol && c.pack?.chars[r.id]) || '',
+    // The character that shows the rank's badge to players with the resource pack.
+    badge: (hasBadge(r) && c.pack?.chars[r.id]) || '',
     permissions: [...new Set(r.permissions.flatMap((p) => RANK_PERMISSION_NODES[p]))],
     players: [...auto.map((a) => ({ uuid: a.uuid, name: a.name })), ...named.map((name) => ({ name }))],
   };
