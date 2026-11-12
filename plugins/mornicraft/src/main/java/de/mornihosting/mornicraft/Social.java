@@ -151,7 +151,11 @@ final class Social implements Listener {
     Component sender = ui().words("msg.from", Ui.v("name", from.getName()))
         .hoverEvent(HoverEvent.showText(ui().bare("msg.reply.hover")))
         .clickEvent(ClickEvent.suggestCommand("/msg " + from.getName() + " "));
-    to.sendMessage(Component.text("✉ ", Ui.MAIL).append(sender).append(Component.text(": ", Ui.SOFT)).append(body));
+    // In streamer mode the text only shows with the mouse on it.
+    Component shown = plugin.streamer().hides(to, Streamer.MESSAGES)
+        ? ui().words("msg.hidden").hoverEvent(HoverEvent.showText(body))
+        : plugin.streamer().forViewer(to, body);
+    to.sendMessage(Component.text("✉ ", Ui.MAIL).append(sender).append(Component.text(": ", Ui.SOFT)).append(shown));
     to.playSound(MESSAGE);
     if (fromId != null) {
       lastFrom.put(to.getUniqueId(), fromId);
@@ -216,7 +220,9 @@ final class Social implements Listener {
       lines.add(Component.text(when.format(Instant.ofEpochMilli(m.at())) + "  ", Ui.DIM)
           .append(Component.text(m.from(), net.kyori.adventure.text.format.NamedTextColor.WHITE))
           .append(Component.text(": ", Ui.SOFT))
-          .append(Component.text(m.text(), Ui.SOFT)));
+          .append(plugin.streamer().hides(p, Streamer.MESSAGES)
+              ? ui().words("msg.hidden").hoverEvent(HoverEvent.showText(Component.text(m.text(), Ui.SOFT)))
+              : plugin.streamer().forViewer(p, Component.text(m.text(), Ui.SOFT))));
     }
     ui().card(p, ui().flat("mail.title"), lines);
     d.mail.clear();

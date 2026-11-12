@@ -75,6 +75,9 @@ final class Commands implements TabExecutor {
       seen(sender, args[0]);
       return true;
     }
+    if (List.of("gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "mod").contains(name)) {
+      return plugin.moderation().command(sender, name, args);
+    }
     if (name.equals("msg")) {
       if (args.length < 2) return usage(sender, "/msg <spieler> <text>");
       Player to = online(sender, args[0]);
@@ -89,7 +92,8 @@ final class Commands implements TabExecutor {
       case "spawn" -> plugin.teleporter().teleport(p, ui().bare("dest.spawn"), SpawnArea::spawn, null);
       case "sethome" -> setHome(p, args.length > 0 ? args[0] : DEFAULT_HOME);
       case "home" -> home(p, args.length > 0 ? args[0] : null);
-      case "homes" -> homes(p);
+      case "homes" -> plugin.homeMenu().open(p);
+      case "streamer" -> plugin.streamer().command(p, args);
       case "delhome" -> {
         if (args.length < 1) return usage(p, "/delhome <name>");
         delHome(p, args[0]);
@@ -169,7 +173,7 @@ final class Commands implements TabExecutor {
 
   // ── Homes ───────────────────────────────────────────────────────────────────────────
 
-  private void setHome(Player p, String name) {
+  void setHome(Player p, String name) {
     if (!HOME_NAME.matcher(name).matches()) {
       p.sendMessage(ui().fail("home.badname"));
       return;
@@ -190,18 +194,14 @@ final class Commands implements TabExecutor {
     p.sendMessage(ui().note("⌂", Ui.ACCENT, exists ? "home.moved" : "home.set", Ui.v("name", name)));
   }
 
-  private void home(Player p, String name) {
+  /** /home without a name opens the window with all homes (beds); with a name it goes there. */
+  void home(Player p, String name) {
     PlayerStore.Data d = plugin.store().get(p.getUniqueId());
-    if (d.homes.isEmpty()) {
-      p.sendMessage(ui().note("⌂", Ui.SOFT, "home.none"));
+    if (name == null) {
+      plugin.homeMenu().open(p);
       return;
     }
-    String pick = name != null ? name : d.homes.size() == 1 ? d.homes.keySet().iterator().next()
-        : d.homes.containsKey(DEFAULT_HOME) ? DEFAULT_HOME : null;
-    if (pick == null) {
-      homes(p);
-      return;
-    }
+    String pick = name;
     String key = d.homes.keySet().stream().filter(k -> k.equalsIgnoreCase(pick)).findFirst().orElse(null);
     if (key == null) {
       p.sendMessage(ui().fail("home.unknown", Ui.v("name", pick)));
@@ -215,29 +215,7 @@ final class Commands implements TabExecutor {
     plugin.teleporter().teleport(p, ui().bare("dest.home", Ui.v("name", key)), () -> to, null);
   }
 
-  private void homes(Player p) {
-    PlayerStore.Data d = plugin.store().get(p.getUniqueId());
-    if (d.homes.isEmpty()) {
-      p.sendMessage(ui().note("⌂", Ui.SOFT, "home.none"));
-      return;
-    }
-    if (plugin.bedrock().menus(p)) {
-      List<String> names = new ArrayList<>(d.homes.keySet());
-      List<Runnable> go = names.stream().map(n -> (Runnable) () -> home(p, n)).toList();
-      plugin.bedrock().menu(p, ui().flat("home.title"), "", names, go);
-      return;
-    }
-    Component chips = Component.empty();
-    for (var e : d.homes.entrySet()) {
-      PlayerStore.Home h = e.getValue();
-      String coords = Math.round(h.x()) + " / " + Math.round(h.y()) + " / " + Math.round(h.z()) + " · " + h.world();
-      chips = chips.append(Ui.button(Component.text(e.getKey()), Ui.ACCENT, ui().bare("home.hover", Ui.v("coords", coords)),
-          ClickEvent.runCommand("/home " + e.getKey()))).append(Component.text(" "));
-    }
-    ui().card(p, ui().flat("home.title"), List.of(chips));
-  }
-
-  private void delHome(Player p, String name) {
+  void delHome(Player p, String name) {
     PlayerStore.Data d = plugin.store().get(p.getUniqueId());
     String key = d.homes.keySet().stream().filter(k -> k.equalsIgnoreCase(name)).findFirst().orElse(null);
     if (key == null) {
@@ -317,6 +295,12 @@ final class Commands implements TabExecutor {
 
   private void getpos(Player p) {
     Location l = p.getLocation();
+    if (plugin.streamer().hides(p, Streamer.COORDS)) {
+      // On stream: only with the mouse on it.
+      p.sendMessage(ui().note("⌖", Ui.ACCENT_2, "getpos.hidden").hoverEvent(HoverEvent.showText(
+          Component.text(l.getBlockX() + " " + l.getBlockY() + " " + l.getBlockZ() + " · " + l.getWorld().getName()))));
+      return;
+    }
     String coords = l.getBlockX() + " " + l.getBlockY() + " " + l.getBlockZ();
     Component line = ui().note("⌖", Ui.ACCENT_2, "getpos", Ui.v("x", l.getBlockX()), Ui.v("y", l.getBlockY()),
         Ui.v("z", l.getBlockZ()), Ui.v("world", l.getWorld().getName()))
@@ -333,6 +317,8 @@ final class Commands implements TabExecutor {
   }
 
   Component pageButton(CommandSender who, String key) {
+    // The link shows the server's address when clicked: not in streamer mode.
+    if (plugin.streamer().hides(who, Streamer.IP)) return null;
     String page = pageOf(who);
     if (page == null) return null;
     return Ui.button(ui().bare(key), Ui.ACCENT_2, ui().bare("info.page.hover"), ClickEvent.openUrl(page));
@@ -376,7 +362,7 @@ final class Commands implements TabExecutor {
     List<String> labels = new ArrayList<>(List.of(ui().flat("menu.spawn"), ui().flat("menu.home"),
         ui().flat("menu.homes"), ui().flat("menu.sethome"), ui().flat("menu.mail"), ui().flat("menu.rules")));
     List<Runnable> actions = new ArrayList<>(List.of(() -> p.performCommand("spawn"), () -> home(p, null),
-        () -> homes(p), () -> setHome(p, DEFAULT_HOME), () -> plugin.social().readMail(p), () -> rules(p)));
+        () -> plugin.homeMenu().open(p), () -> setHome(p, DEFAULT_HOME), () -> plugin.social().readMail(p), () -> rules(p)));
     if (s().back()) {
       labels.add(ui().flat("menu.back"));
       actions.add(() -> back(p));
@@ -389,7 +375,8 @@ final class Commands implements TabExecutor {
     List<Component> lines = new ArrayList<>();
     if (rules.isEmpty()) lines.add(ui().words("rules.none"));
     for (int i = 0; i < rules.size(); i++) {
-      lines.add(Component.text((i + 1) + "  ", Ui.ACCENT).append(Component.text(rules.get(i), Ui.SOFT)));
+      lines.add(Component.text((i + 1) + "  ", Ui.ACCENT)
+          .append(plugin.streamer().forViewer(to, Component.text(rules.get(i), Ui.SOFT))));
     }
     ui().card(to, ui().flat("rules.title"), lines);
   }
@@ -424,6 +411,13 @@ final class Commands implements TabExecutor {
     List<String> options = new ArrayList<>();
     if ((name.equals("home") || name.equals("delhome")) && args.length == 1 && sender instanceof Player p) {
       options.addAll(plugin.store().get(p.getUniqueId()).homes.keySet());
+    } else if (List.of("gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "mod").contains(name) && args.length == 1) {
+      Bukkit.getOnlinePlayers().forEach(o -> options.add(o.getName()));
+      if (name.equals("gefaengnis") && sender.isOp()) options.add("hier");
+    } else if (List.of("gefaengnis", "stumm").contains(name) && args.length == 2) {
+      options.addAll(List.of("5m", "10m", "30m", "1h", "6h", "1d", "7d"));
+    } else if (name.equals("streamer") && args.length == 1) {
+      options.addAll(List.of("an", "aus", "ip", "koordinaten", "nachrichten", "live"));
     } else if (name.equals("mail") && args.length == 1) {
       options.addAll(List.of("send", "read"));
     } else if (name.equals("mornicraft") && args.length == 1) {

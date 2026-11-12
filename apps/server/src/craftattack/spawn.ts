@@ -390,14 +390,25 @@ const LETTER_OF: Readonly<Record<SpawnLang, Readonly<Record<Direction['name'], s
 /** Where the letter's top row lies on the path (it reads right way up when walking outwards). */
 const LETTER_TOP = DECK_FROM - 2;
 
-/** The direction, written into the path in its colour on white – readable on the way out to the deck. */
+/** The path's own paving at a place across it: stone-brick edges, andesite in the middle. */
+const pavingAt = (v: number): Block => (Math.abs(v) === 2 ? 'stone_bricks' : 'polished_andesite');
+
+/**
+ * The direction, written into the path in its colour – the rest is the path's own stone (Philip: no white around it).
+ * Readable on the way out to the deck.
+ */
 function directionLetter(d: Direction, lang: SpawnLang): string[] {
   const rows = LETTERS[LETTER_OF[lang][d.name]] ?? [];
   return rows.flatMap((row, r) =>
     [...row].map((cell, c) =>
-      onPath(d, LETTER_TOP - r, c - 2, -1, cell === 'X' ? `${d.colour}_concrete` : 'white_concrete'),
+      onPath(d, LETTER_TOP - r, c - 2, -1, cell === 'X' ? `${d.colour}_concrete` : pavingAt(c - 2)),
     ),
   );
+}
+
+/** Older islands: the white around the letters becomes path stone. */
+export function lettersFixCommands(lang: SpawnLang): string[] {
+  return DIRECTIONS.flatMap((d) => directionLetter(d, lang));
 }
 
 /**
@@ -413,21 +424,29 @@ const FLAG_M: readonly string[] = [
   '.X...X.',
   '.......',
 ];
-const FLAG_LOZENGES = 6;
+/** Earlier flags had white-blue lozenges after the M (Philip: away, the rest of the Bavarian touch stays). */
+const OLD_FLAG_WIDTH = 13;
+/** Emerald margin left and right of the M. */
+const FLAG_MARGIN = 1;
 export function flagCommands(x: number, y: number, z: number): string[] {
   const top = FLAG_M.length - 1;
+  const width = FLAG_M[0].length + 2 * FLAG_MARGIN;
   const field: Voxel[] = FLAG_M.flatMap((row, r) =>
-    [...row].map((cell, c): Voxel => [x + c, y + top - r, z, cell === 'X' ? 'white_wool' : 'emerald_block']),
+    range(0, width - 1).map((c): Voxel => {
+      const cell = row[c - FLAG_MARGIN];
+      return [x + c, y + top - r, z, cell === 'X' ? 'white_wool' : 'emerald_block'];
+    }),
   );
-  const lozenges: Voxel[] = range(0, FLAG_LOZENGES - 1).flatMap((c) =>
-    range(0, top).map((r): Voxel => [
-      x + FLAG_M.length + c,
-      y + r,
-      z,
-      (c + r) % 2 === 0 ? 'light_blue_wool' : 'white_wool',
-    ]),
-  );
-  return paint([...field, ...lozenges]);
+  return paint(field);
+}
+
+/** Towers of older islands: the flag with the lozenges is taken down and the new one hoisted. */
+export function flagFixCommands(): string[] {
+  const x = TOWER_X + 1;
+  return [
+    fill(x, FLAG_Y, TOWER_Z, x + OLD_FLAG_WIDTH - 1, FLAG_Y + FLAG_M.length - 1, TOWER_Z, 'air'),
+    ...flagCommands(x, FLAG_Y, TOWER_Z),
+  ];
 }
 
 /**
@@ -454,13 +473,16 @@ function towerCommands(): string[] {
     fill(tx - half, y, tz - half, tx + half, y, tz + half, block),
     fill(tx - half + 1, y, tz - half + 1, tx + half - 1, y, tz + half - 1, 'air'),
   ];
-  const windows = [6, 12].flatMap((y) =>
-    sides.flatMap(([dx, dz]) => [
-      set(tx + dx * 2, y, tz + dz * 2, 'glass_pane'),
-      set(tx + dx * 2, y + 1, tz + dz * 2, 'glass_pane'),
-      // The flower box below the window.
-      set(tx + dx * 3, y - 1, tz + dz * 3, LEAVES('flowering_azalea')),
-    ]),
+  // No window on the ladder's wall: a ladder doesn't hold on glass and would fall off there.
+  const windows = TOWER_WINDOW_Y.flatMap((y) =>
+    sides
+      .filter(([dx, dz]) => !(dx === 0 && dz === -1))
+      .flatMap(([dx, dz]) => [
+        set(tx + dx * 2, y, tz + dz * 2, 'glass_pane'),
+        set(tx + dx * 2, y + 1, tz + dz * 2, 'glass_pane'),
+        // The flower box below the window.
+        set(tx + dx * 3, y - 1, tz + dz * 3, LEAVES('flowering_azalea')),
+      ]),
   );
   const roof = [
     fill(tx - 4, 20, tz - 4, tx + 4, 20, tz + 4, 'brick_slab'),
@@ -483,7 +505,7 @@ function towerCommands(): string[] {
     ...windows,
     // The door (towards the plaza) and the ladder up the inside.
     fill(tx + 2, 0, tz, tx + 2, 1, tz, 'air'),
-    fill(tx, 0, tz - 1, tx, 16, tz - 1, 'ladder[facing=south]'),
+    ...towerLadder(),
     // The lookout: a floor, a railing, four posts carrying the roof.
     fill(tx - 3, 16, tz - 3, tx + 3, 16, tz + 3, 'spruce_planks'),
     set(tx, 16, tz - 1, 'ladder[facing=south]'),
@@ -505,7 +527,7 @@ function towerCommands(): string[] {
     ...roof,
     // The flagpole on the ridge and the flag.
     fill(tx, 27, tz, tx, 37, tz, 'spruce_fence'),
-    ...flagCommands(tx + 1, 30, tz),
+    ...flagCommands(tx + 1, FLAG_Y, tz),
     // Invisible light in the shaft and on the lookout.
     ...TOWER_LIGHTS.map(([x, y, z, block]) => set(tx + x, y, tz + z, block)),
     set(tx + 1, 17, tz + 1, 'light[level=15]'),
@@ -778,6 +800,28 @@ const TOWER_LIGHTS: readonly (readonly [number, number, number, Block])[] = [
 /** The lookout tower's middle. */
 const TOWER_X = -15;
 const TOWER_Z = 15;
+/** Height of the flag's lower edge on the tower's flagpole. */
+const FLAG_Y = 30;
+/** Heights of the tower's windows (each two panes high). */
+const TOWER_WINDOW_Y = [6, 12] as const;
+
+/** The ladder up the inside of the tower, on its north wall. */
+function towerLadder(): string[] {
+  return [fill(TOWER_X, 0, TOWER_Z - 1, TOWER_X, 16, TOWER_Z - 1, 'ladder[facing=south]')];
+}
+
+/**
+ * Towers of older islands had windows in the ladder's wall, so the ladder fell off there: the wall is closed and the
+ * ladder put back up.
+ */
+export function ladderCommands(): string[] {
+  return [
+    ...TOWER_WINDOW_Y.map((y) =>
+      fill(TOWER_X, y, TOWER_Z - 2, TOWER_X, y + 1, TOWER_Z - 2, 'white_concrete'),
+    ),
+    ...towerLadder(),
+  ];
+}
 
 /**
  * The fountain in the middle of the plaza: a wide round basin, a chalice-shaped bowl on a pedestal with four
@@ -1169,6 +1213,9 @@ const REPAIRS: readonly string[] = [
   'benches',
   'renew',
   'reeds',
+  'ladder',
+  'flag',
+  'letters',
 ];
 
 /** The datapack's files (path relative to the pack folder → content). */
@@ -1245,6 +1292,9 @@ export function spawnPackFiles(spot: IslandSpot = ORIGIN, lang: SpawnLang = 'de'
     renew: renewCommands(),
     // The sugar cane sometimes had no water beside it and fell off: planted again, properly.
     reeds: [...reedCommands(), `kill @e[type=item,distance=..${TIDY_REACH}]`],
+    ladder: [...ladderCommands(), `kill @e[type=item,distance=..${TIDY_REACH}]`],
+    flag: flagFixCommands(),
+    letters: lettersFixCommands(lang),
     rules_old: ['gamerule spawnRadius 0'],
     rules_new: ['gamerule respawn_radius 0'],
   };

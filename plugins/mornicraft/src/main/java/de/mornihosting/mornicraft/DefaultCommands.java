@@ -23,8 +23,8 @@ final class DefaultCommands {
             c(en, "/spawn", "Zurück zur Spawn-Insel", "Back to the spawn island"))),
         new Settings.Group(en ? "Home" : "Zuhause", List.of(
             c(en, "/sethome [name]", "Merkt sich, wo du gerade stehst", "Remembers where you stand"),
-            c(en, "/home [name]", "Bringt dich nach Hause", "Takes you home"),
-            c(en, "/homes", "Zeigt alle deine Zuhause", "Lists your homes"),
+            c(en, "/home [name]", "Deine Zuhause als Betten – oder mit Namen direkt hin", "Your homes as beds – or straight there by name"),
+            c(en, "/homes", "Deine Zuhause als Betten", "Your homes as beds"),
             c(en, "/delhome <name>", "Löscht ein Zuhause", "Deletes a home"),
             c(en, "/back", "Zurück zum letzten Ort – auch nach dem Tod", "Back to the last place – also after dying"))),
         new Settings.Group(en ? "Friends" : "Zu Freunden", List.of(
@@ -47,7 +47,15 @@ final class DefaultCommands {
             c(en, "/getpos", "Deine Koordinaten", "Your coordinates"),
             c(en, "/ping", "Deine Verbindung zum Server", "Your connection to the server"),
             c(en, "/rules", "Die Regeln", "The rules"),
-            c(en, "/leiste", "Leiste rechts ein- oder ausblenden", "Show or hide the bar on the right"))),
+            c(en, "/leiste", "Leiste rechts ein- oder ausblenden", "Show or hide the bar on the right"),
+            c(en, "/streamer", "Streamer-Modus: IPs, Koordinaten, Nachrichten verstecken", "Streamer mode: hide IPs, coordinates, messages"))),
+        new Settings.Group(en ? "Team (moderation)" : "Team (Moderation)", List.of(
+            op(en, "/mod <spieler>", "Team-Menü (auch Ducken + Rechtsklick)", "Team menu (also sneak + right click)"),
+            op(en, "/gefaengnis <spieler> [10m|1h|1d] [grund]", "Ins Gefängnis", "Send to jail"),
+            op(en, "/frei <spieler>", "Aus dem Gefängnis holen", "Release from jail"),
+            op(en, "/stumm <spieler> [10m|1h|1d]", "Stummschalten", "Mute"),
+            op(en, "/entstummen <spieler>", "Wieder schreiben lassen", "Unmute"),
+            op(en, "/einfrieren <spieler>", "Einfrieren / auftauen", "Freeze / unfreeze"))),
         new Settings.Group(en ? "Admins only (OP)" : "Nur für Admins (OP)", List.of(
             op(en, "/mornicraft reload", "Einstellungen neu laden", "Reload the settings"))));
   }

@@ -9,8 +9,8 @@ website: https://github.com/pmornhart/MorniCraft
 commands:
   spawn: { description: Zurück zum Spawn }
   sethome: { description: Merkt sich diesen Ort als Zuhause, usage: '/sethome [name]' }
-  home: { description: Bringt dich nach Hause, usage: '/home [name]' }
-  homes: { description: Zeigt alle deine Zuhause }
+  home: { description: Deine Zuhause (Betten) – oder direkt hin mit Namen, usage: '/home [name]' }
+  homes: { description: Deine Zuhause als Betten }
   delhome: { description: Löscht ein Zuhause, usage: '/delhome <name>' }
   back: { description: Zurück zum letzten Ort }
   tpa: { description: Fragt, ob du zu jemandem darfst, usage: '/tpa <spieler>' }
@@ -29,10 +29,63 @@ commands:
   info: { description: Alle Befehle, aliases: [befehle, commands] }
   rules: { description: Die Regeln, aliases: [regeln] }
   leiste: { description: Leiste rechts ein- oder ausblenden, aliases: [sidebar] }
+  streamer:
+    {
+      description: Streamer-Modus (IPs,
+      Koordinaten,
+      Nachrichten verstecken),
+      usage: '/streamer [an|aus]',
+      aliases: [streamermodus, streamermode, streamer-modus, stream],
+    }
+  gefaengnis:
+    {
+      description: Jemanden ins Gefängnis stecken (Team),
+      usage: '/gefaengnis <spieler> [10m|1h|1d] [grund]',
+      aliases: [gefängnis, jail, knast],
+      permission: mornicraft.moderate,
+    }
+  frei:
+    {
+      description: Aus dem Gefängnis holen (Team),
+      usage: '/frei <spieler>',
+      aliases: [unjail, freilassen],
+      permission: mornicraft.moderate,
+    }
+  stumm:
+    {
+      description: Jemanden stummschalten (Team),
+      usage: '/stumm <spieler> [10m|1h|1d] [grund]',
+      aliases: [mute],
+      permission: mornicraft.moderate,
+    }
+  entstummen:
+    {
+      description: Stummschaltung aufheben (Team),
+      usage: '/entstummen <spieler>',
+      aliases: [unmute],
+      permission: mornicraft.moderate,
+    }
+  einfrieren:
+    {
+      description: Jemanden einfrieren oder auftauen (Team),
+      usage: '/einfrieren <spieler>',
+      aliases: [freeze],
+      permission: mornicraft.moderate,
+    }
+  mod:
+    {
+      description: Team-Menü für einen Spieler (auch Ducken + Rechtsklick),
+      usage: '/mod <spieler>',
+      aliases: [moderation],
+      permission: mornicraft.moderate,
+    }
   team: { description: Wer im Team ist (Ränge), aliases: [staff, ränge, raenge] }
   mornicraft:
     { description: Einstellungen neu laden, permission: mornicraft.admin, usage: '/mornicraft reload' }
 permissions:
+  mornicraft.moderate:
+    description: Team-Werkzeuge (Gefängnis, Stumm, Einfrieren, Spieler-Menü).
+    default: op
   mornicraft.admin:
     description: Darf die Einstellungen neu laden.
     default: op

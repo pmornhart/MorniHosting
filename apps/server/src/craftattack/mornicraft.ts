@@ -124,6 +124,9 @@ export const morniCraftSettingsSchema = z.object({
   rules: z.array(z.string().trim().min(1).max(120)).max(15),
   ranks: ranksSchema,
   badges: z.boolean(),
+  graves: z.boolean(),
+  gravePrivateMinutes: z.number().int().min(0).max(120),
+  tabStats: z.boolean(),
 });
 
 /** Stored settings, completed with the defaults (older or partial entries). */
@@ -139,6 +142,8 @@ export interface ConfigContext {
   readonly link: string;
   /** Round spots outside the spawn circle that are protected too (x/z from the world spawn, radius). */
   readonly zones?: readonly { readonly x: number; readonly z: number; readonly r: number }[];
+  /** The server's own names (panel domain, its address …): streamer mode turns them into "•••". */
+  readonly hide?: readonly string[];
   /** The badges' resource pack (where to load it, its SHA-1, the character per rank id), when it can be offered. */
   readonly pack?: {
     readonly url: string;
@@ -216,6 +221,10 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     ranks: s.ranks.map((r) => rankConfig(r, c)),
     zones: c.zones ?? [],
     pack: c.pack ? { url: c.pack.url, sha1: c.pack.sha1 } : { url: '', sha1: '' },
+    graves: s.graves,
+    'grave-private-minutes': s.gravePrivateMinutes,
+    'tab-stats': s.tabStats,
+    streamer: { hide: c.hide ?? [] },
   };
   return `# MorniCraft – written by MorniHosting (Dashboard → server → MorniCraft). Changes here are overwritten.\n${JSON.stringify(config, null, 2)}\n`;
 }

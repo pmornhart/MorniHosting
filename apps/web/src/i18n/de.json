@@ -3268,7 +3268,8 @@
       "world": "Welt",
       "show": "Anzeige",
       "rules": "Regeln",
-      "ranks": "Ränge"
+      "ranks": "Ränge",
+      "graves": "Gräber"
     },
     "fields": {
       "tpa": "Teleport-Anfragen (/tpa)",
@@ -3288,7 +3289,10 @@
       "endermanGrief": "Endermen nehmen Blöcke mit",
       "welcome": "Begrüßung beim ersten Betreten",
       "sidebar": "Leiste rechts",
-      "showLink": "Link zur Befehls-Seite"
+      "showLink": "Link zur Befehls-Seite",
+      "tabStats": "Kills und Tode in der Tab-Liste",
+      "graves": "Gräber",
+      "gravePrivateMinutes": "Nur für den Toten"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – mit Knöpfen zum Annehmen",
@@ -3308,13 +3312,17 @@
       "endermanGrief": "Aus: Endermen lassen Blöcke liegen",
       "welcome": "Großer Titel und Karte – einmal pro Spieler",
       "sidebar": "Uhrzeit, Spielzeit, online, Ping, Befehle – jeder kann sie mit /leiste ausblenden",
-      "showLink": "In /info und der Begrüßung (braucht eine Panel-Domain)"
+      "showLink": "In /info und der Begrüßung (braucht eine Panel-Domain)",
+      "tabStats": "⚔ Kills und ☠ Tode neben jedem Namen",
+      "graves": "Wer stirbt, bekommt ein Grab mit Kopf, allen Sachen und Erfahrung – Rechtsklick holt alles zurück",
+      "gravePrivateMinutes": "So lange darf nur der Tote (und das Team) das Grab öffnen, danach alle"
     },
     "units": {
       "teleportDelay": "{{n}} s",
       "maxHomes": "{{n}}",
       "spawnRadius": "{{n}} Blöcke",
-      "elytraRadius": "{{n}} Blöcke"
+      "elytraRadius": "{{n}} Blöcke",
+      "gravePrivateMinutes": "{{n}} Min."
     },
     "rulesHint": "Eine Regel pro Zeile – erscheinen bei /rules.",
     "live": "Speichern gilt sofort, auch während der Server läuft.",
@@ -3363,7 +3371,8 @@
         "teleport": "Zu jedem teleportieren",
         "world": "Zeit und Wetter",
         "whitelist": "Whitelist verwalten",
-        "reload": "MorniCraft neu laden"
+        "reload": "MorniCraft neu laden",
+        "moderate": "Moderieren"
       },
       "permHints": {
         "build": "Spawn-Insel verändern",
@@ -3375,7 +3384,8 @@
         "teleport": "/tp",
         "world": "/time, /weather",
         "whitelist": "/whitelist add …",
-        "reload": "/mornicraft reload"
+        "reload": "/mornicraft reload",
+        "moderate": "Gefängnis, Stumm, Einfrieren, Team-Menü (Ducken + Rechtsklick)"
       },
       "playerCount_one": "{{count}} Spieler",
       "playerCount_other": "{{count}} Spieler",

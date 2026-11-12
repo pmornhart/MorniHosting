@@ -563,7 +563,13 @@ export function createServerService(ctx: AppContext): ServerService {
       params: { message },
       excerpt: rt(id).logs.slice(-CRASH_EXCERPT_LINES),
     };
-    db.update(servers).set({ crash }).where(eq(servers.id, id)).run();
+    try {
+      db.update(servers).set({ crash }).where(eq(servers.id, id)).run();
+    } catch (dbErr) {
+      // The panel is shutting down (database closed) while a start was still preparing: nothing left to record.
+      log.debug({ err: dbErr, id }, 'start failed during shutdown');
+      return;
+    }
     panelLog(id, `Start fehlgeschlagen: ${message}`);
     setState(id, 'crashed');
     events.emit('server.crashed', { serverId: id, crash });
