@@ -15,6 +15,9 @@ import {
   fountainCommands,
   removeRainbowCommands,
   removeBenchesCommands,
+  flagCommands,
+  renewCommands,
+  SPAWN_ZONES,
 } from '../src/craftattack/spawn.js';
 import {
   homesOf,
@@ -123,6 +126,26 @@ describe('MorniCraft spawn, plugin and settings', () => {
     expect(files['data/craftattack/function/fix_benches.mcfunction']).toContain(
       'function craftattack:benches',
     );
+    // The brighter spawn: older islands are cleared above the ground and built anew once, the first balloon goes.
+    expect(renewCommands()).toEqual(
+      expect.arrayContaining(['function craftattack:top', 'function craftattack:extras']),
+    );
+    expect(files['data/craftattack/function/fix_renew.mcfunction']).toContain('function craftattack:renew');
+    const top = topCommands().join('\n');
+    // A white tower with a red roof and the flag (emerald with a white M, white-and-blue lozenges) …
+    expect(top).toContain('bricks');
+    expect(top).not.toContain('lime_wool');
+    const flag = flagCommands(0, 0, 0).join('\n');
+    expect(flag).toContain('emerald_block');
+    expect(flag).toContain('light_blue_wool');
+    // … a maypole, tulips, and each way out named in the paving in its own colour (O for Ost, E in English).
+    expect(top).toContain('light_blue_wall_banner[facing=south]');
+    expect(top).toContain('yellow_concrete');
+    expect(topCommands('en').join('\n')).not.toEqual(top);
+    // Five balloons; they and the small islands are protected like the island itself.
+    expect(extrasCommands().some((c) => c.includes('magenta_wool'))).toBe(true);
+    expect(SPAWN_ZONES).toHaveLength(10);
+    expect(SPAWN_ZONES.every((zone) => zone.r >= 8)).toBe(true);
   });
 
   it('installs the plugin, switches off what it replaces and writes its settings', () => {
@@ -165,6 +188,7 @@ describe('MorniCraft spawn, plugin and settings', () => {
     });
     expect(parsed['link']).toBe('https://mornihosting.de/befehle/freunde/{name}');
     expect(JSON.stringify(parsed['groups'])).toContain('/leiste');
+    expect(parsed['zones']).toEqual([]);
 
     // Ranks: every server starts with Owner … Spieler; switches become permission nodes, owners from the panel join
     // by UUID, a hand-added name that is also an owner is not listed twice.
@@ -367,6 +391,11 @@ describe('public statistics page', () => {
     expect(withOwner.panelMembers).toEqual({ owner: ['Morni'], moderator: [] });
     const ranked = fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8');
     expect(ranked).toContain('"uuid": "11111111-2222-3333-4444-555555555555"');
+    // The plugin learns where the small islands and balloons are, and the server shows the MorniCraft icon.
+    expect(ranked).toContain('"zones": [');
+    expect(ranked).toContain('"r": 11');
+    const icon = fs.readFileSync(path.join(dir, 'server-icon.png'));
+    expect(icon.subarray(1, 4).toString()).toBe('PNG');
   });
 });
 

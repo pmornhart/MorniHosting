@@ -136,6 +136,8 @@ export interface ConfigContext {
   readonly timezone: string;
   /** The personal command page with "{name}" for the player, or empty. */
   readonly link: string;
+  /** Round spots outside the spawn circle that are protected too (x/z from the world spawn, radius). */
+  readonly zones?: readonly { readonly x: number; readonly z: number; readonly r: number }[];
   /** Players the panel gives a rank by itself: owners and moderators of the server with a linked account. */
   readonly members?: Readonly<Record<'owner' | 'moderator', readonly LinkedPlayer[]>>;
 }
@@ -200,6 +202,7 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     rules: s.rules,
     groups,
     ranks: s.ranks.map((r) => rankConfig(r, c)),
+    zones: c.zones ?? [],
   };
   return `# MorniCraft – written by MorniHosting (Dashboard → server → MorniCraft). Changes here are overwritten.\n${JSON.stringify(config, null, 2)}\n`;
 }

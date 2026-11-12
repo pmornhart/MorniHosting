@@ -25,7 +25,7 @@ import type { PlayerDetailService } from '../players/detail.js';
 import { readPropertiesFile, writePropertiesFile } from '../servers/properties-file.js';
 import type { ServerService } from '../servers/service.js';
 import { versionsFor } from '../servers/versions.js';
-import { type IslandSpot, SPAWN_PACK_DIR, SPAWN_Y, writeSpawnPack } from './spawn.js';
+import { type IslandSpot, SPAWN_PACK_DIR, SPAWN_Y, SPAWN_ZONES, writeSpawnPack } from './spawn.js';
 import {
   homesOf,
   installMorniCraft,
@@ -36,6 +36,7 @@ import {
   withDefaults,
   writeMorniCraftConfig,
 } from './mornicraft.js';
+import { MORNICRAFT_ICON_VERSION, writeMorniCraftIcon } from './icon.js';
 import { deathsOf, playerNumbers } from './stats.js';
 
 /**
@@ -56,6 +57,8 @@ const MOTD_SUFFIX = ' §7· §aMorniCraft';
 const MORNICRAFT_KEY = 'mornicraft';
 /** MorniCraft servers on which the panel switched on "all versions" once (switching it off later stays off). */
 const VIA_DONE_KEY = 'mornicraft_via';
+/** Which MorniCraft servers already got the server icon (server id → picture version). */
+const ICON_DONE_KEY = 'mornicraft_icon';
 // A server's address name as the page path: "Craft Attack!" → "craft-attack".
 // https://regex101.com/?flavor=javascript&regex=%5B%5Ea-z0-9%5D%2B&flags=g&testString=craft%20attack!
 const NOT_SLUG = /[^a-z0-9]+/g;
@@ -222,7 +225,16 @@ export function createCraftAttackService(
       timezone: ctx.settings.get().timezone,
       link: linkFor(serverId),
       members: panelMembers(serverId),
+      // The small islands and balloons round the spawn belong to it: nobody takes them apart.
+      zones: SPAWN_ZONES,
     });
+  /** The MorniCraft picture for the server list: put in once per server (a picture uploaded later stays). */
+  const iconOnce = (serverId: string, dir: string): void => {
+    const done = ctx.settings.getValue<Record<string, number>>(ICON_DONE_KEY) ?? {};
+    if ((done[serverId] ?? 0) >= MORNICRAFT_ICON_VERSION) return;
+    writeMorniCraftIcon(dir);
+    ctx.settings.setValue(ICON_DONE_KEY, { ...done, [serverId]: MORNICRAFT_ICON_VERSION });
+  };
   /** The plugin, its config, and the old plugins it replaces switched off. */
   /** True when a new plugin version was put in (a running server loads it at its next start). */
   const equip = (serverId: string): boolean => {
@@ -232,6 +244,7 @@ export function createCraftAttackService(
     if (retired.length)
       servers.note(serverId, `Durch MorniCraft ersetzt und ausgeschaltet: ${retired.join(', ')}`);
     writeConfig(serverId);
+    iconOnce(serverId, dir);
     return newPlugin;
   };
   const safeSlug = (serverId: string): string | undefined => {
@@ -282,7 +295,7 @@ export function createCraftAttackService(
     const dir = servers.dir(serverId);
     writePropertiesFile(dir, { ...CRAFT_ATTACK_PROPERTIES, motd: `§f${row.name}${MOTD_SUFFIX}` });
     const level = readPropertiesFile(dir).values['level-name'] || 'world';
-    writeSpawnPack(path.join(dir, path.basename(level)));
+    writeSpawnPack(path.join(dir, path.basename(level)), undefined, locale());
     setPublic(serverId, { enabled: true });
     equip(serverId);
     // New orders bring ViaVersion themselves: nothing to switch on later.
@@ -322,7 +335,7 @@ export function createCraftAttackService(
     await ask(`execute positioned ${spot.x} ${SPAWN_Y} ${spot.z} run function craftattack:build`);
     // Later datapack versions repair this island where it really stands.
     ctx.settings.setValue(SPOTS_KEY, { ...spots(), [serverId]: spot });
-    writeSpawnPack(worldOf(serverId), spot);
+    writeSpawnPack(worldOf(serverId), spot, locale());
     await ask(`forceload remove ${box}`);
     servers.note(
       serverId,
@@ -511,7 +524,7 @@ export function createCraftAttackService(
   servers.onBeforeStart((serverId) => {
     try {
       if (!isCraftAttack(serverId)) return;
-      writeSpawnPack(worldOf(serverId), spots()[serverId]);
+      writeSpawnPack(worldOf(serverId), spots()[serverId], locale());
       equip(serverId);
     } catch (err) {
       ctx.log.warn({ err, serverId }, 'mornicraft update before start failed');

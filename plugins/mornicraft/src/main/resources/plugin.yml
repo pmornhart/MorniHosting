@@ -28,7 +28,7 @@ commands:
   ping: { description: Deine Verbindung zum Server }
   info: { description: Alle Befehle, aliases: [befehle, commands] }
   rules: { description: Die Regeln, aliases: [regeln] }
-  leiste: { description: Leiste rechts ein- oder ausblenden, aliases: [sidebar, scoreboard] }
+  leiste: { description: Leiste rechts ein- oder ausblenden, aliases: [sidebar] }
   team: { description: Wer im Team ist (Ränge), aliases: [staff, ränge, raenge] }
   mornicraft:
     { description: Einstellungen neu laden, permission: mornicraft.admin, usage: '/mornicraft reload' }

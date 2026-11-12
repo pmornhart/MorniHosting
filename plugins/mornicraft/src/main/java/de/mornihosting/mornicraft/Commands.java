@@ -61,7 +61,9 @@ final class Commands implements TabExecutor {
       return true;
     }
     if (name.equals("team")) {
-      team(sender);
+      // "/team add …" is Minecraft's own command for scoreboard teams: it still works, passed on as it is.
+      if (args.length > 0) Bukkit.dispatchCommand(sender, "minecraft:team " + String.join(" ", args));
+      else team(sender);
       return true;
     }
     if (name.equals("rules")) {
