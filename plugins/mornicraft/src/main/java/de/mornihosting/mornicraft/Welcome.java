@@ -7,7 +7,6 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,7 +17,9 @@ import org.bukkit.event.player.PlayerQuitEvent;
 /** The welcome: the server name softly in the middle of the screen, a small card with buttons in the chat. */
 final class Welcome implements Listener {
   private static final long AFTER_JOIN_TICKS = 30;
-  private static final Title.Times TIMES = Title.Times.of(Duration.ofMillis(500), Duration.ofMillis(2500), Duration.ofMillis(800));
+  private static final Duration FADE_IN = Duration.ofMillis(500);
+  private static final Duration STAY = Duration.ofMillis(2500);
+  private static final Duration FADE_OUT = Duration.ofMillis(800);
   private static final Sound CHIME = Sound.sound(Key.key("block.amethyst_block.chime"), Sound.Source.PLAYER, 0.8f, 1.1f);
 
   private final MorniCraft plugin;
@@ -48,8 +49,8 @@ final class Welcome implements Listener {
   private void greet(Player p) {
     Ui ui = plugin.ui();
     String server = plugin.settings().serverName();
-    p.showTitle(Title.title(Ui.gradient(server, true),
-        ui.bare("welcome.title", Ui.v("name", p.getName())).colorIfAbsent(Ui.SOFT), TIMES));
+    p.showTitle(Ui.title(Ui.gradient(server, true),
+        ui.bare("welcome.title", Ui.v("name", p.getName())).colorIfAbsent(Ui.SOFT), FADE_IN, STAY, FADE_OUT));
     p.playSound(CHIME);
 
     List<Component> lines = new ArrayList<>();

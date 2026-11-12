@@ -10,7 +10,6 @@ import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -35,7 +34,9 @@ final class Teleporter implements Listener {
   private static final Sound TICK = Sound.sound(Key.key("block.note_block.hat"), Sound.Source.PLAYER, 0.35f, 1.6f);
   private static final Sound GONE = Sound.sound(Key.key("entity.enderman.teleport"), Sound.Source.PLAYER, 0.5f, 1.3f);
   private static final Sound STOP = Sound.sound(Key.key("block.note_block.bass"), Sound.Source.PLAYER, 0.6f, 0.6f);
-  private static final Title.Times SOFT = Title.Times.of(Duration.ofMillis(200), Duration.ofMillis(1200), Duration.ofMillis(500));
+  private static final Duration FADE_IN = Duration.ofMillis(200);
+  private static final Duration STAY = Duration.ofMillis(1200);
+  private static final Duration FADE_OUT = Duration.ofMillis(500);
 
   private record Pending(Location start, Component dest, Supplier<Location> target, Runnable done, int total, int left, BossBar bar) {}
 
@@ -77,7 +78,8 @@ final class Teleporter implements Listener {
     p.teleportAsync(to, PlayerTeleportEvent.TeleportCause.PLUGIN).thenAccept(ok -> {
       if (!ok) return;
       p.playSound(GONE);
-      p.showTitle(Title.title(Component.empty(), Component.text("➜ ", Ui.ACCENT).append(dest.colorIfAbsent(Ui.ACCENT)), SOFT));
+      p.showTitle(Ui.title(Component.empty(), Component.text("➜ ", Ui.ACCENT).append(dest.colorIfAbsent(Ui.ACCENT)),
+          FADE_IN, STAY, FADE_OUT));
       if (done != null) done.run();
     });
   }
