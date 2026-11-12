@@ -76,6 +76,8 @@ final class Ranks implements Listener {
   private final Set<UUID> withPack = ConcurrentHashMap.newKeySet();
   private volatile String packUrl = "";
   private volatile boolean packRequired = true;
+  /** The server sends the pack itself (server.properties, required): the plugin doesn't send it again. */
+  private volatile boolean packFromServer;
   /** What each player's game last said about the pack (for /abzeichen). */
   private final Map<UUID, String> lastStatus = new ConcurrentHashMap<>();
   /** How often the pack was sent again to each player since they joined. */
@@ -104,6 +106,7 @@ final class Ranks implements Listener {
     String url = c.getString("pack.url", "");
     String sha = c.getString("pack.sha1", "");
     packRequired = c.getBoolean("pack.required", true);
+    packFromServer = c.getBoolean("pack.server", false);
     boolean changed = !sha.equals(packSha) || !url.equals(packUrl);
     packUrl = url;
     packSha = sha;
@@ -117,7 +120,7 @@ final class Ranks implements Listener {
 
   /** Asks the player's game to load the badges (never forced; Bedrock can't use Java packs). */
   private void offerPack(Player p) {
-    if (packUrl.isEmpty() || packSha.isEmpty() || plugin.bedrock().is(p)) return;
+    if (packUrl.isEmpty() || packSha.isEmpty() || plugin.bedrock().is(p) || packFromServer) return;
     try {
       // Required (default): the game loads it without a "no" button, so everyone sees the badges.
       p.setResourcePack(packUrl, packSha, packRequired, plugin.ui().bare(packRequired ? "pack.prompt.required" : "pack.prompt"));
@@ -175,7 +178,10 @@ final class Ranks implements Listener {
 
   /** True when this viewer sees the badge pictures (others get the symbols). */
   boolean seesBadges(Audience viewer) {
-    return viewer instanceof Player p && withPack.contains(p.getUniqueId());
+    if (!(viewer instanceof Player p)) return false;
+    // Required pack: every Java player has it (the game doesn't let them in without) – always the badges.
+    if (packRequired && !packUrl.isEmpty() && !plugin.bedrock().is(p)) return true;
+    return withPack.contains(p.getUniqueId());
   }
 
   /** The rank in front of a name, as this viewer can see it: the badge picture, or "♛ Owner" in colour. */

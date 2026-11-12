@@ -223,8 +223,9 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     ranks: s.ranks.map((r) => rankConfig(r, c)),
     zones: c.zones ?? [],
     pack: c.pack
-      ? { url: c.pack.url, sha1: c.pack.sha1, required: s.badgesRequired }
-      : { url: '', sha1: '', required: s.badgesRequired },
+      ? // required: the server itself sends it (server.properties) – the plugin only listens and shows badges to all Java players.
+        { url: c.pack.url, sha1: c.pack.sha1, required: s.badgesRequired, server: s.badgesRequired }
+      : { url: '', sha1: '', required: s.badgesRequired, server: false },
     graves: s.graves,
     'grave-private-minutes': s.gravePrivateMinutes,
     'tab-stats': s.tabStats,
