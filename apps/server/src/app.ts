@@ -222,7 +222,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const geyser = createGeyserService(ctx, servers, market);
   const voiceChat = createVoiceChatService(ctx, servers, market);
   const playerDetails = createPlayerDetailService(servers);
-  const craftAttack = createCraftAttackService(ctx, { servers, market, players: playerDetails });
+  const craftAttack = createCraftAttackService(ctx, { servers, market, players: playerDetails, geyser });
   const orders = createOrderService(ctx, {
     servers,
     geyser,
