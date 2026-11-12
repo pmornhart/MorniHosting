@@ -3,10 +3,13 @@ package de.mornihosting.mornicraft;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -28,6 +31,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -39,21 +43,29 @@ import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryAction;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
-import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.meta.SkullMeta;
 
 /**
  * Graves: whoever dies gets a little grave where they fell – a patch of dark earth, a headstone, their head on top
  * with crossed-out eyes, their name above. Everything they carried and the experience they dropped is in it, plus
- * their head as a keepsake. Right click (or hit) the grave: everything back, the grave is gone and the ground as it
- * was. Only the owner for the first minutes, then anyone; the team always. Nothing can break it in the meantime.
+ * their head as a keepsake. Right click (or hit) the grave: it opens like a chest, things can be taken out (never put
+ * in); once it is empty the grave is gone and the ground as it was. Only the owner for the first minutes, then
+ * anyone; the team always. Nothing can break it in the meantime.
  */
 final class Graves implements Listener {
   /** How far up and down a place for the grave is looked for. */
@@ -529,7 +541,42 @@ final class Graves implements Listener {
     }
   }
 
-  // ---------------------------------------------------------------- opening
+  // ---------------------------------------------------------------- opening: a chest with the grave's things
+  //
+  // Clicking the grave opens it like a chest. Things can only be taken out, never put in (a grave is no storage
+  // box). Everyone looking at the same grave sees the same inventory, so nothing can be taken twice. After every
+  // change the rest is written back to graves.yml; once the last thing is out, the grave disappears.
+
+  /** A chest has at most six rows. */
+  private static final int ROW = 9;
+  private static final int MAX_SLOTS = 6 * ROW;
+  /** Off-hand slot of the player inventory (number keys use 0…8, the off-hand swap 40). */
+  private static final int OFF_HAND_SLOT = 40;
+  private static final TextColor TITLE_COLOR = TextColor.color(0x3f4a45);
+
+  /** Marks a grave's window, so clicks and drags in it are recognised. */
+  private static final class Chest implements InventoryHolder {
+    final String graveId;
+    Inventory inventory;
+    /** More than fits into six rows (rare): comes into the chest once it is empty. */
+    final List<ItemStack> rest = new ArrayList<>();
+    /** Who took something last: they emptied the grave if it is empty now. */
+    UUID lastTaker;
+
+    Chest(String graveId) {
+      this.graveId = graveId;
+    }
+
+    @Override
+    public Inventory getInventory() {
+      return inventory;
+    }
+  }
+
+  /** Grave id → its open chest (only while someone looks at it; then g.items is the truth again). */
+  private final Map<String, Chest> chests = new HashMap<>();
+  /** Graves whose chest changed this tick: written back once on the next tick. */
+  private final Set<String> dirty = new HashSet<>();
 
   private boolean mayOpen(Player p, Grave g) {
     if (p.getUniqueId().equals(g.owner) || p.hasPermission(Moderation.PERMISSION)) return true;
@@ -543,16 +590,146 @@ final class Graves implements Listener {
       p.sendActionBar(ui().fail("grave.private", Ui.v("name", g.ownerName), Ui.v("min", Math.max(1, (left + 59_999) / 60_000))));
       return;
     }
+    Chest c = chestOf(g);
+    // Clicking an Interaction entity fires two events in one go: the second finds the window already open.
+    if (c.inventory.getViewers().contains(p)) return;
+    // The experience goes once, to whoever opens the grave first (it can't be put into a chest).
+    if (g.xp > 0) {
+      p.giveExp(g.xp);
+      g.xp = 0;
+      save();
+    }
+    if (c.inventory.isEmpty() && c.rest.isEmpty()) {
+      c.lastTaker = p.getUniqueId();
+      finish(g, c);
+      return;
+    }
+    p.openInventory(c.inventory);
+    p.playSound(p.getLocation(), Sound.BLOCK_CHEST_OPEN, 0.6f, 0.8f);
+    p.sendActionBar(ui().words("grave.hint"));
+  }
+
+  /** The grave's chest: the one already open, or a new one filled from g.items. */
+  private Chest chestOf(Grave g) {
+    Chest c = chests.get(g.id);
+    if (c != null) return c;
+    c = new Chest(g.id);
+    List<ItemStack> items = compact(g.items);
+    int size = Math.max(ROW, Math.min(MAX_SLOTS, (items.size() + ROW - 1) / ROW * ROW));
+    c.inventory = Bukkit.createInventory(c, size, Component.text(ui().flat("grave.title", Ui.v("name", g.ownerName)), TITLE_COLOR));
+    for (int i = 0; i < items.size(); i++) {
+      if (i < size) c.inventory.setItem(i, items.get(i));
+      else c.rest.add(items.get(i));
+    }
+    chests.put(g.id, c);
+    return c;
+  }
+
+  /** Only real things: no empty slots, no air. */
+  private static List<ItemStack> compact(Iterable<ItemStack> items) {
+    List<ItemStack> out = new ArrayList<>();
+    for (ItemStack i : items) if (!empty(i)) out.add(i);
+    return out;
+  }
+
+  private static boolean empty(ItemStack i) {
+    return i == null || i.getType().isAir() || i.getAmount() <= 0;
+  }
+
+  private Chest chestIn(Inventory top) {
+    return top != null && top.getHolder() instanceof Chest c && chests.get(c.graveId) == c ? c : null;
+  }
+
+  /** What may happen to a slot of the grave: everything that only takes something out. */
+  private static final Set<InventoryAction> TAKING = EnumSet.of(InventoryAction.NOTHING, InventoryAction.PICKUP_ALL,
+      InventoryAction.PICKUP_HALF, InventoryAction.PICKUP_SOME, InventoryAction.PICKUP_ONE,
+      InventoryAction.MOVE_TO_OTHER_INVENTORY, InventoryAction.DROP_ALL_SLOT, InventoryAction.DROP_ONE_SLOT,
+      InventoryAction.COLLECT_TO_CURSOR, InventoryAction.CLONE_STACK);
+
+  @EventHandler(priority = EventPriority.LOW)
+  public void onChestClick(InventoryClickEvent e) {
+    Chest c = chestIn(e.getInventory());
+    if (c == null) return;
+    if (putsIn(e, c)) {
+      e.setCancelled(true);
+      return;
+    }
+    c.lastTaker = e.getWhoClicked().getUniqueId();
+    later(c.graveId);
+  }
+
+  /** True when the click would put something into the grave. */
+  private static boolean putsIn(InventoryClickEvent e, Chest c) {
+    Inventory clicked = e.getClickedInventory();
+    if (clicked == null) return false; // dropped outside the window
+    if (clicked != c.inventory) return e.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY;
+    InventoryAction a = e.getAction();
+    if (a == InventoryAction.HOTBAR_SWAP || a == InventoryAction.HOTBAR_MOVE_AND_READD) return !empty(swapSource(e));
+    return !TAKING.contains(a);
+  }
+
+  /** The player's item a number key (or F) would swap into the clicked slot. */
+  private static ItemStack swapSource(InventoryClickEvent e) {
+    if (!(e.getWhoClicked() instanceof Player p)) return null;
+    int slot = e.getClick() == ClickType.SWAP_OFFHAND ? OFF_HAND_SLOT : e.getHotbarButton();
+    // Unknown key: treat it as putting something in (safe side).
+    return slot < 0 ? new ItemStack(Material.STONE) : p.getInventory().getItem(slot);
+  }
+
+  @EventHandler(priority = EventPriority.LOW)
+  public void onChestDrag(InventoryDragEvent e) {
+    Chest c = chestIn(e.getInventory());
+    if (c == null) return;
+    int top = c.inventory.getSize();
+    if (e.getRawSlots().stream().anyMatch(slot -> slot < top)) e.setCancelled(true);
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR)
+  public void onChestClose(InventoryCloseEvent e) {
+    Chest c = chestIn(e.getInventory());
+    if (c == null) return;
+    write(c);
+    Bukkit.getScheduler().runTask(plugin, () -> {
+      // Nobody looks any more: forget the chest, g.items holds the rest until the next click.
+      if (chests.get(c.graveId) == c && c.inventory.getViewers().isEmpty()) chests.remove(c.graveId);
+    });
+  }
+
+  /** After a click the slots change only after the event: written back on the next tick (once per tick). */
+  private void later(String graveId) {
+    if (!dirty.add(graveId)) return;
+    Bukkit.getScheduler().runTask(plugin, () -> {
+      dirty.remove(graveId);
+      Chest c = chests.get(graveId);
+      if (c != null) write(c);
+    });
+  }
+
+  /** The chest's contents back into the grave; an empty grave disappears. */
+  private void write(Chest c) {
+    Grave g = graves.get(c.graveId);
+    if (g == null) return;
+    if (c.inventory.isEmpty() && !c.rest.isEmpty()) refill(c);
+    List<ItemStack> left = compact(java.util.Arrays.asList(c.inventory.getContents()));
+    left.addAll(c.rest);
+    g.items = left;
+    if (left.isEmpty()) finish(g, c);
+    else save();
+  }
+
+  /** The overflow moves up into the emptied chest. */
+  private static void refill(Chest c) {
+    int size = c.inventory.getSize();
+    for (int i = 0; i < size && !c.rest.isEmpty(); i++) c.inventory.setItem(i, c.rest.remove(0));
+  }
+
+  /** Empty: the window closes for everyone, the grave goes and the ground is as it was. */
+  private void finish(Grave g, Chest c) {
     graves.remove(g.id);
+    chests.remove(g.id);
     g.blocks.keySet().forEach(byBlock::remove);
     g.entities.forEach(byEntity::remove);
-    // Everything back: armour onto the body where it is free, the rest into the bag, what doesn't fit at the feet.
-    PlayerInventory inv = p.getInventory();
-    for (ItemStack item : g.items) {
-      if (item == null || item.getType().isAir()) continue;
-      if (!wear(inv, item)) inv.addItem(item).values().forEach(rest -> p.getWorld().dropItemNaturally(p.getLocation(), rest));
-    }
-    if (g.xp > 0) p.giveExp(g.xp);
+    new ArrayList<>(c.inventory.getViewers()).forEach(HumanEntity::closeInventory);
     // The ground as it was (backwards, so the head goes before the earth below it).
     List<String> keys = new ArrayList<>(g.blocks.keySet());
     java.util.Collections.reverse(keys);
@@ -565,6 +742,8 @@ final class Graves implements Listener {
       if (e != null) e.remove();
     }
     save();
+    Player p = c.lastTaker == null ? null : Bukkit.getPlayer(c.lastTaker);
+    if (p == null) return;
     p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.7f, 1.2f);
     if (p.getUniqueId().equals(g.owner)) {
       p.sendMessage(ui().ok("grave.back"));
@@ -575,20 +754,6 @@ final class Graves implements Listener {
     }
   }
 
-  private static boolean wear(PlayerInventory inv, ItemStack item) {
-    String n = item.getType().name();
-    if ((n.endsWith("_HELMET") || n.equals("TURTLE_HELMET")) && empty(inv.getHelmet())) inv.setHelmet(item);
-    else if ((n.endsWith("_CHESTPLATE") || n.equals("ELYTRA")) && empty(inv.getChestplate())) inv.setChestplate(item);
-    else if (n.endsWith("_LEGGINGS") && empty(inv.getLeggings())) inv.setLeggings(item);
-    else if (n.endsWith("_BOOTS") && empty(inv.getBoots())) inv.setBoots(item);
-    else return false;
-    return true;
-  }
-
-  private static boolean empty(ItemStack i) {
-    return i == null || i.getType().isAir();
-  }
-
   private Grave at(Block b) {
     String id = b == null ? null : byBlock.get(key(b));
     return id == null ? null : graves.get(id);
@@ -596,21 +761,33 @@ final class Graves implements Listener {
 
   @EventHandler(priority = EventPriority.LOW)
   public void onClick(PlayerInteractEvent e) {
-    if (e.getHand() != EquipmentSlot.HAND || e.getClickedBlock() == null) return;
+    if (e.getClickedBlock() == null) return;
     if (e.getAction() != Action.RIGHT_CLICK_BLOCK && e.getAction() != Action.LEFT_CLICK_BLOCK) return;
     Grave g = at(e.getClickedBlock());
     if (g == null) return;
+    // Both hands are stopped (no block placed with the off hand onto the grave), only the main hand opens it.
     e.setCancelled(true);
-    open(e.getPlayer(), g);
+    if (e.getHand() == EquipmentSlot.HAND) open(e.getPlayer(), g);
   }
 
+  /** Right click on the head's click area (Interaction entity) or the name: PlayerInteractAtEntityEvent is one too. */
   @EventHandler(priority = EventPriority.LOW)
-  public void onClickTag(PlayerInteractAtEntityEvent e) {
+  public void onClickEntity(PlayerInteractEntityEvent e) {
     String id = byEntity.get(e.getRightClicked().getUniqueId());
-    if (id == null || e.getHand() != EquipmentSlot.HAND) return;
+    if (id == null) return;
     e.setCancelled(true);
     Grave g = graves.get(id);
-    if (g != null) open(e.getPlayer(), g);
+    if (g != null && e.getHand() == EquipmentSlot.HAND) open(e.getPlayer(), g);
+  }
+
+  /** Hitting the click area (left click) opens the grave as well. */
+  @EventHandler(priority = EventPriority.LOW)
+  public void onHitEntity(EntityDamageByEntityEvent e) {
+    String id = byEntity.get(e.getEntity().getUniqueId());
+    if (id == null) return;
+    e.setCancelled(true);
+    Grave g = graves.get(id);
+    if (g != null && e.getDamager() instanceof Player p) open(p, g);
   }
 
   @EventHandler(priority = EventPriority.LOW)
@@ -618,7 +795,7 @@ final class Graves implements Listener {
     if (byEntity.containsKey(e.getRightClicked().getUniqueId())) e.setCancelled(true);
   }
 
-  /** Nothing breaks a grave – hitting it opens it (see above), the rest is stopped. */
+  /** Nothing breaks a grave – breaking it opens it (see above), the rest is stopped. */
   @EventHandler(priority = EventPriority.LOWEST)
   public void onBreak(BlockBreakEvent e) {
     Grave g = at(e.getBlock());
