@@ -1451,7 +1451,7 @@
     "noServers": "Es gibt noch keine Server.",
     "allServers": "Alle Server",
     "noServerAccess": "Noch kein Server freigegeben",
-    "lastLogin": "zuletzt aktiv {{when}}",
+    "lastLogin": "zuletzt online {{when}}",
     "disabled": "Gesperrt",
     "disable": "Sperren",
     "enable": "Entsperren",
@@ -1460,7 +1460,8 @@
     "deleteText": "Das Konto und seine API-Schlüssel werden gelöscht. Server bleiben erhalten.",
     "email": "E-Mail-Adresse (optional)",
     "emailHint": "Für Willkommens-Mail, „Passwort vergessen“ und Bestätigungen. Jede Adresse nur einmal.",
-    "generatePassword": "Erzeugen"
+    "generatePassword": "Erzeugen",
+    "onlineNow": "gerade online"
   },
   "roles": {
     "new": "Rolle anlegen",

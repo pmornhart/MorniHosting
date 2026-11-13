@@ -32,6 +32,10 @@ import { cn } from '@/lib/utils';
 import { useSession } from '@/features/auth/session';
 import { serversQuery } from '@/features/servers/live';
 
+/** Used the panel within the last minutes: counts as online now (sessions note activity once a minute). */
+const ONLINE_MINUTES = 5;
+const ONLINE_MS = ONLINE_MINUTES * 60_000;
+
 const NO_ACCESS = 'none';
 const PASSWORD_MIN = 10;
 
@@ -405,9 +409,12 @@ function UsersList({ roles }: { roles: readonly RoleEntry[] }): ReactElement {
                   ? t('users.allServers')
                   : user.access.map((a) => `${serverName(a.serverId)}: ${roleName(a.roleId)}`).join(' · ') ||
                     t('users.noServerAccess')}
-                {user.lastLoginAt
-                  ? ` · ${t('users.lastLogin', { when: formatRelative(user.lastLoginAt) })}`
-                  : ''}
+                {user.id === me.user.id ||
+                (user.lastLoginAt && Date.now() - Date.parse(user.lastLoginAt) < ONLINE_MS)
+                  ? ` · ${t('users.onlineNow')}`
+                  : user.lastLoginAt
+                    ? ` · ${t('users.lastLogin', { when: formatRelative(user.lastLoginAt) })}`
+                    : ''}
               </p>
             </div>
             <Button size="sm" variant="secondary" onClick={() => setAccessFor(user)} disabled={user.isAdmin}>

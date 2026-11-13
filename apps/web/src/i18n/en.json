@@ -1451,7 +1451,7 @@
     "noServers": "There are no servers yet.",
     "allServers": "All servers",
     "noServerAccess": "No server shared yet",
-    "lastLogin": "last active {{when}}",
+    "lastLogin": "last online {{when}}",
     "disabled": "Locked",
     "disable": "Lock",
     "enable": "Unlock",
@@ -1460,7 +1460,8 @@
     "deleteText": "The account and its API keys are deleted. Servers stay.",
     "email": "E-mail address (optional)",
     "emailHint": "For the welcome mail, “password forgotten” and confirmations. Each address only once.",
-    "generatePassword": "Generate"
+    "generatePassword": "Generate",
+    "onlineNow": "online now"
   },
   "roles": {
     "new": "Add role",
