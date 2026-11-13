@@ -68,6 +68,8 @@ public final class MorniCraft extends JavaPlugin {
     pm.registerEvents(combat, this);
     pm.registerEvents(rankCommands, this);
     pm.registerEvents(new UpdateCheck(this), this);
+    // After the server finished loading: then the other plugins' commands are known and stay theirs.
+    Bukkit.getScheduler().runTask(this, rankCommands::registerCommands);
     for (String name : COMMANDS) {
       PluginCommand c = getCommand(name);
       if (c != null) {
@@ -84,6 +86,7 @@ public final class MorniCraft extends JavaPlugin {
     if (teleporter != null) teleporter.release();
     if (sidebar != null) sidebar.release();
     if (ranks != null) ranks.release();
+    if (rankCommands != null) rankCommands.unregisterCommands();
   }
 
   private void load() {
@@ -95,6 +98,7 @@ public final class MorniCraft extends JavaPlugin {
   void reload() {
     load();
     if (ranks != null) ranks.load(getConfig());
+    if (rankCommands != null) rankCommands.registerCommands();
     if (streamer != null) streamer.load();
     if (sidebar != null) sidebar.rebuild();
   }

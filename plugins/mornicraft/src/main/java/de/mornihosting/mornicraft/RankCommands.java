@@ -1,10 +1,16 @@
 package de.mornihosting.mornicraft;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandMap;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -27,9 +33,136 @@ final class RankCommands implements Listener {
   private static final List<String> REMOVE = List.of("weg", "entfernen", "remove", "raus", "off");
 
   private final MorniCraft plugin;
+  /** The /vip, /mod … commands this plugin put into the server's command list (taken out again on reload). */
+  private final List<Command> registered = new ArrayList<>();
 
   RankCommands(MorniCraft plugin) {
     this.plugin = plugin;
+  }
+
+  /**
+   * Puts every rank into the server's command list (/owner, /moderator with /mod, /vip …) so the game knows them:
+   * no red "unknown command", and Tab suggests them. Only for those who may hand out ranks. Labels other plugins or
+   * Minecraft already use stay theirs (the chat filter below still takes rank words there).
+   */
+  void registerCommands() {
+    CommandMap map = commandMap();
+    if (map == null) return;
+    unregister(map);
+    Map<String, Command> known = known(map);
+    Set<String> taken = new LinkedHashSet<>();
+    for (Ranks.Rank r : plugin.ranks().all()) {
+      Set<String> labels = new LinkedHashSet<>();
+      labels.add(plain(r.id()));
+      labels.add(plain(r.name()));
+      String id = plain(r.id());
+      if (id.length() > MIN_PREFIX) {
+        String shortLabel = id.substring(0, MIN_PREFIX);
+        // "mod" for Moderator – only when no other rank starts the same way.
+        long same = plugin.ranks().all().stream().filter(o -> plain(o.id()).startsWith(shortLabel)).count();
+        if (same == 1) labels.add(shortLabel);
+      }
+      labels.removeIf(l -> l.isEmpty() || taken.contains(l) || (known != null && known.containsKey(l))
+          || l.equals("team") || l.equals("rang") || l.equals("rank"));
+      if (labels.isEmpty()) continue;
+      taken.addAll(labels);
+      List<String> list = new ArrayList<>(labels);
+      Command c = new RankCommand(list.get(0), list.subList(1, list.size()), r);
+      map.register("mornicraft", c);
+      registered.add(c);
+    }
+    sync();
+  }
+
+  void unregisterCommands() {
+    CommandMap map = commandMap();
+    if (map != null) unregister(map);
+    sync();
+  }
+
+  private void unregister(CommandMap map) {
+    Map<String, Command> known = known(map);
+    for (Command c : registered) {
+      c.unregister(map);
+      if (known != null) known.values().removeIf(v -> v == c);
+    }
+    registered.clear();
+  }
+
+  private static CommandMap commandMap() {
+    try {
+      return (CommandMap) Bukkit.getServer().getClass().getMethod("getCommandMap").invoke(Bukkit.getServer());
+    } catch (ReflectiveOperationException | RuntimeException e) {
+      return null;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Command> known(CommandMap map) {
+    try {
+      return (Map<String, Command>) CommandMap.class.getMethod("getKnownCommands").invoke(map);
+    } catch (ReflectiveOperationException | RuntimeException e) {
+      try {
+        var f = map.getClass().getSuperclass().getDeclaredField("knownCommands");
+        f.setAccessible(true);
+        return (Map<String, Command>) f.get(map);
+      } catch (ReflectiveOperationException | RuntimeException e2) {
+        return null;
+      }
+    }
+  }
+
+  /** Sends the new command list to the server's command tree and to everyone online. */
+  private static void sync() {
+    try {
+      Bukkit.getServer().getClass().getMethod("syncCommands").invoke(Bukkit.getServer());
+    } catch (ReflectiveOperationException | RuntimeException ignored) {
+      // older servers: the players' lists update by themselves at the next join
+    }
+    for (Player p : Bukkit.getOnlinePlayers()) {
+      try {
+        p.updateCommands();
+      } catch (RuntimeException ignored) {
+        // best effort
+      }
+    }
+  }
+
+  /** One rank as a real command: "/vip Steve", "/vip Steve weg". */
+  private final class RankCommand extends Command {
+    private final Ranks.Rank rank;
+
+    RankCommand(String name, List<String> aliases, Ranks.Rank rank) {
+      super(name, "Rang " + rank.name() + " vergeben", "/" + name + " <spieler> [weg]", aliases);
+      this.rank = rank;
+      setPermission(PERMISSION + ";mornicraft.admin");
+    }
+
+    @Override
+    public boolean execute(CommandSender sender, String label, String[] args) {
+      Ui ui = plugin.ui();
+      if (!allowed(sender)) {
+        sender.sendMessage(ui.fail("rank.noperm"));
+        return true;
+      }
+      if (args.length < 1) {
+        sender.sendMessage(ui.fail("usage", Ui.v("usage", "/" + label + " <spieler> [weg]")));
+        return true;
+      }
+      set(sender, args[0], rank, args.length > 1 && REMOVE.contains(args[1].toLowerCase(Locale.ROOT)));
+      return true;
+    }
+
+    @Override
+    public List<String> tabComplete(CommandSender sender, String alias, String[] args) {
+      if (args.length == 1) {
+        String start = args[0].toLowerCase(Locale.ROOT);
+        return Bukkit.getOnlinePlayers().stream().map(Player::getName)
+            .filter(n -> n.toLowerCase(Locale.ROOT).startsWith(start)).toList();
+      }
+      if (args.length == 2) return List.of("weg");
+      return List.of();
+    }
   }
 
   static boolean allowed(CommandSender s) {

@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>de.mornihosting</groupId>
   <artifactId>mornicraft</artifactId>
-  <version>1.7.1</version>
+  <version>1.7.2</version>
   <packaging>jar</packaging>
   <name>MorniCraft</name>
 
