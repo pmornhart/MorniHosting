@@ -35,7 +35,7 @@
   "players": [
     {
       "name": "Morni_TV",
-      "uuid": "f5dc6208-0b2a-308a-a69e-e631b3ae7180",
+      "uuid": "548b0931-31bf-4476-9a32-01e2e690a62e",
       "rankId": "owner",
       "where": [1156, 171, 1165],
       "inventory": "rich",
@@ -46,7 +46,7 @@
     },
     {
       "name": "Lena",
-      "uuid": "b81c4872-63b8-3b59-adc4-f44a1c180ac1",
+      "uuid": "8944d302-0446-468a-871e-979206b5ae2c",
       "rankId": "moderator",
       "where": [1140, 170, 1172],
       "inventory": "poor",
@@ -117,7 +117,8 @@
     {
       "name": "Dinnerbone",
       "inMinutes": 178,
-      "reason": "Beleidigung im Chat"
+      "reason": "Beleidigung im Chat",
+      "uuid": "61699b2e-d327-4a01-9f1e-0ea8c3f06bc6"
     }
   ],
   "bans": [

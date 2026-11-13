@@ -502,8 +502,8 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
       {
         use: { de: '/vip <spieler> · /mod <spieler>', en: '/vip <player> · /mod <player>' },
         text: {
-          de: 'Rang vergeben (Owner/Admin) – geht mit jedem Rang, „… weg“ nimmt ihn wieder',
-          en: 'Give a rank (owner/admin) – works with every rank, "… weg" takes it away',
+          de: 'Rang vergeben (Owner) – geht mit jedem Rang, „… weg“ nimmt ihn wieder',
+          en: 'Give a rank (owner) – works with every rank, "… weg" takes it away',
         },
         opOnly: true,
       },
@@ -663,6 +663,8 @@ export interface TeamBoardView {
   readonly live: boolean;
   readonly max: number;
   readonly me: {
+    /** The team member's Minecraft account (for the right face). */
+    readonly uuid: string;
     readonly name: string;
     readonly rank: string;
     readonly rankColor: string;
@@ -680,7 +682,46 @@ export interface TeamBoardView {
   readonly history: readonly TeamBoardHistory[];
   /** The server rules (/rules); owners and admins may change them here. */
   readonly rules: readonly string[];
+  /** The server's settings – only for those who may change them (owners, ranks with the admin switch). */
+  readonly settings: TeamSettings | null;
+  /** For the rank editor next to the settings (null without the right to change them). */
+  readonly settingsInfo: {
+    /** Panel owners and moderators with a linked Minecraft account – they get their rank by themselves. */
+    readonly panelMembers: Readonly<Record<'owner' | 'moderator', readonly string[]>>;
+    /** The badge pack can be offered (the panel has a domain). */
+    readonly badgesReady: boolean;
+  } | null;
 }
+
+/** The settings owners and admins may change on the team dashboard (the same as in the panel, without ranks). */
+export const TEAM_SETTING_KEYS = [
+  'teleportDelay',
+  'maxHomes',
+  'tpa',
+  'back',
+  'spawnProtection',
+  'spawnRadius',
+  'sleepAtSpawn',
+  'pvpAtSpawn',
+  'elytra',
+  'elytraBoost',
+  'elytraRadius',
+  'tnt',
+  'creeperDamage',
+  'fireSpread',
+  'endermanGrief',
+  'welcome',
+  'sidebar',
+  'showLink',
+  'tabStats',
+  'combatSeconds',
+  'graves',
+  'gravePrivateMinutes',
+  'badges',
+  'badgesRequired',
+  'ranks',
+] as const satisfies readonly (keyof MorniCraftSettings)[];
+export type TeamSettings = Pick<MorniCraftSettings, (typeof TEAM_SETTING_KEYS)[number]>;
 
 export const TEAM_ACTIONS = [
   'jail',
@@ -706,3 +747,124 @@ export const TEAM_ACTION_NEEDS: Readonly<Record<TeamAction, TeamAbility>> = {
   unban: 'ban',
   rank: 'ranks',
 };
+
+/** A command of the team, shown on the team dashboard to everyone whose rank allows it. */
+export interface TeamCommand {
+  readonly use: { readonly de: string; readonly en: string };
+  readonly text: { readonly de: string; readonly en: string };
+  /** What the rank needs for it (moderate = every team member). */
+  readonly needs: TeamAbility;
+}
+
+/** Everything the team can type in the game, by what it needs – Moderator and Owner see their own list. */
+export const TEAM_COMMANDS: readonly TeamCommand[] = [
+  {
+    use: same('/teamdashboard'),
+    text: { de: 'Diesen Link neu holen (12 Stunden gültig)', en: 'Get this link again (valid for 12 hours)' },
+    needs: 'moderate',
+  },
+  {
+    use: same('/team'),
+    text: { de: 'Wer im Team welchen Rang hat', en: 'Who in the team has which rank' },
+    needs: 'moderate',
+  },
+  {
+    use: { de: 'Ducken + Rechtsklick', en: 'Sneak + right click' },
+    text: {
+      de: 'Auf einen Spieler: Team-Fenster (Zuhause, Inventar, Gefängnis, Stumm …)',
+      en: 'On a player: team window (homes, inventory, jail, mute …)',
+    },
+    needs: 'moderate',
+  },
+  {
+    use: { de: '/ansehen <spieler>', en: '/inspect <player>' },
+    text: { de: 'Team-Fenster für einen Spieler', en: 'Team window for a player' },
+    needs: 'moderate',
+  },
+  {
+    use: { de: '/gefaengnis <spieler> [10m|1h|1d] [grund]', en: '/gefaengnis <player> [10m|1h|1d] [reason]' },
+    text: { de: 'Ins Gefängnis (Standard 10 Minuten)', en: 'Send to jail (10 minutes by default)' },
+    needs: 'moderate',
+  },
+  {
+    use: { de: '/frei <spieler>', en: '/frei <player>' },
+    text: { de: 'Aus dem Gefängnis holen', en: 'Release from jail' },
+    needs: 'moderate',
+  },
+  {
+    use: { de: '/stumm <spieler> [10m|1h|1d] [grund]', en: '/stumm <player> [10m|1h|1d] [reason]' },
+    text: { de: 'Stummschalten', en: 'Mute' },
+    needs: 'moderate',
+  },
+  {
+    use: { de: '/entstummen <spieler>', en: '/entstummen <player>' },
+    text: { de: 'Wieder schreiben lassen', en: 'Unmute' },
+    needs: 'moderate',
+  },
+  {
+    use: { de: '/einfrieren <spieler>', en: '/einfrieren <player>' },
+    text: { de: 'Einfrieren oder auftauen', en: 'Freeze or unfreeze' },
+    needs: 'moderate',
+  },
+  {
+    use: { de: '/kick <spieler> [grund]', en: '/kick <player> [reason]' },
+    text: { de: 'Rauswerfen (darf gleich wieder rein)', en: 'Kick (may come back at once)' },
+    needs: 'kick',
+  },
+  {
+    use: { de: '/ban <spieler> [grund]', en: '/ban <player> [reason]' },
+    text: {
+      de: 'Für immer sperren (auf Zeit: im Team-Dashboard)',
+      en: 'Ban for good (for a while: on the team dashboard)',
+    },
+    needs: 'ban',
+  },
+  {
+    use: { de: '/pardon <spieler>', en: '/pardon <player>' },
+    text: { de: 'Sperre aufheben', en: 'Lift a ban' },
+    needs: 'ban',
+  },
+  {
+    use: { de: '/tp <spieler>', en: '/tp <player>' },
+    text: { de: 'Ohne Anfrage zu jemandem springen', en: 'Jump to someone without asking' },
+    needs: 'locate',
+  },
+  {
+    use: { de: '/tp <spieler> <ziel>', en: '/tp <player> <target>' },
+    text: { de: 'Jemanden zu jemand anderem bringen', en: 'Bring someone to someone else' },
+    needs: 'locate',
+  },
+  {
+    use: { de: '/vip <spieler> · /mod <spieler>', en: '/vip <player> · /mod <player>' },
+    text: {
+      de: 'Rang vergeben – geht mit jedem Rang, „… weg“ nimmt ihn wieder',
+      en: 'Give a rank – works with every rank, "… weg" takes it away',
+    },
+    needs: 'ranks',
+  },
+  {
+    use: { de: '/rang <spieler> <rang>', en: '/rang <player> <rank>' },
+    text: { de: 'Rang vergeben (andere Schreibweise)', en: 'Give a rank (other way to write it)' },
+    needs: 'ranks',
+  },
+  {
+    use: { de: '/whitelist add <spieler>', en: '/whitelist add <player>' },
+    text: { de: 'Jemanden mitspielen lassen', en: 'Let someone join' },
+    needs: 'ranks',
+  },
+  {
+    use: { de: '/gamemode <modus> [spieler]', en: '/gamemode <mode> [player]' },
+    text: { de: 'Spielmodus ändern (z. B. creative)', en: 'Change the game mode (e.g. creative)' },
+    needs: 'ranks',
+  },
+  {
+    use: same('/gefaengnis hier'),
+    text: { de: 'Gefängnis-Zelle an deinen Ort setzen', en: 'Put the jail cell where you stand' },
+    needs: 'ranks',
+  },
+  {
+    use: same('/mornicraft reload'),
+    text: { de: 'Einstellungen neu laden', en: 'Reload the settings' },
+    needs: 'ranks',
+  },
+];

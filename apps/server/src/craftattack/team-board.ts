@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import {
+  type TeamSettings,
   TEAM_ABILITIES,
   TEAM_ACTION_NEEDS,
   TEAM_ACTIONS,
@@ -147,6 +148,8 @@ export function teamView(
   key: string,
   locale: 'de' | 'en',
   rules: readonly string[],
+  settings: TeamSettings,
+  settingsInfo: NonNullable<TeamBoardView['settingsInfo']>,
 ): TeamBoardView {
   const link = linkOf(serverDir, key);
   const abilities = TEAM_ABILITIES.filter((a) => link.abilities.includes(a));
@@ -178,7 +181,14 @@ export function teamView(
     at: state?.at ?? 0,
     live: state !== null && now - state.at < STALE_MS,
     max: state?.max ?? 0,
-    me: { name: link.name, rank: link.rank, rankColor: link.rankColor, abilities, until: link.until },
+    me: {
+      uuid: link.uuid,
+      name: link.name,
+      rank: link.rank,
+      rankColor: link.rankColor,
+      abilities,
+      until: link.until,
+    },
     online,
     jailed: [
       ...fromOnline(
@@ -195,6 +205,8 @@ export function teamView(
       ...offline(state?.mutedOffline ?? []),
     ],
     rules,
+    settings: abilities.includes('rules') ? settings : null,
+    settingsInfo: abilities.includes('rules') ? settingsInfo : null,
     bans: (state?.bans ?? []).filter((b) => b.until === 0 || b.until > now),
     history: state?.history ?? [],
     ranks: abilities.includes('ranks')

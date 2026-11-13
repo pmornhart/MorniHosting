@@ -14,4 +14,14 @@ describe('player faces from the skin (Philip: new skin did not show)', () => {
     const middle = (32 * 64 + 32) * 4;
     expect([...face.data.subarray(middle, middle + 4)]).toEqual([200, 0, 0, 255]);
   });
+
+  it('ignores the solid hat layer of old 64×32 skins (Notch looked black)', () => {
+    const skin = new PNG({ width: 64, height: 32 });
+    Array.from({ length: 64 * 32 }, (_, n) => skin.data.set([0, 0, 0, 255], n * 4));
+    Array.from({ length: 64 }, (_, n) =>
+      skin.data.set([200, 150, 100, 255], ((8 + Math.floor(n / 8)) * 64 + 8 + (n % 8)) * 4),
+    );
+    const face = PNG.sync.read(faceOf(PNG.sync.write(skin)));
+    expect([...face.data.subarray(0, 4)]).toEqual([200, 150, 100, 255]);
+  });
 });

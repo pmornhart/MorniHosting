@@ -39,8 +39,9 @@ import {
   type VoiceChatResult,
   type WsClientMessage,
   type WsServerMessage,
+  type TeamSettings,
 } from '@mornihosting/shared';
-import { teamDemoAction, teamDemoRules, teamDemoView } from './team-demo';
+import { teamDemoAction, teamDemoRules, teamDemoSettings, teamDemoView } from './team-demo';
 import { VOICE_CHAT_SOFTWARE } from '@/features/servers/settings/VoiceChatCard';
 import recordingText from './fixtures.json?raw';
 
@@ -1696,6 +1697,7 @@ function teamDemo(request: Request): Reply | null {
   if (request.method === 'GET') return ok(teamDemoView());
   if (tail === 'action')
     return done(teamDemoAction(request.body as unknown as Parameters<typeof teamDemoAction>[0]));
+  if (tail === 'settings') return done(teamDemoSettings(request.body as unknown as Partial<TeamSettings>));
   if (tail === 'rules') return done(teamDemoRules((request.body['rules'] as string[] | undefined) ?? []));
   return error(404, 'not_found');
 }

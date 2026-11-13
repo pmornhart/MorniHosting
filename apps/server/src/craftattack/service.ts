@@ -14,7 +14,9 @@ import {
   type PublicStats,
   type PublicStatsSetting,
   type SoftwareId,
+  TEAM_SETTING_KEYS,
   type TeamBoardView,
+  type TeamSettings,
 } from '@mornihosting/shared';
 import { SYSTEM_ACTOR, type Actor } from '../audit/service.js';
 import type { GeyserService } from '../geyser/service.js';
@@ -175,6 +177,8 @@ export interface CraftAttackService {
   readonly teamView: (slug: string, key: string) => TeamBoardView;
   readonly teamAction: (slug: string, key: string, input: TeamActionInput) => void;
   readonly teamRules: (slug: string, key: string, rules: readonly string[]) => Promise<void>;
+  /** Owners (and ranks with the admin switch) change the server's settings from the team dashboard. */
+  readonly teamSettings: (slug: string, key: string, changes: Partial<TeamSettings>) => Promise<void>;
   readonly morniCraft: (serverId: string) => MorniCraftState;
   /** Saves the dashboard settings, writes the plugin's config and applies it at once on a running server. */
   readonly setMorniCraft: (serverId: string, settings: MorniCraftSettings) => Promise<MorniCraftState>;
@@ -814,12 +818,23 @@ export function createCraftAttackService(
     badgePack: badgePackFile,
     teamView: (slug, key) => {
       const serverId = serverBySlug(slug);
-      return teamView(servers.dir(serverId), key, locale(), settingsOf(serverId).rules);
+      const settings = settingsOf(serverId);
+      const picked = Object.fromEntries(TEAM_SETTING_KEYS.map((k) => [k, settings[k]])) as TeamSettings;
+      const state = morniCraft(serverId);
+      return teamView(servers.dir(serverId), key, locale(), settings.rules, picked, {
+        panelMembers: state.panelMembers,
+        badgesReady: state.badgePackUrl !== null,
+      });
     },
     teamRules: async (slug, key, rules) => {
       const serverId = serverBySlug(slug);
       assertTeamAbility(servers.dir(serverId), key, 'rules');
       await setMorniCraft(serverId, { ...settingsOf(serverId), rules: [...rules] });
+    },
+    teamSettings: async (slug, key, changes) => {
+      const serverId = serverBySlug(slug);
+      assertTeamAbility(servers.dir(serverId), key, 'rules');
+      await setMorniCraft(serverId, { ...settingsOf(serverId), ...changes });
     },
     teamAction: (slug, key, input) => teamAction(servers.dir(serverBySlug(slug)), key, input),
   };

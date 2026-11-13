@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
@@ -70,6 +71,71 @@ function teamItemSources(): Record<string, string> {
   );
 }
 
+/** Mojang's skin service; the panel itself uses the same (apps/server/src/players/heads.ts). */
+const MOJANG_PROFILE = 'https://sessionserver.mojang.com/session/minecraft/profile/';
+const FACE_PX = 8;
+const HEAD_PX = 64;
+const HAT_X = 40;
+const RGBA = 4;
+
+/** pngjs comes with the server package; the demo build borrows it to cut the faces. */
+type Png = { width: number; height: number; data: Buffer };
+type PngLib = {
+  PNG: {
+    new (o: { width: number; height: number }): Png;
+    sync: { read(b: Buffer): Png; write(p: Png): Buffer };
+  };
+};
+const pngLib = (): PngLib =>
+  createRequire(path.resolve(__dirname, '../server/package.json'))('pngjs') as PngLib;
+
+/** The face with the hat layer, 64×64 – like the panel's /api/heads. */
+async function headOf(uuid: string): Promise<string | undefined> {
+  try {
+    const profile = (await (await fetch(MOJANG_PROFILE + uuid.replaceAll('-', ''))).json()) as {
+      properties?: { name: string; value: string }[];
+    };
+    const value = profile.properties?.find((p) => p.name === 'textures')?.value ?? '';
+    const textures = JSON.parse(Buffer.from(value, 'base64').toString('utf8')) as {
+      textures?: { SKIN?: { url?: string } };
+    };
+    const url = (textures.textures?.SKIN?.url ?? '').replace('http://', 'https://');
+    if (!url) return undefined;
+    const { PNG } = pngLib();
+    const skin = PNG.sync.read(Buffer.from(await (await fetch(url)).arrayBuffer()));
+    const out = new PNG({ width: HEAD_PX, height: HEAD_PX });
+    const scale = HEAD_PX / FACE_PX;
+    // Old 64×32 skins often have a solid hat layer; Minecraft only shows it if some of it is see-through.
+    const hatShows =
+      skin.height >= skin.width ||
+      Array.from({ length: FACE_PX * FACE_PX }, (_, n) => n).some(
+        (n) =>
+          (skin.data[((FACE_PX + Math.floor(n / FACE_PX)) * skin.width + HAT_X + (n % FACE_PX)) * RGBA + 3] ??
+            0) < 255,
+      );
+    const at = (x: number, y: number): number[] => [
+      ...skin.data.subarray((y * skin.width + x) * RGBA, (y * skin.width + x) * RGBA + RGBA),
+    ];
+    Array.from({ length: HEAD_PX * HEAD_PX }, (_, n) => n).forEach((n) => {
+      const fx = Math.floor((n % HEAD_PX) / scale);
+      const fy = Math.floor(Math.floor(n / HEAD_PX) / scale);
+      const hat = hatShows ? at(HAT_X + fx, FACE_PX + fy) : [];
+      const [r = 0, g = 0, b = 0] = (hat.at(-1) ?? 0) > 0 ? hat : at(FACE_PX + fx, FACE_PX + fy);
+      out.data.set([r, g, b, 255], n * RGBA);
+    });
+    return `data:image/png;base64,${PNG.sync.write(out).toString('base64')}`;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Faces of the demo's team dashboard players (real accounts), by uuid without dashes. */
+async function teamHeads(): Promise<Record<string, string>> {
+  const ids = [...TEAM_SAMPLE.players.map((p) => p.uuid), ...TEAM_SAMPLE.jailedOffline.map((e) => e.uuid)];
+  const pairs = await Promise.all(ids.map(async (id) => [id.replaceAll('-', ''), await headOf(id)] as const));
+  return Object.fromEntries(pairs.filter((pair): pair is readonly [string, string] => pair[1] !== undefined));
+}
+
 /**
  * The demo is one sealed file that cannot load pictures from other sites, so its build embeds the project logos
  * and game card pictures (fetched at build time, never stored in the repository). Outside the demo it is empty.
@@ -85,8 +151,9 @@ function demoImages(demo: boolean): Plugin {
             logos: await embedAll(PROJECT_LOGOS),
             gameArt: await embedAll(GAME_ART_SOURCES),
             items: await embedAll(teamItemSources()),
+            heads: await teamHeads(),
           }
-        : { logos: {}, gameArt: {}, items: {} };
+        : { logos: {}, gameArt: {}, items: {}, heads: {} };
       return `export default ${JSON.stringify(images)};`;
     },
   };

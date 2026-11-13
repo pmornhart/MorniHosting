@@ -3428,7 +3428,9 @@
       "jail": "Gefängnis & Stumm",
       "bans": "Banns",
       "history": "Strafen-Verlauf",
-      "rules": "Regeln"
+      "rules": "Regeln",
+      "commands": "Befehle",
+      "settings": "Einstellungen"
     },
     "search": "Spieler suchen …",
     "nobody": "Gerade ist niemand online.",
@@ -3508,6 +3510,18 @@
     "pastPunishments": "Bisherige Strafen",
     "clean": "Noch nie bestraft.",
     "inJail": "Im Gefängnis · noch {{time}}",
-    "mutedFor": "Stumm · noch {{time}}"
+    "mutedFor": "Stumm · noch {{time}}",
+    "commands": {
+      "title": "Befehle im Spiel",
+      "text": "Das kannst du als {{rank}} im Spiel eintippen.",
+      "team": "Teammitglied",
+      "ownerOnly": "Nur für den Owner"
+    },
+    "settings": {
+      "title": "Einstellungen des Servers",
+      "text": "Gilt sofort im Spiel – dieselben Schalter wie im Panel.",
+      "save": "Speichern",
+      "saved": "Gespeichert ✓"
+    }
   }
 }

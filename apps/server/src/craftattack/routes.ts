@@ -1,9 +1,22 @@
+import { TEAM_SETTING_KEYS } from '@mornihosting/shared';
 import { z } from 'zod';
 import { actorOf, requireAuth } from '../auth/context.js';
 import type { Api, AppContext } from '../context.js';
 import { notFound } from '../lib/errors.js';
 import { morniCraftSettingsSchema } from './mornicraft.js';
+
 import { publicStatsInputSchema, type CraftAttackService } from './service.js';
+
+/** Only the switches and numbers the team dashboard shows; anything else in the body is refused. */
+const teamSettingsSchema = morniCraftSettingsSchema
+  .pick(
+    Object.fromEntries(TEAM_SETTING_KEYS.map((k) => [k, true])) as Record<
+      (typeof TEAM_SETTING_KEYS)[number],
+      true
+    >,
+  )
+  .partial()
+  .strict();
 import { teamActionSchema } from './team-board.js';
 
 const params = z.object({ id: z.string().min(1) });
@@ -94,6 +107,17 @@ export function registerCraftAttackRoutes(app: Api, ctx: AppContext, craftAttack
     },
     async (request) => {
       await craftAttack.teamRules(request.params.slug, keyOf(request.headers), request.body.rules);
+      return { ok: true };
+    },
+  );
+  app.put(
+    '/api/public/team/:slug/settings',
+    {
+      schema: { params: slugParams, body: teamSettingsSchema },
+      config: TEAM_ACTION_LIMIT,
+    },
+    async (request) => {
+      await craftAttack.teamSettings(request.params.slug, keyOf(request.headers), request.body);
       return { ok: true };
     },
   );

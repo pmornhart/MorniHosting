@@ -14,7 +14,7 @@ import {
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import type { MorniCraftSettings, MorniCraftState } from '@mornihosting/shared';
+import type { MorniCraftSettings, MorniCraftState, TeamSettings } from '@mornihosting/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/input';
@@ -25,11 +25,11 @@ import { api } from '@/lib/api';
 import { MorniCraftRanks } from './MorniCraftRanks';
 
 type BoolKey = {
-  [K in keyof MorniCraftSettings]: MorniCraftSettings[K] extends boolean ? K : never;
-}[keyof MorniCraftSettings];
+  [K in keyof TeamSettings]: TeamSettings[K] extends boolean ? K : never;
+}[keyof TeamSettings];
 type NumberKey = {
-  [K in keyof MorniCraftSettings]: MorniCraftSettings[K] extends number ? K : never;
-}[keyof MorniCraftSettings];
+  [K in keyof TeamSettings]: TeamSettings[K] extends number ? K : never;
+}[keyof TeamSettings];
 
 interface NumberSpec {
   readonly key: NumberKey;
@@ -107,6 +107,69 @@ function Row({ label, hint, children }: { label: string; hint: string; children:
 }
 
 /**
+ * The switches and sliders of MorniCraft (teleports, spawn, start elytra, world, display, combat, graves) – in the
+ * panel and on the team dashboard, where owners and admins change them too.
+ */
+export function MorniCraftSections({
+  draft,
+  set,
+}: {
+  draft: TeamSettings;
+  set: (patch: Partial<TeamSettings>) => void;
+}): ReactElement {
+  const { t } = useTranslation();
+  return (
+    <>
+      {SECTIONS.map((section) => (
+        <section
+          key={section.id}
+          className="grid content-start rounded-[12px] border bg-secondary/30 px-4 py-3"
+        >
+          <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+            <section.icon className="size-4 text-primary" aria-hidden />
+            {t(`mornicraft.sections.${section.id}`)}
+          </h3>
+          <div className="divide-y divide-border/60">
+            {section.switches.map((k) => (
+              <Row key={k} label={t(`mornicraft.fields.${k}`)} hint={t(`mornicraft.hints.${k}`)}>
+                <Switch
+                  checked={draft[k]}
+                  onCheckedChange={(v) => set({ [k]: v })}
+                  aria-label={t(`mornicraft.fields.${k}`)}
+                />
+              </Row>
+            ))}
+            {section.numbers
+              .filter((n) => !n.when || draft[n.when])
+              .map((n) => (
+                <div key={n.key} className="grid gap-2 py-2.5">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm font-medium">{t(`mornicraft.fields.${n.key}`)}</span>
+                    <b className="text-sm tabular-nums">
+                      {t(`mornicraft.units.${n.key}`, { n: draft[n.key] })}
+                    </b>
+                  </div>
+                  <Slider
+                    min={n.min}
+                    max={n.max}
+                    step={n.step}
+                    value={[draft[n.key]]}
+                    onValueChange={([v]) => set({ [n.key]: v ?? n.min })}
+                    aria-label={t(`mornicraft.fields.${n.key}`)}
+                  />
+                  <span className="text-[12.5px] text-muted-foreground">
+                    {t(`mornicraft.hints.${n.key}`)}
+                  </span>
+                </div>
+              ))}
+          </div>
+        </section>
+      ))}
+    </>
+  );
+}
+
+/**
  * MorniCraft: the panel's own plugin on this server. Everything the admin can set – teleport wait, homes, spawn
  * protection, sleeping and fighting at the spawn, start elytra, TNT and other world rules, welcome, sidebar, rules.
  * Saving applies it at once (the plugin reloads its settings).
@@ -164,51 +227,7 @@ export function MorniCraftCard({ serverId }: { serverId: string }): ReactElement
         </p>
       )}
       <div className="grid gap-4 lg:grid-cols-2">
-        {SECTIONS.map((section) => (
-          <section
-            key={section.id}
-            className="grid content-start rounded-[12px] border bg-secondary/30 px-4 py-3"
-          >
-            <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold">
-              <section.icon className="size-4 text-primary" aria-hidden />
-              {t(`mornicraft.sections.${section.id}`)}
-            </h3>
-            <div className="divide-y divide-border/60">
-              {section.switches.map((k) => (
-                <Row key={k} label={t(`mornicraft.fields.${k}`)} hint={t(`mornicraft.hints.${k}`)}>
-                  <Switch
-                    checked={draft[k]}
-                    onCheckedChange={(v) => set(k, v)}
-                    aria-label={t(`mornicraft.fields.${k}`)}
-                  />
-                </Row>
-              ))}
-              {section.numbers
-                .filter((n) => !n.when || draft[n.when])
-                .map((n) => (
-                  <div key={n.key} className="grid gap-2 py-2.5">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-sm font-medium">{t(`mornicraft.fields.${n.key}`)}</span>
-                      <b className="text-sm tabular-nums">
-                        {t(`mornicraft.units.${n.key}`, { n: draft[n.key] })}
-                      </b>
-                    </div>
-                    <Slider
-                      min={n.min}
-                      max={n.max}
-                      step={n.step}
-                      value={[draft[n.key]]}
-                      onValueChange={([v]) => set(n.key, v ?? n.min)}
-                      aria-label={t(`mornicraft.fields.${n.key}`)}
-                    />
-                    <span className="text-[12.5px] text-muted-foreground">
-                      {t(`mornicraft.hints.${n.key}`)}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          </section>
-        ))}
+        <MorniCraftSections draft={draft} set={(patch) => setDraft({ ...draft, ...patch })} />
         <section className="grid content-start gap-2 rounded-[12px] border bg-secondary/30 px-4 py-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold">
             <BookOpen className="size-4 text-primary" aria-hidden />

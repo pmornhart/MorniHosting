@@ -7,6 +7,8 @@ declare module 'virtual:demo-images' {
     readonly gameArt: Partial<Record<GameArtId, string>>;
     /** Item pictures of the team dashboard demo, by item id. */
     readonly items: Readonly<Record<string, string>>;
+    /** Player faces of the team dashboard demo, by uuid without dashes. */
+    readonly heads: Readonly<Record<string, string>>;
   };
   export default images;
 }

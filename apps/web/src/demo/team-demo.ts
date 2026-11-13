@@ -9,6 +9,9 @@ import {
   type TeamBoardItem,
   type TeamBoardPlayer,
   type TeamBoardView,
+  type TeamSettings,
+  MORNICRAFT_DEFAULTS,
+  TEAM_SETTING_KEYS,
 } from '@mornihosting/shared';
 
 /**
@@ -70,6 +73,8 @@ function rankFields(
 }
 
 const now = (): number => Date.now();
+/** The demo starts with MorniCraft's own defaults. */
+const TEAM_DEMO_SETTINGS = Object.fromEntries(TEAM_SETTING_KEYS.map((k) => [k, MORNICRAFT_DEFAULTS[k]]));
 const minutesFromNow = (minutes: number): number => now() + minutes * MINUTE_MS;
 
 function freshState() {
@@ -97,7 +102,7 @@ function freshState() {
       };
     }),
     jailedOffline: SAMPLE.jailedOffline.map((e): TeamBoardEntry => ({
-      uuid: '',
+      uuid: e.uuid,
       name: e.name,
       until: minutesFromNow(e.inMinutes),
       reason: e.reason,
@@ -116,6 +121,7 @@ function freshState() {
       at: minutesFromNow(-minutesAgo),
     })),
     rules: [...SAMPLE.rules],
+    settings: { ...TEAM_DEMO_SETTINGS } as TeamSettings,
   };
 }
 
@@ -161,6 +167,7 @@ export function teamDemoView(): TeamBoardView {
     live: true,
     max: MAX_PLAYERS,
     me: {
+      uuid: state.online.find((p) => p.name === me.name)?.uuid ?? '',
       name: me.name,
       rank: rank?.name ?? '',
       rankColor: rank?.color ?? '',
@@ -174,6 +181,10 @@ export function teamDemoView(): TeamBoardView {
     bans: state.bans.filter((b) => b.until === 0 || b.until > t),
     history: state.history,
     rules: state.rules,
+    settings: abilities.includes('rules') ? state.settings : null,
+    settingsInfo: abilities.includes('rules')
+      ? { panelMembers: { owner: [], moderator: [] }, badgesReady: true }
+      : null,
   };
 }
 
@@ -281,6 +292,12 @@ export function teamDemoAction(request: Request): boolean {
       },
       ...state.history,
     ].slice(0, MAX_HISTORY);
+  return true;
+}
+
+export function teamDemoSettings(changes: Partial<TeamSettings>): boolean {
+  if (!ABILITIES[state.role].includes('rules')) return false;
+  state.settings = { ...state.settings, ...changes };
   return true;
 }
 
