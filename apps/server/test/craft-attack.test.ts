@@ -12,6 +12,7 @@ import {
   extrasCommands,
   topCommands,
   plazaCommands,
+  hasNewGameRules,
   spawnPackFiles,
   fountainCommands,
   removeRainbowCommands,
@@ -101,6 +102,23 @@ describe('Craft Attack spawn', () => {
     expect(files['data/craftattack/function/load.mcfunction']).toContain('unless score #water');
     expect(files['data/craftattack/function/build.mcfunction']).toContain('#water mh_craftattack 1');
     expect(fixWaterCommands()[0]).toContain('replace light');
+  });
+});
+
+describe('game rule names by version (Philip: Paper 26.3 logged an error for spawnRadius)', () => {
+  it('writes only the rule this version knows', () => {
+    expect(hasNewGameRules('1.21.10')).toBe(false);
+    expect(hasNewGameRules('1.20.4')).toBe(false);
+    expect(hasNewGameRules('1.21.11')).toBe(true);
+    expect(hasNewGameRules('26.3')).toBe(true);
+    expect(hasNewGameRules('latest')).toBe(true);
+    const fresh = spawnPackFiles(undefined, 'de', '26.3');
+    expect(fresh['data/craftattack/function/rules_old.mcfunction']).toBeUndefined();
+    expect(fresh['data/craftattack/function/rules_new.mcfunction']).toContain('respawn_radius');
+    expect(fresh['data/craftattack/tags/function/rules.json']).not.toContain('rules_old');
+    const old = spawnPackFiles(undefined, 'de', '1.20.4');
+    expect(old['data/craftattack/function/rules_old.mcfunction']).toContain('spawnRadius');
+    expect(old['data/craftattack/function/rules_new.mcfunction']).toBeUndefined();
   });
 });
 

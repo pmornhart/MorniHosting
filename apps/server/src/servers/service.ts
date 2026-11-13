@@ -787,7 +787,7 @@ export function createServerService(ctx: AppContext): ServerService {
     const state = await docker.inspect(containerId);
     const [packages, missing] = await Promise.all([
       pluginPackages(serverDir(config, r.id)),
-      missingDependencies(serverDir(config, r.id)).catch(() => []),
+      missingDependencies(serverDir(config, r.id), r.software).catch(() => []),
     ]);
     const crash = analyseCrash({
       packages,

@@ -28,6 +28,24 @@ const DESCRIPTORS = new Set([
   'META-INF/neoforge.mods.toml',
 ]);
 const NESTED_DIRS = ['META-INF/jars/', 'META-INF/jarjar/'];
+/**
+ * Which of those files each server software really reads. Many jars carry several at once (ViaVersion has a
+ * plugin.yml and a fabric.mod.json that needs ViaFabric) – on Paper only the plugin files count, else a Paper server
+ * would "miss" ViaFabric.
+ */
+const PLUGIN_FILES = ['plugin.yml', 'paper-plugin.yml'];
+const PLATFORM_DESCRIPTORS: Readonly<Record<string, readonly string[]>> = {
+  paper: PLUGIN_FILES,
+  purpur: PLUGIN_FILES,
+  custom: [...PLUGIN_FILES, 'bungee.yml'],
+  velocity: ['velocity-plugin.json'],
+  fabric: ['fabric.mod.json'],
+  forge: ['META-INF/mods.toml'],
+  neoforge: ['META-INF/neoforge.mods.toml', 'META-INF/mods.toml'],
+};
+/** The descriptor files that count for this software (all of them when it is not known). */
+const descriptorsFor = (software?: string): ReadonlySet<string> =>
+  new Set(software ? (PLATFORM_DESCRIPTORS[software] ?? [...DESCRIPTORS]) : [...DESCRIPTORS]);
 /** Provided by the game, the loader or Java itself – never a separate file. */
 const BUILT_IN = new Set([
   'minecraft',
@@ -189,14 +207,22 @@ const isNestedJar = (name: string): boolean =>
 export async function describeJar(
   source: string | Buffer,
   depth = 0,
-): Promise<{ readonly main: JarDescription | null; readonly bundled: readonly string[] }> {
+  wanted: ReadonlySet<string> = DESCRIPTORS,
+): Promise<{
+  readonly main: JarDescription | null;
+  readonly bundled: readonly string[];
+  readonly foreign: boolean;
+}> {
   const entries = await readZipEntries(
     source,
     (name) => DESCRIPTORS.has(name) || (depth < MAX_NESTING && isNestedJar(name)),
     MAX_NESTED_JAR_BYTES,
   );
+  // Only descriptors of another software (a Fabric mod in a Paper server's plugins folder): it can't load there.
+  const names = [...entries.keys()].filter((name) => DESCRIPTORS.has(name));
+  const foreign = names.length > 0 && !names.some((name) => wanted.has(name));
   const descriptions = [...entries]
-    .filter(([name, bytes]) => DESCRIPTORS.has(name) && bytes.length <= MAX_DESCRIPTOR_BYTES)
+    .filter(([name, bytes]) => wanted.has(name) && bytes.length <= MAX_DESCRIPTOR_BYTES)
     .map(([name, bytes]) => PARSERS[name]?.(bytes.toString('utf8')) ?? null)
     .filter((d): d is JarDescription => d !== null);
   const main = descriptions[0]
@@ -211,14 +237,14 @@ export async function describeJar(
       .filter(([name]) => isNestedJar(name))
       .map(async ([, bytes]) => {
         try {
-          const inner = await describeJar(bytes, depth + 1);
+          const inner = await describeJar(bytes, depth + 1, wanted);
           return [...(inner.main?.ids ?? []), ...inner.bundled];
         } catch {
           return [];
         }
       }),
   );
-  return { main, bundled: nested.flat() };
+  return { main, bundled: nested.flat(), foreign };
 }
 
 function jarsIn(serverDir: string, suffix: string): string[] {
@@ -237,24 +263,41 @@ function jarsIn(serverDir: string, suffix: string): string[] {
 async function describeAll(
   serverDir: string,
   files: readonly string[],
+  software?: string,
 ): Promise<
-  { readonly file: string; readonly main: JarDescription | null; readonly bundled: readonly string[] }[]
+  {
+    readonly file: string;
+    readonly main: JarDescription | null;
+    readonly bundled: readonly string[];
+    readonly foreign: boolean;
+  }[]
 > {
+  const wanted = descriptorsFor(software);
   return Promise.all(
     files.map(async (file) => {
       try {
-        return { file, ...(await describeJar(path.join(serverDir, file))) };
+        return { file, ...(await describeJar(path.join(serverDir, file), 0, wanted)) };
       } catch {
-        return { file, main: null, bundled: [] };
+        return { file, main: null, bundled: [], foreign: false };
       }
     }),
   );
 }
 
+/** Jars (switched on) that are made for another software only – e.g. a Fabric mod in a Paper server's plugins. */
+export async function foreignJars(serverDir: string, software: string): Promise<string[]> {
+  if (!PLATFORM_DESCRIPTORS[software]) return [];
+  const active = await describeAll(serverDir, jarsIn(serverDir, JAR), software);
+  return active.filter((j) => j.foreign).map((j) => j.file);
+}
+
 /** Required plugins/mods that no installed (switched on) jar provides. */
-export async function missingDependencies(serverDir: string): Promise<MissingDependency[]> {
-  const active = await describeAll(serverDir, jarsIn(serverDir, JAR));
-  const switchedOff = await describeAll(serverDir, jarsIn(serverDir, DISABLED));
+export async function missingDependencies(
+  serverDir: string,
+  software?: string,
+): Promise<MissingDependency[]> {
+  const active = await describeAll(serverDir, jarsIn(serverDir, JAR), software);
+  const switchedOff = await describeAll(serverDir, jarsIn(serverDir, DISABLED), software);
   const installed = new Set(active.flatMap((j) => [...(j.main?.ids ?? []), ...j.bundled]));
   const disabledFor = (id: string): string | null =>
     switchedOff.find((j) => j.main?.ids.includes(id))?.file ?? null;

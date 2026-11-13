@@ -8,7 +8,7 @@ import { sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { CrashHelp, CrashInfo, ServerSummary } from '@mornihosting/shared';
 import { analyseCrash, type CrashContext } from '../src/servers/crash.js';
-import { missingDependencies } from '../src/servers/mod-deps.js';
+import { foreignJars, missingDependencies } from '../src/servers/mod-deps.js';
 import { authHeaders, createTestApp, setupAdmin, waitFor, type Session, type TestApp } from './helpers.js';
 
 /**
@@ -32,6 +32,42 @@ async function jar(file: string, entries: Readonly<Record<string, string | Buffe
   await archive.finalize();
   await done;
 }
+
+describe('jars made for several platforms (Philip: Paper server offered "install ViaFabric")', () => {
+  test('ViaVersion on Paper needs nothing – its fabric.mod.json only counts on Fabric', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-via-'));
+    const via = {
+      'plugin.yml':
+        'name: ViaVersion\nmain: com.viaversion.ViaVersionPlugin\nsoftdepend: [ProtocolSupport]\n',
+      'velocity-plugin.json': JSON.stringify({ id: 'viaversion', name: 'ViaVersion' }),
+      'fabric.mod.json': JSON.stringify({
+        id: 'viaversion',
+        name: 'ViaVersion',
+        depends: { viafabric: '>=0.4.14' },
+      }),
+    };
+    await jar(path.join(dir, 'plugins', 'ViaVersion.jar'), via);
+    expect(await missingDependencies(dir, 'paper')).toEqual([]);
+    expect(await missingDependencies(dir, 'velocity')).toEqual([]);
+    const fabric = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-via-'));
+    await jar(path.join(fabric, 'mods', 'ViaVersion.jar'), via);
+    expect((await missingDependencies(fabric, 'fabric')).map((m) => m.dependency)).toEqual(['viafabric']);
+  });
+
+  test("a Fabric mod in a Paper server's plugins folder is found (it can never load there)", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-foreign-'));
+    await jar(path.join(dir, 'plugins', 'ViaFabric.jar'), {
+      'fabric.mod.json': JSON.stringify({ id: 'viafabric', depends: { 'fabric-api': '*' } }),
+    });
+    await jar(path.join(dir, 'plugins', 'ViaVersion.jar'), {
+      'plugin.yml': 'name: ViaVersion\nmain: x.Y\n',
+      'fabric.mod.json': JSON.stringify({ id: 'viaversion' }),
+    });
+    expect(await foreignJars(dir, 'paper')).toEqual(['plugins/ViaFabric.jar']);
+    // Nothing missing on Paper: the Fabric mod's needs don't count there either.
+    expect(await missingDependencies(dir, 'paper')).toEqual([]);
+  });
+});
 
 describe('missing plugins and mods in the log', () => {
   test('new Fabric wording names the missing mod (not "mods for another version")', () => {

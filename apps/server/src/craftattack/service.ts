@@ -347,7 +347,7 @@ export function createCraftAttackService(
     const dir = servers.dir(serverId);
     writePropertiesFile(dir, { ...CRAFT_ATTACK_PROPERTIES, motd: `§f${row.name}${MOTD_SUFFIX}` });
     const level = readPropertiesFile(dir).values['level-name'] || 'world';
-    writeSpawnPack(path.join(dir, path.basename(level)), undefined, locale());
+    writeSpawnPack(path.join(dir, path.basename(level)), undefined, locale(), row.version);
     setPublic(serverId, { enabled: true });
     equip(serverId);
     // New orders bring ViaVersion themselves: nothing to switch on later.
@@ -387,7 +387,7 @@ export function createCraftAttackService(
     await ask(`execute positioned ${spot.x} ${SPAWN_Y} ${spot.z} run function craftattack:build`);
     // Later datapack versions repair this island where it really stands.
     ctx.settings.setValue(SPOTS_KEY, { ...spots(), [serverId]: spot });
-    writeSpawnPack(worldOf(serverId), spot, locale());
+    writeSpawnPack(worldOf(serverId), spot, locale(), servers.row(serverId).version);
     await ask(`forceload remove ${box}`);
     servers.note(
       serverId,
@@ -609,7 +609,7 @@ export function createCraftAttackService(
   servers.onBeforeStart((serverId) => {
     try {
       if (!isCraftAttack(serverId)) return;
-      writeSpawnPack(worldOf(serverId), spots()[serverId], locale());
+      writeSpawnPack(worldOf(serverId), spots()[serverId], locale(), servers.row(serverId).version);
       equip(serverId);
       serverPackProperties(serverId);
     } catch (err) {
