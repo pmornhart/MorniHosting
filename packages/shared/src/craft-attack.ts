@@ -83,7 +83,7 @@ export interface MorniCraftSettings {
   readonly tpaLimitHours: number;
   readonly backLimit: number;
   readonly backLimitHours: number;
-  /** Everyone can found a clan (/clan): menu, clan base, clan chat, tag in the chat, no friendly fire. */
+  /** Everyone can found a clan (/clan): menu, clan base, clan chat, tag (up to 4 characters) before the name, no friendly fire. */
   readonly clans: boolean;
   readonly clanMaxMembers: number;
 }
