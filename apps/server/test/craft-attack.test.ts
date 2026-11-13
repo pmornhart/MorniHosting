@@ -446,6 +446,24 @@ describe('public statistics page', () => {
       payload: { ...state.settings, badges: true },
     });
     const packUrl = withPack.json<{ badgePackUrl: string }>().badgePackUrl;
+    // Entering the panel domain later reaches the plugin at once (no restart needed).
+    await t.app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      headers: authHeaders(admin),
+      payload: { panelDomain: 'panel.mornihosting.de' },
+    });
+    await waitFor(() =>
+      fs
+        .readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8')
+        .includes('panel.mornihosting.de'),
+    );
+    await t.app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      headers: authHeaders(admin),
+      payload: { panelDomain: '' },
+    });
     expect(packUrl).toMatch(
       /^https:\/\/mornihosting\.de\/api\/public\/packs\/craft-attack\.zip\?v=[0-9a-f]{10}$/,
     ); // eslint-disable-line ts-patterns/require-regex-example -- "https://mornihosting.de/api/public/packs/craft-attack.zip?v=0402fc9a41"
