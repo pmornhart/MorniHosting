@@ -159,6 +159,8 @@
 
 - MorniCraft 1.8.2 (13.11., Philip): Gefängnis-Gitter verbunden (`Moderation.joinBars`: Eisengitter mit north/south bzw. east/west, vorher einzelne Pfosten, durch die man laufen konnte; bestehende Zellen werden beim ersten `cell()` nach dem Start repariert). Grab: Kreuz rückt ans Namensschild (`Graves.TO_SIGN` 0,39, keine Lücke mehr). Gräber für alle sofort offen, jeder darf den Loot nehmen (Panel schreibt `grave-private-minutes: 0`, Plugin-Standard 0, Regler im Dashboard weg). Mit Test-Spieler auf Paper 1.17.1, 1.21.11, 26.1.2 geprüft (Gitter verbunden, kein Durchlaufen), gegen API 26.3 gebaut; Grab-Bilder per three.js nachgebaut.
 
+- MorniCraft 1.8.3 (13.11., Philip): Grab-Kreuz neu – glatter Stein (`SMOOTH_STONE`, Philip wählte aus vier Varianten) mit polierten Andesit-Kappen an Spitze, Armen und Fuß, Moos am Sockel; Namensbrett klein (0,44 × 0,22) genau an der Kreuzung (`Graves.crossSign`: Fichtenholz-Block-Display + Text-Display, Schrift passt sich der Namenslänge an), kein Wandschild mehr. Mit Test-Spielern auf Paper 1.21.11 und 26.1.2 geprüft (Text-Display mit Name, 9 Block-Displays, kein Wandschild, fremder Spieler öffnet das Grab sofort), gegen API 26.3 gebaut; Bilder per three.js nachgebaut.
+
 ## Lokal testen (Sandbox)
 
 - Backend simuliert: `MH_SECRET=… MH_DATA_DIR=./data MH_DOCKER_DRIVER=fake MH_DEMO=true pnpm --filter @mornihosting/server dev`
