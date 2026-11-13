@@ -32,6 +32,12 @@ final class DefaultCommands {
             c(en, "/tpahere <spieler>", "Fragt, ob jemand zu dir kommt", "Asks someone to come to you"),
             c(en, "/tpaccept", "Anfrage annehmen", "Accept a request"),
             c(en, "/tpdeny", "Anfrage ablehnen", "Decline a request"))),
+        new Settings.Group("Clan", List.of(
+            c(en, "/clan", "Clan-Menü: gründen, Mitglieder, Basis", "Clan menu: found one, members, base"),
+            c(en, "/clan create <name> [kürzel]", "Eigenen Clan gründen", "Found your own clan"),
+            c(en, "/clan invite <spieler>", "Jemanden einladen", "Invite someone"),
+            c(en, "/clan base", "Zur Clan-Basis", "To the clan base"),
+            c(en, "/cc <text>", "Clan-Chat", "Clan chat"))),
         new Settings.Group("Chat", List.of(
             c(en, "/msg <spieler> <text>", "Private Nachricht", "Private message"),
             c(en, "/r <text>", "Auf die letzte Nachricht antworten", "Reply to the last message"),

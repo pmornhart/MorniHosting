@@ -13,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MorniCraft extends JavaPlugin {
   private static final List<String> COMMANDS = List.of("spawn", "sethome", "home", "homes", "delhome", "back", "tpa",
       "tpahere", "tpaccept", "tpdeny", "msg", "r", "mail", "ignore", "afk", "seen", "near", "getpos", "ping", "info",
-      "rules", "leiste", "team", "streamer", "abzeichen", "gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen", "rang", "teamdashboard", "mornicraft");
+      "rules", "leiste", "team", "streamer", "abzeichen", "gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen", "rang", "teamdashboard", "mornicraft", "clan", "cc");
 
   private Settings settings;
   private Ui ui;
@@ -32,6 +32,8 @@ public final class MorniCraft extends JavaPlugin {
   private Combat combat;
   private RankCommands rankCommands;
   private Seats seats;
+  private Limits limits;
+  private Clans clans;
   private TeamBoard teamBoard;
 
   @Override
@@ -69,6 +71,9 @@ public final class MorniCraft extends JavaPlugin {
     pm.registerEvents(combat, this);
     pm.registerEvents(rankCommands, this);
     pm.registerEvents(new GamemodeGuard(this), this);
+    limits = new Limits(this);
+    clans = new Clans(this);
+    pm.registerEvents(clans, this);
     seats = new Seats(this);
     pm.registerEvents(seats, this);
     pm.registerEvents(new UpdateCheck(this), this);
@@ -135,6 +140,14 @@ public final class MorniCraft extends JavaPlugin {
 
   TeamBoard teamBoard() {
     return teamBoard;
+  }
+
+  Limits limits() {
+    return limits;
+  }
+
+  Clans clans() {
+    return clans;
   }
 
   RankCommands rankCommands() {

@@ -3277,7 +3277,9 @@
       "rules": "Regeln",
       "ranks": "Ränge",
       "graves": "Gräber",
-      "combat": "Kampf-System"
+      "combat": "Kampf-System",
+      "limits": "Begrenzungen",
+      "clans": "Clans"
     },
     "fields": {
       "tpa": "Teleport-Anfragen (/tpa)",
@@ -3302,7 +3304,19 @@
       "graves": "Gräber",
       "gravePrivateMinutes": "Nur für den Toten",
       "combatSeconds": "Im Kampf nach einem Treffer",
-      "sit": "Sitzen auf Treppen und Stufen"
+      "sit": "Sitzen auf Treppen und Stufen",
+      "spawnCommand": "Zum Spawn (/spawn)",
+      "homes": "Zuhause (/home, /sethome)",
+      "spawnLimit": "/spawn",
+      "spawnLimitHours": "… innerhalb von",
+      "homeLimit": "/home und Clan-Basis",
+      "homeLimitHours": "… innerhalb von",
+      "tpaLimit": "Teleport-Anfragen",
+      "tpaLimitHours": "… innerhalb von",
+      "backLimit": "/back",
+      "backLimitHours": "… innerhalb von",
+      "clans": "Clans",
+      "clanMaxMembers": "Mitglieder pro Clan"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – mit Knöpfen zum Annehmen",
@@ -3327,7 +3341,19 @@
       "graves": "Wer stirbt, bekommt ein Grab mit Kopf, allen Sachen und Erfahrung – Rechtsklick holt alles zurück",
       "gravePrivateMinutes": "So lange darf nur der Tote (und das Team) das Grab öffnen, danach alle",
       "combatSeconds": "Wer einen Spieler trifft oder getroffen wird, ist so lange im Kampf: kein Teleport, keine Befehle außer Chat, keine Start-Elytra – und wer sich dann ausloggt, stirbt (Sachen ins Grab). 0 = aus.",
-      "sit": "Rechtsklick mit leerer Hand setzt dich hin, Schleichen = aufstehen"
+      "sit": "Rechtsklick mit leerer Hand setzt dich hin, Schleichen = aufstehen",
+      "spawnCommand": "Aus: niemand kann sich per Befehl zum Spawn teleportieren",
+      "homes": "Aus: kein /sethome, /home, /homes und keine Clan-Basis",
+      "spawnLimit": "Wie oft jeder /spawn benutzen darf – z. B. 1× pro Stunde oder 3× am Tag. Admins sind frei.",
+      "spawnLimitHours": "Zeitraum für die Begrenzung (24 Std. = ein Tag, 168 Std. = eine Woche)",
+      "homeLimit": "Wie oft jeder zu einem Zuhause oder zur Clan-Basis teleportieren darf",
+      "homeLimitHours": "Zeitraum für die Begrenzung",
+      "tpaLimit": "Wie viele /tpa- und /tpahere-Anfragen jeder schicken darf",
+      "tpaLimitHours": "Zeitraum für die Begrenzung",
+      "backLimit": "Wie oft jeder mit /back zurück darf",
+      "backLimitHours": "Zeitraum für die Begrenzung",
+      "clans": "Jeder kann mit /clan einen Clan gründen: Menü, Clan-Basis, Clan-Chat /cc, Kürzel im Chat, kein Schaden unter Mitgliedern",
+      "clanMaxMembers": "Wie viele Spieler höchstens in einem Clan sein dürfen (mit Anführer)"
     },
     "units": {
       "teleportDelay": "{{n}} s",
@@ -3335,7 +3361,18 @@
       "spawnRadius": "{{n}} Blöcke",
       "elytraRadius": "{{n}} Blöcke",
       "gravePrivateMinutes": "{{n}} Min.",
-      "combatSeconds": "{{n}} s"
+      "combatSeconds": "{{n}} s",
+      "spawnLimit": "{{n}}×",
+      "homeLimit": "{{n}}×",
+      "tpaLimit": "{{n}}×",
+      "backLimit": "{{n}}×",
+      "spawnLimitHours": "{{n}} Std.",
+      "homeLimitHours": "{{n}} Std.",
+      "tpaLimitHours": "{{n}} Std.",
+      "backLimitHours": "{{n}} Std.",
+      "clanMaxMembers": "{{n}}",
+      "unlimited": "unbegrenzt",
+      "off": "aus"
     },
     "rulesHint": "Eine Regel pro Zeile – erscheinen bei /rules.",
     "live": "Speichern gilt sofort, auch während der Server läuft.",

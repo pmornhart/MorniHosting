@@ -573,6 +573,7 @@ final class Ranks implements Listener {
         who = r.badge().append(Component.text(" · ", NamedTextColor.GRAY)).append(name);
       }
       if (streamer.showsLive(source)) who = streamer.liveMark().append(who);
+      who = who.append(plugin.clans().tagFor(source.getUniqueId()));
       return who.append(Component.text(" » ", NamedTextColor.GRAY)).append(text);
     });
   }

@@ -79,6 +79,12 @@ commands:
       aliases: [inspect, moderation],
       permission: mornicraft.moderate,
     }
+  clan:
+    description: Clan-Menü und Clan-Befehle
+    aliases: [clans]
+  cc:
+    description: Im Clan-Chat schreiben
+    aliases: [clanchat]
   teamdashboard:
     {
       description: 'Team-Dashboard im Browser (ab Supporter): wer online ist, Gefängnis, Stumm …',

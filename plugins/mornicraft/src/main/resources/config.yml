@@ -18,6 +18,20 @@ link: ''
 teleport-delay: 5
 # Wie viele Zuhause jeder mit /sethome speichern darf (Admins unbegrenzt)
 max-homes: 5
+# /spawn und /home (mit /sethome, /homes, /delhome) ein- oder ausschalten
+spawn-command: true
+homes: true
+# Begrenzungen: wie oft ein Befehl in einer Zeit benutzt werden darf (uses: 0 = unbegrenzt, hours = Zeitraum).
+# Beispiel: einmal pro Stunde = uses: 1, hours: 1 · dreimal am Tag = uses: 3, hours: 24. Admins und OPs sind frei.
+limits:
+  spawn: { uses: 0, hours: 24 }
+  home: { uses: 0, hours: 24 }
+  tpa: { uses: 0, hours: 24 }
+  back: { uses: 0, hours: 24 }
+# Clans: /clan (Menü), Clan-Basis, Clan-Chat /cc, Kürzel im Chat, kein Schaden unter Clan-Mitgliedern
+clans:
+  enabled: true
+  max-members: 10
 tpa: true
 back: true
 

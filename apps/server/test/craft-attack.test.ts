@@ -788,3 +788,34 @@ describe('team dashboard (/teamdashboard)', () => {
     expect(changed.rules).toEqual(['Sei nett', 'Kein Griefing']);
   });
 });
+
+describe('MorniCraft limits, switches and clans (Philip: "einmal pro Stunde, dreimal am Tag")', () => {
+  const ctx = { language: 'de' as const, serverName: 'Test', timezone: 'Europe/Berlin', link: '' };
+  it('writes limits per command and hides switched-off commands from /info', () => {
+    const settings = morniCraftSettingsSchema.parse({
+      ...withDefaults(undefined),
+      spawnLimit: 1,
+      spawnLimitHours: 1,
+      tpaLimit: 3,
+      homes: false,
+      clans: false,
+    });
+    const config = JSON.parse(morniCraftConfig(settings, ctx).split('\n').slice(1).join('\n'));
+    expect(config.limits.spawn).toEqual({ uses: 1, hours: 1 });
+    expect(config.limits.tpa).toEqual({ uses: 3, hours: 24 });
+    expect(config.limits.home.uses).toBe(0);
+    expect(config.homes).toBe(false);
+    expect(config.clans).toEqual({ enabled: false, 'max-members': 10 });
+    const uses = config.groups.flatMap((g: { commands: { use: string }[] }) => g.commands.map((c) => c.use));
+    expect(uses).toContain('/spawn');
+    expect(uses).not.toContain('/sethome [name]');
+    expect(uses.some((u: string) => u.startsWith('/clan'))).toBe(false);
+  });
+  it('reads older settings without the new fields', () => {
+    const { spawnCommand: _s, clans: _c, spawnLimit: _l, ...old } = withDefaults(undefined);
+    const parsed = morniCraftSettingsSchema.parse(old);
+    expect(parsed.spawnCommand).toBe(true);
+    expect(parsed.clans).toBe(true);
+    expect(parsed.spawnLimit).toBe(0);
+  });
+});

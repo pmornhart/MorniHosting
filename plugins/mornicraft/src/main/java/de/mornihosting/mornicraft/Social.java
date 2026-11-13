@@ -81,6 +81,7 @@ final class Social implements Listener {
     open.remove(from.getUniqueId());
     open.put(from.getUniqueId(), new Request(from.getUniqueId(), here, System.currentTimeMillis()));
     from.sendMessage(ui().ok("tpa.sent", Ui.v("name", to.getName())));
+    plugin.limits().count(from, "tpa");
     Component accept = Ui.button(ui().bare("tpa.accept"), Ui.ACCENT, ui().bare("tpa.accept.hover"),
         ClickEvent.runCommand("/tpaccept " + from.getName()));
     Component deny = Ui.button(ui().bare("tpa.deny"), Ui.BAD, ui().bare("tpa.deny.hover"),

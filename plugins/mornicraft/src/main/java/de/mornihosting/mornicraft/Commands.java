@@ -97,13 +97,30 @@ final class Commands implements TabExecutor {
       return true;
     }
     switch (name) {
-      case "spawn" -> plugin.teleporter().teleport(p, ui().bare("dest.spawn"), SpawnArea::spawn, null);
-      case "sethome" -> setHome(p, args.length > 0 ? args[0] : DEFAULT_HOME);
-      case "home" -> home(p, args.length > 0 ? args[0] : null);
-      case "homes" -> plugin.homeMenu().open(p);
+      case "spawn" -> {
+        if (!s().spawnCommand()) return off(p);
+        if (!plugin.limits().allows(p, "spawn")) return true;
+        plugin.teleporter().teleport(p, ui().bare("dest.spawn"), SpawnArea::spawn,
+            () -> plugin.limits().count(p, "spawn"));
+      }
+      case "sethome" -> {
+        if (!s().homes()) return off(p);
+        setHome(p, args.length > 0 ? args[0] : DEFAULT_HOME);
+      }
+      case "home" -> {
+        if (!s().homes()) return off(p);
+        home(p, args.length > 0 ? args[0] : null);
+      }
+      case "homes" -> {
+        if (!s().homes()) return off(p);
+        plugin.homeMenu().open(p);
+      }
+      case "clan", "clans" -> plugin.clans().command(p, args);
+      case "cc" -> plugin.clans().chat(p, String.join(" ", args));
       case "streamer" -> plugin.streamer().command(p, args);
       case "abzeichen" -> plugin.ranks().badgesCommand(p);
       case "delhome" -> {
+        if (!s().homes()) return off(p);
         if (args.length < 1) return usage(p, "/delhome <name>");
         delHome(p, args[0]);
       }
@@ -111,6 +128,7 @@ final class Commands implements TabExecutor {
       case "tpa", "tpahere" -> {
         if (!s().tpa()) return off(p);
         if (args.length < 1) return usage(p, "/" + name + " <spieler>");
+        if (!plugin.limits().allows(p, "tpa")) return true;
         Player to = online(p, args[0]);
         if (to == null) return true;
         if (to.equals(p)) {
@@ -221,7 +239,9 @@ final class Commands implements TabExecutor {
       p.sendMessage(ui().fail("home.world"));
       return;
     }
-    plugin.teleporter().teleport(p, ui().bare("dest.home", Ui.v("name", key)), () -> to, null);
+    if (!plugin.limits().allows(p, "home")) return;
+    plugin.teleporter().teleport(p, ui().bare("dest.home", Ui.v("name", key)), () -> to,
+        () -> plugin.limits().count(p, "home"));
   }
 
   void delHome(Player p, String name) {
@@ -246,7 +266,8 @@ final class Commands implements TabExecutor {
       p.sendMessage(ui().fail("back.none"));
       return;
     }
-    plugin.teleporter().teleport(p, ui().bare("dest.back"), () -> to, null);
+    if (!plugin.limits().allows(p, "back")) return;
+    plugin.teleporter().teleport(p, ui().bare("dest.back"), () -> to, () -> plugin.limits().count(p, "back"));
   }
 
   // ── Mail ────────────────────────────────────────────────────────────────────────────
@@ -430,6 +451,12 @@ final class Commands implements TabExecutor {
       options.addAll(List.of("an", "aus", "ip", "koordinaten", "nachrichten", "live"));
     } else if (name.equals("mail") && args.length == 1) {
       options.addAll(List.of("send", "read"));
+    } else if (name.equals("clan") && args.length == 1) {
+      options.addAll(List.of("create", "invite", "accept", "deny", "base", "setbase", "info", "list", "leave", "kick",
+          "disband", "tag", "pvp", "leader", "chat"));
+    } else if (name.equals("clan") && args.length == 2
+        && List.of("invite", "kick", "leader").contains(args[0].toLowerCase(Locale.ROOT))) {
+      Bukkit.getOnlinePlayers().forEach(o -> options.add(o.getName()));
     } else if (name.equals("mornicraft") && args.length == 1) {
       options.add("reload");
     } else if ((name.equals("tpaccept") || name.equals("tpdeny")) && args.length == 1 && sender instanceof Player p) {

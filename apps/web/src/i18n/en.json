@@ -3277,7 +3277,9 @@
       "rules": "Rules",
       "ranks": "Ranks",
       "graves": "Graves",
-      "combat": "Combat log"
+      "combat": "Combat log",
+      "limits": "Limits",
+      "clans": "Clans"
     },
     "fields": {
       "tpa": "Teleport requests (/tpa)",
@@ -3302,7 +3304,19 @@
       "graves": "Graves",
       "gravePrivateMinutes": "Only for the dead player",
       "combatSeconds": "In combat after a hit",
-      "sit": "Sit on stairs and slabs"
+      "sit": "Sit on stairs and slabs",
+      "spawnCommand": "To the spawn (/spawn)",
+      "homes": "Homes (/home, /sethome)",
+      "spawnLimit": "/spawn",
+      "spawnLimitHours": "… within",
+      "homeLimit": "/home and clan base",
+      "homeLimitHours": "… within",
+      "tpaLimit": "Teleport requests",
+      "tpaLimitHours": "… within",
+      "backLimit": "/back",
+      "backLimitHours": "… within",
+      "clans": "Clans",
+      "clanMaxMembers": "Members per clan"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – with buttons to accept",
@@ -3327,7 +3341,19 @@
       "graves": "Whoever dies gets a grave with their head, all their things and experience – right click gets it all back",
       "gravePrivateMinutes": "For this long only the dead player (and the team) may open the grave, then anyone",
       "combatSeconds": "Whoever hits a player or is hit stays in combat this long: no teleports, only chat commands, no start elytra – logging out then means death (things go into the grave). 0 = off.",
-      "sit": "Right click with an empty hand to sit, sneak to stand up"
+      "sit": "Right click with an empty hand to sit, sneak to stand up",
+      "spawnCommand": "Off: nobody can teleport to the spawn by command",
+      "homes": "Off: no /sethome, /home, /homes and no clan base",
+      "spawnLimit": "How often everyone may use /spawn – e.g. once an hour or 3 times a day. Admins are exempt.",
+      "spawnLimitHours": "Time span of the limit (24 h = a day, 168 h = a week)",
+      "homeLimit": "How often everyone may teleport to a home or the clan base",
+      "homeLimitHours": "Time span of the limit",
+      "tpaLimit": "How many /tpa and /tpahere requests everyone may send",
+      "tpaLimitHours": "Time span of the limit",
+      "backLimit": "How often everyone may go back with /back",
+      "backLimitHours": "Time span of the limit",
+      "clans": "Everyone can found a clan with /clan: menu, clan base, clan chat /cc, tag in the chat, no damage between members",
+      "clanMaxMembers": "How many players a clan may have at most (leader included)"
     },
     "units": {
       "teleportDelay": "{{n}} s",
@@ -3335,7 +3361,18 @@
       "spawnRadius": "{{n}} blocks",
       "elytraRadius": "{{n}} blocks",
       "gravePrivateMinutes": "{{n}} min",
-      "combatSeconds": "{{n}} s"
+      "combatSeconds": "{{n}} s",
+      "spawnLimit": "{{n}}×",
+      "homeLimit": "{{n}}×",
+      "tpaLimit": "{{n}}×",
+      "backLimit": "{{n}}×",
+      "spawnLimitHours": "{{n}} h",
+      "homeLimitHours": "{{n}} h",
+      "tpaLimitHours": "{{n}} h",
+      "backLimitHours": "{{n}} h",
+      "clanMaxMembers": "{{n}}",
+      "unlimited": "no limit",
+      "off": "off"
     },
     "rulesHint": "One rule per line – shown with /rules.",
     "live": "Saving applies at once, also while the server runs.",
