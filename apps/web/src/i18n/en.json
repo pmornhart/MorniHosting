@@ -3447,7 +3447,9 @@
       "badgesHint": "A coloured tag with an own pixel icon and the rank's name. Players are offered a tiny resource pack when they join; whoever declines (and Bedrock) sees the symbols.",
       "badgesNoDomain": "Needs the panel's domain (admin area → Domain) so players can load the resource pack. Until then: symbols.",
       "badgesRequired": "Badges for everyone (required)",
-      "badgesRequiredHint": "Java players load the badges automatically when joining – no \"no\" button. So everyone sees the badges. Bedrock shows symbols."
+      "badgesRequiredHint": "Java players load the badges automatically when joining – no \"no\" button. So everyone sees the badges. Bedrock shows symbols.",
+      "badgeText": "Rank name next to the icon",
+      "badgeTextHint": "Off: the badge shows only the icon (e.g. the crown). On: icon and name, e.g. “OWNER”."
     }
   },
   "teamBoard": {

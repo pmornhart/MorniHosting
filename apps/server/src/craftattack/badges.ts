@@ -150,10 +150,29 @@ function lettersOf(name: string): string[] {
   return [...name.toUpperCase()].filter((ch) => FONT[ch] !== undefined).slice(0, MAX_TEXT);
 }
 
-/** One badge: a tag in the rank's (darkened) colour with rounded corners, the icon, the name in white. */
+/** Only the icon, nothing around it (Philip: "nur noch die Krone"); one pixel of room to the next letter. */
+function iconPicture(icon: readonly string[]): Picture {
+  const width = ICON + 1;
+  const pixels = Buffer.alloc(width * HEIGHT * 4);
+  icon.forEach((row, y) =>
+    [...row].forEach((cell, x) => {
+      const ink = INK[cell];
+      if (ink) pixels.set([...ink, 255], ((TAG_TOP + y) * width + x) * 4);
+    }),
+  );
+  return { width, height: HEIGHT, pixels };
+}
+
+/**
+ * One badge. Standard: only the rank's icon. With `text`: a tag in the rank's (darkened) colour with rounded corners,
+ * the icon and the name in white.
+ */
 export function badgePicture(
   rank: Pick<MorniCraftRank, 'name' | 'symbol' | 'color'> & { readonly isDefault?: boolean },
+  options: { readonly text?: boolean } = { text: true },
 ): Picture {
+  const plain = ICONS[iconOf(rank)];
+  if (options.text === false && plain) return iconPicture(plain);
   const letters = lettersOf(rank.name);
   const icon = ICONS[iconOf(rank)] ?? null;
   const glyphs = letters.map((ch) => FONT[ch] ?? []);
@@ -308,7 +327,10 @@ export interface BadgePack {
 }
 
 /** The resource pack with one badge per rank. */
-export function badgePack(ranks: readonly MorniCraftRank[]): BadgePack {
+export function badgePack(
+  ranks: readonly MorniCraftRank[],
+  options: { readonly text?: boolean } = {},
+): BadgePack {
   const badges = ranks.map((rank, i) => ({
     rank,
     char: String.fromCharCode(FIRST_CHAR + i),
@@ -335,7 +357,10 @@ export function badgePack(ranks: readonly MorniCraftRank[]): BadgePack {
   const zip = zipOf([
     { name: 'pack.mcmeta', data: Buffer.from(JSON.stringify(meta, null, 2)) },
     { name: 'assets/minecraft/font/default.json', data: Buffer.from(JSON.stringify(font)) },
-    ...badges.map(({ rank, file }) => ({ name: `${FONT_FOLDER}/${file}`, data: pngOf(badgePicture(rank)) })),
+    ...badges.map(({ rank, file }) => ({
+      name: `${FONT_FOLDER}/${file}`,
+      data: pngOf(badgePicture(rank, { text: options.text ?? true })),
+    })),
   ]);
   return {
     zip,

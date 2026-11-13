@@ -58,6 +58,8 @@ export interface MorniCraftSettings {
   readonly badges: boolean;
   /** Java players must load the badge pack (no "no" button) – so everyone sees the badges. */
   readonly badgesRequired: boolean;
+  /** The rank's name next to the icon on the badge ("👑 OWNER"); off = only the icon (Philip: "nur noch die Krone"). */
+  readonly badgeText: boolean;
   /** Whoever dies gets a grave with all their things and experience (and their head). */
   /** Right click on stairs and slabs (empty hand) to sit down. */
   readonly sit: boolean;
@@ -270,6 +272,7 @@ export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
   ranks: DEFAULT_RANKS,
   badges: true,
   badgesRequired: true,
+  badgeText: false,
   sit: true,
   graves: true,
   gravePrivateMinutes: 15,
@@ -788,6 +791,7 @@ export const TEAM_SETTING_KEYS = [
   'gravePrivateMinutes',
   'badges',
   'badgesRequired',
+  'badgeText',
   'ranks',
 ] as const satisfies readonly (keyof MorniCraftSettings)[];
 export type TeamSettings = Pick<MorniCraftSettings, (typeof TEAM_SETTING_KEYS)[number]>;

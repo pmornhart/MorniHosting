@@ -3447,7 +3447,9 @@
       "badgesHint": "Farbiges Schild mit eigenem Pixel-Icon und Rang-Name. Spieler bekommen beim Betreten ein winziges Texturpaket angeboten; wer ablehnt (und Bedrock), sieht die Symbole.",
       "badgesNoDomain": "Braucht die Domain des Panels (Admin-Bereich → Domain), damit Spieler das Texturpaket laden können. Bis dahin: Symbole.",
       "badgesRequired": "Abzeichen für alle (Pflicht)",
-      "badgesRequiredHint": "Java-Spieler laden die Abzeichen beim Betreten automatisch – ohne „Nein“-Knopf. So sieht jeder die Abzeichen. Bedrock zeigt Symbole."
+      "badgesRequiredHint": "Java-Spieler laden die Abzeichen beim Betreten automatisch – ohne „Nein“-Knopf. So sieht jeder die Abzeichen. Bedrock zeigt Symbole.",
+      "badgeText": "Rang-Name neben dem Symbol",
+      "badgeTextHint": "Aus: im Abzeichen steht nur das Symbol (z. B. die Krone). An: Symbol und Name, z. B. „OWNER“."
     }
   },
   "teamBoard": {

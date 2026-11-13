@@ -155,6 +155,8 @@
 
 - MorniCraft 1.8.1 – Clan-Kürzel vor dem Namen (13.11., Philip: „Tags bis zu 4 Buchstaben, vor dem Namen“): Kürzel 2–4 Zeichen (`TAG` in `Clans.java`, ohne Angabe die ersten 4 Buchstaben des Namens), steht jetzt vor dem Namen – im Chat `[Abzeichen] [MC] Name » …`, in der Tab-Liste und über dem Kopf (eigenes Team pro Clan-Mitglied wie bei LIVE, `Ranks.paint`, Präfix = Rang + Kürzel); jede Clan-Änderung malt die Teams neu. Mit Test-Spielern auf Paper 1.17.1, 1.21.11, 26.1.2 geprüft (Chat-Reihenfolge, Team-Präfix `[MC] `, 5 Zeichen abgelehnt), gegen API 26.3 gebaut.
 
+- Abzeichen nur mit Symbol (13.11., Philip: „das OWNER weg, nur noch die Krone, Text optional“): `badgePicture(rank, {text})` (`craftattack/badges.ts`) zeichnet standardmäßig nur das 7×7-Icon ohne Schild (`iconPicture`), mit `text` wie bisher Schild + Name. Neue Einstellung `badgeText` (Standard aus, `TEAM_SETTING_KEYS`), Schalter „Rang-Name neben dem Symbol“ mit Vorschau im Ränge-Bereich (Panel und Team-Dashboard), Paket-Schlüssel enthält die Einstellung (neue SHA-1 → Spieler laden neu). Kein Plugin-Update nötig. 375 Tests.
+
 ## Lokal testen (Sandbox)
 
 - Backend simuliert: `MH_SECRET=… MH_DATA_DIR=./data MH_DOCKER_DRIVER=fake MH_DEMO=true pnpm --filter @mornihosting/server dev`

@@ -282,6 +282,8 @@ export function MorniCraftCard({ serverId }: { serverId: string }): ReactElement
         onBadges={(on) => set('badges', on)}
         badgesRequired={draft.badgesRequired}
         onBadgesRequired={(on) => set('badgesRequired', on)}
+        badgeText={draft.badgeText}
+        onBadgeText={(on) => set('badgeText', on)}
         onChange={(ranks) => set('ranks', ranks)}
       />
       <div className="flex flex-wrap items-center justify-between gap-3">

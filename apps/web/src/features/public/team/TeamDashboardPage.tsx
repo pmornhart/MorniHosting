@@ -649,6 +649,8 @@ function SettingsCard({
         onBadges={(on) => setDraft({ ...draft, badges: on })}
         badgesRequired={draft.badgesRequired}
         onBadgesRequired={(on) => setDraft({ ...draft, badgesRequired: on })}
+        badgeText={draft.badgeText}
+        onBadgeText={(on) => setDraft({ ...draft, badgeText: on })}
         onChange={(ranks) => setDraft({ ...draft, ranks })}
       />
       <div className="flex flex-wrap items-center justify-end gap-3">

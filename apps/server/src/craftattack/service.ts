@@ -291,11 +291,15 @@ export function createCraftAttackService(
   /** The badges' resource pack of a server, built from its ranks (kept until the ranks change). */
   const packs = new Map<string, { key: string; pack: BadgePack }>();
   const packOf = (serverId: string): BadgePack => {
-    const ranks = settingsOf(serverId).ranks.filter(hasBadge);
-    const key = JSON.stringify(ranks.map((r) => [r.id, r.name, r.symbol, r.color, r.isDefault]));
+    const settings = settingsOf(serverId);
+    const ranks = settings.ranks.filter(hasBadge);
+    const key = JSON.stringify([
+      settings.badgeText,
+      ranks.map((r) => [r.id, r.name, r.symbol, r.color, r.isDefault]),
+    ]);
     const cached = packs.get(serverId);
     if (cached?.key === key) return cached.pack;
-    const pack = badgePack(ranks);
+    const pack = badgePack(ranks, { text: settings.badgeText });
     packs.set(serverId, { key, pack });
     return pack;
   };

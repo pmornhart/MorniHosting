@@ -135,6 +135,7 @@ export const morniCraftSettingsSchema = z.object({
   ranks: ranksSchema,
   badges: z.boolean(),
   badgesRequired: z.boolean(),
+  badgeText: z.boolean().default(false),
   sit: z.boolean().default(true),
   graves: z.boolean(),
   gravePrivateMinutes: z.number().int().min(0).max(120),

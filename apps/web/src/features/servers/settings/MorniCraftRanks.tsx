@@ -50,9 +50,25 @@ function newId(name: string, taken: readonly string[]): string {
 
 /** "♛ Owner · Morni » Hallo!" as the chat shows it. */
 /** The rank in front of the name: a badge (with the resource pack) or the symbol and name in colour. */
-function RankLabel({ rank, badge }: { rank: MorniCraftRank; badge: boolean }): ReactElement | null {
+function RankLabel({
+  rank,
+  badge,
+  text,
+}: {
+  rank: MorniCraftRank;
+  badge: boolean;
+  text: boolean;
+}): ReactElement | null {
   // With badges everyone has one, also plain players (the rank for everyone else); symbols only with a symbol.
   if (!rank.symbol && !(badge && rank.isDefault)) return null;
+  if (badge && !text) {
+    // Only the icon (Philip: "nur noch die Krone").
+    return (
+      <span className="mr-1.5 align-middle" style={{ color: rank.color }}>
+        {rank.symbol || '☺'}
+      </span>
+    );
+  }
   if (badge) {
     return (
       <span
@@ -81,15 +97,18 @@ export function ChatPreview({
   rank,
   player,
   badge = false,
+  text = true,
 }: {
   rank: MorniCraftRank;
   player: string;
   badge?: boolean;
+  /** The rank's name on the badge too. */
+  text?: boolean;
 }): ReactElement {
   const { t } = useTranslation();
   return (
     <div className="overflow-x-auto rounded-[8px] bg-[#1d1f1e]/90 px-3 py-2 font-mono text-[13px] leading-snug text-white shadow-inner">
-      <RankLabel rank={rank} badge={badge} />
+      <RankLabel rank={rank} badge={badge} text={text} />
       <span style={{ color: rank.color }}>{player}</span>
       <span className="text-[#aaaaaa]"> » </span>
       <span>{t('mornicraft.ranks.previewText')}</span>
@@ -311,6 +330,8 @@ export function MorniCraftRanks({
   onBadges,
   badgesRequired,
   onBadgesRequired,
+  badgeText,
+  onBadgeText,
   onChange,
   knownNames = [],
 }: {
@@ -326,6 +347,8 @@ export function MorniCraftRanks({
   onBadges: (on: boolean) => void;
   badgesRequired: boolean;
   onBadgesRequired: (on: boolean) => void;
+  badgeText: boolean;
+  onBadgeText: (on: boolean) => void;
   onChange: (ranks: MorniCraftRank[]) => void;
 }): ReactElement {
   const { t } = useTranslation();
@@ -422,6 +445,20 @@ export function MorniCraftRanks({
           />
         </div>
       )}
+      {badges && (
+        <div className="flex items-center justify-between gap-3 rounded-[10px] border bg-card px-3 py-2.5">
+          <div className="grid min-w-0 gap-1.5">
+            <div className="text-[13px] font-medium">{t('mornicraft.ranks.badgeText')}</div>
+            <div className="text-[12px] text-muted-foreground">{t('mornicraft.ranks.badgeTextHint')}</div>
+            {list[0] && <ChatPreview rank={list[0]} player={previewName(list[0])} badge text={badgeText} />}
+          </div>
+          <Switch
+            checked={badgeText}
+            onCheckedChange={onBadgeText}
+            aria-label={t('mornicraft.ranks.badgeText')}
+          />
+        </div>
+      )}
       <div className="grid gap-2">
         {list.map((r, i) => {
           const isOpen = open === r.id;
@@ -493,7 +530,12 @@ export function MorniCraftRanks({
               {isOpen ? (
                 <>
                   <div className="px-4 pb-3">
-                    <ChatPreview rank={r} player={previewName(r)} badge={badges && badgesReady} />
+                    <ChatPreview
+                      rank={r}
+                      player={previewName(r)}
+                      badge={badges && badgesReady}
+                      text={badgeText}
+                    />
                   </div>
                   <div className="flex items-center justify-between gap-3 border-t px-4 py-2.5">
                     <div className="min-w-0">
