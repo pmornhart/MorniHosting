@@ -14,7 +14,9 @@ function namedPage<K extends string>(
 
 const DiscordLinkPageLazy = namedPage(() => import('@/features/admin/DiscordLinkPage'), 'DiscordLinkPage');
 const ApprovalsPageLazy = namedPage(() => import('@/features/approvals/ApprovalsPage'), 'ApprovalsPage');
-const AccountPageLazy = namedPage(() => import('@/features/admin/AccountPage'), 'AccountPage');
+const AccountPageLazy = lazyPage<object>(async () => ({
+  default: (await import('@/features/admin/AccountPage')).AccountPage,
+}));
 const AuditPageLazy = namedPage(() => import('@/features/admin/AuditPage'), 'AuditPage');
 const NotificationsPageLazy = namedPage(
   () => import('@/features/admin/NotificationsPage'),

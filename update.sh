@@ -97,6 +97,24 @@ remove_leftovers() {
   docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_mornihosting(-[a-z-]+)?$' | xargs -r docker rm -f >/dev/null 2>&1 || true
 }
 
+# Bauen mit zweitem und drittem Versuch: Bricht der Docker-Baudienst (BuildKit) mittendrin ab
+# ("failed to receive status … EOF" – meist zu wenig freier Speicher), wird aufgeräumt und noch einmal gebaut,
+# beim dritten Mal mit dem alten Builder ohne BuildKit (braucht weniger Speicher).
+build_panel() {
+  local attempt
+  for attempt in 1 2 3; do
+    if [ "${attempt}" -lt 3 ]; then
+      MH_BUILD_VERSION="$(mh_version)" docker compose build --quiet panel && return 0
+    else
+      MH_BUILD_VERSION="$(mh_version)" COMPOSE_BAKE=false DOCKER_BUILDKIT=0 docker compose build --quiet panel && return 0
+    fi
+    msg_info "Bauen abgebrochen (Versuch ${attempt}/3, freier Speicher: $(free -m 2>/dev/null | awk '/^Mem:/{print $7}') MB) – nächster Versuch"
+    docker builder prune -f >/dev/null 2>&1 || true
+    sleep 10
+  done
+  return 1
+}
+
 step "build"
 # Das Panel folgt dem Stand von main: gebaut wird aus genau dem eben geholten Code. Ein fertiges Image
 # (ghcr.io) nur, wenn in der .env ausdrücklich MH_IMAGE_TAG steht.
@@ -108,7 +126,7 @@ if grep -q '^MH_IMAGE_TAG=' .env 2>/dev/null; then
   docker compose up -d --quiet-pull >/dev/null || { remove_leftovers; docker compose up -d --quiet-pull >/dev/null; }
 else
   msg_info "Neues Panel wird gebaut (dauert ein paar Minuten)"
-  MH_BUILD_VERSION="$(mh_version)" docker compose build --quiet panel
+  build_panel
   # Hytale hat kein offizielles Image: das kleine Rezept aus images/hytale wird mitgebaut (Fehler stören das Update nicht).
   docker build --quiet -t ghcr.io/pmornhart/mornihosting-hytale:latest images/hytale >/dev/null || msg_info "Hytale-Image konnte nicht gebaut werden"
   msg_ok "Panel gebaut"

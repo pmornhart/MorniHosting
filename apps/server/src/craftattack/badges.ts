@@ -303,7 +303,7 @@ interface ZipEntry {
 }
 
 /** Files as a ZIP archive (stored, not compressed – the pack is a few kilobytes). Always the same bytes for the same files. */
-export function zipOf(entries: readonly ZipEntry[]): Buffer {
+function zipOf(entries: readonly ZipEntry[]): Buffer {
   const le = (n: number, bytes: 2 | 4): Buffer => {
     const b = Buffer.alloc(bytes);
     if (bytes === 2) b.writeUInt16LE(n);

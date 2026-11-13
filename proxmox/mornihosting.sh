@@ -169,11 +169,14 @@ fi
 
 # Dauerbetrieb: Der Proxmox-Host startet den Container von selbst wieder, wenn er ungewollt ausgeht oder hängt.
 msg_info "Host-Wächter wird eingerichtet"
-if curl -fsSL "${DAUERBETRIEB_URL}" | CTID="${CTID}" bash -s -- hostguard >/dev/null 2>&1; then
+# Erst herunterladen, dann ausführen (nicht direkt in bash leiten): bricht der Download ab, läuft nichts Halbes.
+GUARD_SCRIPT="$(mktemp)"
+if curl -fsSL "${DAUERBETRIEB_URL}" -o "${GUARD_SCRIPT}" && CTID="${CTID}" bash "${GUARD_SCRIPT}" hostguard >/dev/null 2>&1; then
   msg_ok "Host-Wächter läuft: Container ${CTID} startet von selbst wieder, außer du stoppst ihn"
 else
   msg_error "Host-Wächter ließ sich nicht einrichten. Später: bash -c \"\$(curl -fsSL ${DAUERBETRIEB_URL})\""
 fi
+rm -f "${GUARD_SCRIPT}"
 
 printf '\n %s🎉 %s ist bereit:%s %shttp://%s:8080%s\n' "${GN}" "${APP}" "${CL}" "${BL}" "${IP}" "${CL}"
 printf '    Update später im Container: %spct enter %s%s und dann %supdate%s\n' "${YW}" "${CTID}" "${CL}" "${YW}" "${CL}"

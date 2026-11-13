@@ -132,7 +132,7 @@ function resolveApiToken(ctx: AppContext, request: FastifyRequest, raw: string):
 
 /** Resolves who is calling (session cookie or API token) and enforces CSRF and origin rules. */
 /** Where the panel was last seen on the internet (HTTPS, a real name) – learned from admins' own requests. */
-export const SEEN_HOST_KEY = 'panel_seen_host';
+const SEEN_HOST_KEY = 'panel_seen_host';
 // A public host name: "mornihosting.de", "panel.example.org" – not "localhost", "192.168.1.5" or "[::1]".
 // https://regex101.com/?flavor=javascript&regex=%5E(%3F%3D.*%5Ba-z%5D)(%3F%3A%5Ba-z0-9-%5D%2B%5C.)%2B%5Ba-z%5D%7B2%2C%7D%24&flags=gm&testString=mornihosting.de%0Apanel.example.org%0Alocalhost%0A192.168.1.5
 const PUBLIC_HOST = /^(?=.*[a-z])(?:[a-z0-9-]+\.)+[a-z]{2,}$/;

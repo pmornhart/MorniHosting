@@ -10,6 +10,9 @@ onlyBuiltDependencies:
 overrides:
   # drizzle-kit (nur Entwicklung) zieht über @esbuild-kit noch esbuild 0.18 mit bekannter Lücke (GHSA-67mh-4wv8-2f99).
   '@esbuild-kit/core-utils>esbuild': ^0.25.0
+  # glob ≤ 14.0.1 (GHSA-3g3m-2fjr-6pw4) und minimatch < 11.0.1 (GHSA-g3hv-75wg-m249) über @fastify/static, archiver, eslint.
+  glob: ^14.0.2
+  minimatch: ^11.0.1
 # Lieferketten-Schutz: neue Paketversionen erst nach 7 Tagen (10080 Minuten) nehmen, keine Unterpakete aus
 # Git- oder Tarball-Quellen, und kein Update, das schwächer abgesichert veröffentlicht wurde als sein Vorgänger.
 minimumReleaseAge: 10080

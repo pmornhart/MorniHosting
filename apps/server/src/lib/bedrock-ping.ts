@@ -33,7 +33,7 @@ export function parsePong(packet: Buffer): BedrockPong | null {
   return { motd, version, online: Number(online), max: Number(max) };
 }
 
-export function pingPacket(): Buffer {
+function pingPacket(): Buffer {
   const time = Buffer.alloc(LONG);
   time.writeBigInt64BE(BigInt(Date.now()));
   const guid = Buffer.alloc(LONG);
