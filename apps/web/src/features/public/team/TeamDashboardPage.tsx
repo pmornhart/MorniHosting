@@ -10,6 +10,7 @@ import {
   Search,
   ShieldCheck,
   Snowflake,
+  SlidersHorizontal,
   Swords,
   Terminal,
   Users,
@@ -17,7 +18,12 @@ import {
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
-import { TEAM_COMMANDS, type TeamBoardPlayer, type TeamCommand } from '@mornihosting/shared';
+import {
+  TEAM_COMMANDS,
+  type TeamBoardPlayer,
+  type TeamCommand,
+  type TeamSettings,
+} from '@mornihosting/shared';
 import { BrandMark, PlayerHead } from '@/components/server-visuals';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,11 +33,19 @@ import { Pill } from '@/components/ui/pill';
 import { setLanguage } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { PlayerSheet } from './PlayerSheet';
-import { can, useTeamAction, useTeamBoard, useTeamRules, type TeamRequest } from './team-api';
+import {
+  can,
+  useTeamAction,
+  useTeamBoard,
+  useTeamRules,
+  useTeamSettings,
+  type TeamRequest,
+} from './team-api';
+import { MorniCraftSections } from '@/features/servers/settings/MorniCraftCard';
 import { durationLabel, PunishDialog, RankPill, Tile, useLeft, type Board } from './team-ui';
 
 const DEMO = import.meta.env.MODE === 'demo';
-const TABS = ['players', 'jail', 'bans', 'history', 'rules', 'commands'] as const;
+const TABS = ['players', 'jail', 'bans', 'history', 'rules', 'settings', 'commands'] as const;
 type Tab = (typeof TABS)[number];
 const MIN_RULE_ROWS = 6;
 const SPARE_RULE_ROWS = 2;
@@ -96,7 +110,9 @@ export function TeamDashboardPage(): ReactElement {
     setPunish(null);
   };
   const frozen = data.online.filter((p) => p.frozen);
-  const visibleTabs = TABS.filter((x) => x !== 'bans' || can(data, 'ban'));
+  const visibleTabs = TABS.filter(
+    (x) => (x !== 'bans' || can(data, 'ban')) && (x !== 'settings' || data.settings !== null),
+  );
 
   return (
     <main className="min-h-dvh bg-background px-4 py-6 sm:py-8">
@@ -199,6 +215,7 @@ export function TeamDashboardPage(): ReactElement {
                   history: <History className="size-4" />,
                   rules: <ScrollText className="size-4" />,
                   commands: <Terminal className="size-4" />,
+                  settings: <SlidersHorizontal className="size-4" />,
                 }[x]
               }
               {t(`teamBoard.tabs.${x}`)}
@@ -438,6 +455,10 @@ export function TeamDashboardPage(): ReactElement {
         ) : null}
 
         {tab === 'commands' ? <CommandsCard board={data} /> : null}
+
+        {tab === 'settings' && data.settings ? (
+          <SettingsCard slug={slug} teamKey={key} settings={data.settings} />
+        ) : null}
       </div>
 
       <PlayerSheet
@@ -561,6 +582,49 @@ function CommandsCard({ board }: { board: Board }): ReactElement {
           {others.map((c) => row(c, false))}
         </div>
       ) : null}
+    </Card>
+  );
+}
+
+/** The server's settings (TNT, spawn protection, start elytra …) – the same switches as in the panel. */
+function SettingsCard({
+  slug,
+  teamKey,
+  settings,
+}: {
+  slug: string;
+  teamKey: string;
+  settings: TeamSettings;
+}): ReactElement {
+  const { t } = useTranslation();
+  const save = useTeamSettings(slug, teamKey);
+  const [draft, setDraft] = useState<TeamSettings>(settings);
+  const [base, setBase] = useState(settings);
+  // The page reloads every few seconds: take over changes from elsewhere only while nothing is being edited here.
+  useEffect(() => {
+    if (JSON.stringify(draft) === JSON.stringify(base)) setDraft(settings);
+    setBase(settings);
+  }, [settings]); // eslint-disable-line react-hooks/exhaustive-deps -- only when the server's values change
+  const dirty = JSON.stringify(draft) !== JSON.stringify(settings);
+  return (
+    <Card className="grid gap-4 p-5">
+      <div>
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <SlidersHorizontal className="size-4 text-primary" /> {t('teamBoard.settings.title')}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t('teamBoard.settings.text')}</p>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <MorniCraftSections draft={draft} set={(patch) => setDraft({ ...draft, ...patch })} />
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {save.isSuccess && !dirty ? (
+          <span className="text-sm text-emerald-400">{t('teamBoard.settings.saved')}</span>
+        ) : null}
+        <Button disabled={!dirty || save.isPending} onClick={() => save.mutate(draft)}>
+          {t('teamBoard.settings.save')}
+        </Button>
+      </div>
     </Card>
   );
 }

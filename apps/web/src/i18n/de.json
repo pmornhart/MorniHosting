@@ -3429,7 +3429,8 @@
       "bans": "Banns",
       "history": "Strafen-Verlauf",
       "rules": "Regeln",
-      "commands": "Befehle"
+      "commands": "Befehle",
+      "settings": "Einstellungen"
     },
     "search": "Spieler suchen …",
     "nobody": "Gerade ist niemand online.",
@@ -3515,6 +3516,12 @@
       "text": "Das kannst du als {{rank}} im Spiel eintippen.",
       "team": "Teammitglied",
       "ownerOnly": "Nur für den Owner"
+    },
+    "settings": {
+      "title": "Einstellungen des Servers",
+      "text": "Gilt sofort im Spiel – dieselben Schalter wie im Panel.",
+      "save": "Speichern",
+      "saved": "Gespeichert ✓"
     }
   }
 }

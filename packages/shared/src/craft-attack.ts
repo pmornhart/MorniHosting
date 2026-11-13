@@ -682,7 +682,36 @@ export interface TeamBoardView {
   readonly history: readonly TeamBoardHistory[];
   /** The server rules (/rules); owners and admins may change them here. */
   readonly rules: readonly string[];
+  /** The server's settings – only for those who may change them (owners, ranks with the admin switch). */
+  readonly settings: TeamSettings | null;
 }
+
+/** The settings owners and admins may change on the team dashboard (the same as in the panel, without ranks). */
+export const TEAM_SETTING_KEYS = [
+  'teleportDelay',
+  'maxHomes',
+  'tpa',
+  'back',
+  'spawnProtection',
+  'spawnRadius',
+  'sleepAtSpawn',
+  'pvpAtSpawn',
+  'elytra',
+  'elytraBoost',
+  'elytraRadius',
+  'tnt',
+  'creeperDamage',
+  'fireSpread',
+  'endermanGrief',
+  'welcome',
+  'sidebar',
+  'showLink',
+  'tabStats',
+  'combatSeconds',
+  'graves',
+  'gravePrivateMinutes',
+] as const satisfies readonly (keyof MorniCraftSettings)[];
+export type TeamSettings = Pick<MorniCraftSettings, (typeof TEAM_SETTING_KEYS)[number]>;
 
 export const TEAM_ACTIONS = [
   'jail',

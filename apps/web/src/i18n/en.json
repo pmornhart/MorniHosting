@@ -3429,7 +3429,8 @@
       "bans": "Bans",
       "history": "Punishments",
       "rules": "Rules",
-      "commands": "Commands"
+      "commands": "Commands",
+      "settings": "Settings"
     },
     "search": "Search players …",
     "nobody": "Nobody is online right now.",
@@ -3515,6 +3516,12 @@
       "text": "What you can type in the game as {{rank}}.",
       "team": "team member",
       "ownerOnly": "Owner only"
+    },
+    "settings": {
+      "title": "Server settings",
+      "text": "Applies in the game at once – the same switches as in the panel.",
+      "save": "Save",
+      "saved": "Saved ✓"
     }
   }
 }

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import type { TeamAbility, TeamAction, TeamBoardView } from '@mornihosting/shared';
+import type { TeamAbility, TeamAction, TeamBoardView, TeamSettings } from '@mornihosting/shared';
 import { api } from '@/lib/api';
 
 /** The game writes every 5 seconds; the page follows it. */
@@ -61,6 +61,19 @@ export function useTeamRules(slug: string, key: string) {
       api<{ ok: true }>(`${base(slug)}/rules`, {
         method: 'PUT',
         body: { rules },
+        headers: { [KEY_HEADER]: key },
+      }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ['team-board', slug] }),
+  });
+}
+
+export function useTeamSettings(slug: string, key: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (changes: Partial<TeamSettings>) =>
+      api<{ ok: true }>(`${base(slug)}/settings`, {
+        method: 'PUT',
+        body: changes,
         headers: { [KEY_HEADER]: key },
       }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ['team-board', slug] }),

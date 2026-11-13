@@ -772,5 +772,20 @@ describe('team dashboard (/teamdashboard)', () => {
     expect(fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8')).toContain(
       'Kein Griefing',
     );
+
+    // Settings (TNT, spawn protection …): owners and admin ranks see and change them, helpers neither.
+    expect(after.settings).toMatchObject({ tnt: true, spawnProtection: true });
+    const helperView = (
+      await t.app.inject({ method: 'GET', url, headers: as(supporterKey) })
+    ).json<TeamBoardView>();
+    expect(helperView.settings).toBeNull();
+    const change = (key: string, payload: object) =>
+      t.app.inject({ method: 'PUT', url: `${url}/settings`, headers: as(key), payload });
+    expect((await change(supporterKey, { tnt: false })).statusCode).toBe(403);
+    expect((await change(ownerKey, { ranks: [] })).statusCode).toBe(400);
+    expect((await change(ownerKey, { tnt: false, spawnRadius: 80 })).statusCode).toBe(200);
+    const changed = (await t.app.inject({ method: 'GET', url, headers: as(ownerKey) })).json<TeamBoardView>();
+    expect(changed.settings).toMatchObject({ tnt: false, spawnRadius: 80 });
+    expect(changed.rules).toEqual(['Sei nett', 'Kein Griefing']);
   });
 });
