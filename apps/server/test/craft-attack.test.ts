@@ -431,11 +431,16 @@ describe('public statistics page', () => {
     expect(withOwner).toMatchObject({ badgePackUrl: null });
     expect(ranked).toContain('"badge": ""');
     // No panel domain entered (Philip: NetBird set up by hand) – the panel learns it from the admin's own use.
+    // Browsers only send the page along when the panel allows it for its own pages.
+    const listed = await t.app.inject({ method: 'GET', url: '/api/servers', headers: authHeaders(admin) });
+    expect(listed.headers['referrer-policy']).toBe('same-origin');
     await t.app.inject({
       method: 'GET',
       url: '/api/servers',
       headers: { ...authHeaders(admin), referer: 'https://mornihosting.de/servers' },
     });
+    // Philip: a deleted server still "had" this name – that silently meant no badges. Now it doesn't block anything.
+    t.ctx.settings.setValue('public_stats', { gone0000: { enabled: false, slug: 'craft-attack' } });
     const withPack = await t.app.inject({
       method: 'PUT',
       url: mcUrl,
@@ -443,6 +448,24 @@ describe('public statistics page', () => {
       payload: { ...state.settings, badges: true },
     });
     const packUrl = withPack.json<{ badgePackUrl: string }>().badgePackUrl;
+    // Entering the panel domain later reaches the plugin at once (no restart needed).
+    await t.app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      headers: authHeaders(admin),
+      payload: { panelDomain: 'panel.mornihosting.de' },
+    });
+    await waitFor(() =>
+      fs
+        .readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8')
+        .includes('panel.mornihosting.de'),
+    );
+    await t.app.inject({
+      method: 'PUT',
+      url: '/api/settings',
+      headers: authHeaders(admin),
+      payload: { panelDomain: '' },
+    });
     expect(packUrl).toMatch(
       /^https:\/\/mornihosting\.de\/api\/public\/packs\/craft-attack\.zip\?v=[0-9a-f]{10}$/,
     ); // eslint-disable-line ts-patterns/require-regex-example -- "https://mornihosting.de/api/public/packs/craft-attack.zip?v=0402fc9a41"

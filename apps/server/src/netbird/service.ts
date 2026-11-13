@@ -835,6 +835,7 @@ export function createNetbirdAutomation(
         forget(ours.id);
       }
       ctx.settings.update({ panelDomain: want.domain });
+      ctx.events.emit('panel.host', { host: want.domain });
       ctx.audit.record(actor, 'netbird.panel', null, { domain: want.domain });
       return status();
     },

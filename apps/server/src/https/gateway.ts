@@ -138,6 +138,7 @@ export function createHttpsGateway(ctx: AppContext, domainOf: () => string | nul
       }
       // Passkeys and secure cookies belong to the domain the panel is reached at from now on.
       ctx.settings.update({ panelDomain: domain });
+      ctx.events.emit('panel.host', { host: domain });
       ctx.audit.record(actor, 'https.enable', null, { domain });
       return status();
     },

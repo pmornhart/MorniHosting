@@ -393,7 +393,7 @@ final class Graves implements Listener {
     Object size = vec.getConstructor(float.class, float.class, float.class).newInstance(scale[0], scale[1], scale[2]);
     Object none = quat.getConstructor().newInstance();
     Object transformation = tr.getConstructor(vec, quat, vec, quat).newInstance(translation, none, size, quat.getConstructor().newInstance());
-    e.getClass().getMethod("setTransformation", tr).invoke(e, transformation);
+    Class.forName("org.bukkit.entity.Display").getMethod("setTransformation", tr).invoke(e, transformation);
   }
 
   /** A click area (interaction entity, 1.19.4+) so the head on the earth opens the grave too. */
@@ -513,7 +513,7 @@ final class Graves implements Listener {
     Object scale = vec.getConstructor(float.class, float.class, float.class).newInstance(1f, 1f, 1f);
     Object none = quat.getConstructor().newInstance();
     Object transformation = tr.getConstructor(vec, quat, vec, quat).newInstance(translation, q, scale, none);
-    e.getClass().getMethod("setTransformation", tr).invoke(e, transformation);
+    Class.forName("org.bukkit.entity.Display").getMethod("setTransformation", tr).invoke(e, transformation);
   }
 
   /** "x x" on the head's face – a text display (Paper 1.19.4+); older servers: no eyes. */

@@ -65,6 +65,8 @@ const VIA_DONE_KEY = 'mornicraft_via';
 const ICON_DONE_KEY = 'mornicraft_icon';
 /** Part of every badge-pack address (to recognise our own entry in server.properties). */
 const PACK_PATH = '/api/public/packs/';
+/** Characters of the server id behind a name that another server already has. */
+const UNIQUE_SUFFIX_LENGTH = 6;
 /** The line the game shows while loading the badge pack. */
 const PACK_PROMPT: Readonly<Record<'de' | 'en', string>> = {
   de: 'Die Rang-Abzeichen dieses Servers – nur ein paar kleine Bilder.',
@@ -184,11 +186,23 @@ export function createCraftAttackService(
   const publicSetting: CraftAttackService['publicSetting'] = (serverId) =>
     stored()[serverId] ?? { enabled: false, slug: defaultSlug(serverId) };
 
+  const serverExists = (id: string): boolean => {
+    try {
+      servers.row(id);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const setPublic: CraftAttackService['setPublic'] = (serverId, input) => {
     const row = servers.row(serverId);
     if (row.edition !== 'java') throw badRequest('public_stats_java_only');
     const slug = slugFrom(input.slug || publicSetting(serverId).slug) || serverId;
-    const taken = Object.entries(stored()).some(([id, s]) => id !== serverId && s.slug === slug);
+    // Entries of servers deleted meanwhile don't block a name.
+    const taken = Object.entries(stored()).some(
+      ([id, s]) => id !== serverId && s.slug === slug && serverExists(id),
+    );
     if (taken) throw badRequest('public_stats_slug_taken', { slug });
     const next = { enabled: input.enabled, slug };
     ctx.settings.setValue(SETTINGS_KEY, { ...stored(), [serverId]: next });
@@ -300,12 +314,23 @@ export function createCraftAttackService(
     iconOnce(serverId, dir);
     return newPlugin;
   };
+  /**
+   * The server's name in public addresses (badge pack, pages). Never empty: a name another server already has gets
+   * the server's id behind it ("dmann-a1b2c3") – before, a taken name silently meant "no badges at all".
+   */
   const safeSlug = (serverId: string): string | undefined => {
-    try {
-      return setPublic(serverId, { enabled: false }).slug;
-    } catch {
-      return undefined;
-    }
+    const attempt = (slug?: string): string | undefined => {
+      try {
+        return setPublic(serverId, { enabled: false, ...(slug ? { slug } : {}) }).slug;
+      } catch {
+        return undefined;
+      }
+    };
+    return (
+      attempt() ??
+      attempt(`${defaultSlug(serverId)}-${serverId.slice(0, UNIQUE_SUFFIX_LENGTH)}`.slice(0, SLUG_MAX)) ??
+      attempt(serverId)
+    );
   };
 
   const locale = (): 'de' | 'en' => (ctx.settings.get().defaultLocale === 'en' ? 'en' : 'de');

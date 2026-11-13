@@ -184,7 +184,7 @@ final class Ranks implements Listener {
     if (!packFromServer) return false;
     try {
       // Server#getResourcePack (newer than the API this is built against).
-      Object own = Bukkit.getServer().getClass().getMethod("getResourcePack").invoke(Bukkit.getServer());
+      Object own = org.bukkit.Server.class.getMethod("getResourcePack").invoke(Bukkit.getServer());
       return own instanceof String url && !url.isEmpty() && url.equals(packUrl);
     } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
       return false;
@@ -324,7 +324,7 @@ final class Ranks implements Listener {
   /** Paper 1.21.2+: higher ranks further up in the tab list. Older servers sort by the team names (mcr00, mcr01 …). */
   private static void listOrder(Player p, int order) {
     try {
-      p.getClass().getMethod("setPlayerListOrder", int.class).invoke(p, order);
+      Player.class.getMethod("setPlayerListOrder", int.class).invoke(p, order);
     } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
       // Sorted by team name.
     }

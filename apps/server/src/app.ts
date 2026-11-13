@@ -257,6 +257,9 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
     },
     crossOriginEmbedderPolicy: false,
     hsts: false,
+    // Only the panel's own pages learn where a request came from (never other sites): that is how the panel
+    // learns its public name (badge packs) when no panel domain was entered.
+    referrerPolicy: { policy: 'same-origin' },
   });
   await app.register(cookie);
   await app.register(rateLimit, {

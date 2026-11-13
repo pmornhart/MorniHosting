@@ -119,7 +119,8 @@ final class Sidebar implements Listener {
     try {
       Class<?> format = Class.forName("io.papermc.paper.scoreboard.numbers.NumberFormat");
       Object fixed = format.getMethod("fixed", net.kyori.adventure.text.ComponentLike.class).invoke(null, text);
-      score.getClass().getMethod("numberFormat", format).invoke(score, fixed);
+      // Looked up on the API interface: the server's own class is not public, its methods can't be called by reflection.
+      org.bukkit.scoreboard.Score.class.getMethod("numberFormat", format).invoke(score, fixed);
     } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
       // An older server: the number (kills) stays.
     }
@@ -130,7 +131,7 @@ final class Sidebar implements Listener {
     try {
       Class<?> format = Class.forName("io.papermc.paper.scoreboard.numbers.NumberFormat");
       Object blank = format.getMethod("blank").invoke(null);
-      Method set = o.getClass().getMethod("numberFormat", format);
+      Method set = Objective.class.getMethod("numberFormat", format);
       set.invoke(o, blank);
     } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
       // An older server: the numbers stay.
