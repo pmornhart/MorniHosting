@@ -18,6 +18,9 @@ const RECONNECT_FACTOR = 2;
 const OP_DISPATCH = 0;
 const OP_HEARTBEAT = 1;
 const OP_IDENTIFY = 2;
+/** Activity type 3 = "Watching …" (Discord shows "Schaut deine Minecraft-Server"). */
+const ACTIVITY_WATCHING = 3;
+const PRESENCE_TEXT = 'deine Minecraft-Server';
 const OP_RECONNECT = 7;
 const OP_INVALID_SESSION = 9;
 const OP_HELLO = 10;
@@ -319,7 +322,17 @@ export const realDiscord: DiscordApi = {
               token,
               intents: INTENT_GUILDS,
               properties: { os: 'linux', browser: 'mornihosting', device: 'mornihosting' },
+              // Shown as online (green) with a little line under the name (Philip: the bot should be online).
+              presence: {
+                status: 'online',
+                since: null,
+                afk: false,
+                activities: [{ name: PRESENCE_TEXT, type: ACTIVITY_WATCHING }],
+              },
             });
+          } else if (packet.op === OP_HEARTBEAT) {
+            // Discord asks for a heartbeat right now: answer, or it drops the connection (the bot goes offline).
+            send(OP_HEARTBEAT, state.seq);
           } else if (packet.op === OP_RECONNECT || packet.op === OP_INVALID_SESSION) {
             scheduleReconnect();
           } else if (packet.op === OP_DISPATCH && packet.t === 'READY') {
