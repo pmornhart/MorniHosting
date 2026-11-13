@@ -32,20 +32,24 @@ import org.bukkit.inventory.EquipmentSlot;
  */
 final class Seats implements Listener {
   private static final String TAG = "mornicraft_seat";
-  /** Seat height above the block's bottom: on a half block the player's bottom lands on its top. */
-  private static final double SEAT_Y = 0.3;
+  /**
+   * Seat height above the block's bottom. A rider sits 0.6 below the seat (Minecraft's own offset), the hips then a
+   * little above the step's top (0.5) – measured on Paper 1.21.11 (Philip: "ich sitze viel zu tief").
+   */
+  private static final double SEAT_Y = 0.55;
+  private static final double OLD_SEAT_LOWER = 0.25;
   private static final double REACH = 3.0;
   private static final long CHECK_TICKS = 5L;
   private static final double UP = 0.6;
 
   private final MorniCraft plugin;
   /** Player → their seat. */
-  private final Map<UUID, ArmorStand> seats = new HashMap<>();
+  private final Map<UUID, Entity> seats = new HashMap<>();
 
   Seats(MorniCraft plugin) {
     this.plugin = plugin;
     for (World w : Bukkit.getWorlds()) {
-      for (Entity e : w.getEntitiesByClass(ArmorStand.class)) {
+      for (Entity e : w.getEntities()) {
         if (e.getScoreboardTags().contains(TAG)) e.remove();
       }
     }
@@ -55,7 +59,7 @@ final class Seats implements Listener {
 
   private void tidy() {
     seats.entrySet().removeIf(entry -> {
-      ArmorStand stand = entry.getValue();
+      Entity stand = entry.getValue();
       Player p = Bukkit.getPlayer(entry.getKey());
       if (stand.isValid() && p != null && stand.getPassengers().contains(p)) return false;
       Location top = stand.getLocation().clone().add(0, UP, 0);
@@ -113,22 +117,38 @@ final class Seats implements Listener {
     Location seat = seatOf(b);
     if (seat == null || taken(b)) return;
     e.setCancelled(true);
-    // Spawned, then set up (the spawn-with-callback method changed its parameter type over the versions).
-    ArmorStand stand = b.getWorld().spawn(seat, ArmorStand.class);
-    stand.setInvisible(true);
-    stand.setMarker(true);
-    stand.setGravity(false);
-    stand.setInvulnerable(true);
-    stand.setSilent(true);
-    stand.setSmall(true);
-    stand.setPersistent(false);
-    stand.addScoreboardTag(TAG);
+    Entity stand = seatAt(seat);
     if (!stand.addPassenger(p)) {
       stand.remove();
       return;
     }
     seats.put(p.getUniqueId(), stand);
     p.sendActionBar(plugin.ui().words("sit.hint"));
+  }
+
+  /**
+   * The seat: an empty block display (1.19.4+) – not a living thing, so the game shows no mount hearts (Philip: "mach
+   * die Tier-Herzen weg"). Older servers: an invisible marker armor stand.
+   */
+  private static Entity seatAt(Location at) {
+    Entity e;
+    try {
+      Class<? extends Entity> display = Class.forName("org.bukkit.entity.BlockDisplay").asSubclass(Entity.class);
+      e = at.getWorld().spawn(at, display);
+    } catch (ClassNotFoundException | RuntimeException | LinkageError older) {
+      // The old armor-stand seat carries its rider 0.25 higher (measured on Paper 1.17.1): same height as above.
+      ArmorStand stand = at.getWorld().spawn(at.clone().subtract(0, OLD_SEAT_LOWER, 0), ArmorStand.class);
+      stand.setInvisible(true);
+      stand.setMarker(true);
+      stand.setGravity(false);
+      stand.setSmall(true);
+      e = stand;
+    }
+    e.setInvulnerable(true);
+    e.setSilent(true);
+    e.setPersistent(false);
+    e.addScoreboardTag(TAG);
+    return e;
   }
 
   private boolean taken(Block b) {
@@ -142,7 +162,7 @@ final class Seats implements Listener {
 
   @EventHandler
   public void onQuit(PlayerQuitEvent e) {
-    ArmorStand stand = seats.remove(e.getPlayer().getUniqueId());
+    Entity stand = seats.remove(e.getPlayer().getUniqueId());
     if (stand != null) {
       stand.eject();
       stand.remove();
