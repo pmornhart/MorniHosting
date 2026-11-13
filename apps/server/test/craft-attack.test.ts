@@ -431,6 +431,9 @@ describe('public statistics page', () => {
     expect(withOwner).toMatchObject({ badgePackUrl: null });
     expect(ranked).toContain('"badge": ""');
     // No panel domain entered (Philip: NetBird set up by hand) – the panel learns it from the admin's own use.
+    // Browsers only send the page along when the panel allows it for its own pages.
+    const listed = await t.app.inject({ method: 'GET', url: '/api/servers', headers: authHeaders(admin) });
+    expect(listed.headers['referrer-policy']).toBe('same-origin');
     await t.app.inject({
       method: 'GET',
       url: '/api/servers',
