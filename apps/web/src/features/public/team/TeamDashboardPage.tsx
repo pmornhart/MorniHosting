@@ -65,6 +65,15 @@ export function TeamDashboardPage(): ReactElement {
   // The demo has no real link; any key opens it there.
   const [key] = useState(() => window.location.hash.replace(/^#/, '') || (DEMO ? 'demo' : '')); // eslint-disable-line ts-patterns/require-regex-example -- "#abc" → "abc"
   const { data, error, isLoading } = useTeamBoard(slug, key);
+  // The browser tab says what this is: "Team-Dashboard · dmann".
+  const server = data?.server ?? '';
+  useEffect(() => {
+    const before = document.title;
+    document.title = [t('teamBoard.title'), server].filter(Boolean).join(' · ');
+    return () => {
+      document.title = before;
+    };
+  }, [server, t]);
   const action = useTeamAction(slug, key);
   const left = useLeft();
   const [tab, setTab] = useState<Tab>('players');
