@@ -483,6 +483,10 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
         text: { de: 'Clan-Basis hier setzen (Anführer)', en: 'Set the clan base here (leader)' },
       },
       { use: same('/cc <text>'), text: { de: 'Clan-Chat', en: 'Clan chat' } },
+      {
+        use: same('/clan farbe <farbe>'),
+        text: { de: 'Farbe des Clan-Kürzels (Anführung)', en: 'Colour of the clan tag (leader)' },
+      },
       { use: same('/clan leave'), text: { de: 'Clan verlassen', en: 'Leave the clan' } },
     ],
   },
