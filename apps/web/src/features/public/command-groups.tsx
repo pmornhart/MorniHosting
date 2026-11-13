@@ -1,4 +1,4 @@
-import { Feather, Gavel, Home, Info, Lock, MessageCircle, ShieldCheck, Users } from 'lucide-react';
+import { Feather, Flag, Gavel, Home, Info, Lock, MessageCircle, ShieldCheck, Users } from 'lucide-react';
 import type { ReactElement } from 'react';
 import { CRAFT_ATTACK_COMMANDS, type CraftAttackCommandGroup } from '@mornihosting/shared';
 import { cn } from '@/lib/utils';
@@ -8,6 +8,7 @@ const ICONS: Readonly<Record<CraftAttackCommandGroup['id'], typeof Home>> = {
   spawn: Feather,
   home: Home,
   teleport: Users,
+  clan: Flag,
   chat: MessageCircle,
   info: Info,
   op: ShieldCheck,

@@ -74,6 +74,8 @@ final class PlayerStore {
     volatile long muteUntil;
     /** Logged out in a fight (and died for it): told once when back. */
     boolean combatLogged;
+    /** When the limited commands were used (command → times in ms), for "3 times a day" limits. */
+    final Map<String, List<Long>> uses = new ConcurrentHashMap<>();
 
     /** How long the whole jail time is (for the bar). */
     long jailTotal(long now) {
@@ -136,6 +138,12 @@ final class PlayerStore {
         back.getDouble("z"), (float) back.getDouble("yaw"), (float) back.getDouble("pitch"));
     d.muteUntil = y.getLong("mute.until", 0);
     d.combatLogged = y.getBoolean("combat-logged", false);
+    ConfigurationSection uses = y.getConfigurationSection("uses");
+    if (uses != null) {
+      for (String key : uses.getKeys(false)) {
+        d.uses.put(key, new ArrayList<>(uses.getLongList(key)));
+      }
+    }
     ConfigurationSection homes = y.getConfigurationSection("homes");
     if (homes != null) {
       for (String key : homes.getKeys(false)) {
@@ -179,6 +187,9 @@ final class PlayerStore {
     }
     if (d.muteUntil > System.currentTimeMillis()) y.set("mute.until", d.muteUntil);
     if (d.combatLogged) y.set("combat-logged", true);
+    d.uses.forEach((key, times) -> {
+      if (!times.isEmpty()) y.set("uses." + key, new ArrayList<>(times));
+    });
     d.homes.forEach((key, h) -> {
       String p = "homes." + key + ".";
       y.set(p + "world", h.world());

@@ -102,6 +102,16 @@ const ranksSchema = z
   .refine((ranks) => new Set(ranks.map((r) => r.id)).size === ranks.length, 'rank ids must be unique')
   .refine((ranks) => ranks.filter((r) => r.isDefault).length <= 1, 'only one default rank');
 
+/** Limits: so many uses (0 = no limit) per so many hours (up to a week). */
+const MAX_LIMIT_USES = 50;
+const HOURS_PER_WEEK = 168;
+const DEFAULT_LIMIT_HOURS = 24;
+const MIN_CLAN = 2;
+const MAX_CLAN = 50;
+const DEFAULT_CLAN = 10;
+const limitUses = z.number().int().min(0).max(MAX_LIMIT_USES).default(0);
+const limitHours = z.number().int().min(1).max(HOURS_PER_WEEK).default(DEFAULT_LIMIT_HOURS);
+
 export const morniCraftSettingsSchema = z.object({
   teleportDelay: z.number().int().min(0).max(30),
   maxHomes: z.number().int().min(1).max(50),
@@ -130,6 +140,18 @@ export const morniCraftSettingsSchema = z.object({
   gravePrivateMinutes: z.number().int().min(0).max(120),
   tabStats: z.boolean(),
   combatSeconds: z.number().int().min(0).max(60),
+  spawnCommand: z.boolean().default(true),
+  homes: z.boolean().default(true),
+  spawnLimit: limitUses,
+  spawnLimitHours: limitHours,
+  homeLimit: limitUses,
+  homeLimitHours: limitHours,
+  tpaLimit: limitUses,
+  tpaLimitHours: limitHours,
+  backLimit: limitUses,
+  backLimitHours: limitHours,
+  clans: z.boolean().default(true),
+  clanMaxMembers: z.number().int().min(MIN_CLAN).max(MAX_CLAN).default(DEFAULT_CLAN),
 });
 
 /** Stored settings, completed with the defaults (older or partial entries). */
@@ -189,13 +211,23 @@ function rankConfig(r: MorniCraftRank, c: ConfigContext) {
  * rules or links) behind a comment line.
  */
 export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): string {
-  const groups = CRAFT_ATTACK_COMMANDS.map((g) => ({
+  // Switched-off commands do not show in /info (no /spawn when it is off, no clan group without clans …).
+  const off = [
+    ...(s.spawnCommand ? [] : ['/spawn']),
+    ...(s.homes ? [] : ['/sethome', '/home', '/delhome']),
+    ...(s.tpa ? [] : ['/tpa', '/tpahere', '/tpaccept', '/tpdeny']),
+    ...(s.back ? [] : ['/back']),
+  ];
+  const shown = (use: string): boolean => !off.includes(use.split(' ')[0] ?? use);
+  const groups = CRAFT_ATTACK_COMMANDS.filter((g) => g.id !== 'clan' || s.clans).map((g) => ({
     title: g.title[c.language],
-    commands: g.commands.map((cmd) => ({
-      use: cmd.use[c.language],
-      text: cmd.text[c.language],
-      op: cmd.opOnly === true,
-    })),
+    commands: g.commands
+      .filter((cmd) => shown(cmd.use.de))
+      .map((cmd) => ({
+        use: cmd.use[c.language],
+        text: cmd.text[c.language],
+        op: cmd.opOnly === true,
+      })),
   }));
   const config = {
     language: c.language,
@@ -237,6 +269,15 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     'tab-stats': s.tabStats,
     'combat-seconds': s.combatSeconds,
     'team-link': c.teamLink ?? '',
+    'spawn-command': s.spawnCommand,
+    homes: s.homes,
+    limits: {
+      spawn: { uses: s.spawnLimit, hours: s.spawnLimitHours },
+      home: { uses: s.homeLimit, hours: s.homeLimitHours },
+      tpa: { uses: s.tpaLimit, hours: s.tpaLimitHours },
+      back: { uses: s.backLimit, hours: s.backLimitHours },
+    },
+    clans: { enabled: s.clans, 'max-members': s.clanMaxMembers },
     streamer: { hide: c.hide ?? [] },
   };
   return `# MorniCraft – written by MorniHosting (Dashboard → server → MorniCraft). Changes here are overwritten.\n${JSON.stringify(config, null, 2)}\n`;

@@ -68,6 +68,24 @@ export interface MorniCraftSettings {
   readonly tabStats: boolean;
   /** Combat log: seconds "in combat" after a hit between players (no teleports, logging out = death); 0 = off. */
   readonly combatSeconds: number;
+  /** /spawn on or off. */
+  readonly spawnCommand: boolean;
+  /** /home, /sethome, /homes, /delhome (and the clan base) on or off. */
+  readonly homes: boolean;
+  /** How often /spawn may be used: so many times (0 = no limit) per so many hours. */
+  readonly spawnLimit: number;
+  readonly spawnLimitHours: number;
+  /** /home and the clan base. */
+  readonly homeLimit: number;
+  readonly homeLimitHours: number;
+  /** Sent teleport requests (/tpa, /tpahere). */
+  readonly tpaLimit: number;
+  readonly tpaLimitHours: number;
+  readonly backLimit: number;
+  readonly backLimitHours: number;
+  /** Everyone can found a clan (/clan): menu, clan base, clan chat, tag in the chat, no friendly fire. */
+  readonly clans: boolean;
+  readonly clanMaxMembers: number;
 }
 
 /** What a rank may do (each switch stands for one or more server permissions, see RANK_PERMISSION_NODES). */
@@ -257,6 +275,18 @@ export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
   gravePrivateMinutes: 15,
   tabStats: true,
   combatSeconds: 15,
+  spawnCommand: true,
+  homes: true,
+  spawnLimit: 0,
+  spawnLimitHours: 24,
+  homeLimit: 0,
+  homeLimitHours: 24,
+  tpaLimit: 0,
+  tpaLimitHours: 24,
+  backLimit: 0,
+  backLimitHours: 24,
+  clans: true,
+  clanMaxMembers: 10,
 };
 
 /** GET /api/servers/:id/mornicraft */
@@ -349,7 +379,7 @@ export interface CraftAttackCommand {
 }
 
 export interface CraftAttackCommandGroup {
-  readonly id: 'spawn' | 'home' | 'teleport' | 'chat' | 'info' | 'mod' | 'op';
+  readonly id: 'spawn' | 'home' | 'teleport' | 'clan' | 'chat' | 'info' | 'mod' | 'op';
   readonly title: { readonly de: string; readonly en: string };
   readonly commands: readonly CraftAttackCommand[];
 }
@@ -422,6 +452,35 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
       },
       { use: same('/tpaccept'), text: { de: 'Anfrage annehmen', en: 'Accept a request' } },
       { use: same('/tpdeny'), text: { de: 'Anfrage ablehnen', en: 'Deny a request' } },
+    ],
+  },
+  {
+    id: 'clan',
+    title: { de: 'Clan', en: 'Clan' },
+    commands: [
+      {
+        use: same('/clan'),
+        text: {
+          de: 'Clan-Menü: gründen, Mitglieder, Basis, Einstellungen',
+          en: 'Clan menu: found one, members, base, settings',
+        },
+      },
+      {
+        use: same('/clan create <name> [kürzel]'),
+        text: { de: 'Eigenen Clan gründen', en: 'Found your own clan' },
+      },
+      {
+        use: same('/clan invite <spieler>'),
+        text: { de: 'Jemanden einladen', en: 'Invite someone' },
+      },
+      { use: same('/clan accept'), text: { de: 'Einladung annehmen', en: 'Accept an invitation' } },
+      { use: same('/clan base'), text: { de: 'Zur Clan-Basis', en: 'To the clan base' } },
+      {
+        use: same('/clan setbase'),
+        text: { de: 'Clan-Basis hier setzen (Anführer)', en: 'Set the clan base here (leader)' },
+      },
+      { use: same('/cc <text>'), text: { de: 'Clan-Chat', en: 'Clan chat' } },
+      { use: same('/clan leave'), text: { de: 'Clan verlassen', en: 'Leave the clan' } },
     ],
   },
   {
@@ -713,6 +772,18 @@ export const TEAM_SETTING_KEYS = [
   'showLink',
   'tabStats',
   'combatSeconds',
+  'spawnCommand',
+  'homes',
+  'spawnLimit',
+  'spawnLimitHours',
+  'homeLimit',
+  'homeLimitHours',
+  'tpaLimit',
+  'tpaLimitHours',
+  'backLimit',
+  'backLimitHours',
+  'clans',
+  'clanMaxMembers',
   'graves',
   'gravePrivateMinutes',
   'badges',

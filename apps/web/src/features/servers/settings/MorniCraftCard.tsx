@@ -6,6 +6,8 @@ import {
   Home,
   LayoutPanelLeft,
   Save,
+  Timer,
+  Users,
   Shield,
   Skull,
   Sparkles,
@@ -36,8 +38,10 @@ interface NumberSpec {
   readonly min: number;
   readonly max: number;
   readonly step: number;
-  /** Shown only while this switch is on. */
-  readonly when?: BoolKey;
+  /** Shown only while these switches are on (or these numbers above 0). */
+  readonly when?: readonly (BoolKey | NumberKey)[];
+  /** At 0 the value reads as this word (e.g. "no limit") instead of the unit. */
+  readonly zero?: 'unlimited' | 'off';
 }
 
 /** The dashboard's sections: switches and numbers in the order the admin thinks of them. */
@@ -50,11 +54,32 @@ const SECTIONS: readonly {
   {
     id: 'teleport',
     icon: Home,
-    switches: ['tpa', 'back'],
+    switches: ['spawnCommand', 'homes', 'tpa', 'back'],
     numbers: [
       { key: 'teleportDelay', min: 0, max: 30, step: 1 },
-      { key: 'maxHomes', min: 1, max: 50, step: 1 },
+      { key: 'maxHomes', min: 1, max: 50, step: 1, when: ['homes'] },
     ],
+  },
+  {
+    id: 'limits',
+    icon: Timer,
+    switches: [],
+    numbers: [
+      { key: 'spawnLimit', min: 0, max: 20, step: 1, when: ['spawnCommand'], zero: 'unlimited' },
+      { key: 'spawnLimitHours', min: 1, max: 168, step: 1, when: ['spawnCommand', 'spawnLimit'] },
+      { key: 'homeLimit', min: 0, max: 20, step: 1, when: ['homes'], zero: 'unlimited' },
+      { key: 'homeLimitHours', min: 1, max: 168, step: 1, when: ['homes', 'homeLimit'] },
+      { key: 'tpaLimit', min: 0, max: 20, step: 1, when: ['tpa'], zero: 'unlimited' },
+      { key: 'tpaLimitHours', min: 1, max: 168, step: 1, when: ['tpa', 'tpaLimit'] },
+      { key: 'backLimit', min: 0, max: 20, step: 1, when: ['back'], zero: 'unlimited' },
+      { key: 'backLimitHours', min: 1, max: 168, step: 1, when: ['back', 'backLimit'] },
+    ],
+  },
+  {
+    id: 'clans',
+    icon: Users,
+    switches: ['clans'],
+    numbers: [{ key: 'clanMaxMembers', min: 2, max: 50, step: 1, when: ['clans'] }],
   },
   {
     id: 'spawn',
@@ -66,7 +91,7 @@ const SECTIONS: readonly {
     id: 'elytra',
     icon: Feather,
     switches: ['elytra', 'elytraBoost'],
-    numbers: [{ key: 'elytraRadius', min: 10, max: 200, step: 5, when: 'elytra' }],
+    numbers: [{ key: 'elytraRadius', min: 10, max: 200, step: 5, when: ['elytra'] }],
   },
   {
     id: 'world',
@@ -84,13 +109,13 @@ const SECTIONS: readonly {
     id: 'combat',
     icon: Swords,
     switches: [],
-    numbers: [{ key: 'combatSeconds', min: 0, max: 60, step: 5 }],
+    numbers: [{ key: 'combatSeconds', min: 0, max: 60, step: 5, zero: 'off' }],
   },
   {
     id: 'graves',
     icon: Skull,
     switches: ['graves'],
-    numbers: [{ key: 'gravePrivateMinutes', min: 0, max: 120, step: 5, when: 'graves' }],
+    numbers: [{ key: 'gravePrivateMinutes', min: 0, max: 120, step: 5, when: ['graves'] }],
   },
 ];
 
@@ -123,6 +148,10 @@ export function MorniCraftSections({
       {SECTIONS.map((section) => (
         <section
           key={section.id}
+          hidden={
+            section.switches.length === 0 &&
+            !section.numbers.some((n) => (n.when ?? []).every((w) => Boolean(draft[w])))
+          }
           className="grid content-start rounded-[12px] border bg-secondary/30 px-4 py-3"
         >
           <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold">
@@ -140,13 +169,15 @@ export function MorniCraftSections({
               </Row>
             ))}
             {section.numbers
-              .filter((n) => !n.when || draft[n.when])
+              .filter((n) => (n.when ?? []).every((w) => Boolean(draft[w])))
               .map((n) => (
                 <div key={n.key} className="grid gap-2 py-2.5">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-sm font-medium">{t(`mornicraft.fields.${n.key}`)}</span>
                     <b className="text-sm tabular-nums">
-                      {t(`mornicraft.units.${n.key}`, { n: draft[n.key] })}
+                      {n.zero && draft[n.key] === 0
+                        ? t(`mornicraft.units.${n.zero}`)
+                        : t(`mornicraft.units.${n.key}`, { n: draft[n.key] })}
                     </b>
                   </div>
                   <Slider

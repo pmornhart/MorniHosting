@@ -40,7 +40,18 @@ record Settings(
     int gravePrivateMinutes,
     boolean tabStats,
     int combatSeconds,
-    String teamLink) {
+    String teamLink,
+    boolean spawnCommand,
+    boolean homes,
+    Map<String, Limit> limits,
+    boolean clans,
+    int clanMaxMembers) {
+
+  /** "uses" times per "hours" (0 uses = no limit), e.g. 3 per 24 hours. */
+  record Limit(int uses, int hours) {}
+
+  /** The commands that can have a limit ("home" counts the clan base too). */
+  static final List<String> LIMITED = List.of("spawn", "home", "tpa", "back");
 
   /** A round spot outside the spawn circle that is protected like it: x/z relative to the world spawn. */
   record Zone(int x, int z, int radius) {}
@@ -92,7 +103,22 @@ record Settings(
         // Combat log: seconds "in combat" after a hit between players; 0 = off.
         Math.max(0, Math.min(MAX_COMBAT_SECONDS, c.getInt("combat-seconds", 15))),
         // The team dashboard (MorniHosting writes the address; empty = no dashboard).
-        c.getString("team-link", ""));
+        c.getString("team-link", ""),
+        c.getBoolean("spawn-command", true),
+        c.getBoolean("homes", true),
+        limits(c),
+        c.getBoolean("clans.enabled", true),
+        Math.max(2, c.getInt("clans.max-members", 10)));
+  }
+
+  private static Map<String, Limit> limits(FileConfiguration c) {
+    Map<String, Limit> out = new java.util.HashMap<>();
+    for (String cmd : LIMITED) {
+      int uses = Math.max(0, c.getInt("limits." + cmd + ".uses", 0));
+      int hours = Math.max(1, c.getInt("limits." + cmd + ".hours", 24));
+      if (uses > 0) out.put(cmd, new Limit(uses, hours));
+    }
+    return Map.copyOf(out);
   }
 
   private static int number(Object o) {
