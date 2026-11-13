@@ -430,11 +430,11 @@ describe('public statistics page', () => {
     // Badges: without a panel domain there is no address for the resource pack – the plugin keeps the symbols.
     expect(withOwner).toMatchObject({ badgePackUrl: null });
     expect(ranked).toContain('"badge": ""');
+    // No panel domain entered (Philip: NetBird set up by hand) – the panel learns it from the admin's own use.
     await t.app.inject({
-      method: 'PUT',
-      url: '/api/settings',
-      headers: authHeaders(admin),
-      payload: { panelDomain: 'mornihosting.de' },
+      method: 'GET',
+      url: '/api/servers',
+      headers: { ...authHeaders(admin), referer: 'https://mornihosting.de/servers' },
     });
     const withPack = await t.app.inject({
       method: 'PUT',
