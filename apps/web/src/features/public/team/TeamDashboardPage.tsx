@@ -21,6 +21,7 @@ import { useParams } from 'react-router';
 import {
   TEAM_COMMANDS,
   type TeamBoardPlayer,
+  type TeamBoardView,
   type TeamCommand,
   type TeamSettings,
 } from '@mornihosting/shared';
