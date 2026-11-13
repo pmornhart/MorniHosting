@@ -39,15 +39,21 @@
       "rankId": "owner",
       "where": [1156, 171, 1165],
       "inventory": "rich",
-      "extra": { "live": true, "playMinutes": 4210 }
+      "extra": {
+        "live": true,
+        "playMinutes": 4210
+      }
     },
     {
       "name": "Lena",
       "uuid": "b81c4872-63b8-3b59-adc4-f44a1c180ac1",
-      "rankId": "supporter",
+      "rankId": "moderator",
       "where": [1140, 170, 1172],
       "inventory": "poor",
-      "extra": { "ping": 41, "playMinutes": 1880 }
+      "extra": {
+        "ping": 41,
+        "playMinutes": 1880
+      }
     },
     {
       "name": "Steve",
@@ -55,7 +61,11 @@
       "rankId": "vip",
       "where": [-312, 64, 880],
       "inventory": "rich",
-      "extra": { "combat": true, "health": 7, "playMinutes": 930 }
+      "extra": {
+        "combat": true,
+        "health": 7,
+        "playMinutes": 930
+      }
     },
     {
       "name": "Alex",
@@ -64,7 +74,11 @@
       "where": [0, 200, 0],
       "inventory": "poor",
       "jailMinutes": 7,
-      "extra": { "jailReason": "Griefing am Spawn", "gamemode": "adventure", "playMinutes": 210 }
+      "extra": {
+        "jailReason": "Griefing am Spawn",
+        "gamemode": "adventure",
+        "playMinutes": 210
+      }
     },
     {
       "name": "Notch",
@@ -73,7 +87,10 @@
       "where": [88, 70, -41],
       "inventory": "poor",
       "muteMinutes": 25,
-      "extra": { "afk": true, "playMinutes": 55 }
+      "extra": {
+        "afk": true,
+        "playMinutes": 55
+      }
     },
     {
       "name": "BlockBob",
@@ -81,14 +98,43 @@
       "rankId": "spieler",
       "where": [402, 12, 77],
       "inventory": "poor",
-      "extra": { "frozen": true, "bedrock": true, "ping": 88, "playMinutes": 12 }
+      "extra": {
+        "frozen": true,
+        "bedrock": true,
+        "ping": 88,
+        "playMinutes": 12
+      }
     }
   ],
-  "base": { "ping": 23, "health": 20, "food": 18, "gamemode": "survival", "playMinutes": 600 },
-  "jailedOffline": [{ "name": "Dinnerbone", "inMinutes": 178, "reason": "Beleidigung im Chat" }],
+  "base": {
+    "ping": 23,
+    "health": 20,
+    "food": 18,
+    "gamemode": "survival",
+    "playMinutes": 600
+  },
+  "jailedOffline": [
+    {
+      "name": "Dinnerbone",
+      "inMinutes": 178,
+      "reason": "Beleidigung im Chat"
+    }
+  ],
   "bans": [
-    { "name": "Hacker123", "reason": "Fly-Hack", "by": "Morni_TV", "minutesAgo": 1440, "forMinutes": 0 },
-    { "name": "Trollo", "reason": "Spam", "by": "Lena", "minutesAgo": 60, "forMinutes": 2940 }
+    {
+      "name": "Hacker123",
+      "reason": "Fly-Hack",
+      "by": "Morni_TV",
+      "minutesAgo": 1440,
+      "forMinutes": 0
+    },
+    {
+      "name": "Trollo",
+      "reason": "Spam",
+      "by": "Lena",
+      "minutesAgo": 60,
+      "forMinutes": 2940
+    }
   ],
   "history": [
     {
@@ -99,8 +145,22 @@
       "reason": "Griefing am Spawn",
       "minutes": 10
     },
-    { "minutesAgo": 35, "type": "mute", "target": "Notch", "by": "Lena", "reason": "Spam", "minutes": 30 },
-    { "minutesAgo": 60, "type": "ban", "target": "Trollo", "by": "Lena", "reason": "Spam", "minutes": 2880 },
+    {
+      "minutesAgo": 35,
+      "type": "mute",
+      "target": "Notch",
+      "by": "Lena",
+      "reason": "Spam",
+      "minutes": 30
+    },
+    {
+      "minutesAgo": 60,
+      "type": "ban",
+      "target": "Trollo",
+      "by": "Lena",
+      "reason": "Spam",
+      "minutes": 2880
+    },
     {
       "minutesAgo": 120,
       "type": "kick",
@@ -117,7 +177,14 @@
       "reason": "Fly-Hack",
       "minutes": 0
     },
-    { "minutesAgo": 2880, "type": "free", "target": "Steve", "by": "Morni_TV", "reason": "", "minutes": 0 },
+    {
+      "minutesAgo": 2880,
+      "type": "free",
+      "target": "Steve",
+      "by": "Morni_TV",
+      "reason": "",
+      "minutes": 0
+    },
     {
       "minutesAgo": 2890,
       "type": "jail",
@@ -128,13 +195,31 @@
     }
   ],
   "ranks": [
-    { "id": "owner", "name": "Owner", "color": "#ff5555" },
-    { "id": "admin", "name": "Admin", "color": "#ff9f1a" },
-    { "id": "moderator", "name": "Moderator", "color": "#55aaff" },
-    { "id": "supporter", "name": "Supporter", "color": "#55ff99" },
-    { "id": "builder", "name": "Builder", "color": "#c084fc" },
-    { "id": "vip", "name": "VIP", "color": "#ffd24d" },
-    { "id": "spieler", "name": "Spieler", "color": "#bbbbbb" }
+    {
+      "id": "owner",
+      "name": "Owner",
+      "color": "#ff5555"
+    },
+    {
+      "id": "moderator",
+      "name": "Moderator",
+      "color": "#55aaff"
+    },
+    {
+      "id": "builder",
+      "name": "Builder",
+      "color": "#c084fc"
+    },
+    {
+      "id": "vip",
+      "name": "VIP",
+      "color": "#ffd24d"
+    },
+    {
+      "id": "spieler",
+      "name": "Spieler",
+      "color": "#bbbbbb"
+    }
   ],
   "rules": [
     "Sei nett zu allen.",

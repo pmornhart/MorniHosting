@@ -397,6 +397,15 @@ describe('public statistics page', () => {
       settings: Record<string, unknown>;
     }>();
     expect(state).toMatchObject({ active: true, settings: { teleportDelay: 5, sleepAtSpawn: false } });
+    // Admin and Supporter were taken out (Philip, 13.11.).
+    expect((state.settings['ranks'] as { id: string }[]).map((r) => r.id)).toEqual([
+      'owner',
+      'moderator',
+      'builder',
+      'media',
+      'vip',
+      'player',
+    ]);
     const saved = await t.app.inject({
       method: 'PUT',
       url: mcUrl,
@@ -648,7 +657,7 @@ describe('team dashboard (/teamdashboard)', () => {
     const supporterKey = 'b'.repeat(48);
     const oldKey = 'c'.repeat(48);
     link(ownerKey, 'Owner', ['moderate', 'kick', 'ban', 'locate', 'ranks', 'rules']);
-    link(supporterKey, 'Supporter', ['moderate']);
+    link(supporterKey, 'Helfer', ['moderate']);
     link(oldKey, 'Alt', ['moderate'], Date.now() - 1000);
     const player = {
       uuid: crypto.randomUUID(),
@@ -717,14 +726,14 @@ describe('team dashboard (/teamdashboard)', () => {
     expect(owner.ranks).toHaveLength(1);
     expect(owner.history).toHaveLength(1);
 
-    // A supporter sees the players but not where they are, and gets no rank list.
+    // A helper (only moderate) sees the players but not where they are, and gets no rank list.
     const supporter = (
       await t.app.inject({ method: 'GET', url, headers: as(supporterKey) })
     ).json<TeamBoardView>();
     expect(supporter.online[0]?.where).toBeUndefined();
     expect(supporter.ranks).toEqual([]);
 
-    // Buttons: a supporter may jail, not ban; the plugin finds the action as a file.
+    // Buttons: a helper may jail, not ban; the plugin finds the action as a file.
     const act = (key: string, payload: object) =>
       t.app.inject({ method: 'POST', url: `${url}/action`, headers: as(key), payload });
     expect(
@@ -745,7 +754,7 @@ describe('team dashboard (/teamdashboard)', () => {
       target: 'Steve',
       minutes: 10,
       reason: 'Spam',
-      by: 'Supporter',
+      by: 'Helfer',
     });
 
     // Rules: only owners and admins; they land in the dashboard settings and the plugin's config.

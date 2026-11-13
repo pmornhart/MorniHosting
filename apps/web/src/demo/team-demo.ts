@@ -14,7 +14,7 @@ import {
 /**
  * The team dashboard (/teamdashboard) in the demo: a made-up MorniCraft server with players, someone in the jail,
  * someone muted, bans and a history. The buttons work – the pretend game carries them out a moment later, as the
- * real plugin does. The banner switches between the views of an owner and a supporter.
+ * real plugin does. The banner switches between the views of an owner and a moderator.
  */
 
 const SECONDS = 60;
@@ -23,20 +23,20 @@ const HOUR_MS = SECONDS * MINUTE_MS;
 const LINK_HOURS = 12;
 const MAX_PLAYERS = 40;
 const MAX_HISTORY = 200;
-/** Supporter and up count as the team (index in the rank list). */
-const TEAM_UP_TO = SAMPLE.ranks.findIndex((r) => r.id === 'supporter');
+/** Moderator and up count as the team (index in the rank list). */
+const TEAM_UP_TO = SAMPLE.ranks.findIndex((r) => r.id === 'moderator');
 
-type Role = 'owner' | 'supporter';
+type Role = 'owner' | 'moderator';
 /** Sent when the demo banner switches the role; the team page then asks again. */
 export const TEAM_DEMO_EVENT = 'mh-team-demo';
 const ABILITIES: Readonly<Record<Role, readonly TeamAbility[]>> = {
   owner: ['moderate', 'kick', 'ban', 'locate', 'ranks', 'rules'],
-  supporter: ['moderate'],
+  moderator: ['moderate', 'kick', 'ban', 'locate'],
 };
 const RANKS = SAMPLE.ranks;
 const ME: Readonly<Record<Role, { readonly name: string; readonly rankId: string }>> = {
   owner: { name: 'Morni_TV', rankId: 'owner' },
-  supporter: { name: 'Lena', rankId: 'supporter' },
+  moderator: { name: 'Lena', rankId: 'moderator' },
 };
 
 type Row = readonly (string | number | boolean)[];
@@ -121,7 +121,7 @@ function freshState() {
 
 let state = freshState();
 
-/** Banner switch: see the dashboard as owner or as supporter. */
+/** Banner switch: see the dashboard as owner or as moderator. */
 export function teamDemoRole(): Role {
   return state.role;
 }

@@ -65,6 +65,9 @@ const MORNICRAFT_KEY = 'mornicraft';
 const VIA_DONE_KEY = 'mornicraft_via';
 /** Which MorniCraft servers already got the server icon (server id → picture version). */
 const ICON_DONE_KEY = 'mornicraft_icon';
+/** MorniCraft servers whose Admin and Supporter ranks were taken out once (Philip, 13.11.: not needed). */
+const RETIRED_DONE_KEY = 'mornicraft_retired_ranks';
+const RETIRED_RANKS: readonly string[] = ['admin', 'supporter'];
 /** Part of every badge-pack address (to recognise our own entry in server.properties). */
 const PACK_PATH = '/api/public/packs/';
 /** Characters of the server id behind a name that another server already has. */
@@ -679,6 +682,19 @@ export function createCraftAttackService(
     });
   }, RESTART_CHECK_MS).unref();
 
+  /** Takes the Admin and Supporter ranks out of servers set up with them – once, before the config is written. */
+  const dropRetiredRanks = (serverId: string): boolean => {
+    const done = ctx.settings.getValue<string[]>(RETIRED_DONE_KEY) ?? [];
+    if (done.includes(serverId)) return false;
+    ctx.settings.setValue(RETIRED_DONE_KEY, [...done, serverId]);
+    const stored = mcStored();
+    const ranks = stored[serverId]?.ranks;
+    const kept = ranks?.filter((rank) => !RETIRED_RANKS.includes(rank.id));
+    if (!ranks || !kept || kept.length === ranks.length) return false;
+    ctx.settings.setValue(MORNICRAFT_KEY, { ...stored, [serverId]: { ...stored[serverId], ranks: kept } });
+    return true;
+  };
+
   /** Every client version may join: older MorniCraft servers get ViaVersion once (an admin may switch it off). */
   const allVersionsOnce = async (serverId: string): Promise<void> => {
     const done = ctx.settings.getValue<string[]>(VIA_DONE_KEY) ?? [];
@@ -773,7 +789,10 @@ export function createCraftAttackService(
       .filter((row) => isCraftAttack(row.id))
       .forEach((row) => {
         try {
-          if (equip(row.id) && servers.live(row.id).state === 'running') waitToRestart(row.id);
+          const dropped = dropRetiredRanks(row.id);
+          const running = servers.live(row.id).state === 'running';
+          if (equip(row.id) && running) waitToRestart(row.id);
+          else if (dropped && running) void servers.quietCommand(row.id, 'mornicraft reload').catch(() => '');
         } catch (err) {
           ctx.log.warn({ err, serverId: row.id }, 'mornicraft refresh failed');
         }

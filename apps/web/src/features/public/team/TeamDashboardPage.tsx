@@ -39,7 +39,7 @@ const DATE_TIME = { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '
 
 /**
  * The team dashboard of a MorniCraft server (`/team/<server>#<key>`, from /teamdashboard in the game): everyone from
- * Supporter up sees who is online, who is in the jail, muted, frozen or banned, the punishments so far and the
+ * Moderator or owner sees who is online, who is in the jail, muted, frozen or banned, the punishments so far and the
  * rules – and gets exactly the buttons their rank allows. The key never leaves the browser except as a header.
  */
 export function TeamDashboardPage(): ReactElement {

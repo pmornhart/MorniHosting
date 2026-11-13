@@ -178,16 +178,6 @@ export const DEFAULT_RANKS: readonly MorniCraftRank[] = [
     fromPanel: 'owner',
   },
   {
-    id: 'admin',
-    name: 'Admin',
-    symbol: '✦',
-    color: '#ff9f1a',
-    permissions: ALL_RANK_PERMISSIONS,
-    players: [],
-    isDefault: false,
-    fromPanel: 'none',
-  },
-  {
     id: 'moderator',
     name: 'Moderator',
     symbol: '⚔',
@@ -196,16 +186,6 @@ export const DEFAULT_RANKS: readonly MorniCraftRank[] = [
     players: [],
     isDefault: false,
     fromPanel: 'moderator',
-  },
-  {
-    id: 'supporter',
-    name: 'Supporter',
-    symbol: '✚',
-    color: '#55ff55',
-    permissions: ['instant', 'kick', 'moderate'],
-    players: [],
-    isDefault: false,
-    fromPanel: 'none',
   },
   {
     id: 'builder',

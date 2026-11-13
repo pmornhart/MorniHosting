@@ -3414,7 +3414,7 @@
     "offline": "Server antwortet nicht",
     "validUntil": "Link gültig bis {{time}}",
     "closed": "Dieser Link gilt nicht (mehr)",
-    "closedText": "Gib im Spiel /teamdashboard ein – du bekommst einen neuen Link. Das Team-Dashboard gibt es ab Supporter.",
+    "closedText": "Gib im Spiel /teamdashboard ein – du bekommst einen neuen Link. Das Team-Dashboard gibt es für Moderatoren und Owner.",
     "tiles": {
       "online": "Online",
       "jailed": "Im Gefängnis",

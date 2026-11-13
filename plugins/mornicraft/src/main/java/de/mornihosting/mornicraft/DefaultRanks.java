@@ -33,9 +33,7 @@ final class DefaultRanks {
     List<String> everything = all(BUILD, INSTANT, HOMES, KICK, BAN, MODERATE, GAMEMODE, TELEPORT, WORLD, WHITELIST, RELOAD);
     return List.of(
         rank("owner", "Owner", "♛", "#ff5555", everything, false),
-        rank("admin", "Admin", "✦", "#ff9f1a", everything, false),
         rank("moderator", "Moderator", "⚔", "#55aaff", all(INSTANT, KICK, BAN, MODERATE, TELEPORT), false),
-        rank("supporter", "Supporter", "✚", "#55ff55", all(INSTANT, KICK, MODERATE), false),
         rank("builder", "Builder", "⚒", "#c08a5b", all(BUILD, GAMEMODE), false),
         rank("media", "Media", "▶", "#ff6ad5", HOMES, false),
         rank("vip", "VIP", "★", "#ffd23f", HOMES, false),

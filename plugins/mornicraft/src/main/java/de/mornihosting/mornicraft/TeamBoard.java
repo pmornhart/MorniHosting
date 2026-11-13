@@ -30,7 +30,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
 /**
- * The team dashboard (/teamdashboard): a web page in MorniHosting for everyone from Supporter up – who is online,
+ * The team dashboard (/teamdashboard): a web page in MorniHosting for the team (Moderator, Owner) – who is online,
  * who sits in the jail, who is muted or frozen, with buttons for what their rank may do. The plugin writes what the
  * page shows (team/state.json), hands out personal links (a random key, only its hash is kept in team/links/, valid
  * 12 hours) and carries out what the page asks for (team/actions/, written by the panel after checking the key).

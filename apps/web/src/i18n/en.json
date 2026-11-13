@@ -3414,7 +3414,7 @@
     "offline": "Server not answering",
     "validUntil": "Link valid until {{time}}",
     "closed": "This link is not valid (any more)",
-    "closedText": "Type /teamdashboard in the game – you get a new link. The team dashboard is for Supporters and up.",
+    "closedText": "Type /teamdashboard in the game – you get a new link. The team dashboard is for moderators and owners.",
     "tiles": {
       "online": "Online",
       "jailed": "In jail",

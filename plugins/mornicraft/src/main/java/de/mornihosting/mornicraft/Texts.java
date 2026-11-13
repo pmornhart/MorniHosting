@@ -271,7 +271,7 @@ final class Texts {
       Map.entry("teamboard.link", new String[] {"Dein Team-Dashboard ist bereit – 12 Stunden gültig, nur für dich", "Your team dashboard is ready – valid for 12 hours, only for you"}),
       Map.entry("teamboard.open", new String[] {"Team-Dashboard öffnen", "Open the team dashboard"}),
       Map.entry("teamboard.hover", new String[] {"Klicken: öffnet die Seite im Browser. Gib den Link nicht weiter.", "Click: opens the page in your browser. Don't share the link."}),
-      Map.entry("teamboard.noperm", new String[] {"Das Team-Dashboard gibt es ab Supporter", "The team dashboard is for Supporters and up"}),
+      Map.entry("teamboard.noperm", new String[] {"Das Team-Dashboard gibt es für Moderatoren und Owner", "The team dashboard is for moderators and owners"}),
       Map.entry("teamboard.nopanel", new String[] {"Das Team-Dashboard braucht MorniHosting mit eigener Domain", "The team dashboard needs MorniHosting with its own domain"}),
       Map.entry("teamboard.kicked", new String[] {"Vom Team rausgeworfen", "Kicked by the team"}),
       Map.entry("teamboard.banned", new String[] {"Vom Team gebannt", "Banned by the team"}),

@@ -29,7 +29,7 @@ import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
 /**
- * Ranks like Owner, Admin, Supporter or Media: a symbol and a colour in front of the name – in the chat, in the tab
+ * Ranks like Owner, Moderator or Media: a symbol and a colour in front of the name – in the chat, in the tab
  * list and above the head – and the permissions that belong to the rank. Set in the dashboard (config.yml "ranks",
  * highest first); a rank marked "default" is everyone else's.
  */

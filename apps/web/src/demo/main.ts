@@ -27,11 +27,11 @@ const TEAM = location.hash === '#team' || (window as { mhDemoStart?: string }).m
 banner.innerHTML = TEAM
   ? '<b style="color:var(--primary)">Demo</b> · Team-Dashboard von /teamdashboard · Ansicht als '
   : `<b style="color:var(--primary)">Demo</b> · Anmelden mit <b style="color:var(--foreground)">${DEMO_USER}</b> / <b style="color:var(--foreground)">${DEMO_PASSWORD}</b> oder Passkey · nichts wird gespeichert`;
-/** Team demo: switch between what an owner and a supporter see. */
-const roleButtons = (['owner', 'supporter'] as const).map((role) => {
+/** Team demo: switch between what an owner and a moderator see. */
+const roleButtons = (['owner', 'moderator'] as const).map((role) => {
   const button = document.createElement('button');
   button.type = 'button';
-  button.textContent = role === 'owner' ? 'Owner' : 'Supporter';
+  button.textContent = role === 'owner' ? 'Owner' : 'Moderator';
   button.style.cssText =
     'margin:0 2px;border:1px solid var(--border);border-radius:999px;padding:1px 9px;font:inherit;cursor:pointer;color:inherit';
   const paint = (): void => {
