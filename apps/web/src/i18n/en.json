@@ -3352,7 +3352,7 @@
       "tpaLimitHours": "Time span of the limit",
       "backLimit": "How often everyone may go back with /back",
       "backLimitHours": "Time span of the limit",
-      "clans": "Everyone can found a clan with /clan: menu, clan base, clan chat /cc, tag in the chat, no damage between members",
+      "clans": "Everyone can found a clan with /clan: menu, clan base, clan chat /cc, own tag (up to 4 characters) before the name in chat, tab list and above the head, no damage between members",
       "clanMaxMembers": "How many players a clan may have at most (leader included)"
     },
     "units": {

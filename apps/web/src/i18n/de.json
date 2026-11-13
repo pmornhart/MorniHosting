@@ -3352,7 +3352,7 @@
       "tpaLimitHours": "Zeitraum für die Begrenzung",
       "backLimit": "Wie oft jeder mit /back zurück darf",
       "backLimitHours": "Zeitraum für die Begrenzung",
-      "clans": "Jeder kann mit /clan einen Clan gründen: Menü, Clan-Basis, Clan-Chat /cc, Kürzel im Chat, kein Schaden unter Mitgliedern",
+      "clans": "Jeder kann mit /clan einen Clan gründen: Menü, Clan-Basis, Clan-Chat /cc, eigenes Kürzel (bis 4 Zeichen) vor dem Namen in Chat, Tab-Liste und über dem Kopf, kein Schaden unter Mitgliedern",
       "clanMaxMembers": "Wie viele Spieler höchstens in einem Clan sein dürfen (mit Anführer)"
     },
     "units": {

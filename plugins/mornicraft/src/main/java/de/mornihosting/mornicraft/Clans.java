@@ -51,7 +51,7 @@ import org.bukkit.inventory.meta.SkullMeta;
  */
 final class Clans implements Listener {
   private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_äöüÄÖÜß-]{3,16}");
-  private static final Pattern TAG = Pattern.compile("[A-Za-z0-9]{2,5}");
+  private static final Pattern TAG = Pattern.compile("[A-Za-z0-9]{2,4}");
   private static final long INVITE_MS = 5 * 60_000L;
   private static final long CONFIRM_MS = 10_000L;
   private static final int SLOTS_PER_ROW = 9;
@@ -105,12 +105,20 @@ final class Clans implements Listener {
     return key == null ? null : clans.get(key);
   }
 
-  /** " [TAG]" for the chat, or nothing. Read from the chat thread. */
+  /**
+   * "[TAG] " in front of the name (chat, tab list, above the head), or nothing (Philip: "Tags bis zu 4 Buchstaben,
+   * vor dem Namen"). Read from the chat thread.
+   */
   Component tagFor(UUID id) {
-    if (!on()) return Component.empty();
+    String t = tagText(id);
+    return t.isEmpty() ? Component.empty() : Component.text("[" + t + "] ", CLAN);
+  }
+
+  /** The clan tag of this player ("MC"), or "" (no clan, clans off). */
+  String tagText(UUID id) {
+    if (!on()) return "";
     Clan c = of(id);
-    if (c == null) return Component.empty();
-    return Component.text(" [" + c.tag + "]", CLAN);
+    return c == null ? "" : c.tag;
   }
 
   // ---------------------------------------------------------------- commands
@@ -688,6 +696,8 @@ final class Clans implements Listener {
   }
 
   private synchronized void save() {
+    // Tags in the tab list and above the heads follow every change (found, joined, left, new tag …).
+    if (Bukkit.isPrimaryThread()) plugin.ranks().paintAll();
     YamlConfiguration y = new YamlConfiguration();
     for (Clan c : clans.values()) {
       String p = "clans." + c.key() + ".";

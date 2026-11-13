@@ -478,14 +478,16 @@ final class Ranks implements Listener {
         continue;
       }
       Team t;
-      if (plugin.streamer().showsLive(p)) {
-        // Streamers: an own team (sorted with their rank), "● LIVE" behind the name in the tab list and above the head.
+      boolean live = plugin.streamer().showsLive(p);
+      if (live || !plugin.clans().tagText(p.getUniqueId()).isEmpty()) {
+        // Streamers and clan members: an own team (sorted with their rank) – the clan tag before the name,
+        // "● LIVE" behind it, in the tab list and above the head.
         String n = liveTeam(i, p);
         t = board.getTeam(n);
         if (t == null) t = board.registerNewTeam(n);
-        t.prefix(teamPrefix(r, viewer));
+        t.prefix(teamPrefix(r, viewer).append(plugin.clans().tagFor(p.getUniqueId())));
         t.color(NamedTextColor.nearestTo(r.color()));
-        t.suffix(Component.text(" ● LIVE", NamedTextColor.RED));
+        t.suffix(live ? Component.text(" ● LIVE", NamedTextColor.RED) : Component.empty());
       } else {
         t = board.getTeam(TEAM + String.format("%02d", i));
       }
@@ -505,7 +507,8 @@ final class Ranks implements Listener {
     return Bukkit.getOnlinePlayers().stream().anyMatch(p -> {
       Rank r = of(p);
       int i = r == null ? -1 : ranks.indexOf(r);
-      return i >= 0 && plugin.streamer().showsLive(p) && liveTeam(i, p).equals(team);
+      return i >= 0 && (plugin.streamer().showsLive(p) || !plugin.clans().tagText(p.getUniqueId()).isEmpty())
+          && liveTeam(i, p).equals(team);
     });
   }
 
@@ -561,7 +564,9 @@ final class Ranks implements Listener {
   public void onChat(AsyncChatEvent e) {
     e.renderer((source, displayName, message, viewer) -> {
       Rank r = of(source);
-      Component name = Component.text(source.getName(), r == null ? NamedTextColor.WHITE : r.color());
+      // The clan tag sits right in front of the name: "[Abzeichen] [MC] Morni » …".
+      Component name = Component.empty().append(plugin.clans().tagFor(source.getUniqueId()))
+          .append(Component.text(source.getName(), r == null ? NamedTextColor.WHITE : r.color()));
       Streamer streamer = plugin.streamer();
       Component text = streamer.forViewer(viewer, message.colorIfAbsent(NamedTextColor.WHITE));
       Component who = name;
@@ -573,7 +578,6 @@ final class Ranks implements Listener {
         who = r.badge().append(Component.text(" · ", NamedTextColor.GRAY)).append(name);
       }
       if (streamer.showsLive(source)) who = streamer.liveMark().append(who);
-      who = who.append(plugin.clans().tagFor(source.getUniqueId()));
       return who.append(Component.text(" » ", NamedTextColor.GRAY)).append(text);
     });
   }
