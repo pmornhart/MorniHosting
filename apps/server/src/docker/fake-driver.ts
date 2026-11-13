@@ -526,9 +526,12 @@ export function createFakeDriver(options: FakeDriverOptions): DockerDriver {
     },
     removeContainer: async (id) => {
       const c = containers.get(id);
+      const wasRunning = isRunning(id);
       if (c) clearTimers(c);
       containers.delete(id);
       statuses.delete(id);
+      // Like Docker's forced remove: a running container dies first (and is gone right after).
+      if (wasRunning) emitEvent(id, 'die');
       emitEvent(id, 'destroy');
     },
     start: async (id) => {
