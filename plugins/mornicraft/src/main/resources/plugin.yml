@@ -72,19 +72,28 @@ commands:
       aliases: [freeze],
       permission: mornicraft.moderate,
     }
-  mod:
+  ansehen:
     {
       description: Team-Menü für einen Spieler (auch Ducken + Rechtsklick),
-      usage: '/mod <spieler>',
-      aliases: [moderation],
+      usage: '/ansehen <spieler>',
+      aliases: [inspect, moderation],
       permission: mornicraft.moderate,
     }
   team: { description: Wer im Team ist (Ränge), aliases: [staff, ränge, raenge] }
+  rang:
+    {
+      description: 'Rang vergeben (Owner/Admin): /rang <spieler> <rang> [weg] – auch kurz /vip <spieler>',
+      usage: '/rang <spieler> <rang> [weg]',
+      aliases: [rank],
+    }
   mornicraft:
     { description: Einstellungen neu laden, permission: mornicraft.admin, usage: '/mornicraft reload' }
 permissions:
   mornicraft.moderate:
     description: Team-Werkzeuge (Gefängnis, Stumm, Einfrieren, Spieler-Menü).
+    default: op
+  mornicraft.ranks:
+    description: Darf Ränge vergeben (/vip <spieler>, /rang <spieler> <rang>).
     default: op
   mornicraft.admin:
     description: Darf die Einstellungen neu laden.

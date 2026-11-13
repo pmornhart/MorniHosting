@@ -214,6 +214,8 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     sidebar: s.sidebar,
     // The panel brings new plugin versions itself.
     'update-check': false,
+    // Ranks given in the game go to the panel (rank-changes.json), the dashboard keeps them.
+    'managed-by-panel': true,
     tnt: s.tnt,
     'creeper-damage': s.creeperDamage,
     'fire-spread': s.fireSpread,

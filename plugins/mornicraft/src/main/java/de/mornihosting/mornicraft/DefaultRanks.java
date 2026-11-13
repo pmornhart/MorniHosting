@@ -15,7 +15,7 @@ final class DefaultRanks {
   private static final List<String> TELEPORT = List.of("minecraft.command.teleport", "minecraft.command.tp");
   private static final List<String> WORLD = List.of("minecraft.command.time", "minecraft.command.weather");
   private static final List<String> WHITELIST = List.of("minecraft.command.whitelist");
-  private static final List<String> RELOAD = List.of("mornicraft.admin");
+  private static final List<String> RELOAD = List.of("mornicraft.admin", "mornicraft.ranks");
   private static final List<String> MODERATE = List.of("mornicraft.moderate");
 
   private DefaultRanks() {}

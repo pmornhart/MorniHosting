@@ -60,6 +60,10 @@ final class Commands implements TabExecutor {
       info(sender);
       return true;
     }
+    if (name.equals("rang")) {
+      plugin.rankCommands().command(sender, args);
+      return true;
+    }
     if (name.equals("team")) {
       // "/team add …" is Minecraft's own command for scoreboard teams: it still works, passed on as it is.
       if (args.length > 0) Bukkit.dispatchCommand(sender, "minecraft:team " + String.join(" ", args));
@@ -75,7 +79,7 @@ final class Commands implements TabExecutor {
       seen(sender, args[0]);
       return true;
     }
-    if (List.of("gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "mod").contains(name)) {
+    if (List.of("gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen").contains(name)) {
       return plugin.moderation().command(sender, name, args);
     }
     if (name.equals("msg")) {
@@ -386,10 +390,11 @@ final class Commands implements TabExecutor {
   void team(CommandSender to) {
     List<Component> lines = new ArrayList<>();
     for (Ranks.Rank r : plugin.ranks().all()) {
-      if (r.fallback() || r.players().isEmpty()) continue;
+      List<Ranks.Member> members = plugin.ranks().members(r);
+      if (r.fallback() || members.isEmpty()) continue;
       Component names = Component.empty();
       boolean first = true;
-      for (Ranks.Member m : r.players()) {
+      for (Ranks.Member m : members) {
         String shown = m.shown();
         Player online = m.uuid() != null ? Bukkit.getPlayer(m.uuid()) : Bukkit.getPlayerExact(shown);
         if (!first) names = names.append(Component.text(", ", Ui.DIM));
@@ -412,7 +417,7 @@ final class Commands implements TabExecutor {
     List<String> options = new ArrayList<>();
     if ((name.equals("home") || name.equals("delhome")) && args.length == 1 && sender instanceof Player p) {
       options.addAll(plugin.store().get(p.getUniqueId()).homes.keySet());
-    } else if (List.of("gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "mod").contains(name) && args.length == 1) {
+    } else if (List.of("gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen").contains(name) && args.length == 1) {
       Bukkit.getOnlinePlayers().forEach(o -> options.add(o.getName()));
       if (name.equals("gefaengnis") && sender.isOp()) options.add("hier");
     } else if (List.of("gefaengnis", "stumm").contains(name) && args.length == 2) {

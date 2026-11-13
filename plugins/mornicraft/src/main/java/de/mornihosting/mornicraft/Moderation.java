@@ -795,7 +795,7 @@ final class Moderation implements Listener {
       case "frei" -> release(sender, target, true);
       case "entstummen" -> unmute(sender, target);
       case "einfrieren" -> freeze(sender, target);
-      case "mod" -> {
+      case "ansehen" -> {
         if (sender instanceof Player p) open(p, target);
         else sender.sendMessage(ui().fail("only.players"));
       }

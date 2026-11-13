@@ -102,7 +102,8 @@ export const RANK_PERMISSION_NODES: Readonly<Record<RankPermission, readonly str
   teleport: ['minecraft.command.teleport', 'minecraft.command.tp'],
   world: ['minecraft.command.time', 'minecraft.command.weather'],
   whitelist: ['minecraft.command.whitelist'],
-  reload: ['mornicraft.admin'],
+  // Owner/Admin things: reload the settings and hand out ranks in the game (/vip Steve).
+  reload: ['mornicraft.admin', 'mornicraft.ranks'],
 };
 
 /** Panel roles whose members (with a linked Minecraft account) get a rank by themselves. */
@@ -514,8 +515,16 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
         opOnly: true,
       },
       {
-        use: same('/mod <spieler>'),
+        use: same('/ansehen <spieler>'),
         text: { de: 'Team-Menü für einen Spieler', en: 'Team menu for a player' },
+        opOnly: true,
+      },
+      {
+        use: { de: '/vip <spieler> · /mod <spieler>', en: '/vip <player> · /mod <player>' },
+        text: {
+          de: 'Rang vergeben (Owner/Admin) – geht mit jedem Rang, „… weg“ nimmt ihn wieder',
+          en: 'Give a rank (owner/admin) – works with every rank, "… weg" takes it away',
+        },
         opOnly: true,
       },
       {

@@ -88,9 +88,17 @@ final class Ranks implements Listener {
   /** No answer from the game after this long: send it again. */
   private static final long PACK_ANSWER_TICKS = 1200;
   private volatile String packSha = "";
+  /**
+   * Ranks given in the game (/vip Steve): rank id, or "" for "back to everyone else's rank". They count before the
+   * config. With MorniHosting the panel takes them over into the dashboard (rank-changes.json) and they drop out once
+   * the new config says the same; without a panel they are kept in ranks-ingame.yml.
+   */
+  private final Map<UUID, String> given = new ConcurrentHashMap<>();
+  private volatile boolean managed;
 
   Ranks(MorniCraft plugin) {
     this.plugin = plugin;
+    readGiven();
   }
 
   List<Rank> all() {
@@ -100,6 +108,14 @@ final class Ranks implements Listener {
   /** Reads the ranks from the config (the built-in ones when there are none) and puts them on everyone online. */
   void load(FileConfiguration c) {
     ranks = c.isSet("ranks") ? parse(c.getMapList("ranks")) : DefaultRanks.ranks();
+    managed = c.getBoolean("managed-by-panel", false);
+    // What the new config already says needs no in-game entry any more.
+    given.entrySet().removeIf(e -> {
+      Rank configured = configured(e.getKey(), nameOf(e.getKey()));
+      String want = e.getValue();
+      return configured != null ? configured.id().equals(want) : want.isEmpty();
+    });
+    if (!managed) writeGiven();
     for (Player p : Bukkit.getOnlinePlayers()) apply(p);
     paintAll();
     // The badges' resource pack: a new one (other ranks, names, colours) is offered to everyone again.
@@ -287,14 +303,110 @@ final class Ranks implements Listener {
     }
   }
 
-  /** The player's rank: the first (highest) that lists them, else the default one, else none. */
+  /** The player's rank: given in the game, else the first (highest) that lists them, else the default one. */
   Rank of(Player p) {
-    Rank fallback = null;
-    for (Rank r : ranks) {
-      if (r.players().stream().anyMatch(m -> m.is(p))) return r;
-      if (r.fallback() && fallback == null) fallback = r;
+    String own = given.get(p.getUniqueId());
+    if (own != null) {
+      Rank r = byId(own);
+      if (r != null) return r;
+      if (own.isEmpty()) return fallbackRank();
     }
-    return fallback;
+    Rank configured = configured(p.getUniqueId(), p.getName());
+    return configured != null ? configured : fallbackRank();
+  }
+
+  /** The rank the config lists this player in (not the default one). */
+  private Rank configured(UUID id, String name) {
+    for (Rank r : ranks) {
+      boolean listed = r.players().stream().anyMatch(m -> m.uuid() != null ? m.uuid().equals(id)
+          : name != null && m.name().equalsIgnoreCase(name));
+      if (listed) return r;
+    }
+    return null;
+  }
+
+  /** Who has this rank: from the config (unless moved in the game) and given in the game. */
+  List<Member> members(Rank r) {
+    List<Member> out = new ArrayList<>();
+    for (Member m : r.players()) {
+      String moved = m.uuid() != null ? given.get(m.uuid()) : null;
+      if (moved == null || moved.equals(r.id())) out.add(m);
+    }
+    given.forEach((id, rank) -> {
+      if (rank.equals(r.id()) && out.stream().noneMatch(m -> id.equals(m.uuid()))) {
+        String name = nameOf(id);
+        out.add(new Member(id, name == null ? "" : name));
+      }
+    });
+    return out;
+  }
+
+  Rank fallbackRank() {
+    return ranks.stream().filter(Rank::fallback).findFirst().orElse(null);
+  }
+
+  Rank byId(String id) {
+    return ranks.stream().filter(r -> r.id().equals(id)).findFirst().orElse(null);
+  }
+
+  private static String nameOf(UUID id) {
+    OfflinePlayer o = Bukkit.getOfflinePlayer(id);
+    return o.getName();
+  }
+
+  /**
+   * Gives a player a rank in the game ("" = back to everyone else's rank): counts at once, the panel takes it over.
+   */
+  void give(UUID id, String name, String rankId) {
+    given.put(id, rankId);
+    Player online = Bukkit.getPlayer(id);
+    if (online != null) apply(online);
+    paintAll();
+    plugin.sidebar().update();
+    if (managed) tellPanel(id, name, rankId);
+    else writeGiven();
+  }
+
+  // ---------------------------------------------------------------- ranks given in the game, kept on disk
+
+  private java.io.File givenFile() {
+    return new java.io.File(plugin.getDataFolder(), "ranks-ingame.yml");
+  }
+
+  private void readGiven() {
+    java.io.File f = givenFile();
+    if (!f.exists()) return;
+    org.bukkit.configuration.file.YamlConfiguration y = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(f);
+    for (String key : y.getKeys(false)) {
+      UUID id = uuid(key);
+      if (id != null) given.put(id, y.getString(key, ""));
+    }
+  }
+
+  private void writeGiven() {
+    org.bukkit.configuration.file.YamlConfiguration y = new org.bukkit.configuration.file.YamlConfiguration();
+    given.forEach((id, rank) -> y.set(id.toString(), rank));
+    try {
+      plugin.getDataFolder().mkdirs();
+      if (given.isEmpty()) java.nio.file.Files.deleteIfExists(givenFile().toPath());
+      else y.save(givenFile());
+    } catch (java.io.IOException e) {
+      plugin.getLogger().warning("Could not save ranks-ingame.yml: " + e.getMessage());
+    }
+  }
+
+  /** For MorniHosting: one line per change in rank-changes.json (the panel reads, applies and removes it). */
+  private synchronized void tellPanel(UUID id, String name, String rankId) {
+    java.io.File f = new java.io.File(plugin.getDataFolder(), "rank-changes.json");
+    String line = "{\"uuid\":\"" + id + "\",\"name\":\"" + name.replaceAll("[^A-Za-z0-9_.]", "")
+        + "\",\"rank\":\"" + rankId + "\"}\n";
+    try {
+      plugin.getDataFolder().mkdirs();
+      java.nio.file.Files.writeString(f.toPath(), line, java.nio.charset.StandardCharsets.UTF_8,
+          java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+    } catch (java.io.IOException e) {
+      plugin.getLogger().warning("Could not tell the panel about a rank: " + e.getMessage());
+    }
   }
 
   /** "♛ Morni" for chat, tab list and messages. */
