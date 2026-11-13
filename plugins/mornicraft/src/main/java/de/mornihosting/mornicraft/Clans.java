@@ -59,6 +59,54 @@ final class Clans implements Listener {
   private static final int MEMBER_SLOTS = 9;
   private static final TextColor CLAN = TextColor.color(0x7dd3fc);
 
+  /** A colour the leader can give the clan's tag (Philip: "die Farbe einstellen können"). */
+  private record Paint(String id, String de, String en, int rgb, Material wool) {}
+
+  private static final List<Paint> PALETTE = List.of(
+      new Paint("himmelblau", "Himmelblau", "sky blue", 0x7dd3fc, Material.LIGHT_BLUE_WOOL),
+      new Paint("blau", "Blau", "blue", 0x3b82f6, Material.BLUE_WOOL),
+      new Paint("tuerkis", "Türkis", "cyan", 0x22d3ee, Material.CYAN_WOOL),
+      new Paint("gruen", "Grün", "green", 0x4ade80, Material.LIME_WOOL),
+      new Paint("dunkelgruen", "Dunkelgrün", "dark green", 0x16a34a, Material.GREEN_WOOL),
+      new Paint("gelb", "Gelb", "yellow", 0xfacc15, Material.YELLOW_WOOL),
+      new Paint("gold", "Gold", "gold", 0xf59e0b, Material.ORANGE_WOOL),
+      new Paint("orange", "Orange", "orange", 0xfb923c, Material.ORANGE_TERRACOTTA),
+      new Paint("rot", "Rot", "red", 0xef4444, Material.RED_WOOL),
+      new Paint("rosa", "Rosa", "pink", 0xf472b6, Material.PINK_WOOL),
+      new Paint("lila", "Lila", "purple", 0xa855f7, Material.PURPLE_WOOL),
+      new Paint("weiss", "Weiß", "white", 0xf5f5f5, Material.WHITE_WOOL),
+      new Paint("grau", "Grau", "gray", 0x9ca3af, Material.LIGHT_GRAY_WOOL));
+  private static final String DEFAULT_COLOR = "himmelblau";
+  // A colour written as hex: "#ff8800" (also without "#"). Matches "#ff8800", "FF8800"; rejects "#ff88", "red".
+  // https://regex101.com/?flavor=javascript&regex=%5E%23%3F%5B0-9a-fA-F%5D%7B6%7D%24&testString=%23ff8800%0AFF8800%0A%23ff88
+  private static final Pattern HEX = Pattern.compile("^#?[0-9a-fA-F]{6}$");
+
+  /** The colour names for tab completion. */
+  static List<String> colorIds() {
+    return PALETTE.stream().map(Paint::id).toList();
+  }
+
+  /** The palette entry for a name in German or English (also "grün", "weiß", "türkis"), or null. */
+  private static Paint paintOf(String name) {
+    String n = name.toLowerCase(Locale.ROOT).replace("ü", "ue").replace("ß", "ss").replace(" ", "");
+    return PALETTE.stream()
+        .filter(c -> c.id().equals(n) || c.en().replace(" ", "").equals(n)
+            || c.de().toLowerCase(Locale.ROOT).replace("ü", "ue").replace("ß", "ss").equals(n))
+        .findFirst().orElse(null);
+  }
+
+  private static TextColor colorOf(Clan c) {
+    if (c.color != null && HEX.matcher(c.color).matches()) return TextColor.fromHexString(c.color.startsWith("#") ? c.color : "#" + c.color);
+    Paint paint = c.color == null ? null : paintOf(c.color);
+    return TextColor.color(paint == null ? PALETTE.get(0).rgb() : paint.rgb());
+  }
+
+  private String colorName(Clan c) {
+    Paint paint = c.color == null ? null : paintOf(c.color);
+    if (paint == null) return c.color == null ? "" : c.color.toUpperCase(Locale.ROOT);
+    return plugin.settings().language().equalsIgnoreCase("en") ? paint.en() : paint.de();
+  }
+
   /** One clan. Members include the leader. */
   static final class Clan {
     String name;
@@ -69,6 +117,8 @@ final class Clans implements Listener {
     PlayerStore.Home base;
     boolean pvp;
     long created;
+    /** The tag's colour: a palette id ("rot") or "#rrggbb". */
+    String color = DEFAULT_COLOR;
 
     String key() {
       return name.toLowerCase(Locale.ROOT);
@@ -111,7 +161,8 @@ final class Clans implements Listener {
    */
   Component tagFor(UUID id) {
     String t = tagText(id);
-    return t.isEmpty() ? Component.empty() : Component.text("[" + t + "] ", CLAN);
+    Clan c = t.isEmpty() ? null : of(id);
+    return c == null ? Component.empty() : Component.text("[" + t + "] ", colorOf(c));
   }
 
   /** The clan tag of this player ("MC"), or "" (no clan, clans off). */
@@ -158,6 +209,7 @@ final class Clans implements Listener {
         else retag(p, arg);
       }
       case "pvp" -> pvp(p);
+      case "farbe", "color", "colour" -> recolor(p, arg);
       case "leader", "anführer", "anfuehrer" -> {
         if (arg == null) usage(p, "/clan leader <spieler>");
         else handOver(p, arg);
@@ -177,7 +229,7 @@ final class Clans implements Listener {
         {"/clan invite <spieler>", "clan.help.invite"}, {"/clan accept", "clan.help.accept"},
         {"/clan base · /clan setbase", "clan.help.base"}, {"/cc <text>", "clan.help.chat"},
         {"/clan kick <spieler>", "clan.help.kick"}, {"/clan leave · /clan disband", "clan.help.leave"},
-        {"/clan tag <kürzel> · /clan pvp", "clan.help.tag"}, {"/clan leader <spieler>", "clan.help.leader"}}) {
+        {"/clan tag <kürzel> · /clan pvp", "clan.help.tag"}, {"/clan farbe <farbe>", "clan.help.color"}, {"/clan leader <spieler>", "clan.help.leader"}}) {
       lines.add(Component.text(row[0], Ui.ACCENT).append(Component.text(" – ", Ui.DIM)).append(ui().words(row[1])));
     }
     ui().card(p, ui().flat("clan.title"), lines, false);
@@ -414,6 +466,37 @@ final class Clans implements Listener {
     tell(c, ui().note("⚔", CLAN, c.pvp ? "clan.pvp.on" : "clan.pvp.off"));
   }
 
+  /** "/clan farbe <farbe>": the tag's colour; without a colour the choice as buttons. */
+  void recolor(Player p, String wanted) {
+    Clan c = mine(p);
+    if (c == null || !leads(p, c)) return;
+    if (wanted == null) {
+      Component row = Component.empty();
+      for (Paint paint : PALETTE) {
+        String label = plugin.settings().language().equalsIgnoreCase("en") ? paint.en() : paint.de();
+        row = row.append(Component.text("■ " + label + "  ", TextColor.color(paint.rgb()))
+            .clickEvent(ClickEvent.runCommand("/clan farbe " + paint.id())));
+      }
+      ui().card(p, ui().flat("clan.title"), List.of(ui().words("clan.color.pick"), row), false);
+      return;
+    }
+    Paint paint = paintOf(wanted);
+    if (paint == null && !HEX.matcher(wanted).matches()) {
+      p.sendMessage(ui().fail("clan.badcolor"));
+      return;
+    }
+    c.color = paint != null ? paint.id() : (wanted.startsWith("#") ? wanted : "#" + wanted).toLowerCase(Locale.ROOT);
+    save();
+    tell(c, Component.text("■ ", colorOf(c)).append(ui().words("clan.newcolor", Ui.v("color", colorName(c)), Ui.v("tag", c.tag))));
+  }
+
+  /** The next colour of the palette (the menu's wool button). */
+  private void nextColor(Player p, Clan c) {
+    int at = 0;
+    for (int i = 0; i < PALETTE.size(); i++) if (PALETTE.get(i).id().equals(c.color)) at = i;
+    recolor(p, PALETTE.get((at + 1) % PALETTE.size()).id());
+  }
+
   void handOver(Player p, String who) {
     Clan c = mine(p);
     if (c == null || !leads(p, c)) return;
@@ -547,7 +630,7 @@ final class Clans implements Listener {
     boolean leader = c.leader.equals(p.getUniqueId());
     // Top row: the clan's banner with its facts.
     put(w, 4, item(Material.CYAN_BANNER, Component.text("⚑ " + c.name, CLAN).decoration(TextDecoration.BOLD, true),
-        List.of(line("clan.info.tag.plain", Ui.SOFT, Ui.v("tag", c.tag)),
+        List.of(Component.text("[" + c.tag + "] " + colorName(c), colorOf(c)).decoration(TextDecoration.ITALIC, false),
             line("clan.info.leader.plain", Ui.SOFT, Ui.v("name", c.names.getOrDefault(c.leader, "?"))),
             line("clan.info.count.plain", Ui.SOFT, Ui.v("count", c.members.size()),
                 Ui.v("max", plugin.settings().clanMaxMembers())))), null);
@@ -604,6 +687,13 @@ final class Clans implements Listener {
           Component.text("⚔ " + ui().flat(c.pvp ? "clan.menu.pvp.on" : "clan.menu.pvp.off"), NamedTextColor.WHITE),
           List.of(line("clan.menu.pvp.hint", Ui.SOFT))), () -> {
             pvp(p);
+            menu(p);
+          });
+      Paint now = paintOf(c.color == null ? "" : c.color);
+      put(w, 42, item(now == null ? Material.WHITE_WOOL : now.wool(),
+          Component.text("■ ", colorOf(c)).append(Component.text(ui().flat("clan.menu.color", Ui.v("color", colorName(c))), NamedTextColor.WHITE)),
+          List.of(line("clan.menu.color.hint", Ui.SOFT))), () -> {
+            nextColor(p, c);
             menu(p);
           });
       put(w, 43, item(Material.TNT, Component.text("✖ " + ui().flat("clan.menu.disband"), Ui.BAD),
@@ -668,6 +758,7 @@ final class Clans implements Listener {
       c.name = s.getString("name", key);
       c.tag = s.getString("tag", "CLAN");
       c.pvp = s.getBoolean("pvp", false);
+      c.color = s.getString("color", DEFAULT_COLOR);
       c.created = s.getLong("created", 0);
       try {
         c.leader = UUID.fromString(s.getString("leader", ""));
@@ -703,6 +794,7 @@ final class Clans implements Listener {
       String p = "clans." + c.key() + ".";
       y.set(p + "name", c.name);
       y.set(p + "tag", c.tag);
+      y.set(p + "color", c.color);
       y.set(p + "leader", c.leader.toString());
       y.set(p + "pvp", c.pvp);
       y.set(p + "created", c.created);

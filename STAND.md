@@ -167,6 +167,8 @@
 
 - Update-Bau robuster (13.11., Philip: v1.1.6 → v1.1.7 brach ab mit „failed to receive status: rpc error … EOF“ – BuildKit stürzte beim Bauen ab, meist zu wenig Speicher): `update.sh` `build_panel` baut bis zu dreimal, räumt dazwischen den Build-Cache auf, schreibt den freien Speicher ins Protokoll und nimmt beim dritten Versuch den alten Builder (`DOCKER_BUILDKIT=0`, `COMPOSE_BAKE=false`). Mit nachgebautem docker geprüft (Erfolg im 1./2./3. Versuch, Fehlschlag nach 3).
 
+- MorniCraft 1.8.5 – Clan-Farben (13.11., Philip): `/clan farbe <farbe>` (Anführung; 13 Farben aus `PALETTE` auf Deutsch oder Englisch oder eigene `#rrggbb`, ohne Angabe Auswahl zum Anklicken), Knopf „Clan-Farbe“ im Clan-Menü (Wolle in der Farbe, Klick = nächste Farbe), gespeichert in `clans.yml` (`color`, Standard Himmelblau). Kürzel in Chat, Tab-Liste und über dem Kopf in der Clan-Farbe, Tab-Vorschläge. Mit Test-Spielern auf Paper 1.17.1, 1.21.11, 26.1.2 geprüft (Team-Präfix `#EF4444`, Hex-Farbe, falsche Farbe abgelehnt, nur Anführung), gegen API 26.3 gebaut.
+
 ## Lokal testen (Sandbox)
 
 - Backend simuliert: `MH_SECRET=… MH_DATA_DIR=./data MH_DOCKER_DRIVER=fake MH_DEMO=true pnpm --filter @mornihosting/server dev`

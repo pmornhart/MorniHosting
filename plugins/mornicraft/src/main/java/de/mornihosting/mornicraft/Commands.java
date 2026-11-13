@@ -453,7 +453,10 @@ final class Commands implements TabExecutor {
       options.addAll(List.of("send", "read"));
     } else if (name.equals("clan") && args.length == 1) {
       options.addAll(List.of("create", "invite", "accept", "deny", "base", "setbase", "info", "list", "leave", "kick",
-          "disband", "tag", "pvp", "leader", "chat"));
+          "disband", "tag", "pvp", "leader", "chat", "farbe"));
+    } else if (name.equals("clan") && args.length == 2
+        && List.of("farbe", "color", "colour").contains(args[0].toLowerCase(Locale.ROOT))) {
+      options.addAll(Clans.colorIds());
     } else if (name.equals("clan") && args.length == 2
         && List.of("invite", "kick", "leader").contains(args[0].toLowerCase(Locale.ROOT))) {
       Bukkit.getOnlinePlayers().forEach(o -> options.add(o.getName()));
