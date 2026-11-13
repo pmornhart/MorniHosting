@@ -181,8 +181,7 @@ export function CreateServerPage(): ReactElement {
   const [portPick, setPortPick] = useState<number | null>(null);
   const [addOns, setAddOns] = useState({
     geyser: false,
-    // On by default (Philip): every client version joins right away; can be switched off here.
-    via: true,
+    via: false,
     voice: false,
     backups: false,
     craftattack: false,

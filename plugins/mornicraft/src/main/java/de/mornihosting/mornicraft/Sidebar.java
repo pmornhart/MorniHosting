@@ -162,8 +162,7 @@ final class Sidebar implements Listener {
     }
     if (status) lines.add(Component.text("  "));
     // Every row starts with the same dot (only its colour differs), so the labels start in one column; the values
-    // start in one column too (measured with Minecraft's character widths). Symbols of other widths (☀ ☾) only
-    // ever stand at the end of a line, where they can't push anything.
+    // start in one column too (measured with Minecraft's character widths).
     List<Component[]> rows = new ArrayList<>();
     Ranks.Rank rank = plugin.ranks().of(p);
     if (rank != null && !rank.fallback()) {
@@ -172,8 +171,7 @@ final class Sidebar implements Listener {
           picture ? plugin.ranks().label(rank, p) : Component.text(rank.name(), rank.color())});
     }
     rows.add(row(Ui.ACCENT_2, ui.flat("sidebar.clock"), Component.text(clock, NamedTextColor.WHITE)));
-    rows.add(row(night ? Ui.MAIL : Ui.GOLD, ui.flat("sidebar.day", Ui.v("n", day)),
-        Component.text(gameTime + " ", NamedTextColor.WHITE).append(Component.text(night ? "☾" : "☀", night ? Ui.MAIL : Ui.GOLD))));
+    rows.add(row(night ? Ui.MAIL : Ui.GOLD, ui.flat("sidebar.day", Ui.v("n", day)), Component.text(gameTime, NamedTextColor.WHITE)));
     rows.add(row(Ui.ACCENT, ui.flat("sidebar.online"),
         Component.text(Bukkit.getOnlinePlayers().size() + " / " + Bukkit.getMaxPlayers(), NamedTextColor.WHITE)));
     rows.add(row(Ui.SOFT, ui.flat("sidebar.ping"), Component.text(p.getPing() + " ms", NamedTextColor.WHITE)));
