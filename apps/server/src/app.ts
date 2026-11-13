@@ -71,6 +71,7 @@ import { createCraftAttackService } from './craftattack/service.js';
 import { registerCraftAttackRoutes } from './craftattack/routes.js';
 import { registerImpressumRoutes } from './impressum/routes.js';
 import { registerPlayerDetailRoutes } from './players/routes.js';
+import { registerHeadRoutes } from './players/heads.js';
 import { registerItemIconRoutes } from './players/item-icons.js';
 import { registerWebhookRoutes } from './webhooks/routes.js';
 import { createWebhookService } from './webhooks/service.js';
@@ -326,6 +327,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerHttpsRoutes(app, https);
   registerGameArtRoutes(app, ctx);
   registerItemIconRoutes(app, ctx);
+  registerHeadRoutes(app, ctx);
   registerMinecraftRoutes(app, minecraftLink);
   registerBackupRoutes(app, ctx, servers, backups);
   registerScheduleRoutes(app, ctx, servers, schedules);
