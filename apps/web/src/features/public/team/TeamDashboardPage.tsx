@@ -11,12 +11,13 @@ import {
   ShieldCheck,
   Snowflake,
   Swords,
+  Terminal,
   Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
-import type { TeamBoardPlayer } from '@mornihosting/shared';
+import { TEAM_COMMANDS, type TeamBoardPlayer, type TeamCommand } from '@mornihosting/shared';
 import { BrandMark, PlayerHead } from '@/components/server-visuals';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,10 +28,10 @@ import { setLanguage } from '@/i18n';
 import { cn } from '@/lib/utils';
 import { PlayerSheet } from './PlayerSheet';
 import { can, useTeamAction, useTeamBoard, useTeamRules, type TeamRequest } from './team-api';
-import { durationLabel, PunishDialog, RankPill, Tile, useLeft } from './team-ui';
+import { durationLabel, PunishDialog, RankPill, Tile, useLeft, type Board } from './team-ui';
 
 const DEMO = import.meta.env.MODE === 'demo';
-const TABS = ['players', 'jail', 'bans', 'history', 'rules'] as const;
+const TABS = ['players', 'jail', 'bans', 'history', 'rules', 'commands'] as const;
 type Tab = (typeof TABS)[number];
 const MIN_RULE_ROWS = 6;
 const SPARE_RULE_ROWS = 2;
@@ -113,7 +114,11 @@ export function TeamDashboardPage(): ReactElement {
               </p>
               <h1 className="text-2xl font-bold">{t('teamBoard.title')}</h1>
               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
-                <PlayerHead name={data.me.name} className="size-6 rounded-md" />
+                <PlayerHead
+                  name={data.me.name}
+                  skin={data.me.uuid || undefined}
+                  className="size-6 rounded-md"
+                />
                 <span className="font-semibold">{data.me.name}</span>
                 <RankPill name={data.me.rank} color={data.me.rankColor || '#34d399'} />
               </div>
@@ -193,6 +198,7 @@ export function TeamDashboardPage(): ReactElement {
                   bans: <Gavel className="size-4" />,
                   history: <History className="size-4" />,
                   rules: <ScrollText className="size-4" />,
+                  commands: <Terminal className="size-4" />,
                 }[x]
               }
               {t(`teamBoard.tabs.${x}`)}
@@ -430,6 +436,8 @@ export function TeamDashboardPage(): ReactElement {
         {tab === 'rules' ? (
           <RulesCard slug={slug} teamKey={key} rules={data.rules} editable={can(data, 'rules')} />
         ) : null}
+
+        {tab === 'commands' ? <CommandsCard board={data} /> : null}
       </div>
 
       <PlayerSheet
@@ -510,6 +518,49 @@ function RulesCard({
           ))}
         </ol>
       )}
+    </Card>
+  );
+}
+
+/** The commands of the team in the game: what this rank may use first, the rest greyed out below. */
+function CommandsCard({ board }: { board: Board }): ReactElement {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language.startsWith('en') ? 'en' : 'de';
+  const mine = TEAM_COMMANDS.filter((c) => can(board, c.needs));
+  const others = TEAM_COMMANDS.filter((c) => !can(board, c.needs));
+  const row = (c: TeamCommand, allowed: boolean): ReactElement => (
+    <div
+      key={c.use.de}
+      className={cn(
+        'grid gap-1 rounded-xl border border-border px-3 py-2.5 sm:grid-cols-[minmax(0,18rem)_1fr] sm:items-center sm:gap-4',
+        !allowed && 'opacity-50',
+      )}
+    >
+      <code className="min-w-0 break-words font-mono text-[13px] font-semibold text-primary">
+        {c.use[lang]}
+      </code>
+      <span className="text-sm text-muted-foreground">{c.text[lang]}</span>
+    </div>
+  );
+  return (
+    <Card className="grid gap-4 p-5">
+      <div>
+        <h2 className="flex items-center gap-2 text-base font-semibold">
+          <Terminal className="size-4 text-primary" /> {t('teamBoard.commands.title')}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {t('teamBoard.commands.text', { rank: board.me.rank || t('teamBoard.commands.team') })}
+        </p>
+      </div>
+      <div className="grid gap-1.5">{mine.map((c) => row(c, true))}</div>
+      {others.length ? (
+        <div className="grid gap-1.5">
+          <p className="flex items-center gap-2 text-sm font-semibold">
+            <Lock className="size-4 text-muted-foreground" /> {t('teamBoard.commands.ownerOnly')}
+          </p>
+          {others.map((c) => row(c, false))}
+        </div>
+      ) : null}
     </Card>
   );
 }

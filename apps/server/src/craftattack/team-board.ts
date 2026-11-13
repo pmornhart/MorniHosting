@@ -178,7 +178,14 @@ export function teamView(
     at: state?.at ?? 0,
     live: state !== null && now - state.at < STALE_MS,
     max: state?.max ?? 0,
-    me: { name: link.name, rank: link.rank, rankColor: link.rankColor, abilities, until: link.until },
+    me: {
+      uuid: link.uuid,
+      name: link.name,
+      rank: link.rank,
+      rankColor: link.rankColor,
+      abilities,
+      until: link.until,
+    },
     online,
     jailed: [
       ...fromOnline(

@@ -97,7 +97,7 @@ function freshState() {
       };
     }),
     jailedOffline: SAMPLE.jailedOffline.map((e): TeamBoardEntry => ({
-      uuid: '',
+      uuid: e.uuid,
       name: e.name,
       until: minutesFromNow(e.inMinutes),
       reason: e.reason,
@@ -161,6 +161,7 @@ export function teamDemoView(): TeamBoardView {
     live: true,
     max: MAX_PLAYERS,
     me: {
+      uuid: state.online.find((p) => p.name === me.name)?.uuid ?? '',
       name: me.name,
       rank: rank?.name ?? '',
       rankColor: rank?.color ?? '',

@@ -72,7 +72,12 @@ export function faceOf(skin: Buffer): Buffer {
     const i = (y * source.width + x) * RGBA;
     return [...source.data.subarray(i, i + RGBA)];
   };
-  const hasHat = source.width >= HAT_AT.x + FACE;
+  const hatPixels = Array.from({ length: FACE * FACE }, (_, n) =>
+    pixel(HAT_AT.x + (n % FACE), HAT_AT.y + Math.floor(n / FACE)),
+  );
+  // Old 64×32 skins often have a solid hat layer; Minecraft only shows it if some of it is see-through.
+  const legacy = source.height < source.width;
+  const hasHat = !legacy || hatPixels.some((p) => (p.at(-1) ?? 0) < OPAQUE);
   Array.from({ length: OUT * OUT }, (_, n) => n).forEach((n) => {
     const x = n % OUT;
     const y = Math.floor(n / OUT);

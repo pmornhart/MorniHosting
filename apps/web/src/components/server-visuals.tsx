@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { Badge, LogoMark } from './art';
 import { blockOf, McBlock } from './mc-block';
 import { Pill, type PillTone } from './ui/pill';
+import demoImages from 'virtual:demo-images';
 
 const STATE_TONES: Readonly<Record<ServerState, PillTone>> = {
   installing: 'warn',
@@ -158,11 +159,14 @@ export function PlayerHead({
   const [failed, setFailed] = useState(false);
   if (game && isGameId(game)) return <GamePlayer name={name} game={game} className={className} />;
   const lookup = skinOf(name, skin);
-  // The demo cannot load pictures from other sites, so it draws the faces itself.
+  // The demo cannot load pictures from other sites: it carries a few faces itself and draws the rest.
+  const embedded = DEMO && lookup ? demoImages.heads[lookup.replaceAll('-', '')] : undefined;
   const usable = !failed && !DEMO && lookup !== null;
   return (
     <img
-      src={usable ? `/api/heads/${encodeURIComponent(lookup)}?v=${skinRound()}` : playerFace(name)}
+      src={
+        embedded ?? (usable ? `/api/heads/${encodeURIComponent(lookup)}?v=${skinRound()}` : playerFace(name))
+      }
       alt=""
       loading="lazy"
       referrerPolicy="no-referrer"
