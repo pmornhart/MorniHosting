@@ -107,6 +107,7 @@ final class Texts {
       Map.entry("btn.rules.hover", new String[] {"Die Regeln anzeigen", "Show the rules"}),
       // Spawn
       Map.entry("spawn.protected", new String[] {"Der Spawn bleibt, wie er ist", "The spawn stays as it is"}),
+      Map.entry("jail.protected", new String[] {"Das Gefängnis bleibt, wie es ist", "The jail stays as it is"}),
       Map.entry("spawn.nosleep", new String[] {"Am Spawn kann man nicht schlafen", "You can't sleep at the spawn"}),
       Map.entry("spawn.nopvp", new String[] {"Am Spawn wird nicht gekämpft", "No fighting at the spawn"}),
       Map.entry("elytra.ready", new String[] {"Spring ab und drück <hl>2× Leertaste</hl> zum Gleiten", "Jump off and press <hl>space twice</hl> to glide"}),

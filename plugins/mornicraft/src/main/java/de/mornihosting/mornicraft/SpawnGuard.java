@@ -114,7 +114,9 @@ final class SpawnGuard implements Listener {
     Long last = lastNote.get(p.getUniqueId());
     if (last != null && now - last < NOTE_EVERY_MS) return;
     lastNote.put(p.getUniqueId(), now);
-    p.sendActionBar(plugin.ui().fail(key));
+    // In the jail cell it is the jail that stays as it is, not the spawn (Philip).
+    String say = "spawn.protected".equals(key) && plugin.moderation().inCell(p.getLocation()) ? "jail.protected" : key;
+    p.sendActionBar(plugin.ui().fail(say));
   }
 
   @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)

@@ -161,6 +161,8 @@
 
 - MorniCraft 1.8.3 (13.11., Philip): Grab-Kreuz neu – glatter Stein (`SMOOTH_STONE`, Philip wählte aus vier Varianten) mit polierten Andesit-Kappen an Spitze, Armen und Fuß, Moos am Sockel; Namensbrett klein (0,44 × 0,22) genau an der Kreuzung (`Graves.crossSign`: Fichtenholz-Block-Display + Text-Display, Schrift passt sich der Namenslänge an), kein Wandschild mehr. Mit Test-Spielern auf Paper 1.21.11 und 26.1.2 geprüft (Text-Display mit Name, 9 Block-Displays, kein Wandschild, fremder Spieler öffnet das Grab sofort), gegen API 26.3 gebaut; Bilder per three.js nachgebaut.
 
+- MorniCraft 1.8.4 (13.11., Philip): Wer in der Gefängniszelle etwas abbauen will, liest „Das Gefängnis bleibt, wie es ist“ statt „Der Spawn bleibt …“ (`SpawnGuard.stop` prüft `inCell`). Mit Test-Spieler auf Paper 1.21.11 geprüft (Block bleibt, Meldung stimmt).
+
 ## Lokal testen (Sandbox)
 
 - Backend simuliert: `MH_SECRET=… MH_DATA_DIR=./data MH_DOCKER_DRIVER=fake MH_DEMO=true pnpm --filter @mornihosting/server dev`
