@@ -279,7 +279,9 @@ final class Graves implements Listener {
     if (spot(g1)) change(g, g1, Material.PODZOL);
     // A stone cross at the head end: made of small stone pieces (displays, 1.19.4+), else of stone-brick walls.
     if (spot(stoneGround)) {
-      List<Entity> cross = cross(stoneGround.getRelative(BlockFace.UP).getLocation(), foot);
+      // With the name sign in front, the cross moves up to it: no gap between them (Philip).
+      boolean signFront = free(g0.getRelative(BlockFace.UP));
+      List<Entity> cross = cross(stoneGround.getRelative(BlockFace.UP).getLocation(), foot, signFront);
       if (!cross.isEmpty()) {
         cross.forEach(e -> g.entities.add(e.getUniqueId()));
         // The cross stands in that block: nothing else goes there, and clicking it opens the grave.
@@ -342,8 +344,14 @@ final class Graves implements Listener {
       new Piece(Material.POLISHED_ANDESITE, 0.06f, 0.92f, 0.39f, 0.94f, 1.14f, 0.61f),
       new Piece(Material.MOSS_BLOCK, 0.36f, 0.16f, 0.36f, 0.64f, 0.22f, 0.64f));
 
+  /** How far the cross moves towards the sign: the post (0.39…0.61) then ends right at the block edge. */
+  private static final float TO_SIGN = 0.39f;
+
   /** The cross and a click area round it (and the head), made of display entities; empty on older servers. */
-  private List<Entity> cross(Location blockCorner, BlockFace foot) {
+  private List<Entity> cross(Location blockCorner, BlockFace foot, boolean toSign) {
+    // Along the grave, towards the foot end (where the sign hangs): the post's front lands on the block's edge.
+    boolean footPositive = foot == BlockFace.SOUTH || foot == BlockFace.EAST;
+    float shift = toSign ? (footPositive ? TO_SIGN : -TO_SIGN) : 0f;
     List<Entity> made = new ArrayList<>();
     try {
       Class<? extends Entity> blockType = Class.forName("org.bukkit.entity.BlockDisplay").asSubclass(Entity.class);
@@ -353,8 +361,8 @@ final class Graves implements Listener {
         made.add(e);
         blockType.getMethod("setBlock", org.bukkit.block.data.BlockData.class).invoke(e, piece.block().createBlockData());
         // "Across the grave" is x when the grave runs north–south, else z.
-        float ax0 = alongX ? piece.z0() : piece.x0();
-        float az0 = alongX ? piece.x0() : piece.z0();
+        float ax0 = alongX ? piece.z0() + shift : piece.x0();
+        float az0 = alongX ? piece.x0() : piece.z0() + shift;
         float sx = alongX ? piece.z1() - piece.z0() : piece.x1() - piece.x0();
         float sz = alongX ? piece.x1() - piece.x0() : piece.z1() - piece.z0();
         transformScaled(e, new float[] {ax0, piece.y0(), az0}, new float[] {sx, piece.y1() - piece.y0(), sz});

@@ -98,7 +98,7 @@ record Settings(
         c.getStringList("streamer.hide"),
         c.getBoolean("sit", true),
         c.getBoolean("graves", true),
-        Math.max(0, c.getInt("grave-private-minutes", 15)),
+        Math.max(0, c.getInt("grave-private-minutes", 0)),
         c.getBoolean("tab-stats", true),
         // Combat log: seconds "in combat" after a hit between players; 0 = off.
         Math.max(0, Math.min(MAX_COMBAT_SECONDS, c.getInt("combat-seconds", 15))),

@@ -266,7 +266,8 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
       : { url: '', sha1: '', required: s.badgesRequired, server: false },
     sit: s.sit,
     graves: s.graves,
-    'grave-private-minutes': s.gravePrivateMinutes,
+    // Graves are open for everyone at once – anyone may take the loot (Philip, 13.11.).
+    'grave-private-minutes': 0,
     'tab-stats': s.tabStats,
     'combat-seconds': s.combatSeconds,
     'team-link': c.teamLink ?? '',

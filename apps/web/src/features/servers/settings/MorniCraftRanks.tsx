@@ -63,8 +63,17 @@ function RankLabel({
   if (!rank.symbol && !(badge && rank.isDefault)) return null;
   if (badge && !text) {
     // Only the icon (Philip: "nur noch die Krone").
+    const player = !rank.symbol;
     return (
-      <span className="mr-1.5 align-middle" style={{ color: rank.color }}>
+      <span
+        className="mr-1.5 inline-grid size-[1.35em] place-items-center rounded-[3px] align-middle text-[0.8em] leading-none"
+        style={{
+          color: player ? '#fff' : rank.color,
+          background: player ? '#3a3a40' : `color-mix(in srgb, ${rank.color} 32%, black)`,
+          border: `1px solid ${player ? '#0c0c0e' : '#e0ad3a'}`,
+          boxShadow: `inset 0 0 0 1.5px ${player ? '#2a2a2e' : rank.color}`,
+        }}
+      >
         {rank.symbol || '☺'}
       </span>
     );

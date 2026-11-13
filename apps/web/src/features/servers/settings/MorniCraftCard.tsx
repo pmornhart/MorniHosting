@@ -115,7 +115,7 @@ const SECTIONS: readonly {
     id: 'graves',
     icon: Skull,
     switches: ['graves'],
-    numbers: [{ key: 'gravePrivateMinutes', min: 0, max: 120, step: 5, when: ['graves'] }],
+    numbers: [],
   },
 ];
 

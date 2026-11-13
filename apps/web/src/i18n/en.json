@@ -3338,7 +3338,7 @@
       "sidebar": "Time, game time, online, ping, commands – everyone can hide it with /leiste",
       "showLink": "In /info and the welcome (needs a panel domain)",
       "tabStats": "⚔ kills and ☠ deaths next to every name",
-      "graves": "Whoever dies gets a grave with their head, all their things and experience – right click gets it all back",
+      "graves": "Whoever dies gets a grave with all their things and experience – anyone can open it and take the loot",
       "gravePrivateMinutes": "For this long only the dead player (and the team) may open the grave, then anyone",
       "combatSeconds": "Whoever hits a player or is hit stays in combat this long: no teleports, only chat commands, no start elytra – logging out then means death (things go into the grave). 0 = off.",
       "sit": "Right click with an empty hand to sit, sneak to stand up",

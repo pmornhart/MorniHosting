@@ -150,17 +150,74 @@ function lettersOf(name: string): string[] {
   return [...name.toUpperCase()].filter((ch) => FONT[ch] !== undefined).slice(0, MAX_TEXT);
 }
 
-/** Only the icon, nothing around it (Philip: "nur noch die Krone"); one pixel of room to the next letter. */
-function iconPicture(icon: readonly string[]): Picture {
-  const width = ICON + 1;
-  const pixels = Buffer.alloc(width * HEIGHT * 4);
+/**
+ * Icon tiles are drawn three times as fine (the pack shows them 9 pixels tall): a frame a third of a pixel thin, a
+ * ring of two, and the icon at two thirds of its size with room around it.
+ */
+const TILE = HEIGHT * 3;
+const TILE_SCALE = 2;
+const ICON_AT = Math.floor((TILE - ICON * TILE_SCALE) / 2);
+const RING = 2;
+/** Corner radius of the tile (fine pixels; the tile is 27 wide). */
+const CORNER = 5;
+const HALF = 0.5;
+/** The tile's inside is darker than the label tags, so yellow icons (crown, star) stand out. */
+const TILE_SHADE = 0.32;
+const GOLD_LIGHT: Rgb = [255, 218, 92];
+const GOLD_DARK: Rgb = [196, 142, 28];
+const PLAYER_FRAME: Rgb = [12, 12, 14];
+const PLAYER_RING: Rgb = [42, 42, 46];
+const PLAYER_FILL: Rgb = [58, 58, 64];
+
+/**
+ * Only the icon in a small tile (Philip: "nur noch die Krone, farbige Umrandung, goldener Rahmen, für Spieler ein
+ * dunkler schwarzer Rahmen"): a gold frame (light top left, darker bottom right), inside a ring in the rank's colour,
+ * the tile filled with its darker shade, the icon on top. The rank for everyone else: black frame, dark grey.
+ */
+function iconPicture(icon: readonly string[], color: Rgb, player: boolean): Picture {
+  const pixels = Buffer.alloc(TILE * TILE * 4);
+  const put = (x: number, y: number, ink: Rgb): void => {
+    pixels.set([...ink, 255], (y * TILE + x) * 4);
+  };
+  const last = TILE - 1;
+  /**
+   * How far a pixel lies inside the tile's edge (0 = the frame), following slightly rounded corners (Philip: "etwas
+   * abrunden, aber nicht zu stark"); below 0 = outside.
+   */
+  const edgeOf = (x: number, y: number): number => {
+    const dx = Math.max(0, CORNER - (x + HALF), x + HALF - (TILE - CORNER));
+    const dy = Math.max(0, CORNER - (y + HALF), y + HALF - (TILE - CORNER));
+    const straight = Math.min(x, y, last - x, last - y);
+    return dx > 0 && dy > 0 ? Math.floor(CORNER - Math.hypot(dx, dy)) : straight;
+  };
+  const [r, g, b] = color;
+  const fill: Rgb = player
+    ? PLAYER_FILL
+    : [Math.round(r * TILE_SHADE), Math.round(g * TILE_SHADE), Math.round(b * TILE_SHADE)];
+  const ring: Rgb = player ? PLAYER_RING : color;
+  Array.from({ length: TILE * TILE }, (_, n) => n).forEach((n) => {
+    const x = n % TILE;
+    const y = Math.floor(n / TILE);
+    const edge = edgeOf(x, y);
+    // Outside the rounded corners: stays empty.
+    if (edge < 0) return;
+    const frame: Rgb = player ? PLAYER_FRAME : x + y < last ? GOLD_LIGHT : GOLD_DARK;
+    put(x, y, edge === 0 ? frame : edge <= RING ? ring : fill);
+  });
   icon.forEach((row, y) =>
     [...row].forEach((cell, x) => {
       const ink = INK[cell];
-      if (ink) pixels.set([...ink, 255], ((TAG_TOP + y) * width + x) * 4);
+      if (!ink) return;
+      Array.from({ length: TILE_SCALE * TILE_SCALE }, (_, k) => k).forEach((k) =>
+        put(
+          ICON_AT + TILE_SCALE * x + (k % TILE_SCALE),
+          ICON_AT + TILE_SCALE * y + Math.floor(k / TILE_SCALE),
+          ink,
+        ),
+      );
     }),
   );
-  return { width, height: HEIGHT, pixels };
+  return { width: TILE, height: TILE, pixels };
 }
 
 /**
@@ -172,7 +229,8 @@ export function badgePicture(
   options: { readonly text?: boolean } = { text: true },
 ): Picture {
   const plain = ICONS[iconOf(rank)];
-  if (options.text === false && plain) return iconPicture(plain);
+  if (options.text === false && plain)
+    return iconPicture(plain, rgbOf(rank.color), iconOf(rank) === 'player');
   const letters = lettersOf(rank.name);
   const icon = ICONS[iconOf(rank)] ?? null;
   const glyphs = letters.map((ch) => FONT[ch] ?? []);

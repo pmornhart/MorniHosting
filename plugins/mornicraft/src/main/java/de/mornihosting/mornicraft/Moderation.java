@@ -90,6 +90,7 @@ final class Moderation implements Listener {
   private final MorniCraft plugin;
   private final File jailFile;
   private Location cell;
+  private boolean barsChecked;
   private final Set<UUID> frozen = ConcurrentHashMap.newKeySet();
   private final Map<UUID, BossBar> bars = new HashMap<>();
   /** Inventories opened by someone who may only look (not take): viewer → nothing. */
@@ -214,7 +215,11 @@ final class Moderation implements Listener {
       cell = at.clone().add(0.5, 0, 0.5);
       cell.setYaw(180);
       saveCell();
+    } else if (!barsChecked) {
+      // Cells built by older versions: join their bars once per start (only where the plugin's own walls stand).
+      joinBars(cell.getBlock().getLocation());
     }
+    barsChecked = true;
     return cell.clone();
   }
 
@@ -255,6 +260,7 @@ final class Moderation implements Listener {
         set(w, x0 + dx, y0 + CELL_HEIGHT, z0 + dz, edge ? Material.STONE_BRICK_SLAB : Material.STONE_BRICKS);
       }
     }
+    joinBars(floor);
     // Inside: light, a stool, a flower, a sign.
     Block lantern = w.getBlockAt(x0, y0 + CELL_HEIGHT - 1, z0);
     lantern.setBlockData(Bukkit.createBlockData("minecraft:lantern[hanging=true]"));
@@ -270,6 +276,27 @@ final class Moderation implements Listener {
       s.line(2, Component.text("Zeit absitzen", NamedTextColor.DARK_GRAY));
       s.line(3, Component.text(":)", NamedTextColor.DARK_GRAY));
       s.update(true, false);
+    }
+  }
+
+  /**
+   * The bars of the cell's walls joined to each other, like a player places them – without that they stood as single
+   * posts and one could walk out between them (Philip, 13.11.). Also repairs cells built before.
+   */
+  private static void joinBars(Location floor) {
+    World w = floor.getWorld();
+    int r = CELL_HALF + 1;
+    BlockData alongZ = Bukkit.createBlockData("minecraft:iron_bars[north=true,south=true]");
+    BlockData alongX = Bukkit.createBlockData("minecraft:iron_bars[east=true,west=true]");
+    for (int d = -r + 1; d < r; d++) {
+      for (int dy = 1; dy < CELL_HEIGHT - 1; dy++) {
+        for (int side : new int[] {-r, r}) {
+          Block onX = w.getBlockAt(floor.getBlockX() + side, floor.getBlockY() + dy, floor.getBlockZ() + d);
+          if (onX.getType() == Material.IRON_BARS) onX.setBlockData(alongZ, false);
+          Block onZ = w.getBlockAt(floor.getBlockX() + d, floor.getBlockY() + dy, floor.getBlockZ() + side);
+          if (onZ.getType() == Material.IRON_BARS) onZ.setBlockData(alongX, false);
+        }
+      }
     }
   }
 
