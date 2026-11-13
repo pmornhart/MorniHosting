@@ -79,6 +79,18 @@ commands:
       aliases: [inspect, moderation],
       permission: mornicraft.moderate,
     }
+  nether:
+    {
+      description: Netherportal am Spawn bauen oder wieder wegnehmen (Team),
+      usage: '/nether [weg]',
+      permission: mornicraft.moderate,
+    }
+  end:
+    {
+      description: Weg zum Endportal ins Innere des Spawns öffnen oder schließen (Team),
+      usage: '/end [weg]',
+      permission: mornicraft.moderate,
+    }
   clan:
     description: Clan-Menü und Clan-Befehle
     aliases: [clans]

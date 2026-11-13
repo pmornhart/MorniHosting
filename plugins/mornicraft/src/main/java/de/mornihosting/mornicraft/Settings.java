@@ -45,7 +45,8 @@ record Settings(
     boolean homes,
     Map<String, Limit> limits,
     boolean clans,
-    int clanMaxMembers) {
+    int clanMaxMembers,
+    boolean hardDragon) {
 
   /** "uses" times per "hours" (0 uses = no limit), e.g. 3 per 24 hours. */
   record Limit(int uses, int hours) {}
@@ -108,7 +109,9 @@ record Settings(
         c.getBoolean("homes", true),
         limits(c),
         c.getBoolean("clans.enabled", true),
-        Math.max(2, c.getInt("clans.max-members", 10)));
+        Math.max(2, c.getInt("clans.max-members", 10)),
+        // The mighty ender dragon: three times the health, harder hits, a brood of phantoms.
+        c.getBoolean("hard-dragon", true));
   }
 
   private static Map<String, Limit> limits(FileConfiguration c) {

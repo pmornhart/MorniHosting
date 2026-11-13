@@ -13,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MorniCraft extends JavaPlugin {
   private static final List<String> COMMANDS = List.of("spawn", "sethome", "home", "homes", "delhome", "back", "tpa",
       "tpahere", "tpaccept", "tpdeny", "msg", "r", "mail", "ignore", "afk", "seen", "near", "getpos", "ping", "info",
-      "rules", "leiste", "team", "streamer", "abzeichen", "gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen", "rang", "teamdashboard", "mornicraft", "clan", "cc");
+      "rules", "leiste", "team", "streamer", "abzeichen", "gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen", "rang", "teamdashboard", "mornicraft", "clan", "cc", "nether", "end");
 
   private Settings settings;
   private Ui ui;
@@ -35,6 +35,7 @@ public final class MorniCraft extends JavaPlugin {
   private Limits limits;
   private Clans clans;
   private TeamBoard teamBoard;
+  private Portals portals;
 
   @Override
   public void onEnable() {
@@ -74,6 +75,8 @@ public final class MorniCraft extends JavaPlugin {
     limits = new Limits(this);
     clans = new Clans(this);
     pm.registerEvents(clans, this);
+    portals = new Portals(this);
+    pm.registerEvents(new HardDragon(this), this);
     seats = new Seats(this);
     pm.registerEvents(seats, this);
     pm.registerEvents(new UpdateCheck(this), this);
@@ -149,6 +152,10 @@ public final class MorniCraft extends JavaPlugin {
 
   Limits limits() {
     return limits;
+  }
+
+  Portals portals() {
+    return portals;
   }
 
   Clans clans() {
