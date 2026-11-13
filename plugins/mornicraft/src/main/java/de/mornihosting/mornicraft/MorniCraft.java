@@ -77,6 +77,8 @@ public final class MorniCraft extends JavaPlugin {
     seats = new Seats(this);
     pm.registerEvents(seats, this);
     pm.registerEvents(new UpdateCheck(this), this);
+    commandFilter = new CommandFilter(this);
+    pm.registerEvents(commandFilter, this);
     // After the server finished loading: then the other plugins' commands are known and stay theirs.
     Bukkit.getScheduler().runTask(this, rankCommands::registerCommands);
     for (String name : COMMANDS) {
@@ -105,12 +107,15 @@ public final class MorniCraft extends JavaPlugin {
     ui = new Ui(new Texts(settings.language()), p -> bedrock != null && bedrock.is(p));
   }
 
+  private CommandFilter commandFilter;
+
   void reload() {
     load();
     if (ranks != null) ranks.load(getConfig());
     if (rankCommands != null) rankCommands.registerCommands();
     if (streamer != null) streamer.load();
     if (sidebar != null) sidebar.rebuild();
+    if (commandFilter != null) commandFilter.refresh();
   }
 
   Ranks ranks() {

@@ -169,6 +169,8 @@
 
 - MorniCraft 1.8.5 – Clan-Farben (13.11., Philip): `/clan farbe <farbe>` (Anführung; 13 Farben aus `PALETTE` auf Deutsch oder Englisch oder eigene `#rrggbb`, ohne Angabe Auswahl zum Anklicken), Knopf „Clan-Farbe“ im Clan-Menü (Wolle in der Farbe, Klick = nächste Farbe), gespeichert in `clans.yml` (`color`, Standard Himmelblau). Kürzel in Chat, Tab-Liste und über dem Kopf in der Clan-Farbe, Tab-Vorschläge. Mit Test-Spielern auf Paper 1.17.1, 1.21.11, 26.1.2 geprüft (Team-Präfix `#EF4444`, Hex-Farbe, falsche Farbe abgelehnt, nur Anführung), gegen API 26.3 gebaut.
 
+- MorniCraft 1.8.6 – aufgeräumte Befehlsvorschläge (13.11., Philip: „nur die notwendigen und die auf der Seite, die von Minecraft schon“): `CommandFilter.java` (`PlayerCommandSendEvent`) zeigt von MorniCraft nur Befehle, die in der Befehlsliste stehen (`settings().groups()`) plus info, rules, clan, cc, team, Team-Werkzeuge, homes, leiste; keine Aliase (/tell, /knast, /staff, /tpyes …), keine `mornicraft:`-Zwillinge, /rang und /teamdashboard nur mit Recht, Clans aus → /clan und /cc weg. Server-Befehle (/plugins, /version, /about, `bukkit:` …) nur für OPs; Minecrafts eigene bleiben. Versteckte Befehle funktionieren weiter, wenn man sie tippt; bei `/mornicraft reload` bekommen alle die neue Liste. Mit Test-Spieler auf Paper 1.17.1, 1.21.11, 26.1.2 geprüft (Befehlsbaum), gegen API 26.3 gebaut.
+
 ## Lokal testen (Sandbox)
 
 - Backend simuliert: `MH_SECRET=… MH_DATA_DIR=./data MH_DOCKER_DRIVER=fake MH_DEMO=true pnpm --filter @mornihosting/server dev`
