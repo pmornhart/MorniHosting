@@ -83,7 +83,7 @@ const DEMO = import.meta.env.MODE === 'demo';
 const JAVA_NAME = /^[A-Za-z0-9_]{3,16}$/;
 const FLOODGATE_UUID = '00000000-0000-0000-';
 
-/** What mc-heads.net should look up: the given skin (a name or uuid), by default the name if it is a Java name. */
+/** Whose face the panel should fetch from Mojang: the given skin (a name or uuid), by default the name if it is a Java name. */
 function skinOf(name: string, skin: string | null | undefined): string | null {
   // Bedrock players (Floodgate) have made-up UUIDs starting with zeros: no Java skin behind them.
   if (skin?.startsWith(FLOODGATE_UUID)) return null;
@@ -92,7 +92,7 @@ function skinOf(name: string, skin: string | null | undefined): string | null {
 }
 
 /**
- * A player's face from mc-heads.net; falls back to a drawn face offline or for Bedrock names.
+ * A player's face (the panel fetches the current skin from Mojang, /api/heads); falls back to a drawn face offline or for Bedrock names.
  * `skin` picks the account explicitly (null: always draw), e.g. the user's linked Minecraft account.
  */
 /** Colours of the player pictures for other games (from dark to light), in the spirit of each game. */
@@ -139,8 +139,8 @@ function GamePlayer({
   );
 }
 
-/** Changes every hour: a new skin shows up without the browser holding on to the old picture. */
-const SKIN_REFRESH_MS = 3_600_000;
+/** The panel asks Mojang again after five minutes; the browser follows. */
+const SKIN_REFRESH_MS = 300_000;
 const skinRound = (): number => Math.floor(Date.now() / SKIN_REFRESH_MS);
 
 export function PlayerHead({
@@ -162,11 +162,7 @@ export function PlayerHead({
   const usable = !failed && !DEMO && lookup !== null;
   return (
     <img
-      src={
-        usable
-          ? `https://mc-heads.net/avatar/${encodeURIComponent(lookup)}/32?v=${skinRound()}`
-          : playerFace(name)
-      }
+      src={usable ? `/api/heads/${encodeURIComponent(lookup)}?v=${skinRound()}` : playerFace(name)}
       alt=""
       loading="lazy"
       referrerPolicy="no-referrer"

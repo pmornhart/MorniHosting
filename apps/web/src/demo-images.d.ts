@@ -5,6 +5,8 @@ declare module 'virtual:demo-images' {
   const images: {
     readonly logos: Partial<Record<LogoProject, string>>;
     readonly gameArt: Partial<Record<GameArtId, string>>;
+    /** Item pictures of the team dashboard demo, by item id. */
+    readonly items: Readonly<Record<string, string>>;
   };
   export default images;
 }

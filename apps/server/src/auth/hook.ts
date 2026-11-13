@@ -14,6 +14,7 @@ const BEARER_PREFIX = 'Bearer ';
 export const API_TOKEN_PREFIX = 'mh_';
 const CSRF_HEADER = 'x-csrf-token';
 /** Paths that work before anyone is logged in; they are still protected by the origin check. */
+const PUBLIC_API = '/api/public/';
 const CSRF_EXEMPT: readonly string[] = [
   '/api/auth/login',
   '/api/setup',
@@ -188,7 +189,8 @@ export function createAuthHook(ctx: AppContext) {
       tokenId: null,
     });
     const path = request.url.split('?')[0] ?? '';
-    if (unsafe && !CSRF_EXEMPT.includes(path)) {
+    // Public endpoints never act on the session (the team dashboard carries its own key in a header).
+    if (unsafe && !CSRF_EXEMPT.includes(path) && !path.startsWith(PUBLIC_API)) {
       const header = request.headers[CSRF_HEADER];
       if (typeof header !== 'string' || !safeEqual(header, resolved.session.csrfToken)) {
         throw new AppError(HTTP_FORBIDDEN, 'csrf');

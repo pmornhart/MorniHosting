@@ -1,0 +1,230 @@
+{
+  "inventories": {
+    "rich": [
+      [0, "netherite_sword", 1, true],
+      [1, "diamond_pickaxe", 1, true],
+      [2, "bow", 1, false],
+      [3, "cooked_beef", 42, false],
+      [4, "torch", 64, false],
+      [8, "ender_pearl", 13, false],
+      [9, "oak_log", 64, false],
+      [10, "cobblestone", 64, false],
+      [11, "iron_ingot", 27, false],
+      [12, "diamond", 9, false],
+      [20, "golden_apple", 3, false],
+      [36, "diamond_boots", 1, true],
+      [37, "diamond_leggings", 1, true],
+      [38, "elytra", 1, false],
+      [39, "diamond_helmet", 1, true],
+      [40, "shield", 1, false]
+    ],
+    "poor": [
+      [0, "stone_axe", 1, false],
+      [1, "bread", 7, false],
+      [2, "wheat_seeds", 23, false],
+      [5, "tnt", 12, false],
+      [6, "flint_and_steel", 1, false],
+      [38, "iron_chestplate", 1, false]
+    ],
+    "ender": [
+      [0, "shulker_box", 1, false],
+      [1, "emerald", 30, false],
+      [2, "diamond", 4, false]
+    ]
+  },
+  "players": [
+    {
+      "name": "Morni_TV",
+      "uuid": "f5dc6208-0b2a-308a-a69e-e631b3ae7180",
+      "rankId": "owner",
+      "where": [1156, 171, 1165],
+      "inventory": "rich",
+      "extra": {
+        "live": true,
+        "playMinutes": 4210
+      }
+    },
+    {
+      "name": "Lena",
+      "uuid": "b81c4872-63b8-3b59-adc4-f44a1c180ac1",
+      "rankId": "moderator",
+      "where": [1140, 170, 1172],
+      "inventory": "poor",
+      "extra": {
+        "ping": 41,
+        "playMinutes": 1880
+      }
+    },
+    {
+      "name": "Steve",
+      "uuid": "8667ba71-b85a-4004-af54-457a9734eed7",
+      "rankId": "vip",
+      "where": [-312, 64, 880],
+      "inventory": "rich",
+      "extra": {
+        "combat": true,
+        "health": 7,
+        "playMinutes": 930
+      }
+    },
+    {
+      "name": "Alex",
+      "uuid": "ec561538-f3fd-461d-aff5-086b22154bce",
+      "rankId": "spieler",
+      "where": [0, 200, 0],
+      "inventory": "poor",
+      "jailMinutes": 7,
+      "extra": {
+        "jailReason": "Griefing am Spawn",
+        "gamemode": "adventure",
+        "playMinutes": 210
+      }
+    },
+    {
+      "name": "Notch",
+      "uuid": "069a79f4-44e9-4726-a5be-fca90e38aaf5",
+      "rankId": "spieler",
+      "where": [88, 70, -41],
+      "inventory": "poor",
+      "muteMinutes": 25,
+      "extra": {
+        "afk": true,
+        "playMinutes": 55
+      }
+    },
+    {
+      "name": "BlockBob",
+      "uuid": "00000000-0000-0000-0009-01f5c7e3d2a1",
+      "rankId": "spieler",
+      "where": [402, 12, 77],
+      "inventory": "poor",
+      "extra": {
+        "frozen": true,
+        "bedrock": true,
+        "ping": 88,
+        "playMinutes": 12
+      }
+    }
+  ],
+  "base": {
+    "ping": 23,
+    "health": 20,
+    "food": 18,
+    "gamemode": "survival",
+    "playMinutes": 600
+  },
+  "jailedOffline": [
+    {
+      "name": "Dinnerbone",
+      "inMinutes": 178,
+      "reason": "Beleidigung im Chat"
+    }
+  ],
+  "bans": [
+    {
+      "name": "Hacker123",
+      "reason": "Fly-Hack",
+      "by": "Morni_TV",
+      "minutesAgo": 1440,
+      "forMinutes": 0
+    },
+    {
+      "name": "Trollo",
+      "reason": "Spam",
+      "by": "Lena",
+      "minutesAgo": 60,
+      "forMinutes": 2940
+    }
+  ],
+  "history": [
+    {
+      "minutesAgo": 5,
+      "type": "jail",
+      "target": "Alex",
+      "by": "Lena",
+      "reason": "Griefing am Spawn",
+      "minutes": 10
+    },
+    {
+      "minutesAgo": 35,
+      "type": "mute",
+      "target": "Notch",
+      "by": "Lena",
+      "reason": "Spam",
+      "minutes": 30
+    },
+    {
+      "minutesAgo": 60,
+      "type": "ban",
+      "target": "Trollo",
+      "by": "Lena",
+      "reason": "Spam",
+      "minutes": 2880
+    },
+    {
+      "minutesAgo": 120,
+      "type": "kick",
+      "target": "Steve",
+      "by": "Morni_TV",
+      "reason": "AFK-Farm",
+      "minutes": 0
+    },
+    {
+      "minutesAgo": 1440,
+      "type": "ban",
+      "target": "Hacker123",
+      "by": "Morni_TV",
+      "reason": "Fly-Hack",
+      "minutes": 0
+    },
+    {
+      "minutesAgo": 2880,
+      "type": "free",
+      "target": "Steve",
+      "by": "Morni_TV",
+      "reason": "",
+      "minutes": 0
+    },
+    {
+      "minutesAgo": 2890,
+      "type": "jail",
+      "target": "Steve",
+      "by": "Lena",
+      "reason": "TNT am Spawn",
+      "minutes": 30
+    }
+  ],
+  "ranks": [
+    {
+      "id": "owner",
+      "name": "Owner",
+      "color": "#ff5555"
+    },
+    {
+      "id": "moderator",
+      "name": "Moderator",
+      "color": "#55aaff"
+    },
+    {
+      "id": "builder",
+      "name": "Builder",
+      "color": "#c084fc"
+    },
+    {
+      "id": "vip",
+      "name": "VIP",
+      "color": "#ffd24d"
+    },
+    {
+      "id": "spieler",
+      "name": "Spieler",
+      "color": "#bbbbbb"
+    }
+  ],
+  "rules": [
+    "Sei nett zu allen.",
+    "Nichts kaputt machen, was anderen gehört.",
+    "Keine Cheats, keine Hacks.",
+    "Viel Spaß!"
+  ]
+}

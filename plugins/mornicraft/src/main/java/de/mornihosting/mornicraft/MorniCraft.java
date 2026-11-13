@@ -13,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MorniCraft extends JavaPlugin {
   private static final List<String> COMMANDS = List.of("spawn", "sethome", "home", "homes", "delhome", "back", "tpa",
       "tpahere", "tpaccept", "tpdeny", "msg", "r", "mail", "ignore", "afk", "seen", "near", "getpos", "ping", "info",
-      "rules", "leiste", "team", "streamer", "abzeichen", "gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen", "rang", "mornicraft");
+      "rules", "leiste", "team", "streamer", "abzeichen", "gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen", "rang", "teamdashboard", "mornicraft");
 
   private Settings settings;
   private Ui ui;
@@ -31,6 +31,7 @@ public final class MorniCraft extends JavaPlugin {
   private Graves graves;
   private Combat combat;
   private RankCommands rankCommands;
+  private TeamBoard teamBoard;
 
   @Override
   public void onEnable() {
@@ -51,6 +52,7 @@ public final class MorniCraft extends JavaPlugin {
     graves = new Graves(this);
     combat = new Combat(this);
     rankCommands = new RankCommands(this);
+    teamBoard = new TeamBoard(this);
     var pm = Bukkit.getPluginManager();
     pm.registerEvents(teleporter, this);
     pm.registerEvents(social, this);
@@ -115,6 +117,15 @@ public final class MorniCraft extends JavaPlugin {
 
   PlayerStore store() {
     return store;
+  }
+
+  /** A punishment for the team dashboard's history (before the dashboard exists: nothing). */
+  void history(String type, String target, String by, String reason, long ms) {
+    if (teamBoard != null) teamBoard.record(type, target, by, reason, ms);
+  }
+
+  TeamBoard teamBoard() {
+    return teamBoard;
   }
 
   RankCommands rankCommands() {

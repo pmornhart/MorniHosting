@@ -46,6 +46,10 @@ final class Social implements Listener {
   private final Map<UUID, UUID> lastFrom = new HashMap<>();
   /** Read by the chat thread too. */
   private final Set<UUID> away = ConcurrentHashMap.newKeySet();
+
+  boolean isAway(Player p) {
+    return away.contains(p.getUniqueId());
+  }
   private final Map<UUID, Long> lastAfk = new HashMap<>();
 
   Social(MorniCraft plugin) {

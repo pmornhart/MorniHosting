@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { itemWikiName } from '@mornihosting/shared';
 import { z } from 'zod';
-import { requireAuth } from '../auth/context.js';
 import type { Api, AppContext } from '../context.js';
 import { notFound } from '../lib/errors.js';
 import { fetchResponse } from '../lib/http-client.js';
@@ -15,24 +15,15 @@ const WIKI = 'https://minecraft.wiki/images';
 const MAX_BYTES = 256 * 1024;
 const CACHE_SECONDS = 7 * 86400;
 const MISS_RETRY_MS = 86400 * 1000;
+/** Pictures are cached; this only stops someone from asking for thousands of made-up items. */
+const ICON_LIMIT = { rateLimit: { max: 600, timeWindow: '1 minute' } };
 const PNG = 'image/png';
 // Vanilla ids. Matches "golden_pickaxe", "oak_log"; rejects "../x", "Golden" and anything with a namespace.
 // https://regex101.com/?flavor=javascript&regex=%5E%5Ba-z0-9_%5D%7B1%2C64%7D%24&testString=golden_pickaxe%0A..%2Fx%0AGolden
 const ID = /^[a-z0-9_]{1,64}$/;
 const params = z.object({ kind: z.enum(['item', 'mob']), id: z.string().regex(ID) });
 
-/** Items whose wiki picture has another name than the item id. */
-const WIKI_NAMES: Readonly<Record<string, string>> = {
-  beef: 'Raw_Beef',
-  chicken: 'Raw_Chicken',
-  porkchop: 'Raw_Porkchop',
-  mutton: 'Raw_Mutton',
-  rabbit: 'Raw_Rabbit',
-  cod: 'Raw_Cod',
-  salmon: 'Raw_Salmon',
-};
-
-/** "golden_pickaxe" → "Golden_Pickaxe", the wiki's file naming. */
+/** "golden_pickaxe" → "Golden_Pickaxe" (spawn eggs keep every word capitalised). */
 const title = (id: string): string =>
   id
     .split('_')
@@ -54,7 +45,7 @@ export function registerItemIconRoutes(app: Api, ctx: AppContext): void {
     }
     fs.mkdirSync(dir, { recursive: true });
     try {
-      const name = kind === 'mob' ? `${title(id)}_Spawn_Egg` : (WIKI_NAMES[id] ?? title(id));
+      const name = kind === 'mob' ? `${title(id)}_Spawn_Egg` : itemWikiName(id);
       const response = await fetchResponse(`${WIKI}/Invicon_${name}.png`, { headers: { accept: PNG } });
       const data = Buffer.from(await response.arrayBuffer());
       if (!(response.headers.get('content-type') ?? '').startsWith(PNG) || data.length > MAX_BYTES)
@@ -68,8 +59,8 @@ export function registerItemIconRoutes(app: Api, ctx: AppContext): void {
     }
   };
 
-  app.get('/api/item-icons/:kind/:id', { schema: { params } }, async (request, reply) => {
-    requireAuth(request);
+  // No login: the same pictures show on the team dashboard (/teamdashboard), which has no panel session.
+  app.get('/api/item-icons/:kind/:id', { schema: { params }, config: ICON_LIMIT }, async (request, reply) => {
     const { kind, id } = request.params;
     const key = `${kind}/${id}`;
     const running = pending.get(key) ?? fetchOnce(kind, id);

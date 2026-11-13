@@ -21,57 +21,77 @@ const PlayerCommandsPage = lazyPage(async () => ({
   default: (await import('@/features/public/PlayerCommandsPage')).PlayerCommandsPage,
 }));
 
+const TeamDashboardPage = lazyPage(async () => ({
+  default: (await import('@/features/public/team/TeamDashboardPage')).TeamDashboardPage,
+}));
+
 const ImpressumPage = lazyPage(async () => ({
   default: (await import('@/features/public/ImpressumPage')).ImpressumPage,
 }));
 
 /** The demo runs inside a frame where the address bar cannot change, so it keeps its route in memory. */
 const createRouter = import.meta.env.MODE === 'demo' ? createMemoryRouter : createBrowserRouter;
+/** The demo opens on the team dashboard with "#team" (or when the demo file sets mhDemoStart = 'team'). */
+const DEMO_TEAM =
+  import.meta.env.MODE === 'demo' &&
+  (window.location.hash === '#team' || (window as { mhDemoStart?: string }).mhDemoStart === 'team');
 
-const router = createRouter([
-  { path: '/setup', element: <SetupPage /> },
-  { path: '/login', element: <LoginPage /> },
-  { path: '/register', element: <RegisterPage /> },
-  { path: '/forgot', element: <ForgotPage /> },
-  { path: '/reset', element: <ResetPage /> },
-  { path: '/verify', element: <VerifyPage /> },
-  // Public statistics page of a server (MorniCraft): no login.
-  {
-    path: '/stats/:slug',
-    element: (
-      <Suspense fallback={null}>
-        <PublicStatsPage />
-      </Suspense>
-    ),
-  },
-  // Personal command page of a MorniCraft player (link from /info in the game): no login.
-  ...['/befehle/:slug/:name', '/commands/:slug/:name'].map((path) => ({
-    path,
-    element: (
-      <Suspense fallback={null}>
-        <PlayerCommandsPage />
-      </Suspense>
-    ),
-  })),
-  // Imprint (picture from the admin area): no login.
-  {
-    path: '/impressum',
-    element: (
-      <Suspense fallback={null}>
-        <ImpressumPage />
-      </Suspense>
-    ),
-  },
-  {
-    element: <AuthGate />,
-    children: [
-      {
-        element: <AppShell />,
-        children: [{ index: true, element: <DashboardPage /> }, ...appRoutes],
-      },
-    ],
-  },
-]);
+const router = createRouter(
+  [
+    { path: '/setup', element: <SetupPage /> },
+    { path: '/login', element: <LoginPage /> },
+    { path: '/register', element: <RegisterPage /> },
+    { path: '/forgot', element: <ForgotPage /> },
+    { path: '/reset', element: <ResetPage /> },
+    { path: '/verify', element: <VerifyPage /> },
+    // Public statistics page of a server (MorniCraft): no login.
+    {
+      path: '/stats/:slug',
+      element: (
+        <Suspense fallback={null}>
+          <PublicStatsPage />
+        </Suspense>
+      ),
+    },
+    // Personal command page of a MorniCraft player (link from /info in the game): no login.
+    ...['/befehle/:slug/:name', '/commands/:slug/:name'].map((path) => ({
+      path,
+      element: (
+        <Suspense fallback={null}>
+          <PlayerCommandsPage />
+        </Suspense>
+      ),
+    })),
+    // Team dashboard of a MorniCraft server (/teamdashboard in the game): no panel login, the key is in the link.
+    {
+      path: '/team/:slug',
+      element: (
+        <Suspense fallback={null}>
+          <TeamDashboardPage />
+        </Suspense>
+      ),
+    },
+    // Imprint (picture from the admin area): no login.
+    {
+      path: '/impressum',
+      element: (
+        <Suspense fallback={null}>
+          <ImpressumPage />
+        </Suspense>
+      ),
+    },
+    {
+      element: <AuthGate />,
+      children: [
+        {
+          element: <AppShell />,
+          children: [{ index: true, element: <DashboardPage /> }, ...appRoutes],
+        },
+      ],
+    },
+  ],
+  (DEMO_TEAM ? { initialEntries: ['/team/mornicraft'] } : {}) as Parameters<typeof createMemoryRouter>[1],
+);
 
 const TOAST_MS = 3500;
 

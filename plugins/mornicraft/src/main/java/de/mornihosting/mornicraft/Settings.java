@@ -38,7 +38,8 @@ record Settings(
     boolean graves,
     int gravePrivateMinutes,
     boolean tabStats,
-    int combatSeconds) {
+    int combatSeconds,
+    String teamLink) {
 
   /** A round spot outside the spawn circle that is protected like it: x/z relative to the world spawn. */
   record Zone(int x, int z, int radius) {}
@@ -87,7 +88,9 @@ record Settings(
         Math.max(0, c.getInt("grave-private-minutes", 15)),
         c.getBoolean("tab-stats", true),
         // Combat log: seconds "in combat" after a hit between players; 0 = off.
-        Math.max(0, Math.min(MAX_COMBAT_SECONDS, c.getInt("combat-seconds", 15))));
+        Math.max(0, Math.min(MAX_COMBAT_SECONDS, c.getInt("combat-seconds", 15))),
+        // The team dashboard (MorniHosting writes the address; empty = no dashboard).
+        c.getString("team-link", ""));
   }
 
   private static int number(Object o) {

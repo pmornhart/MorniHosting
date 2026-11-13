@@ -39,3 +39,29 @@ export const GAME_ART_SOURCES = Object.freeze({
 });
 export type GameArtId = keyof typeof GAME_ART_SOURCES;
 export const GAME_ART_IDS = Object.keys(GAME_ART_SOURCES) as [GameArtId, ...GameArtId[]];
+
+/** Items whose Minecraft Wiki picture has another name than the item id. */
+const ITEM_WIKI_NAMES: Readonly<Record<string, string>> = {
+  beef: 'Raw_Beef',
+  chicken: 'Raw_Chicken',
+  porkchop: 'Raw_Porkchop',
+  mutton: 'Raw_Mutton',
+  rabbit: 'Raw_Rabbit',
+  cod: 'Raw_Cod',
+  salmon: 'Raw_Salmon',
+  tnt: 'TNT',
+  tnt_minecart: 'Minecart_with_TNT',
+};
+/** Small words the wiki writes in lower case ("Flint_and_Steel", "Eye_of_Ender", "Heart_of_the_Sea"). */
+const SMALL_WORDS = new Set(['and', 'of', 'the', 'on', 'with', 'a']);
+
+/** "flint_and_steel" → "Flint_and_Steel", the wiki's file naming (Invicon_<name>.png). */
+export function itemWikiName(id: string): string {
+  return (
+    ITEM_WIKI_NAMES[id] ??
+    id
+      .split('_')
+      .map((w, i) => (i > 0 && SMALL_WORDS.has(w) ? w : `${w.charAt(0).toUpperCase()}${w.slice(1)}`))
+      .join('_')
+  );
+}
