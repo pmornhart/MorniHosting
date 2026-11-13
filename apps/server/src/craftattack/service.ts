@@ -1,3 +1,4 @@
+import { publicPanelHost } from '../auth/hook.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
@@ -196,7 +197,7 @@ export function createCraftAttackService(
 
   /** The page address for /info (only with a panel domain); older servers get their slug stored here. */
   const linkFor = (serverId: string): string => {
-    const domain = ctx.settings.get().panelDomain;
+    const domain = publicPanelHost(ctx);
     if (!domain) return '';
     const slug = stored()[serverId]?.slug ?? safeSlug(serverId);
     return slug ? personalLink(domain, slug) : '';
@@ -245,7 +246,7 @@ export function createCraftAttackService(
   };
   /** Where players load the pack from – only with a panel domain (the link has to work from everywhere). */
   const packUrl = (serverId: string): string | null => {
-    const domain = ctx.settings.get().panelDomain;
+    const domain = publicPanelHost(ctx);
     const slug = stored()[serverId]?.slug ?? safeSlug(serverId);
     if (!domain || !slug) return null;
     return `https://${domain}/api/public/packs/${slug}.zip?v=${packOf(serverId).sha1.slice(0, PACK_VERSION_LENGTH)}`;
@@ -262,7 +263,7 @@ export function createCraftAttackService(
     const host = servers.summary(serverId).address.replace(/:\d+$/, ''); // eslint-disable-line ts-patterns/require-regex-example -- "mc.example.de:25566" → "mc.example.de"
     return [
       ...new Set(
-        [s.panelDomain, host, s.publicAddress, s.lanIp].filter(
+        [s.panelDomain, publicPanelHost(ctx), host, s.publicAddress, s.lanIp].filter(
           (n): n is string => Boolean(n) && n !== 'localhost',
         ),
       ),
@@ -637,6 +638,8 @@ export function createCraftAttackService(
   };
   ctx.events.on('access.changed', refreshRanks);
   ctx.events.on('minecraft.linked', refreshRanks);
+  // The panel's address became known: the badge pack and the links reach the players right away.
+  ctx.events.on('panel.host', refreshRanks);
 
   // After a panel update: plugin and config are in place at once (the plugin itself loads at the next restart).
   setTimeout(() => {

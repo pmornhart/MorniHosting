@@ -13,6 +13,8 @@ export interface PanelEvents {
   'access.changed': { userId: number | null };
   /** Someone linked or unlinked their Minecraft account (MorniCraft ranks follow). */
   'minecraft.linked': { userId: number };
+  /** The panel's public name was learned or changed (badge packs, links). */
+  'panel.host': { host: string };
   'player.joined': { serverId: string; player: string };
   'player.left': { serverId: string; player: string };
   'backup.done': { serverId: string; backupId: number; sizeBytes: number };

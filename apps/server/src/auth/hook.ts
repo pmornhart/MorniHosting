@@ -130,6 +130,33 @@ function resolveApiToken(ctx: AppContext, request: FastifyRequest, raw: string):
 }
 
 /** Resolves who is calling (session cookie or API token) and enforces CSRF and origin rules. */
+/** Where the panel was last seen on the internet (HTTPS, a real name) – learned from admins' own requests. */
+export const SEEN_HOST_KEY = 'panel_seen_host';
+// A public host name: "mornihosting.de", "panel.example.org" – not "localhost", "192.168.1.5" or "[::1]".
+// https://regex101.com/?flavor=javascript&regex=%5E(%3F%3D.*%5Ba-z%5D)(%3F%3A%5Ba-z0-9-%5D%2B%5C.)%2B%5Ba-z%5D%7B2%2C%7D%24&flags=gm&testString=mornihosting.de%0Apanel.example.org%0Alocalhost%0A192.168.1.5
+const PUBLIC_HOST = /^(?=.*[a-z])(?:[a-z0-9-]+\.)+[a-z]{2,}$/;
+
+/**
+ * The page an admin works on (Origin, else Referer – both set by the browser): when that is a public name over
+ * HTTPS, the panel remembers it. Players' games then load the badge pack from there even when no panel domain
+ * was entered in the admin area (e.g. the panel is reached through a proxy set up by hand).
+ */
+function learnPanelHost(ctx: AppContext, request: FastifyRequest): void {
+  const from = request.headers.origin ?? request.headers.referer;
+  if (!from || !URL.canParse(from)) return;
+  const url = new URL(from);
+  const host = url.hostname.toLowerCase();
+  if (url.protocol !== HTTPS || !PUBLIC_HOST.test(host)) return;
+  if (ctx.settings.getValue<string>(SEEN_HOST_KEY) === host) return;
+  ctx.settings.setValue(SEEN_HOST_KEY, host);
+  ctx.events.emit('panel.host', { host });
+}
+
+/** The panel's public name: the one entered in the admin area, else the one admins use. Empty when unknown. */
+export function publicPanelHost(ctx: AppContext): string {
+  return ctx.settings.get().panelDomain || (ctx.settings.getValue<string>(SEEN_HOST_KEY) ?? '');
+}
+
 export function createAuthHook(ctx: AppContext) {
   return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
     if (!request.url.startsWith('/api/')) return;
@@ -167,5 +194,6 @@ export function createAuthHook(ctx: AppContext) {
         throw new AppError(HTTP_FORBIDDEN, 'csrf');
       }
     }
+    if (resolved.user.isAdmin) learnPanelHost(ctx, request);
   };
 }
