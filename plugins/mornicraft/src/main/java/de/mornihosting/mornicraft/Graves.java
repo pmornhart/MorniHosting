@@ -74,7 +74,8 @@ final class Graves implements Listener {
   private static final int SIDE = 3;
   /** The eyes: "x x" in the default font, sitting on the head's face (see the game's text display and skull models). */
   private static final double FACE = 0.276;
-  private static final double EYES_UP = 0.106;
+  /** Measured on Philip's screenshot: the x's sat about 1.3 skin pixels below the eyes (0.0625 per pixel). */
+  private static final double EYES_UP = 0.186;
   private static final double FACE_SHIFT = 0.0125;
   private static final TextColor EYE_COLOR = TextColor.color(0x000000);
 
@@ -91,6 +92,11 @@ final class Graves implements Listener {
     final List<UUID> entities = new ArrayList<>();
     String world;
   }
+
+  /** Distances in the grave message are rounded to this many blocks ("about 500 blocks west of the spawn"). */
+  private static final int ROUGH = 50;
+  private static final String[] DIRECTIONS = {"s", "sw", "w", "nw", "n", "ne", "e", "se"};
+  private static final double SECTOR = 45.0;
 
   private final MorniCraft plugin;
   private final File file;
@@ -189,7 +195,7 @@ final class Graves implements Listener {
     Block at = blockOf(g.blocks.keySet().iterator().next());
     Component where = at == null || plugin.streamer().hides(p, Streamer.COORDS)
         ? ui().words("grave.made.hidden")
-        : ui().words("grave.made", Ui.v("x", at.getX()), Ui.v("y", at.getY()), Ui.v("z", at.getZ()));
+        : roughly(at);
     // Told after the respawn screen, when the chat can be read again.
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
       if (p.isOnline()) p.sendMessage(Component.text("☠ ", NamedTextColor.GRAY).append(where));
@@ -436,6 +442,22 @@ final class Graves implements Listener {
     a.setInvulnerable(true);
     a.setPersistent(true);
     return a;
+  }
+
+  /**
+   * Where the grave is, only roughly (Philip: no exact coordinates): "about 500 blocks north-west of the spawn", or
+   * "near the spawn". Distance rounded to 50 blocks, one of eight directions.
+   */
+  private Component roughly(Block at) {
+    Location spawn = at.getWorld().getSpawnLocation();
+    double dx = at.getX() - spawn.getX();
+    double dz = at.getZ() - spawn.getZ();
+    long dist = Math.round(Math.hypot(dx, dz) / ROUGH) * ROUGH;
+    if (dist < ROUGH) return ui().words("grave.made.near");
+    // Minecraft: +z is south, +x is east; atan2 gives 0° for south, 90° for west.
+    double angle = (Math.toDegrees(Math.atan2(-dx, dz)) + 360 + SECTOR / 2) % 360;
+    String dir = DIRECTIONS[(int) (angle / SECTOR)];
+    return ui().words("grave.made", Ui.v("dist", dist), Ui.v("dir", ui().flat("dir." + dir)));
   }
 
   // ---------------------------------------------------------------- the sunken head (displays, 1.19.4+)
