@@ -61,7 +61,9 @@ final class DefaultCommands {
             op(en, "/frei <spieler>", "Aus dem Gefängnis holen", "Release from jail"),
             op(en, "/stumm <spieler> [10m|1h|1d]", "Stummschalten", "Mute"),
             op(en, "/entstummen <spieler>", "Wieder schreiben lassen", "Unmute"),
-            op(en, "/einfrieren <spieler>", "Einfrieren / auftauen", "Freeze / unfreeze"))),
+            op(en, "/einfrieren <spieler>", "Einfrieren / auftauen", "Freeze / unfreeze"),
+            op(en, "/nether [weg]", "Netherportal am Spawn", "Nether portal at the spawn"),
+            op(en, "/end [weg]", "Weg zum Endportal im Spawn", "Way to the end portal inside the spawn"))),
         new Settings.Group(en ? "Admins only (OP)" : "Nur für Admins (OP)", List.of(
             op(en, "/mornicraft reload", "Einstellungen neu laden", "Reload the settings"))));
   }

@@ -86,6 +86,9 @@ final class Commands implements TabExecutor {
     if (List.of("gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen").contains(name)) {
       return plugin.moderation().command(sender, name, args);
     }
+    if (name.equals("nether") || name.equals("end")) {
+      return plugin.portals().command(sender, name.equals("end") ? Portals.Kind.END : Portals.Kind.NETHER, args);
+    }
     if (name.equals("msg")) {
       if (args.length < 2) return usage(sender, "/msg <spieler> <text>");
       Player to = online(sender, args[0]);
@@ -440,7 +443,9 @@ final class Commands implements TabExecutor {
     String name = command.getName().toLowerCase(Locale.ROOT);
     String last = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
     List<String> options = new ArrayList<>();
-    if ((name.equals("home") || name.equals("delhome")) && args.length == 1 && sender instanceof Player p) {
+    if ((name.equals("nether") || name.equals("end")) && args.length == 1) {
+      options.add("weg");
+    } else if ((name.equals("home") || name.equals("delhome")) && args.length == 1 && sender instanceof Player p) {
       options.addAll(plugin.store().get(p.getUniqueId()).homes.keySet());
     } else if (List.of("gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen").contains(name) && args.length == 1) {
       Bukkit.getOnlinePlayers().forEach(o -> options.add(o.getName()));

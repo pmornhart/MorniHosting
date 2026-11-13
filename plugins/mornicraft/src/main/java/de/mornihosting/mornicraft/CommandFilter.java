@@ -20,7 +20,7 @@ final class CommandFilter implements Listener {
   private static final String PREFIX = "mornicraft:";
   /** Always shown (where the player may use them): not on every list, but needed. */
   private static final Set<String> ALWAYS = Set.of("info", "rules", "clan", "cc", "team", "ansehen", "gefaengnis",
-      "frei", "stumm", "entstummen", "einfrieren", "mornicraft", "homes", "leiste");
+      "frei", "stumm", "entstummen", "einfrieren", "mornicraft", "homes", "leiste", "nether", "end");
   /** Server software's own commands (not Minecraft's): they tell players which plugins run – only for OPs. */
   private static final Set<String> SERVER = Set.of("?", "about", "ver", "version", "pl", "plugins", "icanhasbukkit");
   private static final String SERVER_PREFIX = "bukkit:";

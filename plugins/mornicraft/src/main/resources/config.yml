@@ -53,6 +53,8 @@ tnt: true
 creeper-damage: true
 fire-spread: true
 enderman-grief: true
+# Mächtiger Enderdrache: dreimal so viel Leben, härtere Treffer, ruft Phantome zu Hilfe
+hard-dragon: true
 
 # Große Begrüßung – einmal pro Spieler
 welcome: true

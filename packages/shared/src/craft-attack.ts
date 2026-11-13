@@ -48,6 +48,8 @@ export interface MorniCraftSettings {
   readonly creeperDamage: boolean;
   readonly fireSpread: boolean;
   readonly endermanGrief: boolean;
+  /** The mighty ender dragon: three times the health, harder hits, calls a brood of phantoms. */
+  readonly hardDragon: boolean;
   readonly rules: readonly string[];
   /** Highest first; shown as symbol + colour in chat, tab list and above the head. */
   readonly ranks: readonly MorniCraftRank[];
@@ -263,6 +265,7 @@ export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
   creeperDamage: true,
   fireSpread: true,
   endermanGrief: true,
+  hardDragon: true,
   rules: [
     'Sei nett zu allen.',
     'Nichts kaputt machen, was anderen gehört.',
@@ -595,6 +598,16 @@ export const CRAFT_ATTACK_COMMANDS: readonly CraftAttackCommandGroup[] = [
         text: { de: 'Einfrieren / auftauen', en: 'Freeze / unfreeze' },
         opOnly: true,
       },
+      {
+        use: same('/nether [weg]'),
+        text: { de: 'Netherportal am Spawn', en: 'Nether portal at the spawn' },
+        opOnly: true,
+      },
+      {
+        use: same('/end [weg]'),
+        text: { de: 'Weg zum Endportal im Spawn', en: 'Way to the end portal inside the spawn' },
+        opOnly: true,
+      },
     ],
   },
   {
@@ -773,6 +786,7 @@ export const TEAM_SETTING_KEYS = [
   'creeperDamage',
   'fireSpread',
   'endermanGrief',
+  'hardDragon',
   'sit',
   'welcome',
   'sidebar',
@@ -880,6 +894,22 @@ export const TEAM_COMMANDS: readonly TeamCommand[] = [
   {
     use: { de: '/einfrieren <spieler>', en: '/einfrieren <player>' },
     text: { de: 'Einfrieren oder auftauen', en: 'Freeze or unfreeze' },
+    needs: 'moderate',
+  },
+  {
+    use: { de: '/nether [weg]', en: '/nether [weg]' },
+    text: {
+      de: 'Netherportal am Spawn bauen oder wegnehmen',
+      en: 'Build or remove the nether portal at the spawn',
+    },
+    needs: 'moderate',
+  },
+  {
+    use: { de: '/end [weg]', en: '/end [weg]' },
+    text: {
+      de: 'Weg zum Endportal im Spawn öffnen oder schließen',
+      en: 'Open or close the way to the end portal',
+    },
     needs: 'moderate',
   },
   {
