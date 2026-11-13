@@ -3300,7 +3300,8 @@
       "tabStats": "Kills and deaths in the tab list",
       "graves": "Graves",
       "gravePrivateMinutes": "Only for the dead player",
-      "combatSeconds": "In combat after a hit"
+      "combatSeconds": "In combat after a hit",
+      "sit": "Sit on stairs and slabs"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – with buttons to accept",
@@ -3324,7 +3325,8 @@
       "tabStats": "⚔ kills and ☠ deaths next to every name",
       "graves": "Whoever dies gets a grave with their head, all their things and experience – right click gets it all back",
       "gravePrivateMinutes": "For this long only the dead player (and the team) may open the grave, then anyone",
-      "combatSeconds": "Whoever hits a player or is hit stays in combat this long: no teleports, only chat commands, no start elytra – logging out then means death (things go into the grave). 0 = off."
+      "combatSeconds": "Whoever hits a player or is hit stays in combat this long: no teleports, only chat commands, no start elytra – logging out then means death (things go into the grave). 0 = off.",
+      "sit": "Right click with an empty hand to sit, sneak to stand up"
     },
     "units": {
       "teleportDelay": "{{n}} s",
@@ -3378,6 +3380,7 @@
         "kick": "Kick players",
         "ban": "Ban players",
         "gamemode": "Change game mode",
+        "creative": "Creative mode",
         "teleport": "Teleport to anyone",
         "world": "Time and weather",
         "whitelist": "Manage the whitelist",
@@ -3391,6 +3394,7 @@
         "kick": "/kick",
         "ban": "/ban, /pardon, /banlist",
         "gamemode": "/gamemode",
+        "creative": "/gamemode creative (otherwise only survival, adventure, spectator)",
         "teleport": "/tp",
         "world": "/time, /weather",
         "whitelist": "/whitelist add …",

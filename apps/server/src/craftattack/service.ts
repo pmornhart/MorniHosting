@@ -70,6 +70,8 @@ const ICON_DONE_KEY = 'mornicraft_icon';
 /** MorniCraft servers whose Admin and Supporter ranks were taken out once (Philip, 13.11.: not needed). */
 const RETIRED_DONE_KEY = 'mornicraft_retired_ranks';
 const RETIRED_RANKS: readonly string[] = ['admin', 'supporter'];
+/** Servers whose ranks got the new creative switch once (who had /gamemode keeps creative; moderators get /gamemode). */
+const CREATIVE_DONE_KEY = 'mornicraft_creative_switch';
 /** Part of every badge-pack address (to recognise our own entry in server.properties). */
 const PACK_PATH = '/api/public/packs/';
 /** Characters of the server id behind a name that another server already has. */
@@ -699,6 +701,24 @@ export function createCraftAttackService(
     return true;
   };
 
+  /** Creative became its own switch (Philip, 13.11.): once per server, nobody loses what they could do. */
+  const splitCreative = (serverId: string): boolean => {
+    const done = ctx.settings.getValue<string[]>(CREATIVE_DONE_KEY) ?? [];
+    if (done.includes(serverId)) return false;
+    ctx.settings.setValue(CREATIVE_DONE_KEY, [...done, serverId]);
+    const stored = mcStored();
+    const ranks = stored[serverId]?.ranks;
+    if (!ranks) return false;
+    const next = ranks.map((r) => {
+      const perms = new Set(r.permissions);
+      if (perms.has('gamemode')) perms.add('creative');
+      if (r.id === 'moderator') perms.add('gamemode');
+      return { ...r, permissions: [...perms] };
+    });
+    ctx.settings.setValue(MORNICRAFT_KEY, { ...stored, [serverId]: { ...stored[serverId], ranks: next } });
+    return true;
+  };
+
   /** Every client version may join: older MorniCraft servers get ViaVersion once (an admin may switch it off). */
   const allVersionsOnce = async (serverId: string): Promise<void> => {
     const done = ctx.settings.getValue<string[]>(VIA_DONE_KEY) ?? [];
@@ -751,6 +771,9 @@ export function createCraftAttackService(
       writeSpawnPack(worldOf(serverId), spots()[serverId], locale(), servers.row(serverId).version);
       equip(serverId);
       serverPackProperties(serverId);
+      // Minecraft's own spawn protection printed exact coordinates; MorniCraft guards the spawn itself.
+      if (readPropertiesFile(servers.dir(serverId)).values['spawn-protection'] !== '0')
+        writePropertiesFile(servers.dir(serverId), { 'spawn-protection': '0' });
     } catch (err) {
       ctx.log.warn({ err, serverId }, 'mornicraft update before start failed');
     }
@@ -793,7 +816,7 @@ export function createCraftAttackService(
       .filter((row) => isCraftAttack(row.id))
       .forEach((row) => {
         try {
-          const dropped = dropRetiredRanks(row.id);
+          const dropped = [dropRetiredRanks(row.id), splitCreative(row.id)].some(Boolean);
           const running = servers.live(row.id).state === 'running';
           if (equip(row.id) && running) waitToRestart(row.id);
           else if (dropped && running) void servers.quietCommand(row.id, 'mornicraft reload').catch(() => '');

@@ -35,6 +35,8 @@ final class RankCommands implements Listener {
   private final MorniCraft plugin;
   /** The /vip, /mod … commands this plugin put into the server's command list (taken out again on reload). */
   private final List<Command> registered = new ArrayList<>();
+  /** The ranks the commands were made for (id=name;…). */
+  private String registeredFor = "";
 
   RankCommands(MorniCraft plugin) {
     this.plugin = plugin;
@@ -48,6 +50,10 @@ final class RankCommands implements Listener {
   void registerCommands() {
     CommandMap map = commandMap();
     if (map == null) return;
+    // Only when the ranks changed: rebuilding the command tree while the game sends it to players can clash (26.x).
+    String now = plugin.ranks().all().stream().map(r -> r.id() + "=" + r.name()).reduce("", (a, b) -> a + ";" + b);
+    if (now.equals(registeredFor) && !registered.isEmpty()) return;
+    registeredFor = now;
     unregister(map);
     Map<String, Command> known = known(map);
     Set<String> taken = new LinkedHashSet<>();

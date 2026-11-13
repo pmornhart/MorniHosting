@@ -16,7 +16,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -72,12 +71,6 @@ final class Graves implements Listener {
   private static final int SEARCH = 12;
   /** How far to the side, when right there is no place. */
   private static final int SIDE = 3;
-  /** The eyes: "x x" in the default font, sitting on the head's face (see the game's text display and skull models). */
-  private static final double FACE = 0.276;
-  /** Measured on Philip's screenshot: the x's sat about 1.3 skin pixels below the eyes (0.0625 per pixel). */
-  private static final double EYES_UP = 0.186;
-  private static final double FACE_SHIFT = 0.0125;
-  private static final TextColor EYE_COLOR = TextColor.color(0x000000);
 
   /** One grave. */
   private static final class Grave {
@@ -327,22 +320,12 @@ final class Graves implements Listener {
       if (area != null) g.entities.add(area.getUniqueId());
     } else {
       // Older servers: the head as a block on the earth, looking towards the foot, eyes crossed out where possible.
-      change(g, head, Material.PLAYER_HEAD);
+      // A skeleton skull (Philip: the crossed-out eyes never sat right on every skin).
+      change(g, head, Material.SKELETON_SKULL);
       if (head.getBlockData() instanceof Rotatable rot) {
         rot.setRotation(foot);
         head.setBlockData(rot, false);
       }
-      if (head.getState() instanceof Skull skull) {
-        skull.setOwningPlayer(p);
-        skull.update(true, false);
-      }
-      // Bold "x x" is half a pixel wider on the right: the text sits that much to the left (seen from the front).
-      BlockFace leftOfFace = left(foot).getOppositeFace();
-      Location face = head.getLocation().add(0.5 + foot.getModX() * FACE + leftOfFace.getModX() * FACE_SHIFT, EYES_UP,
-          0.5 + foot.getModZ() * FACE + leftOfFace.getModZ() * FACE_SHIFT);
-      face.setYaw(yawOf(foot));
-      Entity eyes = eyes(face);
-      if (eyes != null) g.entities.add(eyes.getUniqueId());
     }
     Location tag = (spot(stoneGround) || g.blocks.containsKey(key(stoneGround.getRelative(BlockFace.UP)))
         ? stoneGround.getRelative(BlockFace.UP) : head).getLocation().add(0.5, 1.2, 0.5);
@@ -475,8 +458,6 @@ final class Graves implements Listener {
   private static final float ROLL = (float) Math.toRadians(16);
   private static final float PITCH = (float) Math.toRadians(-24);
   private static final float HALF = 0.25f;
-  /** The eyes' text from the head's centre (facing south): half a pixel left, 0.144 down, on the face. */
-  private static final float[] EYES_FROM_CENTER = {(float) -FACE_SHIFT, (float) EYES_UP - HALF, (float) FACE};
 
   /** Rotation Rz(roll)·Rx(pitch) of a vector. */
   private static float[] turn(float[] v, float roll, float pitch) {
@@ -497,10 +478,8 @@ final class Graves implements Listener {
       at.setYaw(yawOf(foot) + 180f);
       Entity head = surface.getWorld().spawn(at, itemType);
       made.add(head);
-      ItemStack item = new ItemStack(Material.PLAYER_HEAD);
-      SkullMeta meta = (SkullMeta) item.getItemMeta();
-      meta.setOwningPlayer(p);
-      item.setItemMeta(meta);
+      // A skeleton skull sunk into the earth (the player's own head lies in the grave as a keepsake).
+      ItemStack item = new ItemStack(Material.SKELETON_SKULL);
       itemType.getMethod("setItemStack", ItemStack.class).invoke(head, item);
       head.setRotation(yawOf(foot) + 180f, 0);
       // Centre at CENTER_UP, turned about the centre; the display itself turned half round (its face is local -z).
@@ -508,14 +487,6 @@ final class Graves implements Listener {
       float[] t = {-(0 - centreTurned[0]), CENTER_UP - centreTurned[1], -(0 - centreTurned[2])};
       transform(head, t, -ROLL, -PITCH);
       head.setPersistent(true);
-      Location eyesAt = surface.clone();
-      eyesAt.setYaw(yawOf(foot));
-      Entity eyes = eyes(eyesAt);
-      if (eyes != null) {
-        made.add(eyes);
-        float[] e = turn(EYES_FROM_CENTER, ROLL, PITCH);
-        transform(eyes, new float[] {e[0], CENTER_UP + e[1], e[2]}, ROLL, PITCH);
-      }
       return made;
     } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
       made.forEach(Entity::remove);
@@ -536,31 +507,6 @@ final class Graves implements Listener {
     Object none = quat.getConstructor().newInstance();
     Object transformation = tr.getConstructor(vec, quat, vec, quat).newInstance(translation, q, scale, none);
     Class.forName("org.bukkit.entity.Display").getMethod("setTransformation", tr).invoke(e, transformation);
-  }
-
-  /** "x x" on the head's face – a text display (Paper 1.19.4+); older servers: no eyes. */
-  private static Entity eyes(Location at) {
-    try {
-      Class<? extends Entity> type = Class.forName("org.bukkit.entity.TextDisplay").asSubclass(Entity.class);
-      Entity e = at.getWorld().spawn(at, type);
-      // Bold x's (thicker), a plain space between: they sit right on the eyes of the skin.
-      Component x = Component.text("x", EYE_COLOR).decoration(TextDecoration.BOLD, true);
-      type.getMethod("text", Component.class).invoke(e, x.append(Component.text(" ").decoration(TextDecoration.BOLD, false)).append(x));
-      @SuppressWarnings({"unchecked", "rawtypes"})
-      Class<Enum> billboard = (Class<Enum>) Class.forName("org.bukkit.entity.Display$Billboard");
-      @SuppressWarnings("unchecked")
-      Object fixed = Enum.valueOf(billboard, "FIXED");
-      type.getMethod("setBillboard", billboard).invoke(e, fixed);
-      // Clear background (Color.fromARGB is newer than the API this is built against).
-      Object clear = Color.class.getMethod("fromARGB", int.class, int.class, int.class, int.class).invoke(null, 0, 0, 0, 0);
-      type.getMethod("setBackgroundColor", Color.class).invoke(e, clear);
-      type.getMethod("setShadowed", boolean.class).invoke(e, false);
-      e.setRotation(at.getYaw(), 0);
-      e.setPersistent(true);
-      return e;
-    } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
-      return null;
-    }
   }
 
   // ---------------------------------------------------------------- opening: a chest with the grave's things

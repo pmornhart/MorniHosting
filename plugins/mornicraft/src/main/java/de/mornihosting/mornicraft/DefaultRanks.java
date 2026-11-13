@@ -12,6 +12,8 @@ final class DefaultRanks {
   private static final List<String> BAN = List.of("minecraft.command.ban", "minecraft.command.ban-ip",
       "minecraft.command.pardon", "minecraft.command.pardon-ip", "minecraft.command.banlist");
   private static final List<String> GAMEMODE = List.of("minecraft.command.gamemode");
+  /** Creative on top of /gamemode (GamemodeGuard lets everyone else only to survival, adventure, spectator). */
+  private static final List<String> CREATIVE = List.of("minecraft.command.gamemode", GamemodeGuard.CREATIVE);
   private static final List<String> TELEPORT = List.of("minecraft.command.teleport", "minecraft.command.tp");
   private static final List<String> WORLD = List.of("minecraft.command.time", "minecraft.command.weather");
   private static final List<String> WHITELIST = List.of("minecraft.command.whitelist");
@@ -30,11 +32,11 @@ final class DefaultRanks {
   }
 
   static List<Ranks.Rank> ranks() {
-    List<String> everything = all(BUILD, INSTANT, HOMES, KICK, BAN, MODERATE, GAMEMODE, TELEPORT, WORLD, WHITELIST, RELOAD);
+    List<String> everything = all(BUILD, INSTANT, HOMES, KICK, BAN, MODERATE, GAMEMODE, CREATIVE, TELEPORT, WORLD, WHITELIST, RELOAD);
     return List.of(
         rank("owner", "Owner", "♛", "#ff5555", everything, false),
-        rank("moderator", "Moderator", "⚔", "#55aaff", all(INSTANT, KICK, BAN, MODERATE, TELEPORT), false),
-        rank("builder", "Builder", "⚒", "#c08a5b", all(BUILD, GAMEMODE), false),
+        rank("moderator", "Moderator", "⚔", "#55aaff", all(INSTANT, KICK, BAN, MODERATE, TELEPORT, GAMEMODE), false),
+        rank("builder", "Builder", "⚒", "#c08a5b", all(BUILD, GAMEMODE, CREATIVE), false),
         rank("media", "Media", "▶", "#ff6ad5", HOMES, false),
         rank("vip", "VIP", "★", "#ffd23f", HOMES, false),
         rank("player", "Spieler", "", "#aaaaaa", List.of(), true));

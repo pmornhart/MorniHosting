@@ -144,7 +144,7 @@ final class Moderation implements Listener {
   }
 
   /** "10 Minuten", "1 Stunde", "7 Tage" for the buttons. */
-  private String span(long ms) {
+  String span(long ms) {
     boolean en = "en".equalsIgnoreCase(plugin.settings().language());
     if (ms < HOUR_MS) return (ms / MINUTE_MS) + (en ? " minutes" : " Minuten");
     if (ms < DAY_MS) {

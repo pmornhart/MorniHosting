@@ -59,6 +59,8 @@ export interface MorniCraftSettings {
   /** Java players must load the badge pack (no "no" button) – so everyone sees the badges. */
   readonly badgesRequired: boolean;
   /** Whoever dies gets a grave with all their things and experience (and their head). */
+  /** Right click on stairs and slabs (empty hand) to sit down. */
+  readonly sit: boolean;
   readonly graves: boolean;
   /** Minutes only the dead player (and the team) may open their grave; then anyone. */
   readonly gravePrivateMinutes: number;
@@ -77,6 +79,7 @@ export const RANK_PERMISSIONS = [
   'ban',
   'moderate',
   'gamemode',
+  'creative',
   'teleport',
   'world',
   'whitelist',
@@ -99,6 +102,8 @@ export const RANK_PERMISSION_NODES: Readonly<Record<RankPermission, readonly str
   ],
   moderate: ['mornicraft.moderate'],
   gamemode: ['minecraft.command.gamemode'],
+  // On top of /gamemode: creative too (without it, /gamemode only goes to survival, adventure and spectator).
+  creative: ['minecraft.command.gamemode', 'mornicraft.creative'],
   teleport: ['minecraft.command.teleport', 'minecraft.command.tp'],
   world: ['minecraft.command.time', 'minecraft.command.weather'],
   whitelist: ['minecraft.command.whitelist'],
@@ -182,7 +187,7 @@ export const DEFAULT_RANKS: readonly MorniCraftRank[] = [
     name: 'Moderator',
     symbol: '⚔',
     color: '#55aaff',
-    permissions: ['instant', 'kick', 'ban', 'moderate', 'teleport'],
+    permissions: ['instant', 'kick', 'ban', 'moderate', 'teleport', 'gamemode'],
     players: [],
     isDefault: false,
     fromPanel: 'moderator',
@@ -192,7 +197,7 @@ export const DEFAULT_RANKS: readonly MorniCraftRank[] = [
     name: 'Builder',
     symbol: '⚒',
     color: '#c08a5b',
-    permissions: ['build', 'gamemode'],
+    permissions: ['build', 'gamemode', 'creative'],
     players: [],
     isDefault: false,
     fromPanel: 'none',
@@ -257,6 +262,7 @@ export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
   ranks: DEFAULT_RANKS,
   badges: true,
   badgesRequired: true,
+  sit: true,
   graves: true,
   gravePrivateMinutes: 15,
   tabStats: true,
@@ -285,8 +291,9 @@ export const CRAFT_ATTACK_PROPERTIES: Readonly<Record<string, string>> = {
   pvp: 'true',
   'white-list': 'true',
   'enforce-whitelist': 'true',
-  // Non-operators cannot break the spawn island and its launch decks (blocks around the world spawn).
-  'spawn-protection': '44',
+  // MorniCraft guards the spawn itself (with its own friendly message). Minecraft's spawn protection is off: it
+  // printed "x y z is under spawn protection" with the exact coordinates (Philip, 13.11.).
+  'spawn-protection': '0',
   'view-distance': '10',
   'simulation-distance': '8',
   'max-players': '40',
@@ -710,6 +717,7 @@ export const TEAM_SETTING_KEYS = [
   'creeperDamage',
   'fireSpread',
   'endermanGrief',
+  'sit',
   'welcome',
   'sidebar',
   'showLink',
@@ -853,9 +861,12 @@ export const TEAM_COMMANDS: readonly TeamCommand[] = [
     needs: 'ranks',
   },
   {
-    use: { de: '/gamemode <modus> [spieler]', en: '/gamemode <mode> [player]' },
-    text: { de: 'Spielmodus ändern (z. B. creative)', en: 'Change the game mode (e.g. creative)' },
-    needs: 'ranks',
+    use: { de: '/gamemode spectator · survival', en: '/gamemode spectator · survival' },
+    text: {
+      de: 'Zuschauen und zurück (Kreativ nur mit dem Rang-Schalter „Kreativmodus“)',
+      en: 'Spectate and back (creative only with the rank switch "Creative mode")',
+    },
+    needs: 'moderate',
   },
   {
     use: same('/gefaengnis hier'),

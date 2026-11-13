@@ -31,6 +31,7 @@ public final class MorniCraft extends JavaPlugin {
   private Graves graves;
   private Combat combat;
   private RankCommands rankCommands;
+  private Seats seats;
   private TeamBoard teamBoard;
 
   @Override
@@ -67,6 +68,9 @@ public final class MorniCraft extends JavaPlugin {
     pm.registerEvents(graves, this);
     pm.registerEvents(combat, this);
     pm.registerEvents(rankCommands, this);
+    pm.registerEvents(new GamemodeGuard(this), this);
+    seats = new Seats(this);
+    pm.registerEvents(seats, this);
     pm.registerEvents(new UpdateCheck(this), this);
     // After the server finished loading: then the other plugins' commands are known and stay theirs.
     Bukkit.getScheduler().runTask(this, rankCommands::registerCommands);
@@ -87,6 +91,7 @@ public final class MorniCraft extends JavaPlugin {
     if (sidebar != null) sidebar.release();
     if (ranks != null) ranks.release();
     if (rankCommands != null) rankCommands.unregisterCommands();
+    if (seats != null) seats.release();
   }
 
   private void load() {
