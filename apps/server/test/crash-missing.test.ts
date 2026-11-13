@@ -54,6 +54,28 @@ describe('jars made for several platforms (Philip: Paper server offered "install
     expect((await missingDependencies(fabric, 'fabric')).map((m) => m.dependency)).toEqual(['viafabric']);
   });
 
+  test('ViaFabric on Fabric: the part of Fabric API its inner jar needs counts as "Fabric API missing"', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-viafabric-'));
+    const innerFile = path.join(dir, 'inner.jar');
+    await jar(innerFile, {
+      'fabric.mod.json': JSON.stringify({
+        id: 'viafabric-mc26-2',
+        depends: { 'fabric-resource-loader-v0': '*', minecraft: '26.3', viafabric: '*' },
+      }),
+    });
+    const inner = fs.readFileSync(innerFile);
+    fs.rmSync(innerFile);
+    await jar(path.join(dir, 'mods', 'ViaFabric.jar'), {
+      'fabric.mod.json': JSON.stringify({ id: 'viafabric', name: 'ViaFabric', depends: { minecraft: '*' } }),
+      'META-INF/jars/viafabric-mc26-2.jar': inner,
+    });
+    expect((await missingDependencies(dir, 'fabric')).map((m) => m.dependency)).toEqual(['fabric-api']);
+    await jar(path.join(dir, 'mods', 'fabric-api.jar'), {
+      'fabric.mod.json': JSON.stringify({ id: 'fabric-api', name: 'Fabric API' }),
+    });
+    expect(await missingDependencies(dir, 'fabric')).toEqual([]);
+  });
+
   test("a Fabric mod in a Paper server's plugins folder is found (it can never load there)", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-foreign-'));
     await jar(path.join(dir, 'plugins', 'ViaFabric.jar'), {

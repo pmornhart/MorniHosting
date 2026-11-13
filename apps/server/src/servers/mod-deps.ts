@@ -60,6 +60,11 @@ const BUILT_IN = new Set([
   'mixinextras',
   'velocity',
 ]);
+const FABRIC_API = 'fabric-api';
+// A module of Fabric API: "fabric-resource-loader-v0", "fabric-networking-api-v1", "fabric-lifecycle-events-v1" –
+// not "fabric-api", "fabric-loader" or "fabric-language-kotlin" (no "-v<n>" at the end).
+// https://regex101.com/?flavor=javascript&regex=%5Efabric-%5Ba-z0-9-%5D%2B-v%5Cd%2B%24&flags=gm&testString=fabric-resource-loader-v0%0Afabric-networking-api-v1%0Afabric-api%0Afabric-language-kotlin
+const FABRIC_API_PART = /^fabric-[a-z0-9-]+-v\d+$/;
 /** Old names that mean the same mod today. */
 const ALIASES: Readonly<Record<string, string>> = { fabric: 'fabric-api' };
 
@@ -211,6 +216,8 @@ export async function describeJar(
 ): Promise<{
   readonly main: JarDescription | null;
   readonly bundled: readonly string[];
+  /** What the jars bundled inside need (ViaFabric's inner jars need a part of Fabric API). */
+  readonly bundledNeeds: readonly string[];
   readonly foreign: boolean;
 }> {
   const entries = await readZipEntries(
@@ -238,13 +245,21 @@ export async function describeJar(
       .map(async ([, bytes]) => {
         try {
           const inner = await describeJar(bytes, depth + 1, wanted);
-          return [...(inner.main?.ids ?? []), ...inner.bundled];
+          return {
+            ids: [...(inner.main?.ids ?? []), ...inner.bundled],
+            needs: [...(inner.main?.needs ?? []), ...inner.bundledNeeds],
+          };
         } catch {
-          return [];
+          return { ids: [], needs: [] };
         }
       }),
   );
-  return { main, bundled: nested.flat(), foreign };
+  return {
+    main,
+    bundled: nested.flatMap((n) => n.ids),
+    bundledNeeds: [...new Set(nested.flatMap((n) => n.needs))],
+    foreign,
+  };
 }
 
 function jarsIn(serverDir: string, suffix: string): string[] {
@@ -269,6 +284,7 @@ async function describeAll(
     readonly file: string;
     readonly main: JarDescription | null;
     readonly bundled: readonly string[];
+    readonly bundledNeeds: readonly string[];
     readonly foreign: boolean;
   }[]
 > {
@@ -278,7 +294,7 @@ async function describeAll(
       try {
         return { file, ...(await describeJar(path.join(serverDir, file), 0, wanted)) };
       } catch {
-        return { file, main: null, bundled: [], foreign: false };
+        return { file, main: null, bundled: [], bundledNeeds: [], foreign: false };
       }
     }),
   );
@@ -302,9 +318,12 @@ export async function missingDependencies(
   const disabledFor = (id: string): string | null =>
     switchedOff.find((j) => j.main?.ids.includes(id))?.file ?? null;
   return active.flatMap((jar) =>
-    (jar.main?.needs ?? [])
+    [...new Set([...(jar.main?.needs ?? []), ...(jar.main ? jar.bundledNeeds : [])])]
       .map((need) => ALIASES[low(need)] ?? need)
       .filter((need) => !BUILT_IN.has(low(need)) && !installed.has(low(need)))
+      // One part of Fabric API ("fabric-resource-loader-v0") missing = Fabric API missing.
+      .map((need) => (FABRIC_API_PART.test(need) ? FABRIC_API : need))
+      .filter((need, i, all) => all.indexOf(need) === i && !installed.has(low(need)))
       .map((need) => ({
         by: jar.main?.name ?? path.basename(jar.file),
         byFile: jar.file,

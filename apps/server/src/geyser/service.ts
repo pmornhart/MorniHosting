@@ -84,7 +84,11 @@ const VIA: Partial<Readonly<Record<SoftwareId, readonly Plugin[]>>> = {
   purpur: VIA_PLUGINS,
   custom: VIA_PLUGINS,
   velocity: VIA_PLUGINS,
-  fabric: [{ source: 'modrinth', id: 'YlKdE5VK' }],
+  // ViaFabric needs Fabric API (its inner jars use a part of it): both together, so the first start already works.
+  fabric: [
+    { source: 'modrinth', id: 'YlKdE5VK' },
+    { source: 'modrinth', id: 'P7dR8mSH' },
+  ],
 };
 // Geyser and Floodgate jars, also when switched off: "Geyser-Spigot.jar" and "floodgate-spigot.jar.disabled" match.
 // https://regex101.com/?regex=geyser%7Cfloodgate&flags=i&testString=Geyser-Spigot.jar%0Afloodgate-spigot.jar.disabled%0AViaVersion.jar
