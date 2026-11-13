@@ -439,6 +439,8 @@ describe('public statistics page', () => {
       url: '/api/servers',
       headers: { ...authHeaders(admin), referer: 'https://mornihosting.de/servers' },
     });
+    // Philip: a deleted server still "had" this name – that silently meant no badges. Now it doesn't block anything.
+    t.ctx.settings.setValue('public_stats', { gone0000: { enabled: false, slug: 'craft-attack' } });
     const withPack = await t.app.inject({
       method: 'PUT',
       url: mcUrl,
