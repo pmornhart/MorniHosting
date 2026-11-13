@@ -173,6 +173,7 @@ deiner Domain und Add-ons wie Bedrock-Spieler, Voice-Chat oder tägliche Backups
 | 👥 **Spieler**            | Online-Liste mit Köpfen, OP, Kick, Bann und Whitelist per Klick – auch für Spieler, die gerade offline sind.                                                                                                        |
 | 🌍 **Welten**             | Welt hochladen, wechseln oder neu erzeugen (mit Seed).                                                                                                                                                              |
 | ✦ **MorniCraft**          | Fertiger Freunde-Server mit unserem eigenen Plugin ([auch einzeln](https://github.com/pmornhart/MorniCraft)): Spawn-Insel über dem Meer, /home, /tpa, Start-Elytra, Leiste rechts – alles im Dashboard einstellbar. |
+| 🧑‍⚖️ **Team-Dashboard**     | `/teamdashboard` im Spiel: Webseite fürs Team ab Supporter mit allen Spielern, Inventar, Gefängnis, Stumm, Banns und Strafen-Verlauf – Knöpfe je nach Rolle, Regeln ändern für Owner und Admins.                    |
 | 📱 **Bedrock-Spieler**    | Geyser und Floodgate mit einem Schalter: Freunde auf Handy, Konsole oder Windows spielen auf deinem Java-Server mit.                                                                                                |
 | 💾 **Backups**            | Per Klick oder geplant, Welt wird vorher gespeichert, Aufbewahrung, Ausschlüsse, Download, Wiederherstellen mit Sicherheitskopie.                                                                                   |
 | ⏰ **Zeitpläne**          | Neustart, Backup oder Befehl – „jeden Tag um 04:00“ statt Cron-Syntax, mit Vorwarnung im Spiel-Chat.                                                                                                                |
@@ -429,6 +430,30 @@ Das Panel sucht Mailserver, Port (465/587) und Verschlüsselung selbst heraus, p
 - **Postausgang:** Unter **Admin-Bereich → E-Mail** und **Benachrichtigungen** steht jede Mail und Discord-Nachricht mit „angenommen/zugestellt“ oder dem Grund, warum sie nicht rausging.
 
 👉 Einrichten in 4 Minuten: [docs/discord.md](docs/discord.md)
+
+## Team-Dashboard für dein Server-Team
+
+Auf MorniCraft-Servern tippt jeder ab **Supporter** im Spiel `/teamdashboard` und bekommt einen persönlichen
+Link (12 Stunden gültig, nur für ihn). Die Seite zeigt alle Spieler online, wer gerade im Gefängnis sitzt, stumm
+oder eingefroren ist, die Banns und den ganzen Strafen-Verlauf. Ein Klick auf einen Spieler zeigt Inventar,
+Endertruhe, Leben, Ping und bisherige Strafen.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/team-dashboard.webp" alt="Team-Dashboard mit Spielern, Gefängnis, Stumm und Banns"></td>
+    <td width="50%"><img src="docs/screenshots/team-player.webp" alt="Spieler im Team-Dashboard mit Inventar und Knöpfen"></td>
+  </tr>
+</table>
+
+Jeder sieht nur, was zu seiner Rolle passt:
+
+| Rolle                | Darf                                                                         |
+| -------------------- | ---------------------------------------------------------------------------- |
+| Supporter, Moderator | Gefängnis, Freilassen, Stummschalten, Einfrieren – auch bei Offline-Spielern |
+| mit Kick-/Bann-Recht | zusätzlich Rauswerfen, Bannen (auf Zeit oder für immer) und Entbannen        |
+| Owner, Admin         | alles, dazu Koordinaten, Ränge vergeben und die Server-Regeln ändern         |
+
+Die Seite braucht eine Panel-Domain (Admin-Bereich → Domain). Alles, was dort passiert, landet im Strafen-Verlauf.
 
 ## Umzug auf ein anderes Panel
 
