@@ -3338,7 +3338,7 @@
       "sidebar": "Uhrzeit, Spielzeit, online, Ping, Befehle – jeder kann sie mit /leiste ausblenden",
       "showLink": "In /info und der Begrüßung (braucht eine Panel-Domain)",
       "tabStats": "⚔ Kills und ☠ Tode neben jedem Namen",
-      "graves": "Wer stirbt, bekommt ein Grab mit Kopf, allen Sachen und Erfahrung – Rechtsklick holt alles zurück",
+      "graves": "Wer stirbt, bekommt ein Grab mit allen Sachen und der Erfahrung – jeder kann es öffnen und den Loot nehmen",
       "gravePrivateMinutes": "So lange darf nur der Tote (und das Team) das Grab öffnen, danach alle",
       "combatSeconds": "Wer einen Spieler trifft oder getroffen wird, ist so lange im Kampf: kein Teleport, keine Befehle außer Chat, keine Start-Elytra – und wer sich dann ausloggt, stirbt (Sachen ins Grab). 0 = aus.",
       "sit": "Rechtsklick mit leerer Hand setzt dich hin, Schleichen = aufstehen",
@@ -3447,7 +3447,9 @@
       "badgesHint": "Farbiges Schild mit eigenem Pixel-Icon und Rang-Name. Spieler bekommen beim Betreten ein winziges Texturpaket angeboten; wer ablehnt (und Bedrock), sieht die Symbole.",
       "badgesNoDomain": "Braucht die Domain des Panels (Admin-Bereich → Domain), damit Spieler das Texturpaket laden können. Bis dahin: Symbole.",
       "badgesRequired": "Abzeichen für alle (Pflicht)",
-      "badgesRequiredHint": "Java-Spieler laden die Abzeichen beim Betreten automatisch – ohne „Nein“-Knopf. So sieht jeder die Abzeichen. Bedrock zeigt Symbole."
+      "badgesRequiredHint": "Java-Spieler laden die Abzeichen beim Betreten automatisch – ohne „Nein“-Knopf. So sieht jeder die Abzeichen. Bedrock zeigt Symbole.",
+      "badgeText": "Rang-Name neben dem Symbol",
+      "badgeTextHint": "Aus: im Abzeichen steht nur das Symbol (z. B. die Krone). An: Symbol und Name, z. B. „OWNER“."
     }
   },
   "teamBoard": {

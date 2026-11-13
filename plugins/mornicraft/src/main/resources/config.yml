@@ -149,7 +149,7 @@ pack: { url: '', sha1: '', required: true }
 sit: true
 graves: true
 # So viele Minuten darf nur der Tote (und das Team) das Grab öffnen, danach alle.
-grave-private-minutes: 15
+grave-private-minutes: 0
 # Kills und Tode neben jedem Namen in der Tab-Liste.
 tab-stats: true
 # Streamer-Modus: Namen und Adressen dieses Servers, die zu ••• werden (MorniHosting trägt sie selbst ein).

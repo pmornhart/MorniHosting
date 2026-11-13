@@ -115,7 +115,7 @@ const SECTIONS: readonly {
     id: 'graves',
     icon: Skull,
     switches: ['graves'],
-    numbers: [{ key: 'gravePrivateMinutes', min: 0, max: 120, step: 5, when: ['graves'] }],
+    numbers: [],
   },
 ];
 
@@ -282,6 +282,8 @@ export function MorniCraftCard({ serverId }: { serverId: string }): ReactElement
         onBadges={(on) => set('badges', on)}
         badgesRequired={draft.badgesRequired}
         onBadgesRequired={(on) => set('badgesRequired', on)}
+        badgeText={draft.badgeText}
+        onBadgeText={(on) => set('badgeText', on)}
         onChange={(ranks) => set('ranks', ranks)}
       />
       <div className="flex flex-wrap items-center justify-between gap-3">

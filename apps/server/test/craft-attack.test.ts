@@ -819,3 +819,16 @@ describe('MorniCraft limits, switches and clans (Philip: "einmal pro Stunde, dre
     expect(parsed.spawnLimit).toBe(0);
   });
 });
+
+describe('badges with only the icon (Philip: "nur noch die Krone")', () => {
+  it('draws just the icon by default and the tag with the name when switched on', () => {
+    const owner = DEFAULT_RANKS[0]!;
+    const plain = badgePicture(owner, { text: false });
+    const named = badgePicture(owner, { text: true });
+    // A square tile (drawn three times as fine, shown 9 pixels tall) – narrower than the tag with the name.
+    expect(plain.width).toBe(plain.height);
+    expect(plain.width / (plain.height / named.height)).toBeLessThan(named.width);
+    const plainPack = badgePack(DEFAULT_RANKS, { text: false });
+    expect(plainPack.sha1).not.toBe(badgePack(DEFAULT_RANKS, { text: true }).sha1);
+  });
+});

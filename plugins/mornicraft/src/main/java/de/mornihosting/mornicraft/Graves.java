@@ -16,6 +16,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -24,8 +25,6 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.block.TileState;
-import org.bukkit.block.Sign;
-import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.Rotatable;
 import org.bukkit.block.data.type.Slab;
 import org.bukkit.configuration.ConfigurationSection;
@@ -273,15 +272,21 @@ final class Graves implements Listener {
       foot = foot.getOppositeFace();
       stoneGround = g0.getRelative(foot.getOppositeFace());
     }
+    boolean signedOnCross = false;
     // The earth: the head end, and the foot end where there is ground at the same height.
     change(g, g0, Material.PODZOL);
     Block g1 = g0.getRelative(foot);
     if (spot(g1)) change(g, g1, Material.PODZOL);
     // A stone cross at the head end: made of small stone pieces (displays, 1.19.4+), else of stone-brick walls.
     if (spot(stoneGround)) {
-      List<Entity> cross = cross(stoneGround.getRelative(BlockFace.UP).getLocation(), foot);
+      // The cross stands right at the head end of the grave (Philip: "näher an den Rest").
+      List<Entity> cross = cross(stoneGround.getRelative(BlockFace.UP).getLocation(), foot, true);
       if (!cross.isEmpty()) {
         cross.forEach(e -> g.entities.add(e.getUniqueId()));
+        // A small name board where the two stone beams meet (Philip: smaller, up where they cross).
+        crossSign(stoneGround.getRelative(BlockFace.UP).getLocation(), foot, p.getName())
+            .forEach(e -> g.entities.add(e.getUniqueId()));
+        signedOnCross = true;
         // The cross stands in that block: nothing else goes there, and clicking it opens the grave.
         change(g, stoneGround.getRelative(BlockFace.UP), Material.BARRIER);
       } else {
@@ -319,8 +324,7 @@ final class Graves implements Listener {
     // A sign on the front of the cross with just the name (Philip: who died there, nothing else). Without a cross,
     // or where the skull stands as a block (older servers), the name floats above the grave as before.
     Block cross = stoneGround.getRelative(BlockFace.UP);
-    boolean signed = !sunk.isEmpty() && g.blocks.containsKey(key(cross)) && free(head) && nameSign(g, head, foot, p.getName());
-    if (!signed) {
+    if (!signedOnCross) {
       Location tag = (g.blocks.containsKey(key(cross)) ? cross : head).getLocation().add(0.5, 1.2, 0.5);
       g.entities.add(nameTag(tag, Component.text(p.getName(), NamedTextColor.GRAY)).getUniqueId());
     }
@@ -335,15 +339,87 @@ final class Graves implements Listener {
   /** One stone piece: block, then where it sits in the cross's block (x across the grave, y up, z along). */
   private record Piece(Material block, float x0, float y0, float z0, float x1, float y1, float z1) {}
 
-  /** A slim cross on a low mossy plinth, all in one block (0…1); x is across the grave. */
+  /**
+   * A slim cross on a low mossy plinth, all in one block (0…1); x is across the grave. Smooth stone (Philip chose it
+   * out of four) with small polished caps on the ends and the foot (Philip: "schöner, nicht
+   * langgezogen, aber auch nicht Stein an Stein").
+   */
   private static final List<Piece> CROSS = List.of(
       new Piece(Material.MOSSY_STONE_BRICKS, 0.18f, 0f, 0.28f, 0.82f, 0.16f, 0.72f),
-      new Piece(Material.POLISHED_ANDESITE, 0.39f, 0.16f, 0.39f, 0.61f, 1.45f, 0.61f),
-      new Piece(Material.POLISHED_ANDESITE, 0.06f, 0.92f, 0.39f, 0.94f, 1.14f, 0.61f),
-      new Piece(Material.MOSS_BLOCK, 0.36f, 0.16f, 0.36f, 0.64f, 0.22f, 0.64f));
+      new Piece(Material.SMOOTH_STONE, 0.4f, 0.16f, 0.4f, 0.6f, 1.36f, 0.6f),
+      new Piece(Material.SMOOTH_STONE, 0.1f, 0.94f, 0.4f, 0.9f, 1.12f, 0.6f),
+      new Piece(Material.POLISHED_ANDESITE, 0.37f, 1.36f, 0.37f, 0.63f, 1.44f, 0.63f),
+      new Piece(Material.POLISHED_ANDESITE, 0.03f, 0.92f, 0.38f, 0.11f, 1.14f, 0.62f),
+      new Piece(Material.POLISHED_ANDESITE, 0.89f, 0.92f, 0.38f, 0.97f, 1.14f, 0.62f),
+      new Piece(Material.POLISHED_ANDESITE, 0.36f, 0.16f, 0.36f, 0.64f, 0.24f, 0.64f),
+      new Piece(Material.MOSS_BLOCK, 0.2f, 0.16f, 0.3f, 0.36f, 0.19f, 0.5f));
+
+  /** The name board on the cross (fractions of the cross's block): across, height, thickness. */
+  private static final float BOARD_LEFT = 0.28f;
+  private static final float BOARD_RIGHT = 0.72f;
+  private static final float BOARD_LOW = 0.92f;
+  private static final float BOARD_HIGH = 1.14f;
+  private static final float BOARD_THICK = 0.035f;
+  /** In front of the board, so the letters don't flicker into it. */
+  private static final float TEXT_OUT = 0.006f;
+  /** A letter of the Minecraft font is about 6 pixels wide, a pixel 1/40 block; a line about 10 pixels high. */
+  private static final float CHAR_WIDTH = 6 * 0.025f;
+  private static final float LINE_HEIGHT = 10 * 0.025f;
+  private static final float MAX_TEXT_SCALE = 0.32f;
+
+  /**
+   * The name on a small spruce board where the cross's beams meet, facing the foot end (block + text displays,
+   * 1.19.4+; Philip: "das Schild kleiner und da oben, wo sich die beiden Steinlängen treffen").
+   */
+  private List<Entity> crossSign(Location blockCorner, BlockFace foot, String name) {
+    List<Entity> made = new ArrayList<>();
+    try {
+      boolean alongX = foot == BlockFace.EAST || foot == BlockFace.WEST;
+      boolean footPositive = foot == BlockFace.SOUTH || foot == BlockFace.EAST;
+      // The post's front (towards the foot) is at the block edge after TO_SIGN.
+      float front = footPositive ? 1f : 0f;
+      float back = footPositive ? front : front - BOARD_THICK;
+      Class<? extends Entity> blockType = Class.forName("org.bukkit.entity.BlockDisplay").asSubclass(Entity.class);
+      Entity board = blockCorner.getWorld().spawn(blockCorner.clone(), blockType);
+      made.add(board);
+      blockType.getMethod("setBlock", org.bukkit.block.data.BlockData.class).invoke(board, Material.SPRUCE_PLANKS.createBlockData());
+      float[] at = alongX ? new float[] {back, BOARD_LOW, BOARD_LEFT} : new float[] {BOARD_LEFT, BOARD_LOW, back};
+      float[] size = alongX
+          ? new float[] {BOARD_THICK, BOARD_HIGH - BOARD_LOW, BOARD_RIGHT - BOARD_LEFT}
+          : new float[] {BOARD_RIGHT - BOARD_LEFT, BOARD_HIGH - BOARD_LOW, BOARD_THICK};
+      transformScaled(board, at, size);
+      board.setPersistent(true);
+      // The name, as big as fits on the board.
+      float scale = Math.min(MAX_TEXT_SCALE, (BOARD_RIGHT - BOARD_LEFT - 0.06f) / (CHAR_WIDTH * Math.max(1, name.length())));
+      float out = footPositive ? front + BOARD_THICK + TEXT_OUT : front - BOARD_THICK - TEXT_OUT;
+      float middle = (BOARD_LOW + BOARD_HIGH) / 2 - LINE_HEIGHT * scale / 2;
+      Location textAt = blockCorner.clone().add(alongX ? out : HALF, middle, alongX ? HALF : out);
+      textAt.setYaw(yawOf(foot));
+      Class<? extends Entity> textType = Class.forName("org.bukkit.entity.TextDisplay").asSubclass(Entity.class);
+      Entity text = textAt.getWorld().spawn(textAt, textType);
+      made.add(text);
+      textType.getMethod("text", Component.class).invoke(text, Component.text(name, NamedTextColor.BLACK));
+      Object clear = Color.class.getMethod("fromARGB", int.class, int.class, int.class, int.class).invoke(null, 0, 0, 0, 0);
+      textType.getMethod("setBackgroundColor", Color.class).invoke(text, clear);
+      textType.getMethod("setShadowed", boolean.class).invoke(text, false);
+      text.setRotation(yawOf(foot), 0);
+      transformScaled(text, new float[] {0, 0, 0}, new float[] {scale, scale, scale});
+      text.setPersistent(true);
+      return made;
+    } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
+      made.forEach(Entity::remove);
+      return List.of();
+    }
+  }
+
+  /** How far the cross moves towards the sign: the post (0.4…0.6) then ends right at the block edge. */
+  private static final float TO_SIGN = 0.4f;
 
   /** The cross and a click area round it (and the head), made of display entities; empty on older servers. */
-  private List<Entity> cross(Location blockCorner, BlockFace foot) {
+  private List<Entity> cross(Location blockCorner, BlockFace foot, boolean toSign) {
+    // Along the grave, towards the foot end (where the sign hangs): the post's front lands on the block's edge.
+    boolean footPositive = foot == BlockFace.SOUTH || foot == BlockFace.EAST;
+    float shift = toSign ? (footPositive ? TO_SIGN : -TO_SIGN) : 0f;
     List<Entity> made = new ArrayList<>();
     try {
       Class<? extends Entity> blockType = Class.forName("org.bukkit.entity.BlockDisplay").asSubclass(Entity.class);
@@ -353,8 +429,8 @@ final class Graves implements Listener {
         made.add(e);
         blockType.getMethod("setBlock", org.bukkit.block.data.BlockData.class).invoke(e, piece.block().createBlockData());
         // "Across the grave" is x when the grave runs north–south, else z.
-        float ax0 = alongX ? piece.z0() : piece.x0();
-        float az0 = alongX ? piece.x0() : piece.z0();
+        float ax0 = alongX ? piece.z0() + shift : piece.x0();
+        float az0 = alongX ? piece.x0() : piece.z0() + shift;
         float sx = alongX ? piece.z1() - piece.z0() : piece.x1() - piece.x0();
         float sz = alongX ? piece.x1() - piece.x0() : piece.z1() - piece.z0();
         transformScaled(e, new float[] {ax0, piece.y0(), az0}, new float[] {sx, piece.y1() - piece.y0(), sz});
@@ -405,34 +481,6 @@ final class Graves implements Listener {
   private static void change(Grave g, Block b, Material m) {
     g.blocks.put(key(b), b.getBlockData().getAsString());
     b.setType(m, false);
-  }
-
-  /** A spruce wall sign hanging on the cross, facing the foot end, with the name on it (waxed: nobody edits it). */
-  private static boolean nameSign(Grave g, Block at, BlockFace foot, String name) {
-    try {
-      change(g, at, Material.SPRUCE_WALL_SIGN);
-      if (at.getBlockData() instanceof Directional d) {
-        d.setFacing(foot);
-        at.setBlockData(d, false);
-      }
-      if (!(at.getState() instanceof Sign sign)) return false;
-      Component line = Component.text(name, NamedTextColor.BLACK);
-      try {
-        // 1.20+: the front side; older: the one side.
-        Class<?> side = Class.forName("org.bukkit.block.sign.Side");
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        Object front = Enum.valueOf((Class<Enum>) side, "FRONT");
-        Object face = Sign.class.getMethod("getSide", side).invoke(sign, front);
-        face.getClass().getMethod("line", int.class, Component.class).invoke(face, 1, line);
-        Sign.class.getMethod("setWaxed", boolean.class).invoke(sign, true);
-      } catch (ReflectiveOperationException | LinkageError older) {
-        sign.line(1, line);
-      }
-      sign.update(true, false);
-      return true;
-    } catch (RuntimeException e) {
-      return false;
-    }
   }
 
   private static Entity nameTag(Location at, Component name) {
