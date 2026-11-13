@@ -782,7 +782,7 @@ describe('team dashboard (/teamdashboard)', () => {
     const change = (key: string, payload: object) =>
       t.app.inject({ method: 'PUT', url: `${url}/settings`, headers: as(key), payload });
     expect((await change(supporterKey, { tnt: false })).statusCode).toBe(403);
-    expect((await change(ownerKey, { ranks: [] })).statusCode).toBe(400);
+    expect((await change(ownerKey, { panelDomain: 'x' })).statusCode).toBe(400);
     expect((await change(ownerKey, { tnt: false, spawnRadius: 80 })).statusCode).toBe(200);
     const changed = (await t.app.inject({ method: 'GET', url, headers: as(ownerKey) })).json<TeamBoardView>();
     expect(changed.settings).toMatchObject({ tnt: false, spawnRadius: 80 });

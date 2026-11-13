@@ -312,8 +312,12 @@ export function MorniCraftRanks({
   badgesRequired,
   onBadgesRequired,
   onChange,
+  knownNames = [],
 }: {
-  serverId: string;
+  /** In the panel: suggestions from the server's known players. */
+  serverId?: string;
+  /** On the team dashboard: the names it knows (online players, punished ones). */
+  knownNames?: readonly string[];
   ranks: readonly MorniCraftRank[];
   panelMembers: Readonly<Record<'owner' | 'moderator', readonly string[]>>;
   /** Ranks as small pictures in the chat (needs the panel's domain: players load a tiny resource pack). */
@@ -328,10 +332,11 @@ export function MorniCraftRanks({
   const [open, setOpen] = useState<string | null>(null);
   const { data: knownPlayers } = useQuery({
     queryKey: ['players-known', serverId],
-    queryFn: () => api<KnownPlayer[]>(`/api/servers/${serverId}/players/known`),
+    queryFn: () => api<KnownPlayer[]>(`/api/servers/${serverId ?? ''}/players/known`),
     staleTime: KNOWN_FRESH_MS,
+    enabled: serverId !== undefined,
   });
-  const known = (knownPlayers ?? []).map((p) => p.name).filter(Boolean);
+  const known = [...new Set([...(knownPlayers ?? []).map((p) => p.name), ...knownNames])].filter(Boolean);
   const list = [...ranks];
   const update = (i: number, r: MorniCraftRank): void => {
     // Only one rank is everyone else's: switching it on here switches it off elsewhere.

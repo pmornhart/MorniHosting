@@ -42,6 +42,7 @@ import {
   type TeamRequest,
 } from './team-api';
 import { MorniCraftSections } from '@/features/servers/settings/MorniCraftCard';
+import { MorniCraftRanks } from '@/features/servers/settings/MorniCraftRanks';
 import { durationLabel, PunishDialog, RankPill, Tile, useLeft, type Board } from './team-ui';
 
 const DEMO = import.meta.env.MODE === 'demo';
@@ -457,7 +458,13 @@ export function TeamDashboardPage(): ReactElement {
         {tab === 'commands' ? <CommandsCard board={data} /> : null}
 
         {tab === 'settings' && data.settings ? (
-          <SettingsCard slug={slug} teamKey={key} settings={data.settings} />
+          <SettingsCard
+            slug={slug}
+            teamKey={key}
+            settings={data.settings}
+            info={data.settingsInfo}
+            knownNames={[...data.online.map((p) => p.name), ...data.history.map((h) => h.target)]}
+          />
         ) : null}
       </div>
 
@@ -591,10 +598,14 @@ function SettingsCard({
   slug,
   teamKey,
   settings,
+  info,
+  knownNames,
 }: {
   slug: string;
   teamKey: string;
   settings: TeamSettings;
+  info: TeamBoardView['settingsInfo'];
+  knownNames: readonly string[];
 }): ReactElement {
   const { t } = useTranslation();
   const save = useTeamSettings(slug, teamKey);
@@ -617,6 +628,17 @@ function SettingsCard({
       <div className="grid gap-4 lg:grid-cols-2">
         <MorniCraftSections draft={draft} set={(patch) => setDraft({ ...draft, ...patch })} />
       </div>
+      <MorniCraftRanks
+        knownNames={knownNames}
+        ranks={draft.ranks}
+        panelMembers={info?.panelMembers ?? { owner: [], moderator: [] }}
+        badges={draft.badges}
+        badgesReady={info?.badgesReady ?? false}
+        onBadges={(on) => setDraft({ ...draft, badges: on })}
+        badgesRequired={draft.badgesRequired}
+        onBadgesRequired={(on) => setDraft({ ...draft, badgesRequired: on })}
+        onChange={(ranks) => setDraft({ ...draft, ranks })}
+      />
       <div className="flex flex-wrap items-center justify-end gap-3">
         {save.isSuccess && !dirty ? (
           <span className="text-sm text-emerald-400">{t('teamBoard.settings.saved')}</span>

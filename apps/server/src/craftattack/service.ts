@@ -820,7 +820,11 @@ export function createCraftAttackService(
       const serverId = serverBySlug(slug);
       const settings = settingsOf(serverId);
       const picked = Object.fromEntries(TEAM_SETTING_KEYS.map((k) => [k, settings[k]])) as TeamSettings;
-      return teamView(servers.dir(serverId), key, locale(), settings.rules, picked);
+      const state = morniCraft(serverId);
+      return teamView(servers.dir(serverId), key, locale(), settings.rules, picked, {
+        panelMembers: state.panelMembers,
+        badgesReady: state.badgePackUrl !== null,
+      });
     },
     teamRules: async (slug, key, rules) => {
       const serverId = serverBySlug(slug);

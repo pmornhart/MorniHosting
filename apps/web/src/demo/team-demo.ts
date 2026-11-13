@@ -182,6 +182,9 @@ export function teamDemoView(): TeamBoardView {
     history: state.history,
     rules: state.rules,
     settings: abilities.includes('rules') ? state.settings : null,
+    settingsInfo: abilities.includes('rules')
+      ? { panelMembers: { owner: [], moderator: [] }, badgesReady: true }
+      : null,
   };
 }
 

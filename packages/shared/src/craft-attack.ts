@@ -684,6 +684,13 @@ export interface TeamBoardView {
   readonly rules: readonly string[];
   /** The server's settings – only for those who may change them (owners, ranks with the admin switch). */
   readonly settings: TeamSettings | null;
+  /** For the rank editor next to the settings (null without the right to change them). */
+  readonly settingsInfo: {
+    /** Panel owners and moderators with a linked Minecraft account – they get their rank by themselves. */
+    readonly panelMembers: Readonly<Record<'owner' | 'moderator', readonly string[]>>;
+    /** The badge pack can be offered (the panel has a domain). */
+    readonly badgesReady: boolean;
+  } | null;
 }
 
 /** The settings owners and admins may change on the team dashboard (the same as in the panel, without ranks). */
@@ -710,6 +717,9 @@ export const TEAM_SETTING_KEYS = [
   'combatSeconds',
   'graves',
   'gravePrivateMinutes',
+  'badges',
+  'badgesRequired',
+  'ranks',
 ] as const satisfies readonly (keyof MorniCraftSettings)[];
 export type TeamSettings = Pick<MorniCraftSettings, (typeof TEAM_SETTING_KEYS)[number]>;
 

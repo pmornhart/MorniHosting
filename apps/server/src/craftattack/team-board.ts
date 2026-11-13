@@ -149,6 +149,7 @@ export function teamView(
   locale: 'de' | 'en',
   rules: readonly string[],
   settings: TeamSettings,
+  settingsInfo: NonNullable<TeamBoardView['settingsInfo']>,
 ): TeamBoardView {
   const link = linkOf(serverDir, key);
   const abilities = TEAM_ABILITIES.filter((a) => link.abilities.includes(a));
@@ -205,6 +206,7 @@ export function teamView(
     ],
     rules,
     settings: abilities.includes('rules') ? settings : null,
+    settingsInfo: abilities.includes('rules') ? settingsInfo : null,
     bans: (state?.bans ?? []).filter((b) => b.until === 0 || b.until > now),
     history: state?.history ?? [],
     ranks: abilities.includes('ranks')
