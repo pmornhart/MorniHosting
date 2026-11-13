@@ -122,7 +122,7 @@ const GUESSES: readonly (readonly [RegExp, ChangeKind])[] = [
 const SKIP_PREFIXES = ['Verfasst mit Claude', 'Co-Authored-By:', 'Claude-Session:'];
 
 /** One bullet line as a change item: an explicit "Neu:"/"Behoben:" … wins, else the kind is guessed from words. */
-export function changeItem(line: string): ChangeItem {
+function changeItem(line: string): ChangeItem {
   const labelled = LABELLED.exec(line);
   if (labelled)
     return { kind: LABEL_KINDS[(labelled[1] ?? '').toLowerCase()] ?? 'other', text: labelled[2] ?? '' };

@@ -42,7 +42,7 @@ const GAMEMODES: readonly PlayerGamemode[] = ['survival', 'creative', 'adventure
 const JAVA_NAME = /^[A-Za-z0-9_]{1,16}$/;
 // Dashed uuid. Matches "548b0931-31bf-4476-9a32-01e2e690a62e"; rejects "548b093131bf…" and "../x".
 // https://regex101.com/?flavor=javascript&regex=%5E%5B0-9a-f%5D%7B8%7D-%5B0-9a-f%5D%7B4%7D-%5B0-9a-f%5D%7B4%7D-%5B0-9a-f%5D%7B4%7D-%5B0-9a-f%5D%7B12%7D%24&flags=i&testString=548b0931-31bf-4476-9a32-01e2e690a62e%0A..%2Fx
-export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // Player data file names. Matches "548b0931-31bf-4476-9a32-01e2e690a62e.dat"; rejects "x.dat_old".
 // https://regex101.com/?flavor=javascript&regex=%5E(%5B0-9a-f-%5D%7B36%7D)%5C.dat%24&flags=i&testString=548b0931-31bf-4476-9a32-01e2e690a62e.dat%0Ax.dat_old
 const DAT_FILE = /^([0-9a-f-]{36})\.dat$/i;
@@ -194,7 +194,7 @@ export function readLog(file: string): string {
 }
 
 /** The player's last chat messages and commands, newest first. */
-export function chatOf(serverDir: string, name: string): PlayerChatLine[] {
+function chatOf(serverDir: string, name: string): PlayerChatLine[] {
   const lower = name.toLowerCase();
   const isPlayer = (who: string): boolean =>
     who.replace(COLOUR, '').trim().split(' ').at(-1)?.toLowerCase() === lower;

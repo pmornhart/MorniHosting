@@ -194,7 +194,7 @@ function rockFor(depth: number, row: number): Block {
 }
 
 /** The island itself: grass, earth and rock narrowing to a point, decorated underneath. */
-export function islandCommands(): string[] {
+function islandCommands(): string[] {
   const body = range(0, DEPTH).flatMap((depth) => {
     const y = -1 - depth;
     const r = islandRadius(depth);
@@ -410,7 +410,7 @@ function directionLetter(d: Direction, lang: SpawnLang): string[] {
 }
 
 /** Older islands: the white around the letters becomes path stone. */
-export function lettersFixCommands(lang: SpawnLang): string[] {
+function lettersFixCommands(lang: SpawnLang): string[] {
   return DIRECTIONS.flatMap((d) => directionLetter(d, lang));
 }
 
@@ -444,7 +444,7 @@ export function flagCommands(x: number, y: number, z: number): string[] {
 }
 
 /** Towers of older islands: the flag with the lozenges is taken down and the new one hoisted. */
-export function flagFixCommands(): string[] {
+function flagFixCommands(): string[] {
   const x = TOWER_X + 1;
   return [
     fill(x, FLAG_Y, TOWER_Z, x + OLD_FLAG_WIDTH - 1, FLAG_Y + FLAG_M.length - 1, TOWER_Z, 'air'),
@@ -817,7 +817,7 @@ function towerLadder(): string[] {
  * Towers of older islands had windows in the ladder's wall, so the ladder fell off there: the wall is closed and the
  * ladder put back up.
  */
-export function ladderCommands(): string[] {
+function ladderCommands(): string[] {
   return [
     ...TOWER_WINDOW_Y.map((y) =>
       fill(TOWER_X, y, TOWER_Z - 2, TOWER_X, y + 1, TOWER_Z - 2, 'white_concrete'),
@@ -912,7 +912,7 @@ export function fountainCommands(): string[] {
 const OLD_FOUNTAIN_HALF = 6;
 const OLD_FOUNTAIN_HEIGHT = 14;
 
-export function fixFountainCommands(): string[] {
+function fixFountainCommands(): string[] {
   return [
     fill(
       -OLD_FOUNTAIN_HALF,
@@ -958,7 +958,7 @@ const OLD_HILLS: readonly (readonly [number, number])[] = [
 const OLD_HILL_REACH = 5;
 
 /** Takes the old grass hills off again (only grass blocks and the bush on top; lamps and paths stay). */
-export function fixHillsCommands(): string[] {
+function fixHillsCommands(): string[] {
   return OLD_HILLS.flatMap(([x, z]) => {
     const box = (y1: number, y2: number, block: Block, mode: string): string =>
       fill(

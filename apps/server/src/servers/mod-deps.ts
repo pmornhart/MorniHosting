@@ -68,26 +68,41 @@ const FABRIC_API_PART = /^fabric-[a-z0-9-]+-v\d+$/;
 /** Old names that mean the same mod today. */
 const ALIASES: Readonly<Record<string, string>> = { fabric: 'fabric-api' };
 
-// A YAML list written inline: "depend: [Vault, ProtocolLib]" → "Vault, ProtocolLib" (key given separately).
+/** The YAML keys read from plugin descriptions; fixed patterns per key (no RegExp built from text at run time). */
+type YamlKey = 'name' | 'provides' | 'depend';
+// A YAML list written inline: "depend: [Vault, ProtocolLib]" → "Vault, ProtocolLib".
 // https://regex101.com/?flavor=javascript&regex=%5Edepend%3A%5B%20%5Ct%5D*%5C%5B(%5B%5E%5C%5D%5D*)%5C%5D&flags=m&testString=name%3A%20Shop%0Adepend%3A%20%5BVault%2C%20ProtocolLib%5D
-const inlineList = (key: string): RegExp => new RegExp(`^${key}:[ \\t]*\\[([^\\]]*)\\]`, 'm');
+const INLINE_LIST: Readonly<Record<YamlKey, RegExp>> = {
+  name: /^name:[ \t]*\[([^\]]*)\]/m,
+  provides: /^provides:[ \t]*\[([^\]]*)\]/m,
+  depend: /^depend:[ \t]*\[([^\]]*)\]/m,
+};
 // A YAML list written as lines: "depend:\n  - Vault\n  - ProtocolLib" → "  - Vault\n  - ProtocolLib".
 // https://regex101.com/?flavor=javascript&regex=%5Edepend%3A%5B%20%5Ct%5D*%5Cr%3F%5Cn((%3F%3A%5B%20%5Ct%5D*-%5B%5E%5Cn%5D*%5Cn%3F)%2B)&flags=m&testString=depend%3A%0A%20%20-%20Vault%0A%20%20-%20ProtocolLib%0Aversion%3A%201
-const blockList = (key: string): RegExp =>
-  new RegExp(`^${key}:[ \\t]*\\r?\\n((?:[ \\t]*-[^\\n]*\\n?)+)`, 'm');
-// A single YAML value: "name: Essentials" or "depend: Vault" → "Essentials" / "Vault" (key given separately).
+const BLOCK_LIST: Readonly<Record<YamlKey, RegExp>> = {
+  name: /^name:[ \t]*\r?\n((?:[ \t]*-[^\n]*\n?)+)/m,
+  provides: /^provides:[ \t]*\r?\n((?:[ \t]*-[^\n]*\n?)+)/m,
+  depend: /^depend:[ \t]*\r?\n((?:[ \t]*-[^\n]*\n?)+)/m,
+};
+// A single YAML value: "name: Essentials" or "depend: Vault" → "Essentials" / "Vault".
 // https://regex101.com/?flavor=javascript&regex=%5Ename%3A%5B%20%5Ct%5D*%5B'%22%5D%3F(%5B%5E'%22%5Cs%23%5C%5B%5D%5B%5E'%22%5Cn%23%5D*%3F)%5B'%22%5D%3F%5B%20%5Ct%5D*%24&flags=m&testString=name%3A%20Essentials%0Aversion%3A%202
-const singleValue = (key: string): RegExp =>
-  new RegExp(`^${key}:[ \\t]*['"]?([^'"\\s#\\[][^'"\\n#]*?)['"]?[ \\t]*$`, 'm');
+const SINGLE_VALUE: Readonly<Record<YamlKey, RegExp>> = {
+  name: /^name:[ \t]*['"]?([^'"\s#[][^'"\n#]*?)['"]?[ \t]*$/m,
+  provides: /^provides:[ \t]*['"]?([^'"\s#[][^'"\n#]*?)['"]?[ \t]*$/m,
+  depend: /^depend:[ \t]*['"]?([^'"\s#[][^'"\n#]*?)['"]?[ \t]*$/m,
+};
 // Quotes and a leading "- " around a YAML list item: "  - 'Vault'" → "Vault".
 // https://regex101.com/?flavor=javascript&regex=%5E%5Cs*-%3F%5Cs*%5B'%22%5D%3F%7C%5B'%22%5D%3F%5Cs*%24&flags=g&testString=%20%20-%20'Vault'
 const LIST_ITEM_DECORATION = /^\s*-?\s*['"]?|['"]?\s*$/g;
 // TOML tables: splits "[[mods]]\nmodId=…\n[[dependencies.x]]\n…" before every "[[" at a line start.
 // https://regex101.com/?flavor=javascript&regex=%5E(%3F%3D%5C%5B%5C%5B)&flags=m&testString=%5B%5Bmods%5D%5D%0AmodId%3D%22a%22%0A%5B%5Bdependencies.a%5D%5D%0AmodId%3D%22b%22
 const TOML_TABLE = /^(?=\[\[)/m;
-// A TOML string field: 'modId="cloth_config"' → "cloth_config" (key given separately).
+// A TOML string field: 'modId="cloth_config"' → "cloth_config"; 'displayName="Cloth Config"' → "Cloth Config".
 // https://regex101.com/?flavor=javascript&regex=%5E%5Cs*modId%5Cs*%3D%5Cs*%5B%22'%5D(%5B%5E%22'%5D%2B)%5B%22'%5D&flags=m&testString=%5B%5Bdependencies.x%5D%5D%0A%20%20%20%20modId%3D%22cloth_config%22
-const tomlString = (key: string): RegExp => new RegExp(`^\\s*${key}\\s*=\\s*["']([^"']+)["']`, 'm');
+const TOML_STRING = {
+  modId: /^\s*modId\s*=\s*["']([^"']+)["']/m,
+  displayName: /^\s*displayName\s*=\s*["']([^"']+)["']/m,
+} as const;
 // A required TOML dependency: 'mandatory=true' (Forge) or 'type="required"' (NeoForge); "mandatory=false" does not match.
 // https://regex101.com/?flavor=javascript&regex=%5E%5Cs*(%3F%3Amandatory%5Cs*%3D%5Cs*true%7Ctype%5Cs*%3D%5Cs*%5B%22'%5Drequired%5B%22'%5D)&flags=im&testString=mandatory%3Dtrue%0Atype%3D%22required%22%0Amandatory%3Dfalse
 const TOML_REQUIRED = /^\s*(?:mandatory\s*=\s*true|type\s*=\s*["']required["'])/im;
@@ -112,25 +127,25 @@ export interface MissingDependency {
 
 const low = (s: string): string => s.trim().toLowerCase();
 
-function yamlList(text: string, key: string): string[] {
-  const inline = text.match(inlineList(key))?.[1];
+function yamlList(text: string, key: YamlKey): string[] {
+  const inline = text.match(INLINE_LIST[key])?.[1];
   if (inline !== undefined)
     return inline
       .split(',')
       .map((s) => s.replace(LIST_ITEM_DECORATION, ''))
       .filter(Boolean);
-  const block = text.match(blockList(key))?.[1];
+  const block = text.match(BLOCK_LIST[key])?.[1];
   if (block !== undefined)
     return block
       .split('\n')
       .map((s) => s.replace(LIST_ITEM_DECORATION, ''))
       .filter(Boolean);
-  const single = text.match(singleValue(key))?.[1];
+  const single = text.match(SINGLE_VALUE[key])?.[1];
   return single ? [single.trim()] : [];
 }
 
 function fromYaml(text: string, required: boolean): JarDescription | null {
-  const name = text.match(singleValue('name'))?.[1]?.trim();
+  const name = text.match(SINGLE_VALUE.name)?.[1]?.trim();
   if (!name) return null;
   return {
     name,
@@ -183,13 +198,13 @@ function fromToml(text: string): JarDescription | null {
   const tables = text.split(TOML_TABLE);
   const ids = tables
     .filter((t) => t.startsWith('[[mods]]'))
-    .map((t) => t.match(tomlString('modId'))?.[1])
+    .map((t) => t.match(TOML_STRING.modId)?.[1])
     .filter((id): id is string => Boolean(id));
   if (ids.length === 0) return null;
-  const displayName = tables.find((t) => t.startsWith('[[mods]]'))?.match(tomlString('displayName'))?.[1];
+  const displayName = tables.find((t) => t.startsWith('[[mods]]'))?.match(TOML_STRING.displayName)?.[1];
   const needs = tables
     .filter((t) => t.startsWith('[[dependencies.') && TOML_REQUIRED.test(t))
-    .map((t) => t.match(tomlString('modId'))?.[1])
+    .map((t) => t.match(TOML_STRING.modId)?.[1])
     .filter((id): id is string => Boolean(id));
   return { name: displayName ?? ids[0] ?? '', ids: ids.map(low), needs };
 }
@@ -209,7 +224,7 @@ const isNestedJar = (name: string): boolean =>
   NESTED_DIRS.some((dir) => name.startsWith(dir) && !name.slice(dir.length).includes('/'));
 
 /** Everything one jar declares, plus the ids of the jars bundled inside it. */
-export async function describeJar(
+async function describeJar(
   source: string | Buffer,
   depth = 0,
   wanted: ReadonlySet<string> = DESCRIPTORS,

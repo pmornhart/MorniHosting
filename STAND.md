@@ -163,6 +163,8 @@
 
 - MorniCraft 1.8.4 (13.11., Philip): Wer in der Gefängniszelle etwas abbauen will, liest „Das Gefängnis bleibt, wie es ist“ statt „Der Spawn bleibt …“ (`SpawnGuard.stop` prüft `inCell`). Mit Test-Spieler auf Paper 1.21.11 geprüft (Block bleibt, Meldung stimmt).
 
+- Issues-Check (13.11.): #11 – 14 ungenutzte Exporte intern, `AccountPage` per direktem Import (fallow sah den Namen nicht), Regex in `servers/mod-deps.ts` fest pro Schlüssel statt `new RegExp(key)`, Proxmox-Skript lädt den Host-Wächter erst herunter und führt ihn dann aus (kein `curl | bash`). #10 – Overrides `glob ^14.0.2`, `minimatch ^11.0.1` in `pnpm-workspace.yaml`, `pnpm audit` sauber (ZIP-/Backup-Tests grün). #15 – eslint 10.14, globals 17.14, Playwright 1.65; prettier 3.10.1 und typescript-eslint 8.72.2 noch keine 7 Tage alt, TypeScript 7 von typescript-eslint nicht unterstützt (< 6.1), @types/node bleibt 22 (Laufzeit Node 22). 375 Tests.
+
 ## Lokal testen (Sandbox)
 
 - Backend simuliert: `MH_SECRET=… MH_DATA_DIR=./data MH_DOCKER_DRIVER=fake MH_DEMO=true pnpm --filter @mornihosting/server dev`

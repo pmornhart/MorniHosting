@@ -51,7 +51,7 @@ interface VarInt {
 }
 
 /** A Minecraft VarInt at `offset`; null when the buffer ends first (more bytes needed) or it is too long. */
-export function readVarInt(buf: Buffer, offset: number, index = 0, value = 0): VarInt | null | 'bad' {
+function readVarInt(buf: Buffer, offset: number, index = 0, value = 0): VarInt | null | 'bad' {
   if (index >= VARINT_MAX_BYTES) return 'bad';
   const byte = buf[offset + index];
   if (byte === undefined) return null;
