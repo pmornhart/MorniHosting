@@ -17,7 +17,7 @@ export async function createTestApp(
   env: Record<string, string> = {},
   options: Pick<
     BuildOptions,
-    'resolver' | 'mailTransport' | 'mailNetwork' | 'discord' | 'stalwart' | 'stalwartResolver'
+    'resolver' | 'mailTransport' | 'mailNetwork' | 'discord' | 'stalwart' | 'stalwartResolver' | 'docker'
   > = {},
 ): Promise<TestApp> {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-test-'));

@@ -659,7 +659,15 @@ export function createServerService(ctx: AppContext): ServerService {
         publishLive(id);
       }
     });
-    if (r.containerId) await docker.removeContainer(r.containerId);
+    if (r.containerId) {
+      // The old container is forgotten first: its end is part of this start, never a crash.
+      const old = r.containerId;
+      db.update(servers).set({ containerId: null }).where(eq(servers.id, id)).run();
+      detachLogs(id);
+      // Still running (e.g. the panel lost track of it)? Let it save and stop properly instead of killing the world.
+      if ((await docker.inspect(old))?.running) await docker.stop(old, DOCKER_STOP_GRACE_SECONDS);
+      await docker.removeContainer(old);
+    }
     fs.mkdirSync(serverDir(config, id), { recursive: true });
     await seedFromSibling(id, r.software);
     await seedRuntimeFromSibling(id, r);
@@ -785,6 +793,12 @@ export function createServerService(ctx: AppContext): ServerService {
       return;
     }
     const state = await docker.inspect(containerId);
+    // The container is gone altogether (removed, not crashed): there is no exit code and nothing to analyse.
+    if (state === null) {
+      log.warn({ serverId: r.id, containerId }, 'container disappeared – not counted as a crash');
+      setState(r.id, 'stopped');
+      return;
+    }
     const [packages, missing] = await Promise.all([
       pluginPackages(serverDir(config, r.id)),
       missingDependencies(serverDir(config, r.id), r.software).catch(() => []),

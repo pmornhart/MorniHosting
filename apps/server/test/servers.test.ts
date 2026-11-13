@@ -3,6 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import type { ServerDetail, ServerSummary } from '@mornihosting/shared';
+import { eq } from 'drizzle-orm';
+import { servers as serversTable } from '../src/db/schema.js';
+import { createFakeDriver, FAKE_STEP_MS_FAST } from '../src/docker/fake-driver.js';
 import { authHeaders, createTestApp, setupAdmin, waitFor, type Session, type TestApp } from './helpers.js';
 
 const paper = {
@@ -44,6 +47,48 @@ describe('server lifecycle with the fake driver', () => {
     // The old container's exit arrives late (after a short settle delay); it must not touch the new one.
     await new Promise((resolve) => setTimeout(resolve, 1200));
     expect(await state(created.id)).toBe('running');
+  });
+
+  test('a container that is removed is not a crash (Philip: "Unbekannte Ursache, Code )")', async () => {
+    const docker = createFakeDriver({ stepMs: FAKE_STEP_MS_FAST, simulatePlayers: false });
+    const own = await createTestApp({}, { docker });
+    try {
+      const admin = await setupAdmin(own);
+      const created = (
+        await own.app.inject({
+          method: 'POST',
+          url: '/api/servers',
+          headers: authHeaders(admin),
+          payload: paper,
+        })
+      ).json<ServerSummary>();
+      const summary = async (): Promise<ServerSummary> =>
+        (
+          await own.app.inject({
+            method: 'GET',
+            url: `/api/servers/${created.id}`,
+            headers: authHeaders(admin),
+          })
+        ).json<ServerSummary>();
+      await waitFor(async () => (await summary()).live.state === 'running');
+      const containerId = own.ctx.db
+        .select({ c: serversTable.containerId })
+        .from(serversTable)
+        .where(eq(serversTable.id, created.id))
+        .get()?.c;
+      await docker.removeContainer(containerId ?? '');
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const after = await summary();
+      expect(after.live.state).toBe('stopped');
+      const crash = await own.app.inject({
+        method: 'GET',
+        url: `/api/servers/${created.id}/crash`,
+        headers: authHeaders(admin),
+      });
+      expect(crash.json<{ crash: unknown }>().crash ?? null).toBeNull();
+    } finally {
+      await own.cleanup();
+    }
   });
 
   test('create, start, command, stop', async () => {
