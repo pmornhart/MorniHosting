@@ -287,6 +287,10 @@ final class Moderation implements Listener {
 
   // ---------------------------------------------------------------- jail
 
+  boolean frozen(Player p) {
+    return frozen.contains(p.getUniqueId());
+  }
+
   boolean jailed(Player p) {
     return plugin.store().get(p.getUniqueId()).jailUntil > System.currentTimeMillis();
   }
@@ -308,6 +312,7 @@ final class Moderation implements Listener {
         Component.text(ui().flat("jail.subtitle", Ui.v("time", span(ms))), Ui.SOFT)));
     target.sendMessage(ui().fail(d.jailReason.isEmpty() ? "jail.you" : "jail.you.reason", Ui.v("time", span(ms)),
         Ui.v("reason", d.jailReason)));
+    plugin.history("jail", target.getName(), by.getName(), d.jailReason, ms);
     tellTeam("jail.team", Ui.v("by", by.getName()), Ui.v("name", target.getName()), Ui.v("time", span(ms)),
         Ui.v("reason", d.jailReason.isEmpty() ? "–" : d.jailReason));
   }
@@ -344,6 +349,7 @@ final class Moderation implements Listener {
     target.teleport(to != null ? to : SpawnArea.spawn(), PlayerTeleportEvent.TeleportCause.PLUGIN);
     target.showTitle(Title.title(Component.text("✔ " + ui().flat("jail.free.title"), Ui.ACCENT), Component.empty()));
     target.sendMessage(ui().ok("jail.free"));
+    if (early && by != null) plugin.history("free", target.getName(), by.getName(), "", 0);
     if (early && by != null) tellTeam("jail.team.free", Ui.v("by", by.getName()), Ui.v("name", target.getName()));
   }
 
@@ -385,6 +391,7 @@ final class Moderation implements Listener {
     plugin.store().save(target.getUniqueId(), d);
     target.sendMessage(ui().fail(reason == null || reason.isEmpty() ? "mute.you" : "mute.you.reason",
         Ui.v("time", span(ms)), Ui.v("reason", reason == null ? "" : reason)));
+    plugin.history("mute", target.getName(), by.getName(), reason == null ? "" : reason, ms);
     tellTeam("mute.team", Ui.v("by", by.getName()), Ui.v("name", target.getName()), Ui.v("time", span(ms)));
   }
 
@@ -397,6 +404,7 @@ final class Moderation implements Listener {
     d.muteUntil = 0;
     plugin.store().save(target.getUniqueId(), d);
     target.sendMessage(ui().ok("mute.free"));
+    plugin.history("unmute", target.getName(), by.getName(), "", 0);
     tellTeam("mute.team.free", Ui.v("by", by.getName()), Ui.v("name", target.getName()));
   }
 
@@ -404,6 +412,7 @@ final class Moderation implements Listener {
     if (frozen.remove(target.getUniqueId())) {
       target.sendMessage(ui().ok("freeze.off"));
       target.clearTitle();
+      plugin.history("unfreeze", target.getName(), by.getName(), "", 0);
       tellTeam("freeze.team.off", Ui.v("by", by.getName()), Ui.v("name", target.getName()));
       return;
     }
@@ -411,6 +420,7 @@ final class Moderation implements Listener {
     frozen.add(target.getUniqueId());
     target.showTitle(Title.title(Component.text("❄ " + ui().flat("freeze.title"), NamedTextColor.AQUA),
         Component.text(ui().flat("freeze.subtitle"), Ui.SOFT)));
+    plugin.history("freeze", target.getName(), by.getName(), "", 0);
     tellTeam("freeze.team", Ui.v("by", by.getName()), Ui.v("name", target.getName()));
   }
 

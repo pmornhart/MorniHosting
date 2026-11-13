@@ -1,5 +1,9 @@
 import { useState, type ReactElement } from 'react';
 import { cn } from '@/lib/utils';
+import demoImages from 'virtual:demo-images';
+
+/** The demo file cannot reach the panel; it carries the pictures itself. */
+const DEMO = import.meta.env.MODE === 'demo';
 
 /**
  * Small pixel pictures for the player page. Hearts and drumsticks are drawn here (own art); item and mob
@@ -110,9 +114,10 @@ export function ItemIcon({
   const [failed, setFailed] = useState(false);
   const name = vanillaId(id);
   if (!name || failed) return <UnknownItem className={className} />;
+  const embedded = DEMO && !mob ? demoImages.items[name] : undefined;
   return (
     <img
-      src={`/api/item-icons/${mob ? 'mob' : 'item'}/${name}`}
+      src={embedded ?? `/api/item-icons/${mob ? 'mob' : 'item'}/${name}`}
       alt=""
       loading="lazy"
       onError={() => setFailed(true)}

@@ -145,6 +145,11 @@ final class RankCommands implements Listener {
     plugin.getLogger().info(sender.getName() + " gave " + name + " the rank " + rank.id());
   }
 
+  /** From the team dashboard: like "/<rank> <name>" typed by that person (or the console). */
+  void setFrom(CommandSender sender, String who, Ranks.Rank rank) {
+    set(sender, who, rank, false);
+  }
+
   /** Online by name, else someone who was here before (no lookup on the internet). */
   private static OfflinePlayer targetOf(String name) {
     Player online = Bukkit.getPlayerExact(name);

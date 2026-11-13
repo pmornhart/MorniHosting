@@ -2,7 +2,8 @@ import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
-import { GAME_ART_SOURCES, PROJECT_LOGOS } from '../../packages/shared/src/branding';
+import { GAME_ART_SOURCES, itemWikiName, PROJECT_LOGOS } from '../../packages/shared/src/branding';
+import TEAM_SAMPLE from './src/demo/team-demo.json';
 
 /** The app ships as one bundle with the console and editor split off; warn only for real outliers. */
 const CHUNK_WARNING_KB = 1500;
@@ -59,6 +60,16 @@ async function embedAll(sources: Readonly<Record<string, string>>): Promise<Reco
   return Object.fromEntries(pairs.filter((pair): pair is readonly [string, string] => pair[1] !== undefined));
 }
 
+/** "golden_apple" → Minecraft Wiki picture "Invicon_Golden_Apple.png" (as the panel's /api/item-icons). */
+function teamItemSources(): Record<string, string> {
+  const ids = new Set(
+    Object.values(TEAM_SAMPLE.inventories).flatMap((rows) => rows.map((row) => String(row[1]))),
+  );
+  return Object.fromEntries(
+    [...ids].map((id) => [id, `https://minecraft.wiki/images/Invicon_${itemWikiName(id)}.png`]),
+  );
+}
+
 /**
  * The demo is one sealed file that cannot load pictures from other sites, so its build embeds the project logos
  * and game card pictures (fetched at build time, never stored in the repository). Outside the demo it is empty.
@@ -70,8 +81,12 @@ function demoImages(demo: boolean): Plugin {
     load: async (id) => {
       if (id !== RESOLVED_DEMO_IMAGES) return undefined;
       const images = demo
-        ? { logos: await embedAll(PROJECT_LOGOS), gameArt: await embedAll(GAME_ART_SOURCES) }
-        : { logos: {}, gameArt: {} };
+        ? {
+            logos: await embedAll(PROJECT_LOGOS),
+            gameArt: await embedAll(GAME_ART_SOURCES),
+            items: await embedAll(teamItemSources()),
+          }
+        : { logos: {}, gameArt: {}, items: {} };
       return `export default ${JSON.stringify(images)};`;
     },
   };

@@ -60,6 +60,10 @@ final class Commands implements TabExecutor {
       info(sender);
       return true;
     }
+    if (name.equals("teamdashboard")) {
+      plugin.teamBoard().command(sender);
+      return true;
+    }
     if (name.equals("rang")) {
       plugin.rankCommands().command(sender, args);
       return true;

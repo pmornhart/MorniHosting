@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, test } from 'vitest';
-import type { PublicStats, ServerSummary } from '@mornihosting/shared';
+import type { PublicStats, ServerSummary, TeamBoardView } from '@mornihosting/shared';
 import {
   SPAWN_Y,
   fixWaterCommands,
@@ -589,5 +589,179 @@ describe('log times', () => {
     const { logMoment } = await import('../src/craftattack/stats.js');
     expect(logMoment('2024-06-01', '18:00:00', 'Europe/Berlin')).toBe('2024-06-01T16:00:00.000Z');
     expect(logMoment('2024-01-15', '18:00:00', 'Europe/Berlin')).toBe('2024-01-15T17:00:00.000Z');
+  });
+});
+
+describe('team dashboard (/teamdashboard)', () => {
+  let t: TestApp;
+  let admin: Session;
+  beforeEach(async () => {
+    t = await createTestApp();
+    admin = await setupAdmin(t);
+  });
+  afterEach(async () => {
+    await t.cleanup();
+  });
+
+  test('shows each team member what their rank allows, writes buttons for the game and changes the rules', async () => {
+    const server = (
+      await t.app.inject({
+        method: 'POST',
+        url: '/api/servers',
+        headers: authHeaders(admin),
+        payload: {
+          name: 'Team Welt',
+          edition: 'java',
+          software: 'paper',
+          version: '1.21.4',
+          memoryMb: 2048,
+          port: 25565,
+          eula: true,
+          startNow: false,
+        },
+      })
+    ).json<ServerSummary>();
+    const dir = path.join(t.dataDir, 'servers', server.id);
+    fs.mkdirSync(path.join(dir, 'world', 'datapacks', 'mornihosting-craftattack'), { recursive: true });
+    await t.app.inject({
+      method: 'PUT',
+      url: `/api/servers/${server.id}/public-stats`,
+      headers: authHeaders(admin),
+      payload: { enabled: true },
+    });
+    const team = path.join(dir, 'plugins', 'MorniCraft', 'team');
+    fs.mkdirSync(path.join(team, 'links'), { recursive: true });
+    const link = (key: string, name: string, abilities: string[], until = Date.now() + 3_600_000): void =>
+      fs.writeFileSync(
+        path.join(team, 'links', `${crypto.createHash('sha256').update(key).digest('hex')}.json`),
+        JSON.stringify({
+          uuid: crypto.randomUUID(),
+          name,
+          rank: name,
+          rankColor: '#55ff99',
+          op: false,
+          abilities,
+          until,
+        }),
+      );
+    const ownerKey = 'a'.repeat(48);
+    const supporterKey = 'b'.repeat(48);
+    const oldKey = 'c'.repeat(48);
+    link(ownerKey, 'Owner', ['moderate', 'kick', 'ban', 'locate', 'ranks', 'rules']);
+    link(supporterKey, 'Supporter', ['moderate']);
+    link(oldKey, 'Alt', ['moderate'], Date.now() - 1000);
+    const player = {
+      uuid: crypto.randomUUID(),
+      name: 'Steve',
+      rank: 'VIP',
+      rankId: 'vip',
+      rankColor: '#ffd24d',
+      rankOrder: 5,
+      team: false,
+      ping: 20,
+      world: 'world',
+      x: 10,
+      y: 64,
+      z: -5,
+      health: 20,
+      food: 20,
+      gamemode: 'survival',
+      afk: false,
+      live: false,
+      combat: false,
+      frozen: false,
+      jailedUntil: Date.now() + 600_000,
+      jailReason: 'Griefing',
+      mutedUntil: 0,
+      bedrock: false,
+      playMinutes: 90,
+      inventory: [{ slot: 0, id: 'diamond_sword', count: 1, enchanted: true }],
+      ender: [],
+    };
+    fs.writeFileSync(
+      path.join(team, 'state.json'),
+      JSON.stringify({
+        at: Date.now(),
+        server: 'Team Welt',
+        max: 20,
+        online: [player],
+        jailedOffline: [],
+        mutedOffline: [
+          { uuid: crypto.randomUUID(), name: 'Tom', until: Date.now() + 60_000, reason: 'Spam' },
+        ],
+        ranks: [{ id: 'vip', name: 'VIP', color: '#ffd24d', symbol: '', default: false }],
+        bans: [
+          { name: 'Hacker', reason: 'Fly', by: 'Owner', since: Date.now(), until: 0 },
+          { name: 'Weg', reason: 'alt', by: 'Owner', since: 0, until: Date.now() - 1000 },
+        ],
+        history: [
+          { at: Date.now(), type: 'jail', target: 'Steve', by: 'Owner', reason: 'Griefing', minutes: 10 },
+        ],
+      }),
+    );
+    const url = '/api/public/team/team-welt';
+    const as = (key: string) => ({ 'x-team-key': key });
+
+    // No key, a wrong one, a run-out one: nothing.
+    expect((await t.app.inject({ method: 'GET', url })).statusCode).toBe(404);
+    expect((await t.app.inject({ method: 'GET', url, headers: as('d'.repeat(48)) })).statusCode).toBe(404);
+    expect((await t.app.inject({ method: 'GET', url, headers: as(oldKey) })).statusCode).toBe(404);
+
+    const owner = (await t.app.inject({ method: 'GET', url, headers: as(ownerKey) })).json<TeamBoardView>();
+    expect(owner).toMatchObject({ live: true, max: 20, me: { name: 'Owner' } });
+    expect(owner.online[0]?.where).toEqual({ world: 'world', x: 10, y: 64, z: -5 });
+    expect(owner.online[0]?.inventory).toHaveLength(1);
+    expect(owner.jailed.map((e) => e.name)).toEqual(['Steve']);
+    expect(owner.muted.map((e) => e.name)).toEqual(['Tom']);
+    expect(owner.bans.map((b) => b.name)).toEqual(['Hacker']);
+    expect(owner.ranks).toHaveLength(1);
+    expect(owner.history).toHaveLength(1);
+
+    // A supporter sees the players but not where they are, and gets no rank list.
+    const supporter = (
+      await t.app.inject({ method: 'GET', url, headers: as(supporterKey) })
+    ).json<TeamBoardView>();
+    expect(supporter.online[0]?.where).toBeUndefined();
+    expect(supporter.ranks).toEqual([]);
+
+    // Buttons: a supporter may jail, not ban; the plugin finds the action as a file.
+    const act = (key: string, payload: object) =>
+      t.app.inject({ method: 'POST', url: `${url}/action`, headers: as(key), payload });
+    expect(
+      (await act(supporterKey, { action: 'ban', target: 'Steve', minutes: 0, reason: 'x' })).statusCode,
+    ).toBe(403);
+    expect(
+      (await act(supporterKey, { action: 'mute', target: 'Steve', minutes: 10, reason: 'Spam' })).statusCode,
+    ).toBe(200);
+    expect((await act(ownerKey, { action: 'target; rm', target: 'Steve' })).statusCode).toBe(400);
+    expect((await act(ownerKey, { action: 'jail', target: '../x' })).statusCode).toBe(400);
+    const actions = fs.readdirSync(path.join(team, 'actions')).filter((f) => f.endsWith('.json'));
+    expect(actions).toHaveLength(1);
+    const written = JSON.parse(
+      fs.readFileSync(path.join(team, 'actions', actions[0] ?? ''), 'utf8'),
+    ) as Record<string, unknown>;
+    expect(written).toMatchObject({
+      action: 'mute',
+      target: 'Steve',
+      minutes: 10,
+      reason: 'Spam',
+      by: 'Supporter',
+    });
+
+    // Rules: only owners and admins; they land in the dashboard settings and the plugin's config.
+    const rules = (key: string) =>
+      t.app.inject({
+        method: 'PUT',
+        url: `${url}/rules`,
+        headers: as(key),
+        payload: { rules: ['Sei nett', 'Kein Griefing'] },
+      });
+    expect((await rules(supporterKey)).statusCode).toBe(403);
+    expect((await rules(ownerKey)).statusCode).toBe(200);
+    const after = (await t.app.inject({ method: 'GET', url, headers: as(ownerKey) })).json<TeamBoardView>();
+    expect(after.rules).toEqual(['Sei nett', 'Kein Griefing']);
+    expect(fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8')).toContain(
+      'Kein Griefing',
+    );
   });
 });

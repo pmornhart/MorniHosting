@@ -79,6 +79,11 @@ commands:
       aliases: [inspect, moderation],
       permission: mornicraft.moderate,
     }
+  teamdashboard:
+    {
+      description: 'Team-Dashboard im Browser (ab Supporter): wer online ist, Gefängnis, Stumm …',
+      aliases: [teamboard, dashboard],
+    }
   team: { description: Wer im Team ist (Ränge), aliases: [staff, ränge, raenge] }
   rang:
     {

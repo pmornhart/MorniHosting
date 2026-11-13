@@ -1,4 +1,5 @@
 import { publicPanelHost } from '../auth/hook.js';
+import { assertTeamAbility, type TeamActionInput, teamAction, teamLink, teamView } from './team-board.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
@@ -13,6 +14,7 @@ import {
   type PublicStats,
   type PublicStatsSetting,
   type SoftwareId,
+  type TeamBoardView,
 } from '@mornihosting/shared';
 import { SYSTEM_ACTOR, type Actor } from '../audit/service.js';
 import type { GeyserService } from '../geyser/service.js';
@@ -167,6 +169,9 @@ export interface CraftAttackService {
   readonly isCraftAttack: (serverId: string) => boolean;
   /** The badges' resource pack of the server with this public slug (the zip file), or null. */
   readonly badgePack: (slug: string) => Buffer | null;
+  readonly teamView: (slug: string, key: string) => TeamBoardView;
+  readonly teamAction: (slug: string, key: string, input: TeamActionInput) => void;
+  readonly teamRules: (slug: string, key: string, rules: readonly string[]) => Promise<void>;
   readonly morniCraft: (serverId: string) => MorniCraftState;
   /** Saves the dashboard settings, writes the plugin's config and applies it at once on a running server. */
   readonly setMorniCraft: (serverId: string, settings: MorniCraftSettings) => Promise<MorniCraftState>;
@@ -227,6 +232,18 @@ export function createCraftAttackService(
     if (!domain) return '';
     const slug = stored()[serverId]?.slug ?? safeSlug(serverId);
     return slug ? personalLink(domain, slug) : '';
+  };
+  const teamLinkFor = (serverId: string): string => {
+    const domain = publicPanelHost(ctx);
+    const slug = stored()[serverId]?.slug ?? safeSlug(serverId);
+    return domain && slug ? teamLink(domain, slug) : '';
+  };
+  /** The MorniCraft server behind a public name (stats page, badge pack, team dashboard). */
+  const serverBySlug = (slug: string): string => {
+    const wanted = slug.toLowerCase();
+    const found = Object.entries(stored()).find(([id, st]) => st.slug === wanted && isCraftAttack(id));
+    if (!found) throw notFound('team_link_unknown');
+    return found[0];
   };
   const mcStored = (): Record<string, Partial<MorniCraftSettings>> =>
     ctx.settings.getValue<Record<string, Partial<MorniCraftSettings>>>(MORNICRAFT_KEY) ?? {};
@@ -302,6 +319,7 @@ export function createCraftAttackService(
       serverName: servers.row(serverId).name,
       timezone: ctx.settings.get().timezone,
       link: linkFor(serverId),
+      teamLink: teamLinkFor(serverId),
       members: panelMembers(serverId),
       // The small islands and balloons round the spawn belong to it: nobody takes them apart.
       zones: SPAWN_ZONES,
@@ -775,5 +793,15 @@ export function createCraftAttackService(
     morniCraft,
     setMorniCraft,
     badgePack: badgePackFile,
+    teamView: (slug, key) => {
+      const serverId = serverBySlug(slug);
+      return teamView(servers.dir(serverId), key, locale(), settingsOf(serverId).rules);
+    },
+    teamRules: async (slug, key, rules) => {
+      const serverId = serverBySlug(slug);
+      assertTeamAbility(servers.dir(serverId), key, 'rules');
+      await setMorniCraft(serverId, { ...settingsOf(serverId), rules: [...rules] });
+    },
+    teamAction: (slug, key, input) => teamAction(servers.dir(serverBySlug(slug)), key, input),
   };
 }

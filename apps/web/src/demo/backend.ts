@@ -40,6 +40,7 @@ import {
   type WsClientMessage,
   type WsServerMessage,
 } from '@mornihosting/shared';
+import { teamDemoAction, teamDemoRules, teamDemoView } from './team-demo';
 import { VOICE_CHAT_SOFTWARE } from '@/features/servers/settings/VoiceChatCard';
 import recordingText from './fixtures.json?raw';
 
@@ -1633,6 +1634,7 @@ function match(template: string, path: string): Record<string, string> | null {
   );
 }
 
+const TEAM_PATH = '/api/public/team/';
 const PUBLIC_PATHS: readonly string[] = [
   '/api/system/status',
   '/api/auth/login',
@@ -1686,8 +1688,22 @@ function genericChange(request: Request): Reply {
   return ok({});
 }
 
+/** The team dashboard (/team/<slug>) answers without a panel login, like the real one. */
+function teamDemo(request: Request): Reply | null {
+  if (!request.path.startsWith(TEAM_PATH)) return null;
+  const tail = request.path.slice(TEAM_PATH.length).split('/')[1] ?? '';
+  const done = (allowed: boolean): Reply => (allowed ? ok({ ok: true }) : error(403, 'team_not_allowed'));
+  if (request.method === 'GET') return ok(teamDemoView());
+  if (tail === 'action')
+    return done(teamDemoAction(request.body as unknown as Parameters<typeof teamDemoAction>[0]));
+  if (tail === 'rules') return done(teamDemoRules((request.body['rules'] as string[] | undefined) ?? []));
+  return error(404, 'not_found');
+}
+
 async function handle(request: Request): Promise<Reply> {
   await delay(90 + Math.random() * 160);
+  const team = teamDemo(request);
+  if (team) return team;
   const signedIn = state.userId !== null;
   if (!signedIn && !PUBLIC_PATHS.includes(request.path)) return error(401, 'unauthorized');
   const route = ROUTES.map(([method, template, handler]) => ({

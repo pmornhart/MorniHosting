@@ -603,3 +603,126 @@ export interface CraftAttackPlayerCommands {
   /** Names of the player's homes (EssentialsX). */
   readonly homes: readonly string[];
 }
+
+/** What a team member may do on the team dashboard (from their rank in the game). */
+export const TEAM_ABILITIES = ['moderate', 'kick', 'ban', 'locate', 'ranks', 'rules'] as const;
+export type TeamAbility = (typeof TEAM_ABILITIES)[number];
+
+export interface TeamBoardPlayer {
+  readonly uuid: string;
+  readonly name: string;
+  readonly rank: string;
+  readonly rankId: string;
+  readonly rankColor: string;
+  readonly rankOrder: number;
+  /** Belongs to the team (Supporter and up). */
+  readonly team: boolean;
+  readonly ping: number;
+  readonly health: number;
+  readonly food: number;
+  readonly gamemode: string;
+  readonly afk: boolean;
+  readonly live: boolean;
+  readonly combat: boolean;
+  readonly frozen: boolean;
+  /** 0 = not in the jail. */
+  readonly jailedUntil: number;
+  readonly jailReason: string;
+  /** 0 = not muted. */
+  readonly mutedUntil: number;
+  readonly bedrock: boolean;
+  readonly playMinutes: number;
+  readonly inventory: readonly TeamBoardItem[];
+  readonly ender: readonly TeamBoardItem[];
+  /** Only for team members who may teleport. */
+  readonly where?: { readonly world: string; readonly x: number; readonly y: number; readonly z: number };
+}
+
+export interface TeamBoardItem {
+  /** 0–8 hotbar, 9–35 inventory, 36–39 armour (boots … helmet), 40 off hand. */
+  readonly slot: number;
+  /** Minecraft item id without "minecraft:" ("diamond_sword"). */
+  readonly id: string;
+  readonly count: number;
+  readonly enchanted: boolean;
+}
+
+export interface TeamBoardBan {
+  readonly name: string;
+  readonly reason: string;
+  readonly by: string;
+  readonly since: number;
+  /** 0 = for good. */
+  readonly until: number;
+}
+
+export interface TeamBoardHistory {
+  readonly at: number;
+  /** jail, free, mute, unmute, freeze, unfreeze, kick, ban, unban */
+  readonly type: string;
+  readonly target: string;
+  readonly by: string;
+  readonly reason: string;
+  readonly minutes: number;
+}
+
+export interface TeamBoardEntry {
+  readonly uuid: string;
+  readonly name: string;
+  readonly until: number;
+  readonly reason: string;
+  readonly online: boolean;
+}
+
+export interface TeamBoardView {
+  readonly server: string;
+  readonly locale: 'de' | 'en';
+  /** When the game last wrote the state (ms). */
+  readonly at: number;
+  /** The game answers (state not older than a minute). */
+  readonly live: boolean;
+  readonly max: number;
+  readonly me: {
+    readonly name: string;
+    readonly rank: string;
+    readonly rankColor: string;
+    readonly abilities: readonly TeamAbility[];
+    /** The link runs out then (ms). */
+    readonly until: number;
+  };
+  readonly online: readonly TeamBoardPlayer[];
+  readonly jailed: readonly TeamBoardEntry[];
+  readonly muted: readonly TeamBoardEntry[];
+  /** Only for team members who may hand out ranks. */
+  readonly ranks: readonly { readonly id: string; readonly name: string; readonly color: string }[];
+  readonly bans: readonly TeamBoardBan[];
+  /** Punishments so far, newest first. */
+  readonly history: readonly TeamBoardHistory[];
+  /** The server rules (/rules); owners and admins may change them here. */
+  readonly rules: readonly string[];
+}
+
+export const TEAM_ACTIONS = [
+  'jail',
+  'free',
+  'mute',
+  'unmute',
+  'freeze',
+  'kick',
+  'ban',
+  'unban',
+  'rank',
+] as const;
+export type TeamAction = (typeof TEAM_ACTIONS)[number];
+/** Which ability each button needs. */
+export const TEAM_ACTION_NEEDS: Readonly<Record<TeamAction, TeamAbility>> = {
+  jail: 'moderate',
+  free: 'moderate',
+  mute: 'moderate',
+  unmute: 'moderate',
+  freeze: 'moderate',
+  kick: 'kick',
+  ban: 'ban',
+  unban: 'ban',
+  rank: 'ranks',
+};

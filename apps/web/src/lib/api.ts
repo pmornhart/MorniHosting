@@ -40,6 +40,8 @@ export interface RequestOptions {
   readonly method?: HttpMethod;
   readonly body?: unknown;
   readonly signal?: AbortSignal;
+  /** Extra headers (the team dashboard sends its key this way). */
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 function isErrorBody(value: unknown): value is ApiErrorBody {
@@ -58,7 +60,7 @@ export async function toApiError(response: Response): Promise<ApiError> {
 
 export async function api<TResult>(path: string, options: RequestOptions = {}): Promise<TResult> {
   const method = options.method ?? 'GET';
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined) headers['content-type'] = 'application/json';
   if (UNSAFE.includes(method)) headers['x-csrf-token'] = session.csrf;
   const response = await fetch(path, {

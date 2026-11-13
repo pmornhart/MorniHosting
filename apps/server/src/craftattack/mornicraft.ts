@@ -142,6 +142,8 @@ export interface ConfigContext {
   readonly timezone: string;
   /** The personal command page with "{name}" for the player, or empty. */
   readonly link: string;
+  /** The team dashboard's address (/teamdashboard); empty without a panel domain. */
+  readonly teamLink?: string;
   /** Round spots outside the spawn circle that are protected too (x/z from the world spawn, radius). */
   readonly zones?: readonly { readonly x: number; readonly z: number; readonly r: number }[];
   /** The server's own names (panel domain, its address …): streamer mode turns them into "•••". */
@@ -232,6 +234,7 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     'grave-private-minutes': s.gravePrivateMinutes,
     'tab-stats': s.tabStats,
     'combat-seconds': s.combatSeconds,
+    'team-link': c.teamLink ?? '',
     streamer: { hide: c.hide ?? [] },
   };
   return `# MorniCraft – written by MorniHosting (Dashboard → server → MorniCraft). Changes here are overwritten.\n${JSON.stringify(config, null, 2)}\n`;
