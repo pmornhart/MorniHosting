@@ -1451,7 +1451,7 @@
     "noServers": "There are no servers yet.",
     "allServers": "All servers",
     "noServerAccess": "No server shared yet",
-    "lastLogin": "last signed in {{when}}",
+    "lastLogin": "last active {{when}}",
     "disabled": "Locked",
     "disable": "Lock",
     "enable": "Unlock",

@@ -70,6 +70,9 @@ const ICON_DONE_KEY = 'mornicraft_icon';
 /** MorniCraft servers whose Admin and Supporter ranks were taken out once (Philip, 13.11.: not needed). */
 const RETIRED_DONE_KEY = 'mornicraft_retired_ranks';
 const RETIRED_RANKS: readonly string[] = ['admin', 'supporter'];
+/** Second round (Philip, 13.11.: "Builder braucht keiner"). */
+const RETIRED_DONE_KEY_2 = 'mornicraft_retired_ranks_2';
+const RETIRED_RANKS_2: readonly string[] = ['builder'];
 /** Servers whose ranks got the new creative switch once (who had /gamemode keeps creative; moderators get /gamemode). */
 const CREATIVE_DONE_KEY = 'mornicraft_creative_switch';
 /** Part of every badge-pack address (to recognise our own entry in server.properties). */
@@ -689,13 +692,17 @@ export function createCraftAttackService(
   }, RESTART_CHECK_MS).unref();
 
   /** Takes the Admin and Supporter ranks out of servers set up with them – once, before the config is written. */
-  const dropRetiredRanks = (serverId: string): boolean => {
-    const done = ctx.settings.getValue<string[]>(RETIRED_DONE_KEY) ?? [];
+  const dropRetiredRanks = (
+    serverId: string,
+    doneKey = RETIRED_DONE_KEY,
+    retired = RETIRED_RANKS,
+  ): boolean => {
+    const done = ctx.settings.getValue<string[]>(doneKey) ?? [];
     if (done.includes(serverId)) return false;
-    ctx.settings.setValue(RETIRED_DONE_KEY, [...done, serverId]);
+    ctx.settings.setValue(doneKey, [...done, serverId]);
     const stored = mcStored();
     const ranks = stored[serverId]?.ranks;
-    const kept = ranks?.filter((rank) => !RETIRED_RANKS.includes(rank.id));
+    const kept = ranks?.filter((rank) => !retired.includes(rank.id));
     if (!ranks || !kept || kept.length === ranks.length) return false;
     ctx.settings.setValue(MORNICRAFT_KEY, { ...stored, [serverId]: { ...stored[serverId], ranks: kept } });
     return true;
@@ -816,7 +823,11 @@ export function createCraftAttackService(
       .filter((row) => isCraftAttack(row.id))
       .forEach((row) => {
         try {
-          const dropped = [dropRetiredRanks(row.id), splitCreative(row.id)].some(Boolean);
+          const dropped = [
+            dropRetiredRanks(row.id),
+            dropRetiredRanks(row.id, RETIRED_DONE_KEY_2, RETIRED_RANKS_2),
+            splitCreative(row.id),
+          ].some(Boolean);
           const running = servers.live(row.id).state === 'running';
           if (equip(row.id) && running) waitToRestart(row.id);
           else if (dropped && running) void servers.quietCommand(row.id, 'mornicraft reload').catch(() => '');

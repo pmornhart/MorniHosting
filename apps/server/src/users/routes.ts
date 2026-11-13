@@ -14,7 +14,7 @@ import { actorOf, requireAdmin, toUserInfo, type UserRow } from '../auth/context
 import { hashPassword, randomPassword } from '../auth/passwords.js';
 import type { Api, AppContext } from '../context.js';
 import type { MailService } from '../mail/service.js';
-import { passkeys, roles, serverAccess, servers, users } from '../db/schema.js';
+import { passkeys, roles, serverAccess, servers, sessions, users } from '../db/schema.js';
 import { badRequest, conflict, notFound } from '../lib/errors.js';
 import { HTTP_NO_CONTENT } from '../lib/http-status.js';
 
@@ -75,8 +75,24 @@ export function registerUserRoutes(app: Api, ctx: AppContext, mail: MailService)
       .from(users)
       .where(and(eq(users.isAdmin, true), eq(users.disabled, false), ne(users.id, userId)))
       .all().length;
+  /** Last time this person used the panel: the newest session counts too (a session stays logged in for days). */
+  const lastActive = (row: UserRow): string | null => {
+    const seen = db
+      .select({ at: sql<string | null>`max(${sessions.lastSeenAt})` })
+      .from(sessions)
+      .where(eq(sessions.userId, row.id))
+      .get()?.at;
+    return (
+      [row.lastLoginAt, seen]
+        .filter((x): x is string => Boolean(x))
+        .sort()
+        .at(-1) ?? null
+    );
+  };
+
   const listEntry = (row: UserRow): UserListEntry => ({
     ...toUserInfo(row),
+    lastLoginAt: lastActive(row),
     access: db
       .select({ serverId: serverAccess.serverId, roleId: serverAccess.roleId })
       .from(serverAccess)

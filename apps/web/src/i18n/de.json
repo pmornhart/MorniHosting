@@ -1451,7 +1451,7 @@
     "noServers": "Es gibt noch keine Server.",
     "allServers": "Alle Server",
     "noServerAccess": "Noch kein Server freigegeben",
-    "lastLogin": "zuletzt angemeldet {{when}}",
+    "lastLogin": "zuletzt aktiv {{when}}",
     "disabled": "Gesperrt",
     "disable": "Sperren",
     "enable": "Entsperren",

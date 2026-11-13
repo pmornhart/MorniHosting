@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import type { RoleEntry, UserListEntry } from '@mornihosting/shared';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { EmptyState, PageHeader } from '@/components/page';
-import { ServerIcon } from '@/components/server-visuals';
+import { PlayerHead, ServerIcon } from '@/components/server-visuals';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from '@/components/ui/dialog';
@@ -377,7 +377,15 @@ function UsersList({ roles }: { roles: readonly RoleEntry[] }): ReactElement {
             key={user.id}
             className={cn('flex flex-wrap items-center gap-3 px-4 py-3', user.disabled && 'opacity-60')}
           >
-            <Monogram name={user.displayName || user.username} />
+            {user.minecraft ? (
+              <PlayerHead
+                name={user.minecraft.name}
+                skin={user.minecraft.uuid}
+                className="size-10 shrink-0 rounded-[10px]"
+              />
+            ) : (
+              <Monogram name={user.displayName || user.username} />
+            )}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <b className="truncate text-sm font-semibold">{user.displayName || user.username}</b>

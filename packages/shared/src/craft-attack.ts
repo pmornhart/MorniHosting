@@ -193,16 +193,6 @@ export const DEFAULT_RANKS: readonly MorniCraftRank[] = [
     fromPanel: 'moderator',
   },
   {
-    id: 'builder',
-    name: 'Builder',
-    symbol: '⚒',
-    color: '#c08a5b',
-    permissions: ['build', 'gamemode', 'creative'],
-    players: [],
-    isDefault: false,
-    fromPanel: 'none',
-  },
-  {
     id: 'media',
     name: 'Media',
     symbol: '▶',

@@ -24,6 +24,8 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.block.TileState;
+import org.bukkit.block.Sign;
+import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.Rotatable;
 import org.bukkit.block.data.type.Slab;
 import org.bukkit.configuration.ConfigurationSection;
@@ -57,7 +59,6 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.meta.SkullMeta;
 
 /**
  * Graves: whoever dies gets a little grave where they fell – a patch of dark earth, a headstone, their head on top
@@ -180,7 +181,6 @@ final class Graves implements Listener {
     if (!plugin.settings().graves() || e.getKeepInventory()) return;
     Player p = e.getEntity();
     List<ItemStack> items = new ArrayList<>(e.getDrops());
-    items.add(headOf(p));
     Grave g = build(p, items, e.getDroppedExp());
     if (g == null) return; // no place anywhere near (the void): the items drop as usual
     e.getDrops().clear();
@@ -193,17 +193,6 @@ final class Graves implements Listener {
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
       if (p.isOnline()) p.sendMessage(Component.text("☠ ", NamedTextColor.GRAY).append(where));
     }, 20L);
-  }
-
-  /** The player's head as an item: "Kopf von Morni". */
-  private ItemStack headOf(Player p) {
-    ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-    SkullMeta meta = (SkullMeta) head.getItemMeta();
-    meta.setOwningPlayer(p);
-    meta.displayName(Component.text(ui().flat("grave.head", Ui.v("name", p.getName())), NamedTextColor.YELLOW)
-        .decoration(TextDecoration.ITALIC, false));
-    head.setItemMeta(meta);
-    return head;
   }
 
   /** Air, water, grass, flowers, snow – something the grave may stand in (put back afterwards). */
@@ -327,9 +316,14 @@ final class Graves implements Listener {
         head.setBlockData(rot, false);
       }
     }
-    Location tag = (spot(stoneGround) || g.blocks.containsKey(key(stoneGround.getRelative(BlockFace.UP)))
-        ? stoneGround.getRelative(BlockFace.UP) : head).getLocation().add(0.5, 1.2, 0.5);
-    g.entities.add(nameTag(tag, Component.text("☠ " + p.getName(), NamedTextColor.GRAY)).getUniqueId());
+    // A sign on the front of the cross with just the name (Philip: who died there, nothing else). Without a cross,
+    // or where the skull stands as a block (older servers), the name floats above the grave as before.
+    Block cross = stoneGround.getRelative(BlockFace.UP);
+    boolean signed = !sunk.isEmpty() && g.blocks.containsKey(key(cross)) && free(head) && nameSign(g, head, foot, p.getName());
+    if (!signed) {
+      Location tag = (g.blocks.containsKey(key(cross)) ? cross : head).getLocation().add(0.5, 1.2, 0.5);
+      g.entities.add(nameTag(tag, Component.text(p.getName(), NamedTextColor.GRAY)).getUniqueId());
+    }
     index(g);
     save();
     p.getWorld().playSound(head.getLocation(), Sound.BLOCK_GRAVEL_PLACE, 1f, 0.8f);
@@ -411,6 +405,34 @@ final class Graves implements Listener {
   private static void change(Grave g, Block b, Material m) {
     g.blocks.put(key(b), b.getBlockData().getAsString());
     b.setType(m, false);
+  }
+
+  /** A spruce wall sign hanging on the cross, facing the foot end, with the name on it (waxed: nobody edits it). */
+  private static boolean nameSign(Grave g, Block at, BlockFace foot, String name) {
+    try {
+      change(g, at, Material.SPRUCE_WALL_SIGN);
+      if (at.getBlockData() instanceof Directional d) {
+        d.setFacing(foot);
+        at.setBlockData(d, false);
+      }
+      if (!(at.getState() instanceof Sign sign)) return false;
+      Component line = Component.text(name, NamedTextColor.BLACK);
+      try {
+        // 1.20+: the front side; older: the one side.
+        Class<?> side = Class.forName("org.bukkit.block.sign.Side");
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        Object front = Enum.valueOf((Class<Enum>) side, "FRONT");
+        Object face = Sign.class.getMethod("getSide", side).invoke(sign, front);
+        face.getClass().getMethod("line", int.class, Component.class).invoke(face, 1, line);
+        Sign.class.getMethod("setWaxed", boolean.class).invoke(sign, true);
+      } catch (ReflectiveOperationException | LinkageError older) {
+        sign.line(1, line);
+      }
+      sign.update(true, false);
+      return true;
+    } catch (RuntimeException e) {
+      return false;
+    }
   }
 
   private static Entity nameTag(Location at, Component name) {

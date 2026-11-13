@@ -36,7 +36,6 @@ final class DefaultRanks {
     return List.of(
         rank("owner", "Owner", "♛", "#ff5555", everything, false),
         rank("moderator", "Moderator", "⚔", "#55aaff", all(INSTANT, KICK, BAN, MODERATE, TELEPORT, GAMEMODE), false),
-        rank("builder", "Builder", "⚒", "#c08a5b", all(BUILD, GAMEMODE, CREATIVE), false),
         rank("media", "Media", "▶", "#ff6ad5", HOMES, false),
         rank("vip", "VIP", "★", "#ffd23f", HOMES, false),
         rank("player", "Spieler", "", "#aaaaaa", List.of(), true));

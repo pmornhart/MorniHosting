@@ -110,14 +110,6 @@ ranks:
         ],
     }
   - {
-      id: builder,
-      name: Builder,
-      symbol: '⚒',
-      color: '#c08a5b',
-      players: [],
-      permissions: [mornicraft.build, minecraft.command.gamemode, mornicraft.creative],
-    }
-  - {
       id: media,
       name: Media,
       symbol: '▶',
