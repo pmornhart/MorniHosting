@@ -13,7 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class MorniCraft extends JavaPlugin {
   private static final List<String> COMMANDS = List.of("spawn", "sethome", "home", "homes", "delhome", "back", "tpa",
       "tpahere", "tpaccept", "tpdeny", "msg", "r", "mail", "ignore", "afk", "seen", "near", "getpos", "ping", "info",
-      "rules", "leiste", "team", "streamer", "abzeichen", "gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "mod", "mornicraft");
+      "rules", "leiste", "team", "streamer", "abzeichen", "gefaengnis", "frei", "stumm", "entstummen", "einfrieren", "ansehen", "rang", "mornicraft");
 
   private Settings settings;
   private Ui ui;
@@ -30,6 +30,7 @@ public final class MorniCraft extends JavaPlugin {
   private Moderation moderation;
   private Graves graves;
   private Combat combat;
+  private RankCommands rankCommands;
 
   @Override
   public void onEnable() {
@@ -49,6 +50,7 @@ public final class MorniCraft extends JavaPlugin {
     moderation = new Moderation(this);
     graves = new Graves(this);
     combat = new Combat(this);
+    rankCommands = new RankCommands(this);
     var pm = Bukkit.getPluginManager();
     pm.registerEvents(teleporter, this);
     pm.registerEvents(social, this);
@@ -62,6 +64,7 @@ public final class MorniCraft extends JavaPlugin {
     pm.registerEvents(moderation, this);
     pm.registerEvents(graves, this);
     pm.registerEvents(combat, this);
+    pm.registerEvents(rankCommands, this);
     pm.registerEvents(new UpdateCheck(this), this);
     for (String name : COMMANDS) {
       PluginCommand c = getCommand(name);
@@ -112,6 +115,10 @@ public final class MorniCraft extends JavaPlugin {
 
   PlayerStore store() {
     return store;
+  }
+
+  RankCommands rankCommands() {
+    return rankCommands;
   }
 
   Combat combat() {

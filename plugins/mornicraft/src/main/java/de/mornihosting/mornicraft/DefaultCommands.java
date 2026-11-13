@@ -50,7 +50,7 @@ final class DefaultCommands {
             c(en, "/leiste", "Leiste rechts ein- oder ausblenden", "Show or hide the bar on the right"),
             c(en, "/streamer", "Streamer-Modus: IPs, Koordinaten, Nachrichten verstecken", "Streamer mode: hide IPs, coordinates, messages"))),
         new Settings.Group(en ? "Team (moderation)" : "Team (Moderation)", List.of(
-            op(en, "/mod <spieler>", "Team-Menü (auch Ducken + Rechtsklick)", "Team menu (also sneak + right click)"),
+            op(en, "/ansehen <spieler>", "Team-Menü (auch Ducken + Rechtsklick)", "Team menu (also sneak + right click)"),
             op(en, "/gefaengnis <spieler> [10m|1h|1d] [grund]", "Ins Gefängnis", "Send to jail"),
             op(en, "/frei <spieler>", "Aus dem Gefängnis holen", "Release from jail"),
             op(en, "/stumm <spieler> [10m|1h|1d]", "Stummschalten", "Mute"),

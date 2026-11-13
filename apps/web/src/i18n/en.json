@@ -3381,7 +3381,7 @@
         "teleport": "Teleport to anyone",
         "world": "Time and weather",
         "whitelist": "Manage the whitelist",
-        "reload": "Reload MorniCraft",
+        "reload": "Admin: reload + give ranks",
         "moderate": "Moderate"
       },
       "permHints": {
@@ -3394,7 +3394,7 @@
         "teleport": "/tp",
         "world": "/time, /weather",
         "whitelist": "/whitelist add …",
-        "reload": "/mornicraft reload",
+        "reload": "/mornicraft reload, give ranks in the game: /vip <player>, /mod <player> …",
         "moderate": "Jail, mute, freeze, team menu (sneak + right click)"
       },
       "playerCount_one": "{{count}} player",

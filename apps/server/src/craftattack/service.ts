@@ -93,6 +93,18 @@ const LOAD_POLL_MS = 1000;
 const REFRESH_DELAY_MS = 5000;
 /** How often a server waiting for a restart (new plugin version) is checked for players. */
 const RESTART_CHECK_MS = 60_000;
+/** How often ranks given in the game are taken over into the dashboard. */
+const RANK_CHANGES_CHECK_MS = 5_000;
+const RANK_CHANGES_FILE = 'rank-changes.json';
+// A Minecraft name: 3–16 letters, digits or _ ("Steve", "Morni_TV").
+// https://regex101.com/?flavor=javascript&regex=%5E%5BA-Za-z0-9_%5D%7B3%2C16%7D%24&testString=Morni_TV
+const MC_NAME = /^[A-Za-z0-9_]{3,16}$/;
+/** One line of rank-changes.json (written by the plugin; read as untrusted input). */
+const rankChangeSchema = z.object({
+  uuid: z.string().max(36),
+  name: z.string().regex(MC_NAME),
+  rank: z.string().max(24),
+});
 // "/locate" answer: "The nearest minecraft:deep_ocean is at [1088, 64, 1088] (1538 blocks away)" → 1088, 1088
 // (older versions write "~" instead of the height).
 // https://regex101.com/?flavor=javascript&regex=%5C%5B(-%3F%5Cd%2B)%2C%20(%3F%3A~%7C-%3F%5Cd%2B)%2C%20(-%3F%5Cd%2B)%5C%5D&testString=The%20nearest%20minecraft%3Adeep_ocean%20is%20at%20%5B1088%2C%2064%2C%201088%5D%20(1538%20blocks%20away)%0A%5B-1200%2C%20~%2C%20340%5D
@@ -555,6 +567,69 @@ export function createCraftAttackService(
     }
     return morniCraft(serverId);
   };
+
+  /**
+   * Ranks given in the game ("/vip Steve"): the plugin notes each change in rank-changes.json, the panel takes it
+   * over into the dashboard (by name, like the players typed there) and writes the config back.
+   */
+  const takeOverRankChanges = (serverId: string): boolean => {
+    const file = path.join(servers.dir(serverId), 'plugins', 'MorniCraft', RANK_CHANGES_FILE);
+    const taken = `${file}.panel`;
+    try {
+      fs.renameSync(file, taken);
+    } catch {
+      return false;
+    }
+    const lines = fs.readFileSync(taken, 'utf8').split('\n').filter(Boolean);
+    fs.rmSync(taken, { force: true });
+    const changes = lines
+      .map((line) => {
+        try {
+          return rankChangeSchema.safeParse(JSON.parse(line) as unknown);
+        } catch {
+          return rankChangeSchema.safeParse(null);
+        }
+      })
+      .filter((r) => r.success)
+      .map((r) => r.data);
+    if (changes.length === 0) return false;
+    const current = settingsOf(serverId);
+    const ranks = changes.reduce((list, change) => {
+      const lower = change.name.toLowerCase();
+      const without = list.map((r) => ({
+        ...r,
+        players: r.players.filter((n) => n.toLowerCase() !== lower),
+      }));
+      return without.map((r) =>
+        r.id === change.rank && !r.isDefault ? { ...r, players: [...r.players, change.name] } : r,
+      );
+    }, current.ranks);
+    ctx.settings.setValue(MORNICRAFT_KEY, { ...mcStored(), [serverId]: { ...current, ranks } });
+    writeConfig(serverId);
+    changes.forEach((c) =>
+      servers.note(
+        serverId,
+        `Rang im Spiel vergeben: ${c.name} → ${c.rank || 'Standard'} (im Dashboard übernommen)`,
+      ),
+    );
+    return true;
+  };
+  setInterval(() => {
+    try {
+      ctx.db
+        .select({ id: serverTable.id })
+        .from(serverTable)
+        .all()
+        .filter((row) => isCraftAttack(row.id))
+        .forEach((row) => {
+          if (takeOverRankChanges(row.id) && servers.live(row.id).state === 'running') {
+            void servers.command(row.id, 'mornicraft reload', null).catch(() => undefined);
+          }
+        });
+    } catch (err) {
+      ctx.log.warn({ err }, 'mornicraft: rank changes from the game not taken over');
+    }
+  }, RANK_CHANGES_CHECK_MS).unref();
 
   // A new plugin version on a running server: restart it as soon as nobody plays, so every existing server is up
   // to date without anyone being thrown out.

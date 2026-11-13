@@ -409,6 +409,45 @@ describe('public statistics page', () => {
     expect(written).toContain('"tnt": false');
     expect(written).toContain('"teleport-delay": 3');
 
+    // "/vip Steve" in the game: the plugin notes it, the panel takes it into the dashboard and the config.
+    fs.writeFileSync(
+      path.join(dir, 'plugins', 'MorniCraft', 'rank-changes.json'),
+      `${JSON.stringify({ uuid: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Steve', rank: 'vip' })}\nkaputt\n`,
+    );
+    // Read straight from the stored settings (polling the API would hit the rate limit).
+    const ranksNow = async (): Promise<{ id: string; players: string[] }[]> =>
+      Promise.resolve(
+        t.ctx.settings.getValue<Record<string, { ranks?: { id: string; players: string[] }[] }>>(
+          'mornicraft',
+        )?.[server.id]?.ranks ?? [],
+      );
+    await waitFor(
+      async () => (await ranksNow()).find((r) => r.id === 'vip')?.players.includes('Steve') ?? false,
+      15_000,
+    );
+    expect(fs.existsSync(path.join(dir, 'plugins', 'MorniCraft', 'rank-changes.json'))).toBe(false);
+    expect(fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8')).toContain(
+      '"name": "Steve"',
+    );
+    expect(fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8')).toContain(
+      '"managed-by-panel": true',
+    );
+    // Moved on to Media: only one rank lists Steve; "" = back to everyone else's rank.
+    fs.writeFileSync(
+      path.join(dir, 'plugins', 'MorniCraft', 'rank-changes.json'),
+      `${JSON.stringify({ uuid: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Steve', rank: 'media' })}\n`,
+    );
+    await waitFor(
+      async () => (await ranksNow()).find((r) => r.id === 'media')?.players.includes('Steve') ?? false,
+      15_000,
+    );
+    expect((await ranksNow()).filter((r) => r.players.includes('Steve')).map((r) => r.id)).toEqual(['media']);
+    fs.writeFileSync(
+      path.join(dir, 'plugins', 'MorniCraft', 'rank-changes.json'),
+      `${JSON.stringify({ uuid: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Steve', rank: '' })}\n`,
+    );
+    await waitFor(async () => !(await ranksNow()).some((r) => r.players.includes('Steve')), 15_000);
+
     // A panel admin with a linked Minecraft account is an owner: the Owner rank lists them by itself, at once.
     t.ctx.db
       .update(users)
