@@ -164,6 +164,13 @@ const JAVA_ERROR = /((?:[a-z][\w$]*\.)+[A-Z][\w$]*(?:Exception|Error)\b(?::.*)?)
 const STACK_FRAME = /\bat ([\w$.]+)\.[\w$<>]+\(/;
 // Lines worth showing: errors, warnings with exceptions, stack starts. "[10:00:00 ERROR]: x", "Caused by: y", "FATAL" match.
 // https://regex101.com/?flavor=javascript&regex=%5CbERROR%5Cb%7C%5CbFATAL%5Cb%7CSEVERE%7CCaused%20by%3A%7CException%7CError%3A%7Cstopped%20responding&flags=gm&testString=%5B10%3A00%3A00%20ERROR%5D%3A%20x%0ACaused%20by%3A%20y%0A%5B10%3A00%3A00%20INFO%5D%3A%20Done
+// The start of a harmless block: "[06:02:49 ERROR]: Failed to load function craftattack:rules_old".
+// https://regex101.com/?flavor=javascript&regex=Failed%20to%20load%20function%20&testString=%5B06%3A02%3A49%20ERROR%5D%3A%20Failed%20to%20load%20function%20craftattack%3Arules_old
+const HARMLESS_START = /Failed to load function /;
+// A line that belongs to the block above: "java.util.concurrent.CompletionException: …", "\tat java.base/…",
+// "Caused by: …", "\t... 9 more" – not a new log line ("[06:02:50 INFO]: …").
+// https://regex101.com/?flavor=javascript&regex=%5E(%3F!%5C%5B%5Cd%7B2%7D%3A%5Cd%7B2%7D)(%3F!%5Cd%7B4%7D-)%5CS*(%3F%3AException%7CError)%5Cb%7C%5E%5Cs%2B(%3F%3Aat%20%7C%5C.%5C.%5C.)%7C%5ECaused%20by%3A&flags=gm&testString=java.util.concurrent.CompletionException%3A%20x%0A%09at%20java.base%2Fy%0ACaused%20by%3A%20z%0A%09...%209%20more%0A%5B06%3A02%3A50%20INFO%5D%3A%20Done
+const STACK_LINE = /^(?!\[\d{2}:\d{2})(?!\d{4}-)\S*(?:Exception|Error)\b|^\s+(?:at |\.\.\.)|^Caused by:/;
 const IMPORTANT_LINE = /\bERROR\b|\bFATAL\b|SEVERE|Caused by:|Exception|Error:|stopped responding/;
 /** Frames from the game and Java itself never point at a plugin. */
 const SYSTEM_PACKAGES = [
@@ -400,8 +407,23 @@ const RULES: readonly CrashRule[] = [
  * Picks the first rule that explains the crash, or "unknown". Always names the root error ("error") and keeps
  * the lines that matter (errors and their stack) instead of just the last ones.
  */
+/**
+ * Log blocks that never stop a server: a datapack function that doesn't load ("Failed to load function
+ * craftattack:rules_old" with its stack trace) is only skipped by Minecraft. They must not be shown as the cause.
+ */
+function withoutHarmless(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  lines.reduce((skipping, line) => {
+    if (HARMLESS_START.test(line)) return true;
+    if (skipping && STACK_LINE.test(line)) return true;
+    out.push(line);
+    return false;
+  }, false);
+  return out;
+}
+
 export function analyseCrash(ctx: CrashContext): CrashInfo {
-  const lines = ctx.lines.map(stripColours);
+  const lines = withoutHarmless(ctx.lines.map(stripColours));
   const text = lines.join('\n');
   const hit = RULES.map((rule) => [rule.id, rule.detect(ctx, text)] as const).find(
     ([, params]) => params !== null,

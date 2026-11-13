@@ -91,6 +91,25 @@ describe('jars made for several platforms (Philip: Paper server offered "install
   });
 });
 
+describe('harmless datapack errors (Philip: helper showed the gamerule line as the cause)', () => {
+  test('a datapack function that does not load is not the cause', () => {
+    const crash = analyseCrash({
+      ...base,
+      exitCode: 137,
+      lines: [
+        '[06:02:49 ERROR]: Failed to load function craftattack:rules_old',
+        'java.util.concurrent.CompletionException: java.lang.IllegalArgumentException: Whilst parsing command on line 1: Incorrect argument for command at position 9: gamerule <--[HERE]',
+        '\tat java.base/java.util.concurrent.CompletableFuture.wrapInCompletionException(CompletableFuture.java:323) ~[?:?]',
+        'Caused by: java.lang.IllegalArgumentException: Whilst parsing command on line 1: Incorrect argument for command at position 9: gamerule <--[HERE]',
+        '\t... 9 more',
+        '[06:02:52 INFO]: Done (11.408s)! For help, type "help"',
+      ],
+    });
+    expect(crash.params?.['error']).toBeUndefined();
+    expect(crash.excerpt.join('\n')).not.toContain('gamerule');
+  });
+});
+
 describe('missing plugins and mods in the log', () => {
   test('new Fabric wording names the missing mod (not "mods for another version")', () => {
     const crash = analyseCrash({
