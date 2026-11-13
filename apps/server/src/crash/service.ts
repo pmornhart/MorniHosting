@@ -25,7 +25,7 @@ import { conflict, forbidden, notFound } from '../lib/errors.js';
 import type { MarketService } from '../market/service.js';
 import type { NotifyService } from '../notify/service.js';
 import { readPropertiesFile } from '../servers/properties-file.js';
-import { missingDependencies } from '../servers/mod-deps.js';
+import { foreignJars, missingDependencies } from '../servers/mod-deps.js';
 import type { ServerService } from '../servers/service.js';
 
 /**
@@ -117,6 +117,8 @@ const ENSURE_ROUNDS = 3;
  * Libraries that mods and plugins often need, by the id they use in their files (letters and digits only), with their
  * Modrinth project – found without searching, so "install it" always works.
  */
+/** Of those, the ones that are plugins too (the rest are mods only – never put into a plugins folder). */
+const KNOWN_PLUGINS: ReadonlySet<string> = new Set(['viaversion', 'viabackwards']);
 const KNOWN_PROJECTS: Readonly<Record<string, readonly [string, string]>> = {
   fabricapi: ['P7dR8mSH', 'Fabric API'],
   fabric: ['P7dR8mSH', 'Fabric API'],
@@ -189,7 +191,9 @@ export function createCrashHelpService(
   /** A missing plugin/mod in the marketplaces: well-known libraries directly, else by searching for its name. */
   const lookUp = async (serverId: string, content: 'mods' | 'plugins', id: string): Promise<Found | null> => {
     const known = KNOWN_PROJECTS[normalise(id)];
-    if (known) return { source: 'modrinth', id: known[0], name: known[1] };
+    if (known && (content === 'mods' || KNOWN_PLUGINS.has(normalise(id)))) {
+      return { source: 'modrinth', id: known[0], name: known[1] };
+    }
     return LOOKUP_SOURCES[content].reduce<Promise<Found | null>>(async (previous, source) => {
       const found = await previous;
       if (found || source === 'geysermc') return found;
@@ -215,10 +219,11 @@ export function createCrashHelpService(
    * Returns what was done (for the console).
    */
   const ensureOnce = async (serverId: string): Promise<string[]> => {
-    const content = SOFTWARE[serverService.row(serverId).software].content;
+    const software = serverService.row(serverId).software;
+    const content = SOFTWARE[software].content;
     if (content !== 'mods' && content !== 'plugins') return [];
     const dir = serverService.dir(serverId);
-    const missing = await missingDependencies(dir);
+    const missing = await missingDependencies(dir, software);
     if (missing.length === 0) return [];
     const done: string[] = [];
     const wanted = [...new Map(missing.map((m) => [normalise(m.dependency), m])).values()].slice(
@@ -244,8 +249,25 @@ export function createCrashHelpService(
     }, Promise.resolve());
     return done;
   };
+  /**
+   * Jars that can't load on this software at all (a Fabric mod in a Paper server's plugins folder – before the fix
+   * the panel put ViaFabric there for ViaVersion) are switched off, so they don't confuse the server or the helper.
+   */
+  const switchOffForeign = async (serverId: string): Promise<string[]> => {
+    const dir = serverService.dir(serverId);
+    const files = await foreignJars(dir, serverService.row(serverId).software);
+    return files.flatMap((file) => {
+      try {
+        const from = path.join(dir, file);
+        fs.renameSync(from, `${from}.disabled`);
+        return [`${path.basename(file)} ausgeschaltet (passt nicht zu dieser Server-Software)`];
+      } catch {
+        return [];
+      }
+    });
+  };
   const ensureDependencies: CrashHelpService['ensureDependencies'] = async (serverId) => {
-    const all: string[] = [];
+    const all: string[] = await switchOffForeign(serverId);
     // A few rounds: a freshly installed piece may need yet another one.
     for (const _round of Array.from({ length: ENSURE_ROUNDS })) {
       const done = await ensureOnce(serverId);

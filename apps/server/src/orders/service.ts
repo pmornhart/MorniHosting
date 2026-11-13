@@ -1,4 +1,10 @@
-import type { CreateServerInput, ServerState, ServerSummary, SetupStep } from '@mornihosting/shared';
+import {
+  VIA_SOFTWARE,
+  type CreateServerInput,
+  type ServerState,
+  type ServerSummary,
+  type SetupStep,
+} from '@mornihosting/shared';
 import type { Actor } from '../audit/service.js';
 import type { UserRow } from '../auth/context.js';
 import type { AppContext } from '../context.js';
@@ -209,14 +215,21 @@ export function createOrderService(
 
   const create: OrderService['create'] = async (rawInput, actor, creator) => {
     // MorniCraft: a version its plugins support, and every client version may join (ViaVersion comes with it).
+    // ViaVersion only where it works (the order page ticks it by default).
+    const viaFits = VIA_SOFTWARE.includes(rawInput.software);
+    const withVia: CreateServerInput = rawInput.addOns
+      ? {
+          ...rawInput,
+          addOns: {
+            ...rawInput.addOns,
+            via: viaFits && (rawInput.addOns.via === true || rawInput.addOns.craftattack),
+          },
+        }
+      : rawInput;
     const input =
-      rawInput.addOns?.craftattack && craftAttack
-        ? {
-            ...rawInput,
-            version: await craftAttack.fitVersion(rawInput.software, rawInput.version),
-            addOns: { ...rawInput.addOns, via: true },
-          }
-        : rawInput;
+      withVia.addOns?.craftattack && craftAttack
+        ? { ...withVia, version: await craftAttack.fitVersion(withVia.software, withVia.version) }
+        : withVia;
     const wanted =
       input.addOns &&
       (input.addOns.geyser ||

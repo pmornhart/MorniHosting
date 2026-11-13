@@ -8,7 +8,7 @@ import { sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { CrashHelp, CrashInfo, ServerSummary } from '@mornihosting/shared';
 import { analyseCrash, type CrashContext } from '../src/servers/crash.js';
-import { missingDependencies } from '../src/servers/mod-deps.js';
+import { foreignJars, missingDependencies } from '../src/servers/mod-deps.js';
 import { authHeaders, createTestApp, setupAdmin, waitFor, type Session, type TestApp } from './helpers.js';
 
 /**
@@ -32,6 +32,83 @@ async function jar(file: string, entries: Readonly<Record<string, string | Buffe
   await archive.finalize();
   await done;
 }
+
+describe('jars made for several platforms (Philip: Paper server offered "install ViaFabric")', () => {
+  test('ViaVersion on Paper needs nothing – its fabric.mod.json only counts on Fabric', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-via-'));
+    const via = {
+      'plugin.yml':
+        'name: ViaVersion\nmain: com.viaversion.ViaVersionPlugin\nsoftdepend: [ProtocolSupport]\n',
+      'velocity-plugin.json': JSON.stringify({ id: 'viaversion', name: 'ViaVersion' }),
+      'fabric.mod.json': JSON.stringify({
+        id: 'viaversion',
+        name: 'ViaVersion',
+        depends: { viafabric: '>=0.4.14' },
+      }),
+    };
+    await jar(path.join(dir, 'plugins', 'ViaVersion.jar'), via);
+    expect(await missingDependencies(dir, 'paper')).toEqual([]);
+    expect(await missingDependencies(dir, 'velocity')).toEqual([]);
+    const fabric = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-via-'));
+    await jar(path.join(fabric, 'mods', 'ViaVersion.jar'), via);
+    expect((await missingDependencies(fabric, 'fabric')).map((m) => m.dependency)).toEqual(['viafabric']);
+  });
+
+  test('ViaFabric on Fabric: the part of Fabric API its inner jar needs counts as "Fabric API missing"', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-viafabric-'));
+    const innerFile = path.join(dir, 'inner.jar');
+    await jar(innerFile, {
+      'fabric.mod.json': JSON.stringify({
+        id: 'viafabric-mc26-2',
+        depends: { 'fabric-resource-loader-v0': '*', minecraft: '26.3', viafabric: '*' },
+      }),
+    });
+    const inner = fs.readFileSync(innerFile);
+    fs.rmSync(innerFile);
+    await jar(path.join(dir, 'mods', 'ViaFabric.jar'), {
+      'fabric.mod.json': JSON.stringify({ id: 'viafabric', name: 'ViaFabric', depends: { minecraft: '*' } }),
+      'META-INF/jars/viafabric-mc26-2.jar': inner,
+    });
+    expect((await missingDependencies(dir, 'fabric')).map((m) => m.dependency)).toEqual(['fabric-api']);
+    await jar(path.join(dir, 'mods', 'fabric-api.jar'), {
+      'fabric.mod.json': JSON.stringify({ id: 'fabric-api', name: 'Fabric API' }),
+    });
+    expect(await missingDependencies(dir, 'fabric')).toEqual([]);
+  });
+
+  test("a Fabric mod in a Paper server's plugins folder is found (it can never load there)", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-foreign-'));
+    await jar(path.join(dir, 'plugins', 'ViaFabric.jar'), {
+      'fabric.mod.json': JSON.stringify({ id: 'viafabric', depends: { 'fabric-api': '*' } }),
+    });
+    await jar(path.join(dir, 'plugins', 'ViaVersion.jar'), {
+      'plugin.yml': 'name: ViaVersion\nmain: x.Y\n',
+      'fabric.mod.json': JSON.stringify({ id: 'viaversion' }),
+    });
+    expect(await foreignJars(dir, 'paper')).toEqual(['plugins/ViaFabric.jar']);
+    // Nothing missing on Paper: the Fabric mod's needs don't count there either.
+    expect(await missingDependencies(dir, 'paper')).toEqual([]);
+  });
+});
+
+describe('harmless datapack errors (Philip: helper showed the gamerule line as the cause)', () => {
+  test('a datapack function that does not load is not the cause', () => {
+    const crash = analyseCrash({
+      ...base,
+      exitCode: 137,
+      lines: [
+        '[06:02:49 ERROR]: Failed to load function craftattack:rules_old',
+        'java.util.concurrent.CompletionException: java.lang.IllegalArgumentException: Whilst parsing command on line 1: Incorrect argument for command at position 9: gamerule <--[HERE]',
+        '\tat java.base/java.util.concurrent.CompletableFuture.wrapInCompletionException(CompletableFuture.java:323) ~[?:?]',
+        'Caused by: java.lang.IllegalArgumentException: Whilst parsing command on line 1: Incorrect argument for command at position 9: gamerule <--[HERE]',
+        '\t... 9 more',
+        '[06:02:52 INFO]: Done (11.408s)! For help, type "help"',
+      ],
+    });
+    expect(crash.params?.['error']).toBeUndefined();
+    expect(crash.excerpt.join('\n')).not.toContain('gamerule');
+  });
+});
 
 describe('missing plugins and mods in the log', () => {
   test('new Fabric wording names the missing mod (not "mods for another version")', () => {

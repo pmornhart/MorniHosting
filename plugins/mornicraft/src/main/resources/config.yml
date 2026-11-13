@@ -161,7 +161,7 @@ ranks:
   - { id: player, name: Spieler, symbol: '', color: '#aaaaaa', players: [], permissions: [], default: true }
 
 # Rang-Abzeichen im Chat: Texturpaket (url + sha1) und pro Rang `badge: "<Zeichen>"`. Leer = Symbole.
-pack: { url: '', sha1: '' }
+pack: { url: '', sha1: '', required: true }
 
 # Gräber: wer stirbt, bekommt ein Grab mit allen Sachen und der Erfahrung (Rechtsklick öffnet es wie eine Truhe).
 graves: true
@@ -172,3 +172,6 @@ tab-stats: true
 # Streamer-Modus: Namen und Adressen dieses Servers, die zu ••• werden (MorniHosting trägt sie selbst ein).
 streamer:
   hide: []
+# Kampf-System: so viele Sekunden ist man nach einem Treffer zwischen Spielern "im Kampf" (kein Teleport,
+# keine Befehle außer Chat, Ausloggen = Tod). 0 = aus.
+combat-seconds: 15

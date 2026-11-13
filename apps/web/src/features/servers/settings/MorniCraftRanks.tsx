@@ -309,6 +309,8 @@ export function MorniCraftRanks({
   badges,
   badgesReady,
   onBadges,
+  badgesRequired,
+  onBadgesRequired,
   onChange,
 }: {
   serverId: string;
@@ -318,6 +320,8 @@ export function MorniCraftRanks({
   badges: boolean;
   badgesReady: boolean;
   onBadges: (on: boolean) => void;
+  badgesRequired: boolean;
+  onBadgesRequired: (on: boolean) => void;
   onChange: (ranks: MorniCraftRank[]) => void;
 }): ReactElement {
   const { t } = useTranslation();
@@ -398,6 +402,21 @@ export function MorniCraftRanks({
         </div>
         <Switch checked={badges} onCheckedChange={onBadges} aria-label={t('mornicraft.ranks.badges')} />
       </div>
+      {badges && (
+        <div className="flex items-center justify-between gap-3 rounded-[10px] border bg-card px-3 py-2.5">
+          <div className="min-w-0">
+            <div className="text-[13px] font-medium">{t('mornicraft.ranks.badgesRequired')}</div>
+            <div className="text-[12px] text-muted-foreground">
+              {t('mornicraft.ranks.badgesRequiredHint')}
+            </div>
+          </div>
+          <Switch
+            checked={badgesRequired}
+            onCheckedChange={onBadgesRequired}
+            aria-label={t('mornicraft.ranks.badgesRequired')}
+          />
+        </div>
+      )}
       <div className="grid gap-2">
         {list.map((r, i) => {
           const isOpen = open === r.id;

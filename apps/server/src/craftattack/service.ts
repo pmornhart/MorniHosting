@@ -62,6 +62,13 @@ const MORNICRAFT_KEY = 'mornicraft';
 const VIA_DONE_KEY = 'mornicraft_via';
 /** Which MorniCraft servers already got the server icon (server id → picture version). */
 const ICON_DONE_KEY = 'mornicraft_icon';
+/** Part of every badge-pack address (to recognise our own entry in server.properties). */
+const PACK_PATH = '/api/public/packs/';
+/** The line the game shows while loading the badge pack. */
+const PACK_PROMPT: Readonly<Record<'de' | 'en', string>> = {
+  de: 'Die Rang-Abzeichen dieses Servers – nur ein paar kleine Bilder.',
+  en: "This server's rank badges – just a few small pictures.",
+};
 /** Letters of the pack's checksum in its link: a changed pack gets a new address. */
 const PACK_VERSION_LENGTH = 10;
 // A server's address name as the page path: "Craft Attack!" → "craft-attack".
@@ -340,7 +347,7 @@ export function createCraftAttackService(
     const dir = servers.dir(serverId);
     writePropertiesFile(dir, { ...CRAFT_ATTACK_PROPERTIES, motd: `§f${row.name}${MOTD_SUFFIX}` });
     const level = readPropertiesFile(dir).values['level-name'] || 'world';
-    writeSpawnPack(path.join(dir, path.basename(level)), undefined, locale());
+    writeSpawnPack(path.join(dir, path.basename(level)), undefined, locale(), row.version);
     setPublic(serverId, { enabled: true });
     equip(serverId);
     // New orders bring ViaVersion themselves: nothing to switch on later.
@@ -380,7 +387,7 @@ export function createCraftAttackService(
     await ask(`execute positioned ${spot.x} ${SPAWN_Y} ${spot.z} run function craftattack:build`);
     // Later datapack versions repair this island where it really stands.
     ctx.settings.setValue(SPOTS_KEY, { ...spots(), [serverId]: spot });
-    writeSpawnPack(worldOf(serverId), spot, locale());
+    writeSpawnPack(worldOf(serverId), spot, locale(), servers.row(serverId).version);
     await ask(`forceload remove ${box}`);
     servers.note(
       serverId,
@@ -573,11 +580,38 @@ export function createCraftAttackService(
 
   // MorniCraft servers get the newest datapack before each start (it repairs older islands once and never builds
   // anything twice), the newest plugin and its config.
+  /**
+   * The badge pack in server.properties as a required pack (Minecraft's own way): the game loads it while connecting,
+   * before the world – every time, no "no" button. Switched off (or no domain): our entries are taken out again.
+   */
+  const serverPackProperties = (serverId: string): void => {
+    const dir = servers.dir(serverId);
+    const s = settingsOf(serverId);
+    const pack = s.badges && s.badgesRequired ? packConfig(serverId) : undefined;
+    const current = readPropertiesFile(dir).values['resource-pack'] ?? '';
+    if (pack) {
+      writePropertiesFile(dir, {
+        'resource-pack': pack.url,
+        'resource-pack-sha1': pack.sha1,
+        'require-resource-pack': 'true',
+        'resource-pack-prompt': JSON.stringify({ text: PACK_PROMPT[locale()] }),
+      });
+    } else if (current.includes(PACK_PATH)) {
+      writePropertiesFile(dir, {
+        'resource-pack': '',
+        'resource-pack-sha1': '',
+        'require-resource-pack': 'false',
+        'resource-pack-prompt': '',
+      });
+    }
+  };
+
   servers.onBeforeStart((serverId) => {
     try {
       if (!isCraftAttack(serverId)) return;
-      writeSpawnPack(worldOf(serverId), spots()[serverId], locale());
+      writeSpawnPack(worldOf(serverId), spots()[serverId], locale(), servers.row(serverId).version);
       equip(serverId);
+      serverPackProperties(serverId);
     } catch (err) {
       ctx.log.warn({ err, serverId }, 'mornicraft update before start failed');
     }

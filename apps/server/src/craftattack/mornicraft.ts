@@ -124,9 +124,11 @@ export const morniCraftSettingsSchema = z.object({
   rules: z.array(z.string().trim().min(1).max(120)).max(15),
   ranks: ranksSchema,
   badges: z.boolean(),
+  badgesRequired: z.boolean(),
   graves: z.boolean(),
   gravePrivateMinutes: z.number().int().min(0).max(120),
   tabStats: z.boolean(),
+  combatSeconds: z.number().int().min(0).max(60),
 });
 
 /** Stored settings, completed with the defaults (older or partial entries). */
@@ -220,10 +222,14 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     groups,
     ranks: s.ranks.map((r) => rankConfig(r, c)),
     zones: c.zones ?? [],
-    pack: c.pack ? { url: c.pack.url, sha1: c.pack.sha1 } : { url: '', sha1: '' },
+    pack: c.pack
+      ? // required: the server itself sends it (server.properties) – the plugin only listens and shows badges to all Java players.
+        { url: c.pack.url, sha1: c.pack.sha1, required: s.badgesRequired, server: s.badgesRequired }
+      : { url: '', sha1: '', required: s.badgesRequired, server: false },
     graves: s.graves,
     'grave-private-minutes': s.gravePrivateMinutes,
     'tab-stats': s.tabStats,
+    'combat-seconds': s.combatSeconds,
     streamer: { hide: c.hide ?? [] },
   };
   return `# MorniCraft – written by MorniHosting (Dashboard → server → MorniCraft). Changes here are overwritten.\n${JSON.stringify(config, null, 2)}\n`;

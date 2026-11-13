@@ -29,6 +29,7 @@ public final class MorniCraft extends JavaPlugin {
   private HomeMenu homeMenu;
   private Moderation moderation;
   private Graves graves;
+  private Combat combat;
 
   @Override
   public void onEnable() {
@@ -47,6 +48,7 @@ public final class MorniCraft extends JavaPlugin {
     homeMenu = new HomeMenu(this);
     moderation = new Moderation(this);
     graves = new Graves(this);
+    combat = new Combat(this);
     var pm = Bukkit.getPluginManager();
     pm.registerEvents(teleporter, this);
     pm.registerEvents(social, this);
@@ -59,6 +61,7 @@ public final class MorniCraft extends JavaPlugin {
     pm.registerEvents(homeMenu, this);
     pm.registerEvents(moderation, this);
     pm.registerEvents(graves, this);
+    pm.registerEvents(combat, this);
     pm.registerEvents(new UpdateCheck(this), this);
     for (String name : COMMANDS) {
       PluginCommand c = getCommand(name);
@@ -72,6 +75,7 @@ public final class MorniCraft extends JavaPlugin {
   @Override
   public void onDisable() {
     if (elytra != null) elytra.release();
+    if (combat != null) combat.release();
     if (teleporter != null) teleporter.release();
     if (sidebar != null) sidebar.release();
     if (ranks != null) ranks.release();
@@ -108,6 +112,23 @@ public final class MorniCraft extends JavaPlugin {
 
   PlayerStore store() {
     return store;
+  }
+
+  Combat combat() {
+    return combat;
+  }
+
+  SpawnElytra elytra() {
+    return elytra;
+  }
+
+  /** The server is shutting down (players leaving now are not running away). Paper 1.17+ knows it. */
+  boolean isStopping() {
+    try {
+      return (boolean) Bukkit.class.getMethod("isStopping").invoke(null);
+    } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
+      return false;
+    }
   }
 
   Teleporter teleporter() {

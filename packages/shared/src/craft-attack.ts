@@ -56,12 +56,16 @@ export interface MorniCraftSettings {
    * resource pack when they join). Off, or for players without the pack: the symbols.
    */
   readonly badges: boolean;
+  /** Java players must load the badge pack (no "no" button) – so everyone sees the badges. */
+  readonly badgesRequired: boolean;
   /** Whoever dies gets a grave with all their things and experience (and their head). */
   readonly graves: boolean;
   /** Minutes only the dead player (and the team) may open their grave; then anyone. */
   readonly gravePrivateMinutes: number;
   /** Kills and deaths next to every name in the tab list. */
   readonly tabStats: boolean;
+  /** Combat log: seconds "in combat" after a hit between players (no teleports, logging out = death); 0 = off. */
+  readonly combatSeconds: number;
 }
 
 /** What a rank may do (each switch stands for one or more server permissions, see RANK_PERMISSION_NODES). */
@@ -271,9 +275,11 @@ export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
   ],
   ranks: DEFAULT_RANKS,
   badges: true,
+  badgesRequired: true,
   graves: true,
   gravePrivateMinutes: 15,
   tabStats: true,
+  combatSeconds: 15,
 };
 
 /** GET /api/servers/:id/mornicraft */

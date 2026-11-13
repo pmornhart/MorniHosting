@@ -12,6 +12,7 @@ import {
   extrasCommands,
   topCommands,
   plazaCommands,
+  hasNewGameRules,
   spawnPackFiles,
   fountainCommands,
   removeRainbowCommands,
@@ -34,7 +35,7 @@ import { badgePack, badgePicture, pngOf } from '../src/craftattack/badges.js';
 import { deathOf, deathsOf } from '../src/craftattack/stats.js';
 import { DEFAULT_RANKS } from '@mornihosting/shared';
 import { users } from '../src/db/schema.js';
-import { authHeaders, createTestApp, setupAdmin, type Session, type TestApp } from './helpers.js';
+import { authHeaders, createTestApp, setupAdmin, waitFor, type Session, type TestApp } from './helpers.js';
 
 const FILL_LIMIT = 32768;
 // "fill ~-16 ~ ~-16 ~16 ~14 ~16 air" → the six numbers (an empty "~" is 0).
@@ -101,6 +102,23 @@ describe('Craft Attack spawn', () => {
     expect(files['data/craftattack/function/load.mcfunction']).toContain('unless score #water');
     expect(files['data/craftattack/function/build.mcfunction']).toContain('#water mh_craftattack 1');
     expect(fixWaterCommands()[0]).toContain('replace light');
+  });
+});
+
+describe('game rule names by version (Philip: Paper 26.3 logged an error for spawnRadius)', () => {
+  it('writes only the rule this version knows', () => {
+    expect(hasNewGameRules('1.21.10')).toBe(false);
+    expect(hasNewGameRules('1.20.4')).toBe(false);
+    expect(hasNewGameRules('1.21.11')).toBe(true);
+    expect(hasNewGameRules('26.3')).toBe(true);
+    expect(hasNewGameRules('latest')).toBe(true);
+    const fresh = spawnPackFiles(undefined, 'de', '26.3');
+    expect(fresh['data/craftattack/function/rules_old.mcfunction']).toBeUndefined();
+    expect(fresh['data/craftattack/function/rules_new.mcfunction']).toContain('respawn_radius');
+    expect(fresh['data/craftattack/tags/function/rules.json']).not.toContain('rules_old');
+    const old = spawnPackFiles(undefined, 'de', '1.20.4');
+    expect(old['data/craftattack/function/rules_old.mcfunction']).toContain('spawnRadius');
+    expect(old['data/craftattack/function/rules_new.mcfunction']).toBeUndefined();
   });
 });
 
@@ -441,13 +459,40 @@ describe('public statistics page', () => {
     expect((await t.app.inject({ method: 'GET', url: '/api/public/packs/gibts-nicht.zip' })).statusCode).toBe(
       404,
     );
-    // Switched off: no pack in the config any more.
+    // Required (default): Minecraft itself sends the pack while connecting – it goes into server.properties at start.
+    expect(badged).toContain('"server": true');
+    const start = (): Promise<unknown> =>
+      t.app.inject({
+        method: 'POST',
+        url: `/api/servers/${server.id}/actions/start`,
+        headers: authHeaders(admin),
+      });
+    const stop = (): Promise<unknown> =>
+      t.app.inject({
+        method: 'POST',
+        url: `/api/servers/${server.id}/actions/stop`,
+        headers: authHeaders(admin),
+      });
+    await start();
+    const props = (): string => fs.readFileSync(path.join(dir, 'server.properties'), 'utf8');
+    await waitFor(() => props().includes('require-resource-pack=true'));
+    expect(props()).toContain('craft-attack.zip');
+    expect(props()).toContain(
+      `resource-pack-sha1=${crypto.createHash('sha1').update(zip.rawPayload).digest('hex')}`,
+    );
+    await stop();
+    // Switched off: no pack in the config any more, and our entry leaves server.properties at the next start.
     await t.app.inject({
       method: 'PUT',
       url: mcUrl,
       headers: authHeaders(admin),
       payload: { ...state.settings, badges: false },
     });
+    await waitFor(async () => {
+      await start();
+      return props().includes('require-resource-pack=false');
+    });
+    expect(props()).not.toContain('craft-attack.zip');
     expect(fs.readFileSync(path.join(dir, 'plugins', 'MorniCraft', 'config.yml'), 'utf8')).toContain(
       '"url": ""',
     );

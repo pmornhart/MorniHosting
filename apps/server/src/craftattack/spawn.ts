@@ -20,6 +20,9 @@ import path from 'node:path';
 
 export const SPAWN_PACK_DIR = 'mornihosting-craftattack';
 const NAMESPACE = 'craftattack';
+/** First version with snake_case game rules: 1.21.11. */
+const NEW_RULES_MINOR = 21;
+const NEW_RULES_PATCH = 11;
 /** Height of the plaza (players walk at this y). High in the sky, under the clouds. */
 export const SPAWN_Y = 170;
 /** Radius of the island's top. */
@@ -1219,7 +1222,22 @@ const REPAIRS: readonly string[] = [
 ];
 
 /** The datapack's files (path relative to the pack folder → content). */
-export function spawnPackFiles(spot: IslandSpot = ORIGIN, lang: SpawnLang = 'de'): Record<string, string> {
+/**
+ * Whether this Minecraft version knows the game rule names in snake_case ("respawn_radius", since 1.21.11) instead
+ * of the old ones ("spawnRadius"). Unknown versions ("latest", snapshots) count as new.
+ */
+export function hasNewGameRules(version: string): boolean {
+  const [major = Number.NaN, minor = 0, patch = 0] = version.split('.').map(Number);
+  if (Number.isNaN(major) || Number.isNaN(minor) || Number.isNaN(patch)) return true;
+  if (major !== 1) return major > 1;
+  return minor > NEW_RULES_MINOR || (minor === NEW_RULES_MINOR && patch >= NEW_RULES_PATCH);
+}
+
+export function spawnPackFiles(
+  spot: IslandSpot = ORIGIN,
+  lang: SpawnLang = 'de',
+  version?: string,
+): Record<string, string> {
   const area = areaOf(spot);
   const middle = `${spot.x} ${SPAWN_Y} ${spot.z}`;
   const load = [
@@ -1269,11 +1287,14 @@ export function spawnPackFiles(spot: IslandSpot = ORIGIN, lang: SpawnLang = 'de'
   const tickTag = JSON.stringify({ values: [`${NAMESPACE}:tick`] });
   // Players appear exactly at the spawn point (not somewhere around it, maybe off the island). The game rule was
   // renamed in newer versions; each name sits in its own function, so the one that does not exist only skips itself.
+  // With a known version only the fitting name is written: the other one would put an error in the server log on
+  // every start (harmless, but it looked like a crash).
+  const ruleSets =
+    version === undefined
+      ? ['rules_old', 'rules_new']
+      : [hasNewGameRules(version) ? 'rules_new' : 'rules_old'];
   const rulesTag = JSON.stringify({
-    values: [
-      { id: `${NAMESPACE}:rules_old`, required: false },
-      { id: `${NAMESPACE}:rules_new`, required: false },
-    ],
+    values: ruleSets.map((name) => ({ id: `${NAMESPACE}:${name}`, required: false })),
   });
   const functions: Record<string, string[]> = {
     load,
@@ -1295,8 +1316,8 @@ export function spawnPackFiles(spot: IslandSpot = ORIGIN, lang: SpawnLang = 'de'
     ladder: [...ladderCommands(), `kill @e[type=item,distance=..${TIDY_REACH}]`],
     flag: flagFixCommands(),
     letters: lettersFixCommands(lang),
-    rules_old: ['gamerule spawnRadius 0'],
-    rules_new: ['gamerule respawn_radius 0'],
+    ...(ruleSets.includes('rules_old') ? { rules_old: ['gamerule spawnRadius 0'] } : {}),
+    ...(ruleSets.includes('rules_new') ? { rules_new: ['gamerule respawn_radius 0'] } : {}),
   };
   // "function" since 1.21, "functions" before – both, so the pack works everywhere.
   const files = Object.entries(functions).flatMap(([name, lines]) =>
@@ -1313,9 +1334,20 @@ export function spawnPackFiles(spot: IslandSpot = ORIGIN, lang: SpawnLang = 'de'
 }
 
 /** Puts the datapack into the world folder; the server loads it when it creates the world. */
-export function writeSpawnPack(worldDir: string, spot: IslandSpot = ORIGIN, lang: SpawnLang = 'de'): void {
+export function writeSpawnPack(
+  worldDir: string,
+  spot: IslandSpot = ORIGIN,
+  lang: SpawnLang = 'de',
+  version?: string,
+): void {
   const root = path.join(worldDir, 'datapacks', SPAWN_PACK_DIR);
-  Object.entries(spawnPackFiles(spot, lang)).forEach(([file, content]) => {
+  // The other rule's function from an older pack would still load (and fail): gone first.
+  ['function', 'functions'].forEach((dir) =>
+    ['rules_old', 'rules_new'].forEach((name) =>
+      fs.rmSync(path.join(root, 'data', NAMESPACE, dir, `${name}.mcfunction`), { force: true }),
+    ),
+  );
+  Object.entries(spawnPackFiles(spot, lang, version)).forEach(([file, content]) => {
     const target = path.join(root, file);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, content);

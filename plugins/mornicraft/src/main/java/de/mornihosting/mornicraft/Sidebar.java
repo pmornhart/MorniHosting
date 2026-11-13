@@ -34,7 +34,9 @@ final class Sidebar implements Listener {
   private static final int PLAIN_SPACE_PX = 4;
   private static final int BOLD_SPACE_PX = 5;
   /** Room between the longest label and the values. */
-  private static final int COLUMN_GAP = 6;
+  private static final int COLUMN_GAP = 8;
+  /** Room between the two command columns. */
+  private static final int COMMAND_GAP = 12;
   private static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("HH:mm");
   private static final int TICKS_PER_DAY = 24000;
   private static final int TICKS_PER_HOUR = 1000;
@@ -147,46 +149,64 @@ final class Sidebar implements Listener {
     String clock = ZonedDateTime.now(zone()).format(CLOCK);
     List<Component> lines = new ArrayList<>();
     lines.add(Component.empty());
-    if (plugin.streamer().on(p)) lines.add(Component.text("● ", NamedTextColor.RED).append(Component.text(ui.flat("sidebar.live"), NamedTextColor.RED)));
-    // Icon, label, value – the values all start in one column (Minecraft's character widths).
+    // At the top what matters right now (in combat, live), with room below it.
+    boolean status = false;
+    if (plugin.combat().inCombat(p)) {
+      lines.add(Component.text("⚔ " + ui.flat("sidebar.combat", Ui.v("sec", plugin.combat().left(p))), NamedTextColor.RED)
+          .decoration(TextDecoration.BOLD, true));
+      status = true;
+    }
+    if (plugin.streamer().on(p)) {
+      lines.add(Component.text("● " + ui.flat("sidebar.live"), NamedTextColor.RED));
+      status = true;
+    }
+    if (status) lines.add(Component.text("  "));
+    // Every row starts with the same dot (only its colour differs), so the labels start in one column; the values
+    // start in one column too (measured with Minecraft's character widths).
     List<Component[]> rows = new ArrayList<>();
     Ranks.Rank rank = plugin.ranks().of(p);
     if (rank != null && !rank.fallback()) {
       boolean picture = !rank.tag().isEmpty() && plugin.ranks().seesBadges(p);
-      rows.add(new Component[] {Component.text((rank.symbol().isEmpty() ? "◆" : rank.symbol()) + " ", rank.color()),
-          Component.text(ui.flat("sidebar.rank"), Ui.SOFT),
+      rows.add(new Component[] {dot(rank.color()), Component.text(ui.flat("sidebar.rank"), Ui.SOFT),
           picture ? plugin.ranks().label(rank, p) : Component.text(rank.name(), rank.color())});
     }
-    rows.add(row("◷", Ui.ACCENT_2, ui.flat("sidebar.clock"), clock));
-    rows.add(row(night ? "☾" : "☀", night ? Ui.MAIL : Ui.GOLD, ui.flat("sidebar.day", Ui.v("n", day)), gameTime));
-    rows.add(row("●", Ui.ACCENT, ui.flat("sidebar.online"), Bukkit.getOnlinePlayers().size() + " / " + Bukkit.getMaxPlayers()));
-    rows.add(row("◉", Ui.SOFT, ui.flat("sidebar.ping"), p.getPing() + " ms"));
+    rows.add(row(Ui.ACCENT_2, ui.flat("sidebar.clock"), Component.text(clock, NamedTextColor.WHITE)));
+    rows.add(row(night ? Ui.MAIL : Ui.GOLD, ui.flat("sidebar.day", Ui.v("n", day)), Component.text(gameTime, NamedTextColor.WHITE)));
+    rows.add(row(Ui.ACCENT, ui.flat("sidebar.online"),
+        Component.text(Bukkit.getOnlinePlayers().size() + " / " + Bukkit.getMaxPlayers(), NamedTextColor.WHITE)));
+    rows.add(row(Ui.SOFT, ui.flat("sidebar.ping"), Component.text(p.getPing() + " ms", NamedTextColor.WHITE)));
     int column = rows.stream().mapToInt(r -> Ui.width(r[1])).max().orElse(0) + COLUMN_GAP;
     rows.forEach(r -> lines.add(r[0].append(r[1]).append(pad(column - Ui.width(r[1]))).append(r[2])));
     lines.add(Component.text(" "));
-    lines.add(Component.text(ui.flat("sidebar.commands"), Ui.ACCENT));
+    lines.add(Component.text(ui.flat("sidebar.commands"), Ui.ACCENT).decoration(TextDecoration.BOLD, true));
     List<String[]> commands = new ArrayList<>(List.of(new String[] {"/spawn", "/home"}, new String[] {"/tpa", "/msg"},
         new String[] {"/info", plugin.bedrock().is(p) ? "" : "/leiste"}));
     int first = commands.stream().mapToInt(c -> Ui.width(Component.text(c[0]))).max().orElse(0);
     commands.forEach(c -> lines.add(cmds(c[0], c[1], first)));
     String page = plugin.commands().pageOf(p);
     if (page != null && !plugin.streamer().hides(p, Streamer.IP)) {
-      lines.add(Component.text("  "));
+      lines.add(Component.text("   "));
       lines.add(Component.text(host(page), Ui.DIM));
     }
+    // A sidebar shows at most 15 lines: the address at the bottom goes first.
+    while (lines.size() > KEYS.length) lines.remove(lines.size() - 1);
     return lines;
   }
 
-  private static Component[] row(String icon, net.kyori.adventure.text.format.TextColor color, String label, String value) {
-    return new Component[] {Component.text(icon + " ", color), Component.text(label, Ui.SOFT),
-        Component.text(value, NamedTextColor.WHITE)};
+  /** The dot in front of every row: the same character everywhere, so all rows are equally wide up to the label. */
+  private static Component dot(net.kyori.adventure.text.format.TextColor color) {
+    return Component.text("● ", color);
+  }
+
+  private static Component[] row(net.kyori.adventure.text.format.TextColor color, String label, Component value) {
+    return new Component[] {dot(color), Component.text(label, Ui.SOFT), value};
   }
 
   /** Two command columns: the second always starts at the same place. */
   private static Component cmds(String a, String b, int firstWidth) {
     Component line = Component.text(" " + a, NamedTextColor.WHITE);
     if (b.isEmpty()) return line;
-    return line.append(pad(firstWidth - Ui.width(Component.text(a)))).append(Component.text("  ·  ", Ui.DIM))
+    return line.append(pad(firstWidth - Ui.width(Component.text(a)) + COMMAND_GAP))
         .append(Component.text(b, NamedTextColor.WHITE));
   }
 

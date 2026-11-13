@@ -158,6 +158,12 @@ final class SpawnElytra implements Listener {
     UUID id = p.getUniqueId();
     if (!e.isFlying() || !armed.contains(id) || !survival(p)) return;
     e.setCancelled(true);
+    if (plugin.combat().inCombat(p)) {
+      // In a fight there is no flying away.
+      p.setFlying(false);
+      p.sendActionBar(plugin.ui().fail("combat.noelytra"));
+      return;
+    }
     p.setFlying(false);
     p.setAllowFlight(false);
     armed.remove(id);
@@ -206,6 +212,14 @@ final class SpawnElytra implements Listener {
     meta.getPersistentDataContainer().set(mark, PersistentDataType.BYTE, (byte) 1);
     wings.setItemMeta(meta);
     return wings;
+  }
+
+  /** A fight started: no take-off from the ground any more (already in the air keeps gliding). */
+  void landNow(Player p) {
+    if (armed.remove(p.getUniqueId()) && survival(p)) {
+      p.setAllowFlight(false);
+      p.setFlying(false);
+    }
   }
 
   /** Wings on; whatever was on the chest is kept (on disk first). An own elytra stays where it is. */

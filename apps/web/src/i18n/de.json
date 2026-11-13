@@ -3275,7 +3275,8 @@
       "show": "Anzeige",
       "rules": "Regeln",
       "ranks": "Ränge",
-      "graves": "Gräber"
+      "graves": "Gräber",
+      "combat": "Kampf-System"
     },
     "fields": {
       "tpa": "Teleport-Anfragen (/tpa)",
@@ -3298,7 +3299,8 @@
       "showLink": "Link zur Befehls-Seite",
       "tabStats": "Kills und Tode in der Tab-Liste",
       "graves": "Gräber",
-      "gravePrivateMinutes": "Nur für den Toten"
+      "gravePrivateMinutes": "Nur für den Toten",
+      "combatSeconds": "Im Kampf nach einem Treffer"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – mit Knöpfen zum Annehmen",
@@ -3321,14 +3323,16 @@
       "showLink": "In /info und der Begrüßung (braucht eine Panel-Domain)",
       "tabStats": "⚔ Kills und ☠ Tode neben jedem Namen",
       "graves": "Wer stirbt, bekommt ein Grab mit Kopf, allen Sachen und Erfahrung – Rechtsklick holt alles zurück",
-      "gravePrivateMinutes": "So lange darf nur der Tote (und das Team) das Grab öffnen, danach alle"
+      "gravePrivateMinutes": "So lange darf nur der Tote (und das Team) das Grab öffnen, danach alle",
+      "combatSeconds": "Wer einen Spieler trifft oder getroffen wird, ist so lange im Kampf: kein Teleport, keine Befehle außer Chat, keine Start-Elytra – und wer sich dann ausloggt, stirbt (Sachen ins Grab). 0 = aus."
     },
     "units": {
       "teleportDelay": "{{n}} s",
       "maxHomes": "{{n}}",
       "spawnRadius": "{{n}} Blöcke",
       "elytraRadius": "{{n}} Blöcke",
-      "gravePrivateMinutes": "{{n}} Min."
+      "gravePrivateMinutes": "{{n}} Min.",
+      "combatSeconds": "{{n}} s"
     },
     "rulesHint": "Eine Regel pro Zeile – erscheinen bei /rules.",
     "live": "Speichern gilt sofort, auch während der Server läuft.",
@@ -3399,7 +3403,9 @@
       "permCount_other": "{{count}} Rechte",
       "badges": "Abzeichen im Chat",
       "badgesHint": "Farbiges Schild mit eigenem Pixel-Icon und Rang-Name. Spieler bekommen beim Betreten ein winziges Texturpaket angeboten; wer ablehnt (und Bedrock), sieht die Symbole.",
-      "badgesNoDomain": "Braucht die Domain des Panels (Admin-Bereich → Domain), damit Spieler das Texturpaket laden können. Bis dahin: Symbole."
+      "badgesNoDomain": "Braucht die Domain des Panels (Admin-Bereich → Domain), damit Spieler das Texturpaket laden können. Bis dahin: Symbole.",
+      "badgesRequired": "Abzeichen für alle (Pflicht)",
+      "badgesRequiredHint": "Java-Spieler laden die Abzeichen beim Betreten automatisch – ohne „Nein“-Knopf. So sieht jeder die Abzeichen. Bedrock zeigt Symbole."
     }
   }
 }

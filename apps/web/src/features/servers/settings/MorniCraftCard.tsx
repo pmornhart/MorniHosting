@@ -1,5 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Feather, Flame, Home, LayoutPanelLeft, Save, Shield, Skull, Sparkles } from 'lucide-react';
+import {
+  BookOpen,
+  Feather,
+  Flame,
+  Home,
+  LayoutPanelLeft,
+  Save,
+  Shield,
+  Skull,
+  Sparkles,
+  Swords,
+} from 'lucide-react';
 import { useEffect, useState, type ReactElement, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -68,6 +79,12 @@ const SECTIONS: readonly {
     icon: LayoutPanelLeft,
     switches: ['welcome', 'sidebar', 'showLink', 'tabStats'],
     numbers: [],
+  },
+  {
+    id: 'combat',
+    icon: Swords,
+    switches: [],
+    numbers: [{ key: 'combatSeconds', min: 0, max: 60, step: 5 }],
   },
   {
     id: 'graves',
@@ -213,6 +230,8 @@ export function MorniCraftCard({ serverId }: { serverId: string }): ReactElement
         badges={draft.badges}
         badgesReady={data.badgePackUrl !== null}
         onBadges={(on) => set('badges', on)}
+        badgesRequired={draft.badgesRequired}
+        onBadgesRequired={(on) => set('badgesRequired', on)}
         onChange={(ranks) => set('ranks', ranks)}
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
