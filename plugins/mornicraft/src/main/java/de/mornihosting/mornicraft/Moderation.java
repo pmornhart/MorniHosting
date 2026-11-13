@@ -34,6 +34,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -143,7 +144,7 @@ final class Moderation implements Listener {
   }
 
   /** "10 Minuten", "1 Stunde", "7 Tage" for the buttons. */
-  private String span(long ms) {
+  String span(long ms) {
     boolean en = "en".equalsIgnoreCase(plugin.settings().language());
     if (ms < HOUR_MS) return (ms / MINUTE_MS) + (en ? " minutes" : " Minuten");
     if (ms < DAY_MS) {
@@ -322,7 +323,19 @@ final class Moderation implements Listener {
     p.setGameMode(GameMode.ADVENTURE);
     p.setFlying(false);
     p.setAllowFlight(false);
+    // Jailed mid-fall: the fall height must not come along into the cell (else they die on landing there).
+    p.setFallDistance(0);
     p.teleport(cell(), PlayerTeleportEvent.TeleportCause.PLUGIN);
+    p.setFallDistance(0);
+  }
+
+  /** Nobody gets hurt or dies in the jail (no fall damage, no lava, no grave in the cell). */
+  @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+  public void onJailDamage(EntityDamageEvent e) {
+    if (e.getEntity() instanceof Player p && jailed(p)) {
+      e.setCancelled(true);
+      p.setFallDistance(0);
+    }
   }
 
   void release(CommandSender by, Player target, boolean early) {
@@ -346,6 +359,7 @@ final class Moderation implements Listener {
       target.setGameMode(Bukkit.getDefaultGameMode());
     }
     Location to = back == null ? null : back.location();
+    target.setFallDistance(0);
     target.teleport(to != null ? to : SpawnArea.spawn(), PlayerTeleportEvent.TeleportCause.PLUGIN);
     target.showTitle(Title.title(Component.text("✔ " + ui().flat("jail.free.title"), Ui.ACCENT), Component.empty()));
     target.sendMessage(ui().ok("jail.free"));

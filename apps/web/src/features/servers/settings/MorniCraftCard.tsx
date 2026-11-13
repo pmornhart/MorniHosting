@@ -71,7 +71,7 @@ const SECTIONS: readonly {
   {
     id: 'world',
     icon: Flame,
-    switches: ['tnt', 'creeperDamage', 'fireSpread', 'endermanGrief'],
+    switches: ['tnt', 'creeperDamage', 'fireSpread', 'endermanGrief', 'sit'],
     numbers: [],
   },
   {

@@ -1451,7 +1451,7 @@
     "noServers": "Es gibt noch keine Server.",
     "allServers": "Alle Server",
     "noServerAccess": "Noch kein Server freigegeben",
-    "lastLogin": "zuletzt angemeldet {{when}}",
+    "lastLogin": "zuletzt online {{when}}",
     "disabled": "Gesperrt",
     "disable": "Sperren",
     "enable": "Entsperren",
@@ -1460,7 +1460,8 @@
     "deleteText": "Das Konto und seine API-Schlüssel werden gelöscht. Server bleiben erhalten.",
     "email": "E-Mail-Adresse (optional)",
     "emailHint": "Für Willkommens-Mail, „Passwort vergessen“ und Bestätigungen. Jede Adresse nur einmal.",
-    "generatePassword": "Erzeugen"
+    "generatePassword": "Erzeugen",
+    "onlineNow": "gerade online"
   },
   "roles": {
     "new": "Rolle anlegen",
@@ -3300,7 +3301,8 @@
       "tabStats": "Kills und Tode in der Tab-Liste",
       "graves": "Gräber",
       "gravePrivateMinutes": "Nur für den Toten",
-      "combatSeconds": "Im Kampf nach einem Treffer"
+      "combatSeconds": "Im Kampf nach einem Treffer",
+      "sit": "Sitzen auf Treppen und Stufen"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – mit Knöpfen zum Annehmen",
@@ -3324,7 +3326,8 @@
       "tabStats": "⚔ Kills und ☠ Tode neben jedem Namen",
       "graves": "Wer stirbt, bekommt ein Grab mit Kopf, allen Sachen und Erfahrung – Rechtsklick holt alles zurück",
       "gravePrivateMinutes": "So lange darf nur der Tote (und das Team) das Grab öffnen, danach alle",
-      "combatSeconds": "Wer einen Spieler trifft oder getroffen wird, ist so lange im Kampf: kein Teleport, keine Befehle außer Chat, keine Start-Elytra – und wer sich dann ausloggt, stirbt (Sachen ins Grab). 0 = aus."
+      "combatSeconds": "Wer einen Spieler trifft oder getroffen wird, ist so lange im Kampf: kein Teleport, keine Befehle außer Chat, keine Start-Elytra – und wer sich dann ausloggt, stirbt (Sachen ins Grab). 0 = aus.",
+      "sit": "Rechtsklick mit leerer Hand setzt dich hin, Schleichen = aufstehen"
     },
     "units": {
       "teleportDelay": "{{n}} s",
@@ -3378,6 +3381,7 @@
         "kick": "Spieler rauswerfen",
         "ban": "Spieler sperren",
         "gamemode": "Spielmodus wechseln",
+        "creative": "Kreativmodus",
         "teleport": "Zu jedem teleportieren",
         "world": "Zeit und Wetter",
         "whitelist": "Whitelist verwalten",
@@ -3391,6 +3395,7 @@
         "kick": "/kick",
         "ban": "/ban, /pardon, /banlist",
         "gamemode": "/gamemode",
+        "creative": "/gamemode creative (sonst nur Überleben, Abenteuer, Zuschauer)",
         "teleport": "/tp",
         "world": "/time, /weather",
         "whitelist": "/whitelist add …",

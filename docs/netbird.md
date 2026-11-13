@@ -57,11 +57,12 @@ netbird-proxy:
   ports:
     - '25565-25575:25565-25575/tcp' # Java-Server
     - '19132-19140:19132-19140/udp' # Bedrock und Geyser
+    - '19132-19140:19132-19140/tcp' # Bedrock seit 26.60 (findet den Server über TCP)
     - '24454-24460:24454-24460/udp' # Voice-Chat
 ```
 
 Danach `docker compose up -d` und dieselben Ports in der Firewall des NetBird-Servers öffnen (Cloud-Panel des
-Anbieters oder `ufw allow 25565:25575/tcp`). Alternativ den Proxy mit `network_mode: host` betreiben. Welche
+Anbieters oder `ufw allow 25565:25575/tcp`, für Bedrock `ufw allow 19132:19140/tcp` und `ufw allow 19132:19140/udp`). Alternativ den Proxy mit `network_mode: host` betreiben. Welche
 Ports gerade gebraucht werden, zeigt das Panel unter **Admin-Bereich → NetBird**.
 
 **Trennen** (Admin-Bereich → NetBird) löscht die Dienste der Server in NetBird wieder; die Panel-Adresse bleibt,

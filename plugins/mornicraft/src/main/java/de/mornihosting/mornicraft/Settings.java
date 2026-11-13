@@ -35,6 +35,7 @@ record Settings(
     List<Group> groups,
     List<Zone> zones,
     List<String> streamerHide,
+    boolean sit,
     boolean graves,
     int gravePrivateMinutes,
     boolean tabStats,
@@ -84,6 +85,7 @@ record Settings(
         c.getMapList("zones").stream().map(Settings::zone).filter(z -> z.radius() > 0).toList(),
         // The server's own names (panel domain, server address …): hidden in streamer mode.
         c.getStringList("streamer.hide"),
+        c.getBoolean("sit", true),
         c.getBoolean("graves", true),
         Math.max(0, c.getInt("grave-private-minutes", 15)),
         c.getBoolean("tab-stats", true),

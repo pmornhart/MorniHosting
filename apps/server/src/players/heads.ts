@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { Api, AppContext } from '../context.js';
 import { notFound } from '../lib/errors.js';
 import { fetchJson, fetchResponse } from '../lib/http-client.js';
-import { BYTES_PER_KB, MS_PER_MINUTE, MS_PER_SECOND } from '../lib/units.js';
+import { BYTES_PER_KB, MS_PER_HOUR, MS_PER_MINUTE, MS_PER_SECOND } from '../lib/units.js';
 
 /**
  * Player faces straight from Mojang (Philip: a new skin did not show for days – the picture service in between
@@ -20,6 +20,12 @@ const PROFILE_FRESH_MINUTES = 5;
 const MISS_FRESH_MINUTES = 30;
 const PROFILE_FRESH_MS = PROFILE_FRESH_MINUTES * MS_PER_MINUTE;
 const MISS_FRESH_MS = MISS_FRESH_MINUTES * MS_PER_MINUTE;
+/** Names → accounts change rarely. */
+const NAME_FRESH_HOURS = 6;
+const NAME_FRESH_MS = NAME_FRESH_HOURS * MS_PER_HOUR;
+/** After Mojang did not answer: next try. */
+const RETRY_SECONDS = 30;
+const RETRY_MS = RETRY_SECONDS * MS_PER_SECOND;
 const BROWSER_SECONDS = PROFILE_FRESH_MS / MS_PER_SECOND;
 const MAX_SKIN_KB = 64;
 const MAX_SKIN_BYTES = MAX_SKIN_KB * BYTES_PER_KB;
@@ -95,39 +101,69 @@ export function registerHeadRoutes(app: Api, ctx: AppContext): void {
   const known = new Map<string, Known>();
   const names = new Map<string, { at: number; uuid: string | null }>();
 
+  /** Last skin per account on disk: after a restart or while Mojang says "too many requests" the face stays right. */
+  const lastFile = (uuid: string): string => path.join(dir, 'accounts', uuid);
+  const lastKnown = (uuid: string): string | null => {
+    try {
+      const hash = fs.readFileSync(lastFile(uuid), 'utf8').trim();
+      return SKIN_HASH.test(hash) ? hash : null;
+    } catch {
+      return null;
+    }
+  };
+  const remember = (uuid: string, hash: string): void => {
+    try {
+      fs.mkdirSync(path.dirname(lastFile(uuid)), { recursive: true });
+      fs.writeFileSync(lastFile(uuid), hash);
+    } catch {
+      // only a cache
+    }
+  };
+
   const uuidOf = async (who: string): Promise<string | null> => {
     const plain = who.replaceAll('-', '').toLowerCase();
     if (UUID.test(plain)) return plain;
     const key = who.toLowerCase();
     const cached = names.get(key);
-    if (cached && Date.now() - cached.at < PROFILE_FRESH_MS) return cached.uuid;
+    if (cached && Date.now() - cached.at < (cached.uuid ? NAME_FRESH_MS : RETRY_MS)) return cached.uuid;
+    // Names change rarely: when Mojang does not answer, the uuid known so far stays.
     const uuid = await fetchJson(`${NAMES}/${encodeURIComponent(who)}`)
       .then((body) => nameSchema.parse(body).id.toLowerCase())
-      .catch(() => null);
+      .catch(() => cached?.uuid ?? null);
     names.set(key, { at: Date.now(), uuid });
     return uuid;
   };
 
-  /** The current skin of the account, asked again after a few minutes. */
+  /**
+   * The current skin of the account, asked again after a few minutes. When Mojang does not answer (it limits how
+   * often one may ask), the last known skin stays and the next try comes soon – never a made-up face for half an hour.
+   */
   const skinHash = async (uuid: string): Promise<string | null> => {
     const cached = known.get(uuid);
     const fresh = cached?.hash ? PROFILE_FRESH_MS : MISS_FRESH_MS;
     if (cached && Date.now() - cached.at < fresh) return cached.hash;
-    const hash = await fetchJson(`${PROFILE}/${uuid}`)
-      .then((body) => {
+    const answer = await fetchJson(`${PROFILE}/${uuid}`)
+      .then((body): { hash: string | null } => {
         const property = profileSchema.parse(body).properties.find((p) => p.name === 'textures');
-        if (!property) return null;
+        if (!property) return { hash: null };
         const textures = texturesSchema.parse(
           JSON.parse(Buffer.from(property.value, 'base64').toString('utf8')),
         );
         const url = textures.textures.SKIN?.url ?? '';
         const tail = url.split('/').pop() ?? '';
-        return url.replace('http://', 'https://').startsWith(TEXTURES) && SKIN_HASH.test(tail) ? tail : null;
+        const ok = url.replace('http://', 'https://').startsWith(TEXTURES) && SKIN_HASH.test(tail);
+        return { hash: ok ? tail : null };
       })
-      // Mojang not reachable: keep showing the last known skin.
-      .catch(() => cached?.hash ?? null);
-    known.set(uuid, { at: Date.now(), hash });
-    return hash;
+      .catch(() => null);
+    if (answer) {
+      known.set(uuid, { at: Date.now(), hash: answer.hash });
+      if (answer.hash) remember(uuid, answer.hash);
+      return answer.hash;
+    }
+    const last = cached?.hash ?? lastKnown(uuid);
+    // Try again in a moment (the "fresh" window minus the retry time has already passed).
+    known.set(uuid, { at: Date.now() - (last ? PROFILE_FRESH_MS : MISS_FRESH_MS) + RETRY_MS, hash: last });
+    return last;
   };
 
   const faceFile = async (hash: string): Promise<string> => {

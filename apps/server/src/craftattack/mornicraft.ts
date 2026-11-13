@@ -125,6 +125,7 @@ export const morniCraftSettingsSchema = z.object({
   ranks: ranksSchema,
   badges: z.boolean(),
   badgesRequired: z.boolean(),
+  sit: z.boolean().default(true),
   graves: z.boolean(),
   gravePrivateMinutes: z.number().int().min(0).max(120),
   tabStats: z.boolean(),
@@ -230,6 +231,7 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
       ? // required: the server itself sends it (server.properties) – the plugin only listens and shows badges to all Java players.
         { url: c.pack.url, sha1: c.pack.sha1, required: s.badgesRequired, server: s.badgesRequired }
       : { url: '', sha1: '', required: s.badgesRequired, server: false },
+    sit: s.sit,
     graves: s.graves,
     'grave-private-minutes': s.gravePrivateMinutes,
     'tab-stats': s.tabStats,

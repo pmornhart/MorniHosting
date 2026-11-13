@@ -16,7 +16,6 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -25,6 +24,8 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.Skull;
 import org.bukkit.block.TileState;
+import org.bukkit.block.Sign;
+import org.bukkit.block.data.Directional;
 import org.bukkit.block.data.Rotatable;
 import org.bukkit.block.data.type.Slab;
 import org.bukkit.configuration.ConfigurationSection;
@@ -58,7 +59,6 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.meta.SkullMeta;
 
 /**
  * Graves: whoever dies gets a little grave where they fell – a patch of dark earth, a headstone, their head on top
@@ -72,11 +72,6 @@ final class Graves implements Listener {
   private static final int SEARCH = 12;
   /** How far to the side, when right there is no place. */
   private static final int SIDE = 3;
-  /** The eyes: "x x" in the default font, sitting on the head's face (see the game's text display and skull models). */
-  private static final double FACE = 0.276;
-  private static final double EYES_UP = 0.106;
-  private static final double FACE_SHIFT = 0.0125;
-  private static final TextColor EYE_COLOR = TextColor.color(0x000000);
 
   /** One grave. */
   private static final class Grave {
@@ -91,6 +86,11 @@ final class Graves implements Listener {
     final List<UUID> entities = new ArrayList<>();
     String world;
   }
+
+  /** Distances in the grave message are rounded to this many blocks ("about 500 blocks west of the spawn"). */
+  private static final int ROUGH = 50;
+  private static final String[] DIRECTIONS = {"s", "sw", "w", "nw", "n", "ne", "e", "se"};
+  private static final double SECTOR = 45.0;
 
   private final MorniCraft plugin;
   private final File file;
@@ -181,7 +181,6 @@ final class Graves implements Listener {
     if (!plugin.settings().graves() || e.getKeepInventory()) return;
     Player p = e.getEntity();
     List<ItemStack> items = new ArrayList<>(e.getDrops());
-    items.add(headOf(p));
     Grave g = build(p, items, e.getDroppedExp());
     if (g == null) return; // no place anywhere near (the void): the items drop as usual
     e.getDrops().clear();
@@ -189,22 +188,11 @@ final class Graves implements Listener {
     Block at = blockOf(g.blocks.keySet().iterator().next());
     Component where = at == null || plugin.streamer().hides(p, Streamer.COORDS)
         ? ui().words("grave.made.hidden")
-        : ui().words("grave.made", Ui.v("x", at.getX()), Ui.v("y", at.getY()), Ui.v("z", at.getZ()));
+        : roughly(at);
     // Told after the respawn screen, when the chat can be read again.
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
       if (p.isOnline()) p.sendMessage(Component.text("☠ ", NamedTextColor.GRAY).append(where));
     }, 20L);
-  }
-
-  /** The player's head as an item: "Kopf von Morni". */
-  private ItemStack headOf(Player p) {
-    ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-    SkullMeta meta = (SkullMeta) head.getItemMeta();
-    meta.setOwningPlayer(p);
-    meta.displayName(Component.text(ui().flat("grave.head", Ui.v("name", p.getName())), NamedTextColor.YELLOW)
-        .decoration(TextDecoration.ITALIC, false));
-    head.setItemMeta(meta);
-    return head;
   }
 
   /** Air, water, grass, flowers, snow – something the grave may stand in (put back afterwards). */
@@ -321,26 +309,21 @@ final class Graves implements Listener {
       if (area != null) g.entities.add(area.getUniqueId());
     } else {
       // Older servers: the head as a block on the earth, looking towards the foot, eyes crossed out where possible.
-      change(g, head, Material.PLAYER_HEAD);
+      // A skeleton skull (Philip: the crossed-out eyes never sat right on every skin).
+      change(g, head, Material.SKELETON_SKULL);
       if (head.getBlockData() instanceof Rotatable rot) {
         rot.setRotation(foot);
         head.setBlockData(rot, false);
       }
-      if (head.getState() instanceof Skull skull) {
-        skull.setOwningPlayer(p);
-        skull.update(true, false);
-      }
-      // Bold "x x" is half a pixel wider on the right: the text sits that much to the left (seen from the front).
-      BlockFace leftOfFace = left(foot).getOppositeFace();
-      Location face = head.getLocation().add(0.5 + foot.getModX() * FACE + leftOfFace.getModX() * FACE_SHIFT, EYES_UP,
-          0.5 + foot.getModZ() * FACE + leftOfFace.getModZ() * FACE_SHIFT);
-      face.setYaw(yawOf(foot));
-      Entity eyes = eyes(face);
-      if (eyes != null) g.entities.add(eyes.getUniqueId());
     }
-    Location tag = (spot(stoneGround) || g.blocks.containsKey(key(stoneGround.getRelative(BlockFace.UP)))
-        ? stoneGround.getRelative(BlockFace.UP) : head).getLocation().add(0.5, 1.2, 0.5);
-    g.entities.add(nameTag(tag, Component.text("☠ " + p.getName(), NamedTextColor.GRAY)).getUniqueId());
+    // A sign on the front of the cross with just the name (Philip: who died there, nothing else). Without a cross,
+    // or where the skull stands as a block (older servers), the name floats above the grave as before.
+    Block cross = stoneGround.getRelative(BlockFace.UP);
+    boolean signed = !sunk.isEmpty() && g.blocks.containsKey(key(cross)) && free(head) && nameSign(g, head, foot, p.getName());
+    if (!signed) {
+      Location tag = (g.blocks.containsKey(key(cross)) ? cross : head).getLocation().add(0.5, 1.2, 0.5);
+      g.entities.add(nameTag(tag, Component.text(p.getName(), NamedTextColor.GRAY)).getUniqueId());
+    }
     index(g);
     save();
     p.getWorld().playSound(head.getLocation(), Sound.BLOCK_GRAVEL_PLACE, 1f, 0.8f);
@@ -424,6 +407,34 @@ final class Graves implements Listener {
     b.setType(m, false);
   }
 
+  /** A spruce wall sign hanging on the cross, facing the foot end, with the name on it (waxed: nobody edits it). */
+  private static boolean nameSign(Grave g, Block at, BlockFace foot, String name) {
+    try {
+      change(g, at, Material.SPRUCE_WALL_SIGN);
+      if (at.getBlockData() instanceof Directional d) {
+        d.setFacing(foot);
+        at.setBlockData(d, false);
+      }
+      if (!(at.getState() instanceof Sign sign)) return false;
+      Component line = Component.text(name, NamedTextColor.BLACK);
+      try {
+        // 1.20+: the front side; older: the one side.
+        Class<?> side = Class.forName("org.bukkit.block.sign.Side");
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        Object front = Enum.valueOf((Class<Enum>) side, "FRONT");
+        Object face = Sign.class.getMethod("getSide", side).invoke(sign, front);
+        face.getClass().getMethod("line", int.class, Component.class).invoke(face, 1, line);
+        Sign.class.getMethod("setWaxed", boolean.class).invoke(sign, true);
+      } catch (ReflectiveOperationException | LinkageError older) {
+        sign.line(1, line);
+      }
+      sign.update(true, false);
+      return true;
+    } catch (RuntimeException e) {
+      return false;
+    }
+  }
+
   private static Entity nameTag(Location at, Component name) {
     // Set up right after spawning (in the same tick, before anyone sees it); no Consumer – its type changed in Paper.
     ArmorStand a = at.getWorld().spawn(at, ArmorStand.class);
@@ -436,6 +447,22 @@ final class Graves implements Listener {
     a.setInvulnerable(true);
     a.setPersistent(true);
     return a;
+  }
+
+  /**
+   * Where the grave is, only roughly (Philip: no exact coordinates): "about 500 blocks north-west of the spawn", or
+   * "near the spawn". Distance rounded to 50 blocks, one of eight directions.
+   */
+  private Component roughly(Block at) {
+    Location spawn = at.getWorld().getSpawnLocation();
+    double dx = at.getX() - spawn.getX();
+    double dz = at.getZ() - spawn.getZ();
+    long dist = Math.round(Math.hypot(dx, dz) / ROUGH) * ROUGH;
+    if (dist < ROUGH) return ui().words("grave.made.near");
+    // Minecraft: +z is south, +x is east; atan2 gives 0° for south, 90° for west.
+    double angle = (Math.toDegrees(Math.atan2(-dx, dz)) + 360 + SECTOR / 2) % 360;
+    String dir = DIRECTIONS[(int) (angle / SECTOR)];
+    return ui().words("grave.made", Ui.v("dist", dist), Ui.v("dir", ui().flat("dir." + dir)));
   }
 
   // ---------------------------------------------------------------- the sunken head (displays, 1.19.4+)
@@ -453,8 +480,6 @@ final class Graves implements Listener {
   private static final float ROLL = (float) Math.toRadians(16);
   private static final float PITCH = (float) Math.toRadians(-24);
   private static final float HALF = 0.25f;
-  /** The eyes' text from the head's centre (facing south): half a pixel left, 0.144 down, on the face. */
-  private static final float[] EYES_FROM_CENTER = {(float) -FACE_SHIFT, (float) EYES_UP - HALF, (float) FACE};
 
   /** Rotation Rz(roll)·Rx(pitch) of a vector. */
   private static float[] turn(float[] v, float roll, float pitch) {
@@ -475,10 +500,8 @@ final class Graves implements Listener {
       at.setYaw(yawOf(foot) + 180f);
       Entity head = surface.getWorld().spawn(at, itemType);
       made.add(head);
-      ItemStack item = new ItemStack(Material.PLAYER_HEAD);
-      SkullMeta meta = (SkullMeta) item.getItemMeta();
-      meta.setOwningPlayer(p);
-      item.setItemMeta(meta);
+      // A skeleton skull sunk into the earth (the player's own head lies in the grave as a keepsake).
+      ItemStack item = new ItemStack(Material.SKELETON_SKULL);
       itemType.getMethod("setItemStack", ItemStack.class).invoke(head, item);
       head.setRotation(yawOf(foot) + 180f, 0);
       // Centre at CENTER_UP, turned about the centre; the display itself turned half round (its face is local -z).
@@ -486,14 +509,6 @@ final class Graves implements Listener {
       float[] t = {-(0 - centreTurned[0]), CENTER_UP - centreTurned[1], -(0 - centreTurned[2])};
       transform(head, t, -ROLL, -PITCH);
       head.setPersistent(true);
-      Location eyesAt = surface.clone();
-      eyesAt.setYaw(yawOf(foot));
-      Entity eyes = eyes(eyesAt);
-      if (eyes != null) {
-        made.add(eyes);
-        float[] e = turn(EYES_FROM_CENTER, ROLL, PITCH);
-        transform(eyes, new float[] {e[0], CENTER_UP + e[1], e[2]}, ROLL, PITCH);
-      }
       return made;
     } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
       made.forEach(Entity::remove);
@@ -514,31 +529,6 @@ final class Graves implements Listener {
     Object none = quat.getConstructor().newInstance();
     Object transformation = tr.getConstructor(vec, quat, vec, quat).newInstance(translation, q, scale, none);
     Class.forName("org.bukkit.entity.Display").getMethod("setTransformation", tr).invoke(e, transformation);
-  }
-
-  /** "x x" on the head's face – a text display (Paper 1.19.4+); older servers: no eyes. */
-  private static Entity eyes(Location at) {
-    try {
-      Class<? extends Entity> type = Class.forName("org.bukkit.entity.TextDisplay").asSubclass(Entity.class);
-      Entity e = at.getWorld().spawn(at, type);
-      // Bold x's (thicker), a plain space between: they sit right on the eyes of the skin.
-      Component x = Component.text("x", EYE_COLOR).decoration(TextDecoration.BOLD, true);
-      type.getMethod("text", Component.class).invoke(e, x.append(Component.text(" ").decoration(TextDecoration.BOLD, false)).append(x));
-      @SuppressWarnings({"unchecked", "rawtypes"})
-      Class<Enum> billboard = (Class<Enum>) Class.forName("org.bukkit.entity.Display$Billboard");
-      @SuppressWarnings("unchecked")
-      Object fixed = Enum.valueOf(billboard, "FIXED");
-      type.getMethod("setBillboard", billboard).invoke(e, fixed);
-      // Clear background (Color.fromARGB is newer than the API this is built against).
-      Object clear = Color.class.getMethod("fromARGB", int.class, int.class, int.class, int.class).invoke(null, 0, 0, 0, 0);
-      type.getMethod("setBackgroundColor", Color.class).invoke(e, clear);
-      type.getMethod("setShadowed", boolean.class).invoke(e, false);
-      e.setRotation(at.getYaw(), 0);
-      e.setPersistent(true);
-      return e;
-    } catch (ReflectiveOperationException | RuntimeException | LinkageError older) {
-      return null;
-    }
   }
 
   // ---------------------------------------------------------------- opening: a chest with the grave's things

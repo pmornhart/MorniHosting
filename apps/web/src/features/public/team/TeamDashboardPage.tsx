@@ -65,6 +65,15 @@ export function TeamDashboardPage(): ReactElement {
   // The demo has no real link; any key opens it there.
   const [key] = useState(() => window.location.hash.replace(/^#/, '') || (DEMO ? 'demo' : '')); // eslint-disable-line ts-patterns/require-regex-example -- "#abc" → "abc"
   const { data, error, isLoading } = useTeamBoard(slug, key);
+  // The browser tab says what this is: "Team-Dashboard / dmann".
+  const server = data?.server ?? '';
+  useEffect(() => {
+    const before = document.title;
+    document.title = [t('teamBoard.title'), server].filter(Boolean).join(' / ');
+    return () => {
+      document.title = before;
+    };
+  }, [server, t]);
   const action = useTeamAction(slug, key);
   const left = useLeft();
   const [tab, setTab] = useState<Tab>('players');
@@ -128,9 +137,11 @@ export function TeamDashboardPage(): ReactElement {
             <BrandMark className="size-12" />
             <div className="min-w-48 flex-1">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                {data.server || 'MorniCraft'}
+                MorniCraft
               </p>
-              <h1 className="text-2xl font-bold">{t('teamBoard.title')}</h1>
+              <h1 className="text-2xl font-bold">
+                {[t('teamBoard.title'), data.server].filter(Boolean).join(' / ')}
+              </h1>
               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
                 <PlayerHead
                   name={data.me.name}

@@ -156,21 +156,22 @@ export function PlayerHead({
   game?: string;
   className?: string;
 }): ReactElement {
-  const [failed, setFailed] = useState(false);
-  if (game && isGameId(game)) return <GamePlayer name={name} game={game} className={className} />;
   const lookup = skinOf(name, skin);
+  const round = skinRound();
+  // One failed load (Mojang briefly busy) must not keep the drawn face: try again with the next round.
+  const [failedFor, setFailedFor] = useState<string | null>(null);
+  const failed = failedFor === `${lookup ?? ''}:${round}`;
+  if (game && isGameId(game)) return <GamePlayer name={name} game={game} className={className} />;
   // The demo cannot load pictures from other sites: it carries a few faces itself and draws the rest.
   const embedded = DEMO && lookup ? demoImages.heads[lookup.replaceAll('-', '')] : undefined;
   const usable = !failed && !DEMO && lookup !== null;
   return (
     <img
-      src={
-        embedded ?? (usable ? `/api/heads/${encodeURIComponent(lookup)}?v=${skinRound()}` : playerFace(name))
-      }
+      src={embedded ?? (usable ? `/api/heads/${encodeURIComponent(lookup)}?v=${round}` : playerFace(name))}
       alt=""
       loading="lazy"
       referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
+      onError={() => setFailedFor(`${lookup ?? ''}:${round}`)}
       className={cn('pixelated size-6 shrink-0 rounded-[5px]', className)}
     />
   );

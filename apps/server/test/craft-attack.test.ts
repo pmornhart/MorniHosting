@@ -397,11 +397,10 @@ describe('public statistics page', () => {
       settings: Record<string, unknown>;
     }>();
     expect(state).toMatchObject({ active: true, settings: { teleportDelay: 5, sleepAtSpawn: false } });
-    // Admin and Supporter were taken out (Philip, 13.11.).
+    // Admin, Supporter and Builder were taken out (Philip, 13.11.).
     expect((state.settings['ranks'] as { id: string }[]).map((r) => r.id)).toEqual([
       'owner',
       'moderator',
-      'builder',
       'media',
       'vip',
       'player',

@@ -78,7 +78,10 @@ final class TeamBoard {
     if (p.isOp() || p.hasPermission("minecraft.command.kick")) out.add("kick");
     if (p.isOp() || p.hasPermission("minecraft.command.ban")) out.add("ban");
     if (p.isOp() || p.hasPermission("minecraft.command.teleport")) out.add("locate");
-    if (RankCommands.allowed(p)) {
+    // Settings, rules and ranks: only ranks with the admin switch (Owner, a self-made Admin) – not moderators, even
+    // when they are OP in the game (Philip, 13.11.).
+    Ranks.Rank rank = plugin.ranks().of(p);
+    if (rank != null && rank.permissions().contains("mornicraft.admin")) {
       out.add("ranks");
       out.add("rules");
     }
@@ -311,7 +314,13 @@ final class TeamBoard {
   @SuppressWarnings("deprecation")
   private void ban(CommandSender by, String name, String reason, long minutes) {
     java.util.Date until = minutes > 0 ? new java.util.Date(System.currentTimeMillis() + minutes * 60_000L) : null;
-    String why = reason.isEmpty() ? plugin.ui().flat("teamboard.banned") : reason;
+    // Says how long and why (Philip: "da soll noch stehen wie lange") – also in the ban list, which Minecraft shows
+    // again when they try to come back.
+    String time = minutes > 0
+        ? plugin.ui().flat("teamboard.banned.for", Ui.v("time", plugin.moderation().span(minutes * 60_000L)))
+        : plugin.ui().flat("teamboard.banned.forever");
+    String why = plugin.ui().flat("teamboard.banned") + " – " + time
+        + (reason.isEmpty() ? "" : "\n" + plugin.ui().flat("teamboard.banned.reason", Ui.v("reason", reason)));
     Bukkit.getBanList(BanList.Type.NAME).addBan(name, why, until, by.getName());
     Player online = Bukkit.getPlayerExact(name);
     if (online != null) online.kick(Component.text(why));
