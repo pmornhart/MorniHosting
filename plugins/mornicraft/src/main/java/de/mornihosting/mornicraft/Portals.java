@@ -84,13 +84,45 @@ final class Portals {
       return true;
     }
     boolean again = built(kind);
+    if (again && builtLayout(kind) < layout(kind)) {
+      // Built the old way: put the old one back first, then build it new.
+      restore(kind);
+      again = false;
+    }
     Map<Long, Block> plan = kind == Kind.NETHER ? nether() : end();
     if (!again && !remember(kind, plan)) {
       sender.sendMessage(ui().fail("portal.error"));
       return true;
     }
-    build(kind, plan, again);
+    build(kind, plan, "portal." + kind.id() + (again ? ".repaired" : ".built"));
     return true;
+  }
+
+  /** Which version of a build is the current one (the nether portal moved onto the islet with 2). */
+  private static int layout(Kind kind) {
+    return kind == Kind.NETHER ? 2 : 1;
+  }
+
+  /** The version a built portal has (files without the line are version 1). */
+  private int builtLayout(Kind kind) {
+    try {
+      for (String line : Files.readAllLines(file(kind), StandardCharsets.UTF_8)) {
+        if (line.startsWith("#layout ")) return Integer.parseInt(line.substring("#layout ".length()).trim());
+      }
+    } catch (IOException | NumberFormatException e) {
+      return 1;
+    }
+    return 1;
+  }
+
+  /** After an update: a portal built the old way is taken away and built again the new way (at the server start). */
+  void migrate() {
+    for (Kind kind : Kind.values()) {
+      if (!built(kind) || builtLayout(kind) >= layout(kind)) continue;
+      restore(kind);
+      Map<Long, Block> plan = kind == Kind.NETHER ? nether() : end();
+      if (remember(kind, plan)) build(kind, plan, "portal." + kind.id() + ".moved");
+    }
   }
 
   boolean built(Kind kind) {
@@ -145,60 +177,201 @@ final class Portals {
 
   private static final String AIR = "air";
 
-  /** Nether: on the lawn in the north-west, between the pavilion and the north path. */
-  static Map<Long, Block> nether() {
-    return nether(plan());
+  /** What stands at a spot now (relative to the island's middle): the block's name without "minecraft:". */
+  interface Look {
+    String at(int x, int y, int z);
   }
 
-  static Map<Long, Block> nether(Plan p) {
-    // Clear the flowers above the square and the little path.
-    p.fill(-15, 0, -26, -6, 7, -20, AIR);
-    p.fill(-5, 0, -24, -3, 1, -22, AIR);
-    // The square: polished blackstone bricks with a smooth rim, some cracked.
-    p.fill(-15, -1, -26, -6, -1, -20, "polished_blackstone_bricks");
-    p.fill(-15, -1, -26, -6, -1, -26, "polished_blackstone");
-    p.fill(-15, -1, -20, -6, -1, -20, "polished_blackstone");
-    p.fill(-15, -1, -26, -15, -1, -20, "polished_blackstone");
-    p.fill(-6, -1, -26, -6, -1, -20, "polished_blackstone");
-    for (int[] c : new int[][] {{-13, -25}, {-8, -21}, {-11, -21}, {-9, -25}, {-14, -22}}) {
-      p.set(c[0], -1, c[1], "cracked_polished_blackstone_bricks");
-    }
-    // The path over to the north path.
-    p.fill(-5, -1, -24, -3, -1, -22, "polished_blackstone_bricks");
-    p.fill(-5, -1, -24, -3, -1, -24, "polished_blackstone");
-    p.fill(-5, -1, -22, -3, -1, -22, "polished_blackstone");
-    // Nether corners: nylium with fungi and roots.
-    p.set(-14, -1, -25, "crimson_nylium");
-    p.set(-14, 0, -25, "crimson_fungus");
-    p.set(-14, -1, -21, "crimson_nylium");
-    p.set(-14, 0, -21, "crimson_roots");
-    p.set(-7, -1, -21, "warped_nylium");
-    p.set(-7, 0, -21, "warped_fungus");
-    p.set(-7, -1, -25, "warped_nylium");
-    p.set(-7, 0, -25, "warped_roots");
-    // Lantern posts at the corners.
-    for (int[] c : new int[][] {{-15, -26}, {-15, -20}, {-6, -26}, {-6, -20}}) {
-      p.fill(c[0], 0, c[1], c[0], 1, c[1], "polished_blackstone_wall");
-      p.set(c[0], 2, c[1], "soul_lantern");
-    }
-    // The frame faces the north path: obsidian, the corners (not needed for the portal) crying.
-    p.fill(-12, 0, -25, -12, 6, -21, "obsidian");
-    for (int[] c : new int[][] {{0, -25}, {0, -21}, {6, -25}, {6, -21}}) p.set(-12, c[0], c[1], "crying_obsidian");
-    // Pillars beside it with gilded feet and soul lanterns, a crown of slabs on top.
-    for (int z : new int[] {-26, -20}) {
-      p.set(-12, 0, z, "gilded_blackstone");
-      p.fill(-12, 1, z, -12, 4, z, "polished_blackstone_wall");
-      p.set(-12, 5, z, "soul_lantern");
-    }
-    p.fill(-12, 7, -24, -12, 7, -22, "polished_blackstone_brick_slab[type=bottom]");
-    p.set(-12, 7, -25, "blackstone_slab[type=bottom]");
-    p.set(-12, 7, -21, "blackstone_slab[type=bottom]");
-    // A step up on both sides.
-    p.fill(-11, 0, -24, -11, 0, -22, "polished_blackstone_brick_stairs[facing=west]");
-    p.fill(-13, 0, -24, -13, 0, -22, "polished_blackstone_brick_stairs[facing=east]");
-    // The portal itself last.
-    p.fill(-12, 1, -24, -12, 5, -22, "nether_portal[axis=z]");
+  private static Look world(Plan p) {
+    World w = SpawnArea.world();
+    return (x, y, z) -> w.getBlockAt(p.ox + x, p.oy + y, p.oz + z).getType().name().toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * The small island in the west-north-west (spawn.ts ISLETS: middle -48/-22, its top block 13 below the lawn,
+   * radius 4.6, eight layers tapering down). The nether takes it over; a bridge leads down to it.
+   */
+  private static final int ISLE_X = -48;
+  private static final int ISLE_Z = -22;
+  private static final int ISLE_TOP = -13;
+  private static final double ISLE_R = 4.6;
+  private static final int ISLE_LAYERS = 7;
+  /** The bridge: from the island's edge (x -23) down to the islet's edge (x -43), three wide round z -22. */
+  private static final int BRIDGE_FROM = -23;
+  private static final int BRIDGE_TO = -43;
+
+  private static int hash(int x, int y, int z) {
+    return ((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) & Integer.MAX_VALUE;
+  }
+
+  /** Ground the nether can take over (not plants, leaves, wood or anything built). */
+  private static boolean ground(String b) {
+    return b.endsWith("_ore") || List.of("grass_block", "moss_block", "dirt", "coarse_dirt", "rooted_dirt", "podzol",
+        "stone", "andesite", "diorite", "granite", "tuff", "deepslate", "cobblestone", "cobbled_deepslate", "gravel",
+        "calcite", "mossy_cobblestone", "polished_andesite", "dripstone_block", "mud", "clay").contains(b);
+  }
+
+  private static boolean empty(String b) {
+    return b.equals("air") || b.equals("cave_air") || b.equals("void_air");
+  }
+
+  /** The walking height on the bridge at x: from 0 on the lawn down to the islet's (-12) at its last block. */
+  private static int walk(int x) {
+    int drop = -(ISLE_TOP + 1);
+    return (int) -Math.round(drop * (double) (BRIDGE_FROM - x) / (BRIDGE_FROM - (BRIDGE_TO + 1)));
+  }
+
+  /** Nether: a gate in the hedge in the north-west, a bridge down to the islet, which the nether has taken over. */
+  static Map<Long, Block> nether() {
+    Plan p = plan();
+    return nether(p, world(p));
+  }
+
+  static Map<Long, Block> nether(Plan p, Look look) {
+    infectIslet(p, look);
+    bridge(p, look);
+    netherIsletDecor(p);
     return p.blocks;
+  }
+
+  /** The islet: nylium and netherrack on top, netherrack, blackstone and ores below, weeping vines underneath. */
+  private static void infectIslet(Plan p, Look look) {
+    int reach = (int) Math.ceil(ISLE_R) + 3;
+    // Everything growing on it goes (the oak, flowers) – a huge fungus comes instead.
+    for (int y = ISLE_TOP + 1; y <= ISLE_TOP + 10; y++) {
+      for (int dx = -reach; dx <= reach; dx++) {
+        for (int dz = -reach; dz <= reach; dz++) {
+          if (Math.hypot(dx, dz) <= reach && !empty(look.at(ISLE_X + dx, y, ISLE_Z + dz))) {
+            p.set(ISLE_X + dx, y, ISLE_Z + dz, AIR);
+          }
+        }
+      }
+    }
+    for (int d = 0; d <= ISLE_LAYERS; d++) {
+      double rr = Math.max(0.6, ISLE_R - d * (ISLE_R / ISLE_LAYERS));
+      int y = ISLE_TOP - d;
+      for (int dx = -reach; dx <= reach; dx++) {
+        for (int dz = -reach; dz <= reach; dz++) {
+          int x = ISLE_X + dx;
+          int z = ISLE_Z + dz;
+          double dist = Math.hypot(dx, dz);
+          String now = look.at(x, y, z);
+          boolean inside = dist <= rr;
+          if (!(inside && (empty(now) || ground(now))) && !(dist <= rr + 1.5 && ground(now))) continue;
+          int h = hash(x, y, z) % 12;
+          String block;
+          if (d == 0) {
+            block = h < 7 ? "crimson_nylium" : h < 9 ? "warped_nylium" : "netherrack";
+          } else if (d == 1) {
+            block = h < 9 ? "netherrack" : "soul_soil";
+          } else {
+            block = h < 6 ? "netherrack" : h < 9 ? "blackstone" : h < 11 ? "nether_quartz_ore" : "nether_gold_ore";
+          }
+          p.set(x, y, z, block);
+          // Plants on the nylium (not on the path or where the portal stands).
+          if (d == 0 && block.endsWith("nylium") && hash(z, x, y) % 3 == 0 && !(dz >= -1 && dz <= 1 && dx >= 0)
+              && dx != 0) {
+            boolean crimson = block.startsWith("crimson");
+            int k = hash(x, z, y) % 3;
+            String plant = crimson ? (k == 0 ? "crimson_fungus" : "crimson_roots") : (k == 0 ? "warped_fungus" : "nether_sprouts");
+            p.set(x, y + 1, z, plant);
+          }
+          // The underside: weeping vines and a bit of glowstone where this is the lowest block of its column.
+          double below = Math.max(0.6, ISLE_R - (d + 1) * (ISLE_R / ISLE_LAYERS));
+          boolean lowest = d == ISLE_LAYERS || dist > below;
+          if (lowest && d > 0) {
+            int v = hash(x, z, d) % 7;
+            if (v == 0) {
+              p.set(x, y, z, "glowstone");
+            } else if (v <= 2) {
+              int len = 1 + hash(z, d, x) % 3;
+              for (int i = 1; i < len; i++) p.set(x, y - i, z, "weeping_vines_plant");
+              p.set(x, y - len, z, "weeping_vines");
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /** The gate in the hedge and the bridge down to the islet: nether bricks, railings, soul lanterns. */
+  private static void bridge(Plan p, Look look) {
+    // A path through the hedge, from the lawn to the edge.
+    p.fill(BRIDGE_FROM, 0, -24, -17, 3, -20, AIR);
+    p.fill(BRIDGE_FROM, -1, -23, -17, -1, -21, "nether_bricks");
+    p.fill(BRIDGE_FROM, -1, -24, -17, -1, -24, "red_nether_bricks");
+    p.fill(BRIDGE_FROM, -1, -20, -17, -1, -20, "red_nether_bricks");
+    // The gate: two pillars, a lintel, soul lanterns.
+    int gx = -21;
+    for (int z : new int[] {-24, -20}) {
+      p.fill(gx, 0, z, gx, 3, z, "red_nether_bricks");
+      p.set(gx, 5, z, "soul_lantern");
+    }
+    p.fill(gx, 4, -24, gx, 4, -20, "nether_bricks");
+    p.set(gx, 3, -22, "soul_lantern[hanging=true]");
+    // The nether eats into the lawn round the gate.
+    for (int dx = -5; dx <= 5; dx++) {
+      for (int dz = -5; dz <= 5; dz++) {
+        int x = gx + 1 + dx;
+        int z = -22 + dz;
+        if (Math.hypot(dx, dz) > 5 || hash(x, -1, z) % 5 > 1) continue;
+        if (!look.at(x, -1, z).equals("grass_block") || (z >= -24 && z <= -20 && x <= -17)) continue;
+        String now = look.at(x, 0, z);
+        if (!empty(now) && ground(now)) continue;
+        p.set(x, -1, z, hash(x, 0, z) % 2 == 0 ? "crimson_nylium" : "netherrack");
+        p.set(x, 0, z, hash(z, 0, x) % 3 == 0 ? "crimson_roots" : AIR);
+      }
+    }
+    // The bridge itself: one block down every so often, stairs where it drops.
+    for (int x = BRIDGE_FROM - 1; x > BRIDGE_TO; x--) {
+      int w = walk(x);
+      boolean step = w < walk(x + 1);
+      int top = step ? w : w - 1;
+      p.fill(x, w - 3, -24, x, w + 3, -20, AIR);
+      p.fill(x, w - 2, -23, x, w - 1, -21, "nether_bricks");
+      if (step) p.fill(x, w, -23, x, w, -21, "nether_brick_stairs[facing=east]");
+      for (int z : new int[] {-24, -20}) {
+        p.fill(x, w - 2, z, x, top, z, "red_nether_bricks");
+        boolean post = (BRIDGE_FROM - x) % 5 == 0;
+        p.set(x, top + 1, z, post ? "red_nether_brick_wall" : "nether_brick_fence[east=true,west=true]");
+        if (post) p.set(x, top + 2, z, "soul_lantern");
+      }
+      if ((BRIDGE_FROM - x) % 6 == 3) p.set(x, w - 3, -22, "soul_lantern[hanging=true]");
+    }
+  }
+
+  /** On the islet: a path to the portal, the portal facing the bridge, lantern posts and a huge crimson fungus. */
+  private static void netherIsletDecor(Plan p) {
+    int t = ISLE_TOP;
+    p.fill(BRIDGE_TO, t, -23, ISLE_X + 1, t, -21, "nether_bricks");
+    p.fill(BRIDGE_TO, t + 1, -23, ISLE_X + 1, t + 6, -21, AIR);
+    for (int z : new int[] {-25, -19}) {
+      p.set(-45, t + 1, z, "red_nether_brick_wall");
+      p.set(-45, t + 2, z, "soul_lantern");
+    }
+    // The huge fungus behind the portal.
+    int fx = ISLE_X - 3;
+    int fz = ISLE_Z;
+    p.fill(fx, t + 1, fz, fx, t + 4, fz, "crimson_stem");
+    for (int dx = -1; dx <= 1; dx++) {
+      for (int dz = -1; dz <= 1; dz++) {
+        boolean corner = dx != 0 && dz != 0;
+        p.set(fx + dx, t + 5, fz + dz, corner ? "shroomlight" : "nether_wart_block");
+      }
+    }
+    p.set(fx, t + 6, fz, "nether_wart_block");
+    p.set(fx - 1, t + 6, fz, "nether_wart_block");
+    p.set(fx + 1, t + 6, fz, "nether_wart_block");
+    p.set(fx, t + 6, fz - 1, "nether_wart_block");
+    p.set(fx, t + 6, fz + 1, "nether_wart_block");
+    p.set(fx - 1, t + 4, fz + 1, "weeping_vines");
+    p.set(fx + 1, t + 4, fz - 1, "weeping_vines");
+    // The portal: obsidian facing the bridge, the corners crying, the portal last.
+    p.fill(ISLE_X, t, -24, ISLE_X, t + 5, -20, "obsidian");
+    for (int[] c : new int[][] {{t, -24}, {t, -20}, {t + 5, -24}, {t + 5, -20}}) p.set(ISLE_X, c[0], c[1], "crying_obsidian");
+    p.set(ISLE_X, t + 6, -24, "soul_lantern");
+    p.set(ISLE_X, t + 6, -20, "soul_lantern");
+    p.fill(ISLE_X, t + 1, -23, ISLE_X, t + 4, -21, "nether_portal[axis=z]");
   }
 
   private static final String WALL = "end_stone_bricks";
@@ -325,7 +498,7 @@ final class Portals {
   /** Writes down what is there now, so "weg" can put it back. */
   private boolean remember(Kind kind, Map<Long, Block> plan) {
     World w = SpawnArea.world();
-    StringBuilder out = new StringBuilder(w.getName()).append('\n');
+    StringBuilder out = new StringBuilder(w.getName()).append('\n').append("#layout ").append(layout(kind)).append('\n');
     for (Block b : plan.values()) {
       out.append(b.x()).append(' ').append(b.y()).append(' ').append(b.z()).append(' ')
           .append(w.getBlockAt(b.x(), b.y(), b.z()).getBlockData().getAsString()).append('\n');
@@ -352,12 +525,13 @@ final class Portals {
   }
 
   /** Sets the plan bit by bit, from the bottom up; the portal blocks come last. */
-  private void build(Kind kind, Map<Long, Block> plan, boolean again) {
+  private void build(Kind kind, Map<Long, Block> plan, String message) {
     World w = SpawnArea.world();
     List<Block> order = new ArrayList<>(plan.values());
     boolean isEnd = kind == Kind.END;
     order.sort(Comparator.comparingInt((Block b) -> b.data().startsWith("nether_portal") || b.data().equals("end_portal") ? 1 : 0)
-        .thenComparingInt(b -> isEnd ? depthOrder(b) : b.y()));
+        .thenComparingInt(b -> isEnd ? depthOrder(b) : -b.x())
+        .thenComparingInt(Block::y));
     busy.add(kind);
     int[] at = {0};
     Bukkit.getScheduler().runTaskTimer(plugin, task -> {
@@ -372,7 +546,7 @@ final class Portals {
       if (end >= order.size()) {
         task.cancel();
         busy.remove(kind);
-        announce("portal." + kind.id() + (again ? ".repaired" : ".built"), isEnd ? END_SOUND : NETHER_SOUND);
+        announce(message, isEnd ? END_SOUND : NETHER_SOUND);
       }
     }, 1L, 1L);
   }

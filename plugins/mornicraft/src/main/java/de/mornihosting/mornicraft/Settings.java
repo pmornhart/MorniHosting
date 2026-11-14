@@ -46,7 +46,58 @@ record Settings(
     Map<String, Limit> limits,
     boolean clans,
     int clanMaxMembers,
-    boolean hardDragon) {
+    boolean hardDragon,
+    Dragon dragon) {
+
+  /**
+   * The mighty ender dragon: health, hit strength in percent, seconds between special attacks, rage below this
+   * share of health (0 = never), extra experience, and which attacks it has.
+   */
+  record Dragon(
+      int health,
+      int damagePercent,
+      int attackSeconds,
+      int ragePercent,
+      int xp,
+      boolean brood,
+      boolean lightning,
+      boolean fireballs,
+      boolean fangs,
+      boolean endermen,
+      boolean levitation,
+      boolean shockwave,
+      boolean crystals,
+      boolean egg) {
+    private static final int MIN_HEALTH = 20;
+    private static final int MAX_HEALTH = 3000;
+    private static final int MAX_DAMAGE = 400;
+    private static final int MIN_SECONDS = 3;
+    private static final int MAX_RAGE = 90;
+
+    static Dragon from(FileConfiguration c) {
+      String d = "dragon.";
+      return new Dragon(
+          clamp(c.getInt(d + "health", 600), MIN_HEALTH, MAX_HEALTH),
+          clamp(c.getInt(d + "damage", 175), 50, MAX_DAMAGE),
+          Math.max(MIN_SECONDS, c.getInt(d + "attack-seconds", 12)),
+          clamp(c.getInt(d + "rage-percent", 25), 0, MAX_RAGE),
+          Math.max(0, c.getInt(d + "xp", 3000)),
+          c.getBoolean(d + "brood", true),
+          c.getBoolean(d + "lightning", true),
+          c.getBoolean(d + "fireballs", true),
+          c.getBoolean(d + "fangs", true),
+          c.getBoolean(d + "endermen", true),
+          c.getBoolean(d + "levitation", true),
+          c.getBoolean(d + "shockwave", true),
+          c.getBoolean(d + "crystals", true),
+          c.getBoolean(d + "egg", true));
+    }
+
+    private static int clamp(int v, int min, int max) {
+      return Math.max(min, Math.min(max, v));
+    }
+  }
+
 
   /** "uses" times per "hours" (0 uses = no limit), e.g. 3 per 24 hours. */
   record Limit(int uses, int hours) {}
@@ -111,7 +162,8 @@ record Settings(
         c.getBoolean("clans.enabled", true),
         Math.max(2, c.getInt("clans.max-members", 10)),
         // The mighty ender dragon: three times the health, harder hits, a brood of phantoms.
-        c.getBoolean("hard-dragon", true));
+        c.getBoolean("hard-dragon", true),
+        Dragon.from(c));
   }
 
   private static Map<String, Limit> limits(FileConfiguration c) {

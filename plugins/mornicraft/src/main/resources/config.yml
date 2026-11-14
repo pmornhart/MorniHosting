@@ -55,6 +55,21 @@ fire-spread: true
 enderman-grief: true
 # Mächtiger Enderdrache: dreimal so viel Leben, härtere Treffer, ruft Phantome zu Hilfe
 hard-dragon: true
+dragon:
+  health: 600 # normal: 200
+  damage: 175 # Treffer in Prozent (100 = normal)
+  attack-seconds: 12 # Zeit zwischen den Angriffen (in der Wut halb so lang)
+  rage-percent: 25 # Wut ab so viel Prozent Leben (0 = nie)
+  xp: 3000 # Extra-Erfahrung beim Sieg
+  brood: true # Phantome bei 3/4, 1/2, 1/4
+  lightning: true # Blitze, wo Spieler stehen (kurz vorher Funken)
+  fireballs: true # Feuerregen
+  fangs: true # Zähne aus dem Boden (kurz vorher Rauch)
+  endermen: true # Endermen greifen an
+  levitation: true # Schwebe-Geschosse
+  shockwave: true # Flügelschlag schleudert weg, wer zu nah ist
+  crystals: true # in der Wut drei neue Endkristalle
+  egg: true # Drachenei bei jedem Sieg
 
 # Große Begrüßung – einmal pro Spieler
 welcome: true

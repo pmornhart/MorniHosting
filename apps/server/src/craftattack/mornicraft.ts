@@ -109,6 +109,17 @@ const DEFAULT_LIMIT_HOURS = 24;
 const MIN_CLAN = 2;
 const MAX_CLAN = 50;
 const DEFAULT_CLAN = 10;
+/** The mighty ender dragon: health, hits in percent, seconds between attacks, rage below percent, extra XP. */
+const DRAGON = {
+  health: { min: 200, max: 3000, normal: 600 },
+  damage: { min: 100, max: 400, normal: 175 },
+  attackSeconds: { min: 5, max: 60, normal: 12 },
+  ragePercent: { min: 0, max: 75, normal: 25 },
+  xp: { min: 0, max: 20000, normal: 3000 },
+} as const;
+const dragonNumber = (r: { min: number; max: number; normal: number }) =>
+  z.number().int().min(r.min).max(r.max).default(r.normal);
+const on = z.boolean().default(true);
 const limitUses = z.number().int().min(0).max(MAX_LIMIT_USES).default(0);
 const limitHours = z.number().int().min(1).max(HOURS_PER_WEEK).default(DEFAULT_LIMIT_HOURS);
 
@@ -132,6 +143,20 @@ export const morniCraftSettingsSchema = z.object({
   fireSpread: z.boolean(),
   endermanGrief: z.boolean(),
   hardDragon: z.boolean().default(true),
+  dragonHealth: dragonNumber(DRAGON.health),
+  dragonDamage: dragonNumber(DRAGON.damage),
+  dragonAttackSeconds: dragonNumber(DRAGON.attackSeconds),
+  dragonRagePercent: dragonNumber(DRAGON.ragePercent),
+  dragonXp: dragonNumber(DRAGON.xp),
+  dragonBrood: on,
+  dragonLightning: on,
+  dragonFireballs: on,
+  dragonFangs: on,
+  dragonEndermen: on,
+  dragonLevitation: on,
+  dragonShockwave: on,
+  dragonCrystals: on,
+  dragonEgg: on,
   rules: z.array(z.string().trim().min(1).max(120)).max(15),
   ranks: ranksSchema,
   badges: z.boolean(),
@@ -258,6 +283,22 @@ export function morniCraftConfig(s: MorniCraftSettings, c: ConfigContext): strin
     'fire-spread': s.fireSpread,
     'enderman-grief': s.endermanGrief,
     'hard-dragon': s.hardDragon,
+    dragon: {
+      health: s.dragonHealth,
+      damage: s.dragonDamage,
+      'attack-seconds': s.dragonAttackSeconds,
+      'rage-percent': s.dragonRagePercent,
+      xp: s.dragonXp,
+      brood: s.dragonBrood,
+      lightning: s.dragonLightning,
+      fireballs: s.dragonFireballs,
+      fangs: s.dragonFangs,
+      endermen: s.dragonEndermen,
+      levitation: s.dragonLevitation,
+      shockwave: s.dragonShockwave,
+      crystals: s.dragonCrystals,
+      egg: s.dragonEgg,
+    },
     rules: s.rules,
     groups,
     ranks: s.ranks.map((r) => rankConfig(r, c)),

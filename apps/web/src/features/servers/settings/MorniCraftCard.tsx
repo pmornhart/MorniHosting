@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
+  Crown,
   Feather,
   Flame,
   Home,
@@ -50,6 +51,8 @@ const SECTIONS: readonly {
   readonly icon: typeof Home;
   readonly switches: readonly BoolKey[];
   readonly numbers: readonly NumberSpec[];
+  /** The section's main switch: while it is off, only this switch shows. */
+  readonly gate?: BoolKey;
 }[] = [
   {
     id: 'teleport',
@@ -96,7 +99,37 @@ const SECTIONS: readonly {
   {
     id: 'world',
     icon: Flame,
-    switches: ['tnt', 'creeperDamage', 'fireSpread', 'endermanGrief', 'hardDragon', 'sit'],
+    switches: ['tnt', 'creeperDamage', 'fireSpread', 'endermanGrief', 'sit'],
+    numbers: [],
+  },
+  {
+    id: 'dragon',
+    icon: Crown,
+    gate: 'hardDragon',
+    switches: ['hardDragon'],
+    numbers: [
+      { key: 'dragonHealth', min: 200, max: 3000, step: 50 },
+      { key: 'dragonDamage', min: 100, max: 400, step: 25 },
+      { key: 'dragonAttackSeconds', min: 5, max: 60, step: 1 },
+      { key: 'dragonRagePercent', min: 0, max: 75, step: 5, zero: 'off' },
+      { key: 'dragonXp', min: 0, max: 20000, step: 500, zero: 'off' },
+    ],
+  },
+  {
+    id: 'dragonAttacks',
+    icon: Flame,
+    gate: 'hardDragon',
+    switches: [
+      'dragonBrood',
+      'dragonLightning',
+      'dragonFireballs',
+      'dragonFangs',
+      'dragonEndermen',
+      'dragonLevitation',
+      'dragonShockwave',
+      'dragonCrystals',
+      'dragonEgg',
+    ],
     numbers: [],
   },
   {
@@ -149,8 +182,11 @@ export function MorniCraftSections({
         <section
           key={section.id}
           hidden={
-            section.switches.length === 0 &&
-            !section.numbers.some((n) => (n.when ?? []).every((w) => Boolean(draft[w])))
+            (section.gate !== undefined &&
+              !section.switches.includes(section.gate) &&
+              !draft[section.gate]) ||
+            (section.switches.length === 0 &&
+              !section.numbers.some((n) => (n.when ?? []).every((w) => Boolean(draft[w]))))
           }
           className="grid content-start rounded-[12px] border bg-secondary/30 px-4 py-3"
         >
@@ -159,16 +195,19 @@ export function MorniCraftSections({
             {t(`mornicraft.sections.${section.id}`)}
           </h3>
           <div className="divide-y divide-border/60">
-            {section.switches.map((k) => (
-              <Row key={k} label={t(`mornicraft.fields.${k}`)} hint={t(`mornicraft.hints.${k}`)}>
-                <Switch
-                  checked={draft[k]}
-                  onCheckedChange={(v) => set({ [k]: v })}
-                  aria-label={t(`mornicraft.fields.${k}`)}
-                />
-              </Row>
-            ))}
+            {section.switches
+              .filter((k) => !section.gate || k === section.gate || draft[section.gate])
+              .map((k) => (
+                <Row key={k} label={t(`mornicraft.fields.${k}`)} hint={t(`mornicraft.hints.${k}`)}>
+                  <Switch
+                    checked={draft[k]}
+                    onCheckedChange={(v) => set({ [k]: v })}
+                    aria-label={t(`mornicraft.fields.${k}`)}
+                  />
+                </Row>
+              ))}
             {section.numbers
+              .filter(() => !section.gate || draft[section.gate])
               .filter((n) => (n.when ?? []).every((w) => Boolean(draft[w])))
               .map((n) => (
                 <div key={n.key} className="grid gap-2 py-2.5">
