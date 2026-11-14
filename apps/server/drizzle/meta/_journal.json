@@ -99,6 +99,13 @@
       "when": 1794661477321,
       "tag": "0013_networks",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1794662452528,
+      "tag": "0014_token_scopes",
+      "breakpoints": true
     }
   ]
 }

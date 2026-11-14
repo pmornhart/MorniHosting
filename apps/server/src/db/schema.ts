@@ -16,6 +16,7 @@ import type {
   ServerRequestStatus,
   SoftwareId,
   Theme,
+  TokenScope,
   WebhookEvent,
   WebhookKind,
 } from '@mornihosting/shared';
@@ -112,6 +113,8 @@ export const apiTokens = sqliteTable('api_tokens', {
   createdAt: createdAt(),
   lastUsedAt: text('last_used_at'),
   expiresAt: text('expires_at'),
+  /** Areas the key may reach (TokenScope[]); null = everything its owner may. */
+  scopes: text('scopes', { mode: 'json' }).$type<TokenScope[] | null>(),
 });
 
 /** WebAuthn credentials ("Passkeys"); the id is the credential id the authenticator gave out. */

@@ -356,7 +356,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerPreloadRoutes(app, createPreloadService(ctx, servers));
   registerWebSocket(app, ctx, servers);
 
-  const hasWeb = fs.existsSync(path.join(config.webDir, 'index.html'));
+  // In motor mode another app is the front: no web interface, no start page – only the API.
+  const hasWeb = !config.headless && fs.existsSync(path.join(config.webDir, 'index.html'));
   if (hasWeb) {
     await app.register(fastifyStatic, {
       root: config.webDir,

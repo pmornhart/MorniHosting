@@ -1,3 +1,4 @@
+import { tokenScopesSchema, type TokenScope } from './token-scopes.js';
 import { z } from 'zod';
 import { couponOf, couponSchema } from './payments.js';
 import { SERVER_PERMISSIONS, type ServerPermission } from './permissions.js';
@@ -721,6 +722,8 @@ export interface UserListEntry extends UserInfo {
 export const tokenCreateSchema = z.object({
   name: z.string().trim().min(1).max(TOKEN_NAME_MAX),
   expiresInDays: z.number().int().min(1).max(TOKEN_DAYS_MAX).nullable().default(null),
+  /** Areas the key may reach (see token-scopes.ts); null = everything its owner may. */
+  scopes: tokenScopesSchema.nullable().default(null),
 });
 
 export interface ApiTokenEntry {
@@ -730,6 +733,8 @@ export interface ApiTokenEntry {
   readonly createdAt: string;
   readonly lastUsedAt: string | null;
   readonly expiresAt: string | null;
+  /** null = no limits. */
+  readonly scopes: readonly TokenScope[] | null;
 }
 
 /* ---------- Passkeys ---------- */
