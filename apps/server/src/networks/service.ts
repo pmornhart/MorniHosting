@@ -261,6 +261,18 @@ export function createNetworkService(
     return { ...spec, ports: [...spec.ports, { ...main, protocol: 'udp' }] };
   });
 
+  // Players reach a server behind the proxy through the proxy's address.
+  servers.onAddressStandIn((row) => {
+    const member = memberRow(row.id);
+    if (!member) return null;
+    const proxyId = db
+      .select({ id: networks.proxyServerId })
+      .from(networks)
+      .where(eq(networks.id, member.networkId))
+      .get()?.id;
+    return proxyId && exists(proxyId) ? servers.row(proxyId) : null;
+  });
+
   ctx.events.on('server.deleted', ({ serverId }) => {
     const asProxy = byProxy(serverId);
     if (asProxy) {

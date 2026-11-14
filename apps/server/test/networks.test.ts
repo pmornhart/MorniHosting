@@ -260,6 +260,10 @@ describe('networks', () => {
     expect(specs.get(proxy.id)?.mounts).toEqual([{ subdir: '', path: '/server' }]);
     expect(specs.get(proxy.id)?.ports.map((p) => p.hostPort)).toEqual([25565]);
 
+    // Players reach the lobby through the proxy's address.
+    const lobbyNow = (await call('GET', `/api/servers/${lobby.id}`)).json<ServerSummary>();
+    const proxyNow = (await call('GET', `/api/servers/${proxy.id}`)).json<ServerSummary>();
+    expect(lobbyNow.address).toBe(proxyNow.address);
     const info = (await call('GET', `/api/servers/${lobby.id}/network`)).json<{
       network: { role: string; memberName: string };
     }>();

@@ -121,6 +121,10 @@ export interface ServerService {
   readonly onBeforeStart: (prepare: (id: string) => void) => () => void;
   /** Extra environment for the container, worked out just before each start (e.g. Geyser's public address). */
   readonly onStartEnv: (provide: (id: string) => Promise<Readonly<Record<string, string>>>) => void;
+  /** Another server whose address players use instead (a server behind a network proxy: the proxy's). */
+  readonly onAddressStandIn: (provider: (row: ServerRow) => ServerRow | null) => void;
+  /** The row whose address players use for this server (itself, or e.g. its network proxy). */
+  readonly addressRow: (id: string) => ServerRow;
   /** Last word on the container before it is created (e.g. networks take the ports of servers behind a proxy). */
   readonly onContainerSpec: (transform: (id: string, spec: ContainerSpec) => ContainerSpec) => void;
   /** Awaited after a server was created, before the answer goes out (e.g. NetBird sets up its address). */
@@ -434,6 +438,9 @@ export function createServerService(ctx: AppContext): ServerService {
   const beforeStart = new Set<(id: string) => void>();
   const startEnv = new Set<(id: string) => Promise<Readonly<Record<string, string>>>>();
   const specTransforms = new Set<(id: string, spec: ContainerSpec) => ContainerSpec>();
+  const addressStandIns = new Set<(row: ServerRow) => ServerRow | null>();
+  const standInFor = (r: ServerRow): ServerRow =>
+    [...addressStandIns].map((provide) => provide(r)).find((other) => other !== null) ?? r;
   let quota: QuotaGuard | null = null;
   const portListeners = new Set<(id: string) => void>();
   const createdListeners = new Set<(id: string) => Promise<void>>();
@@ -481,7 +488,7 @@ export function createServerService(ctx: AppContext): ServerService {
     cpuLimit: r.cpuLimit,
     diskLimitMb: r.diskLimitMb,
     port: r.port,
-    address: addressOf(r),
+    address: addressOf(standInFor(r)),
     autoStart: r.autoStart,
     hasIcon: fs.existsSync(path.join(serverDir(config, r.id), 'server-icon.png')),
     live: live(r.id),
@@ -1482,6 +1489,10 @@ export function createServerService(ctx: AppContext): ServerService {
     onStartEnv: (provide) => {
       startEnv.add(provide);
     },
+    onAddressStandIn: (provider) => {
+      addressStandIns.add(provider);
+    },
+    addressRow: (id) => standInFor(row(id)),
     onContainerSpec: (transform) => {
       specTransforms.add(transform);
     },

@@ -27,6 +27,7 @@ const PanelSettingsPageLazy = namedPage(
   'PanelSettingsPage',
 );
 const UsersPageLazy = namedPage(() => import('@/features/admin/UsersPage'), 'UsersPage');
+const NetworksPageLazy = namedPage(() => import('@/features/networks/NetworksPage'), 'NetworksPage');
 const CreateServerPageLazy = namedPage(
   () => import('@/features/servers/create/CreateServerPage'),
   'CreateServerPage',
@@ -75,6 +76,14 @@ export const appRoutes: RouteObject[] = [
     element: (
       <Lazy>
         <UsersPageLazy />
+      </Lazy>
+    ),
+  },
+  {
+    path: 'networks',
+    element: (
+      <Lazy>
+        <NetworksPageLazy />
       </Lazy>
     ),
   },

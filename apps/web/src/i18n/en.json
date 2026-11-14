@@ -80,7 +80,8 @@
     "member": "Member",
     "theme": "Theme",
     "approvals": "Approvals",
-    "requestServer": "Request a server"
+    "requestServer": "Request a server",
+    "networks": "Networks"
   },
   "states": {
     "installing": "Setting up",
@@ -594,7 +595,7 @@
     "cannot_reset_self": "Change your own password under “My account”.",
     "demo_readonly": "Uploading files is not possible in the demo. In the real panel it works by drag and drop.",
     "voicechat_java_only": "Voice chat is only available for Java servers.",
-    "voicechat_unsupported": "Simple Voice Chat does not exist for this server software. It works with Paper, Purpur, Fabric, Forge and NeoForge.",
+    "voicechat_unsupported": "Simple Voice Chat does not exist for this server software. It works with Paper, Purpur, Fabric, Forge, NeoForge and Velocity.",
     "netbird_unauthorized": "NetBird rejected the API key. Check it in the NetBird dashboard.",
     "netbird_unreachable": "NetBird cannot be reached right now ({{host}}).",
     "netbird_rejected": "NetBird says: {{message}}",
@@ -690,7 +691,14 @@
     "impressum_not_image": "That is not a picture (PNG, JPG or WebP).",
     "impressum_too_big": "The picture is too big (at most {{mb}} MB).",
     "via_unsupported": "There is no ViaVersion for this software.",
-    "mornicraft_inactive": "This is not a MorniCraft server."
+    "mornicraft_inactive": "This is not a MorniCraft server.",
+    "network_not_found": "This network does not exist (any more).",
+    "network_server_taken": "This server already belongs to a network.",
+    "network_proxy_not_velocity": "The proxy must be a Velocity server.",
+    "network_member_software": "Only Paper and Purpur servers can run behind a Velocity proxy.",
+    "network_member_name_taken": "This name is already taken in the network.",
+    "network_member_unknown": "This server is not in the network.",
+    "network_member_name": "Lower-case letters, digits, “-” and “_” only."
   },
   "update": {
     "text": "Your Minecraft servers keep running during the update.",
@@ -3604,5 +3612,55 @@
       "save": "Save",
       "saved": "Saved ✓"
     }
+  },
+  "networks": {
+    "title": "Networks",
+    "subtitle": "One proxy in front, your servers behind it: players join one address and switch between the servers.",
+    "emptyTitle": "No network yet",
+    "emptyText": "A network connects a Velocity proxy with several Paper or Purpur servers – for example lobby, survival and minigames under one address.",
+    "create": "Create network",
+    "createText": "Pick a Velocity server as the proxy. You add the servers behind it afterwards.",
+    "name": "Name",
+    "proxy": "Proxy (Velocity)",
+    "chooseProxy": "Choose a Velocity server",
+    "createButton": "Create",
+    "noProxy": "You have no free Velocity server yet.",
+    "createProxy": "Create a Velocity server",
+    "created": "Network created",
+    "saved": "Saved",
+    "deleted": "Network deleted – the servers sign players in themselves again.",
+    "summary_one": "Proxy and {{count}} server",
+    "summary_other": "Proxy and {{count}} servers",
+    "address": "Address: {{address}}",
+    "players_one": "{{count}} player",
+    "players_other": "{{count}} players",
+    "members": "Servers in the network",
+    "noMembers": "No servers yet – add one below.",
+    "addServer": "Add server",
+    "chooseServer": "Choose a Paper or Purpur server",
+    "memberName": "Name in the network",
+    "add": "Add",
+    "memberAdded": "Server added",
+    "memberRemoved": "Server left the network – it has its own port again.",
+    "removeMember": "Remove {{name}} from the network",
+    "noCandidates": "No free Paper or Purpur server.",
+    "restartRequired": "Restart needed",
+    "landing": "Start server",
+    "makeLanding": "Make start server",
+    "onlineMode": "Check accounts",
+    "onlineModeHint": "Real Minecraft accounts only (recommended). Off for testing only.",
+    "delete": "Delete network",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteText": "The servers stay, get their own port back and sign players in themselves again. Please restart them afterwards.",
+    "howTitle": "How it works",
+    "how1": "Players only connect to the proxy. The servers behind it have no ports to the outside – nobody gets past the proxy.",
+    "how2": "Before every start the panel fills in everything: forwarding with a secret key, the server list and the start server.",
+    "how3": "Switch on Geyser, “All versions” and voice chat on the proxy – they then work for the whole network.",
+    "how4": "New servers in a network need one restart; the proxy picks up the list right away."
+  },
+  "networkInfo": {
+    "proxy": "This server is the proxy of “{{network}}”.",
+    "member": "This server is part of “{{network}}” (name in the network: {{name}}). Players come in through the proxy; it has no port of its own to the outside.",
+    "manage": "Manage network"
   }
 }
