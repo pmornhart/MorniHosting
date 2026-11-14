@@ -50,6 +50,34 @@ export interface MorniCraftSettings {
   readonly endermanGrief: boolean;
   /** The mighty ender dragon: three times the health, harder hits, calls a brood of phantoms. */
   readonly hardDragon: boolean;
+  /** The dragon's health (normal: 200). */
+  readonly dragonHealth: number;
+  /** How hard it hits, in percent of the normal dragon (100 = normal). */
+  readonly dragonDamage: number;
+  /** Seconds between its special attacks (half as long while it rages). */
+  readonly dragonAttackSeconds: number;
+  /** Below this share of its health it rages (0 = never). */
+  readonly dragonRagePercent: number;
+  /** Extra experience when it is beaten (on top of the normal). */
+  readonly dragonXp: number;
+  /** At ¾, ½ and ¼ of its health it calls its brood (phantoms). */
+  readonly dragonBrood: boolean;
+  /** Lightning where the players stand – marked a moment before, so they can step aside. */
+  readonly dragonLightning: boolean;
+  /** A rain of fireballs from the sky. */
+  readonly dragonFireballs: boolean;
+  /** Fangs coming out of the ground round the players. */
+  readonly dragonFangs: boolean;
+  /** Endermen nearby go for the players. */
+  readonly dragonEndermen: boolean;
+  /** Homing shots that make players float up. */
+  readonly dragonLevitation: boolean;
+  /** A blast from its wings that throws players nearby back. */
+  readonly dragonShockwave: boolean;
+  /** When it starts to rage it brings back three end crystals that heal it. */
+  readonly dragonCrystals: boolean;
+  /** A dragon egg at every victory (normally only the first). */
+  readonly dragonEgg: boolean;
   readonly rules: readonly string[];
   /** Highest first; shown as symbol + colour in chat, tab list and above the head. */
   readonly ranks: readonly MorniCraftRank[];
@@ -266,6 +294,20 @@ export const MORNICRAFT_DEFAULTS: MorniCraftSettings = {
   fireSpread: true,
   endermanGrief: true,
   hardDragon: true,
+  dragonHealth: 600,
+  dragonDamage: 175,
+  dragonAttackSeconds: 12,
+  dragonRagePercent: 25,
+  dragonXp: 3000,
+  dragonBrood: true,
+  dragonLightning: true,
+  dragonFireballs: true,
+  dragonFangs: true,
+  dragonEndermen: true,
+  dragonLevitation: true,
+  dragonShockwave: true,
+  dragonCrystals: true,
+  dragonEgg: true,
   rules: [
     'Sei nett zu allen.',
     'Nichts kaputt machen, was anderen gehört.',
@@ -787,6 +829,20 @@ export const TEAM_SETTING_KEYS = [
   'fireSpread',
   'endermanGrief',
   'hardDragon',
+  'dragonHealth',
+  'dragonDamage',
+  'dragonAttackSeconds',
+  'dragonRagePercent',
+  'dragonXp',
+  'dragonBrood',
+  'dragonLightning',
+  'dragonFireballs',
+  'dragonFangs',
+  'dragonEndermen',
+  'dragonLevitation',
+  'dragonShockwave',
+  'dragonCrystals',
+  'dragonEgg',
   'sit',
   'welcome',
   'sidebar',

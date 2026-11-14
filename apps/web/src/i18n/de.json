@@ -3279,7 +3279,9 @@
       "graves": "Gräber",
       "combat": "Kampf-System",
       "limits": "Begrenzungen",
-      "clans": "Clans"
+      "clans": "Clans",
+      "dragon": "Enderdrache",
+      "dragonAttacks": "Angriffe des Drachen"
     },
     "fields": {
       "tpa": "Teleport-Anfragen (/tpa)",
@@ -3317,7 +3319,21 @@
       "backLimit": "/back",
       "backLimitHours": "… innerhalb von",
       "clans": "Clans",
-      "clanMaxMembers": "Mitglieder pro Clan"
+      "clanMaxMembers": "Mitglieder pro Clan",
+      "dragonHealth": "Leben",
+      "dragonDamage": "Treffer-Stärke",
+      "dragonAttackSeconds": "Zeit zwischen Angriffen",
+      "dragonRagePercent": "Wut ab",
+      "dragonXp": "Extra-Erfahrung beim Sieg",
+      "dragonBrood": "Drachenbrut",
+      "dragonLightning": "Blitze",
+      "dragonFireballs": "Feuerregen",
+      "dragonFangs": "Bodenzähne",
+      "dragonEndermen": "Endermen-Angriff",
+      "dragonLevitation": "Schwebe-Geschosse",
+      "dragonShockwave": "Flügelschlag",
+      "dragonCrystals": "Neue Endkristalle in der Wut",
+      "dragonEgg": "Drachenei bei jedem Sieg"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – mit Knöpfen zum Annehmen",
@@ -3335,7 +3351,7 @@
       "creeperDamage": "Aus: Creeper explodieren, aber der Boden bleibt heil",
       "fireSpread": "Aus: Feuer bleibt, wo es angezündet wurde",
       "endermanGrief": "Aus: Endermen lassen Blöcke liegen",
-      "hardDragon": "Dreimal so viel Leben, härtere Treffer, ruft Phantome zu Hilfe – aus: normaler Drache",
+      "hardDragon": "Stärkerer Drache mit eigenen Angriffen – aus: der normale Drache",
       "welcome": "Großer Titel und Karte – einmal pro Spieler",
       "sidebar": "Uhrzeit, Spielzeit, online, Ping, Befehle – jeder kann sie mit /leiste ausblenden",
       "showLink": "In /info und der Begrüßung (braucht eine Panel-Domain)",
@@ -3355,7 +3371,21 @@
       "backLimit": "Wie oft jeder mit /back zurück darf",
       "backLimitHours": "Zeitraum für die Begrenzung",
       "clans": "Jeder kann mit /clan einen Clan gründen: Menü, Clan-Basis, Clan-Chat /cc, eigenes Kürzel (bis 4 Zeichen) vor dem Namen in Chat, Tab-Liste und über dem Kopf, kein Schaden unter Mitgliedern",
-      "clanMaxMembers": "Wie viele Spieler höchstens in einem Clan sein dürfen (mit Anführer)"
+      "clanMaxMembers": "Wie viele Spieler höchstens in einem Clan sein dürfen (mit Anführer)",
+      "dragonHealth": "Der normale Drache hat 200 Leben",
+      "dragonDamage": "100 % = so stark wie der normale Drache",
+      "dragonAttackSeconds": "So oft greift er mit Blitzen, Feuerregen und Co. an – in der Wut doppelt so oft",
+      "dragonRagePercent": "Bei so wenig Leben wird er wütend: schnellere Angriffe, neue Endkristalle",
+      "dragonXp": "Kommt zur normalen Erfahrung dazu",
+      "dragonBrood": "Bei ¾, ½ und ¼ seines Lebens ruft er Phantome zu Hilfe",
+      "dragonLightning": "Blitze schlagen dort ein, wo Spieler stehen – kurz vorher funkt es, wer ausweicht, bleibt heil",
+      "dragonFireballs": "Feuerbälle regnen vom Himmel auf die Spieler",
+      "dragonFangs": "Zähne schießen rund um die Spieler aus dem Boden – kurz vorher steigt Rauch auf",
+      "dragonEndermen": "Endermen in der Nähe greifen die Spieler an, zur Not kommen neue dazu",
+      "dragonLevitation": "Zielsuchende Geschosse lassen Spieler in die Luft schweben",
+      "dragonShockwave": "Wer zu nah am Drachen steht, wird weggeschleudert",
+      "dragonCrystals": "Wird er wütend, stehen drei Endkristalle wieder auf den Säulen und heilen ihn",
+      "dragonEgg": "Normal gibt es das Drachenei nur beim ersten Sieg"
     },
     "units": {
       "teleportDelay": "{{n}} s",
@@ -3373,6 +3403,11 @@
       "tpaLimitHours": "{{n}} Std.",
       "backLimitHours": "{{n}} Std.",
       "clanMaxMembers": "{{n}}",
+      "dragonHealth": "{{n}} Leben",
+      "dragonDamage": "{{n}} %",
+      "dragonAttackSeconds": "{{n}} s",
+      "dragonRagePercent": "{{n}} % Leben",
+      "dragonXp": "{{n}} XP",
       "unlimited": "unbegrenzt",
       "off": "aus"
     },

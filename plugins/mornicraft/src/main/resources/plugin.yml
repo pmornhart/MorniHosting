@@ -110,7 +110,11 @@ commands:
       aliases: [rank],
     }
   mornicraft:
-    { description: Einstellungen neu laden, permission: mornicraft.admin, usage: '/mornicraft reload' }
+    {
+      description: Einstellungen neu laden oder einen Drachen-Angriff starten,
+      permission: mornicraft.admin,
+      usage: '/mornicraft reload | /mornicraft drache <angriff>',
+    }
 permissions:
   mornicraft.moderate:
     description: Team-Werkzeuge (Gefängnis, Stumm, Einfrieren, Spieler-Menü).

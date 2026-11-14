@@ -789,6 +789,42 @@ describe('team dashboard (/teamdashboard)', () => {
   });
 });
 
+describe('MorniCraft dragon (Philip: "den Drachen genau im Dashboard anpassen")', () => {
+  const ctx = { language: 'de' as const, serverName: 'Test', timezone: 'Europe/Berlin', link: '' };
+  it('writes every dragon setting for the plugin', () => {
+    const settings = morniCraftSettingsSchema.parse({
+      ...withDefaults(undefined),
+      dragonHealth: 1500,
+      dragonDamage: 250,
+      dragonAttackSeconds: 8,
+      dragonRagePercent: 0,
+      dragonFangs: false,
+      dragonEgg: false,
+    });
+    const config = JSON.parse(morniCraftConfig(settings, ctx).split('\n').slice(1).join('\n'));
+    expect(config['hard-dragon']).toBe(true);
+    expect(config.dragon).toMatchObject({
+      health: 1500,
+      damage: 250,
+      'attack-seconds': 8,
+      'rage-percent': 0,
+      xp: 3000,
+      fangs: false,
+      egg: false,
+      lightning: true,
+      crystals: true,
+    });
+  });
+  it('reads older settings without the dragon fields and keeps the limits', () => {
+    const { dragonHealth: _h, dragonLightning: _l, ...old } = withDefaults(undefined);
+    const parsed = morniCraftSettingsSchema.parse(old);
+    expect(parsed.dragonHealth).toBe(600);
+    expect(parsed.dragonLightning).toBe(true);
+    expect(() => morniCraftSettingsSchema.parse({ ...old, dragonHealth: 5000 })).toThrow();
+    expect(() => morniCraftSettingsSchema.parse({ ...old, dragonAttackSeconds: 1 })).toThrow();
+  });
+});
+
 describe('MorniCraft limits, switches and clans (Philip: "einmal pro Stunde, dreimal am Tag")', () => {
   const ctx = { language: 'de' as const, serverName: 'Test', timezone: 'Europe/Berlin', link: '' };
   it('writes limits per command and hides switched-off commands from /info', () => {

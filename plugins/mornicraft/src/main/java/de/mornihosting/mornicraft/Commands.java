@@ -48,6 +48,10 @@ final class Commands implements TabExecutor {
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
     String name = command.getName().toLowerCase(Locale.ROOT);
     if (name.equals("mornicraft")) {
+      if (args.length == 2 && List.of("drache", "dragon").contains(args[0].toLowerCase(Locale.ROOT))) {
+        plugin.dragon().command(sender, args[1]);
+        return true;
+      }
       if (args.length != 1 || !args[0].equalsIgnoreCase("reload")) {
         sender.sendMessage(ui().fail("usage", Ui.v("usage", "/mornicraft reload")));
         return true;
@@ -467,6 +471,9 @@ final class Commands implements TabExecutor {
       Bukkit.getOnlinePlayers().forEach(o -> options.add(o.getName()));
     } else if (name.equals("mornicraft") && args.length == 1) {
       options.add("reload");
+      options.add("drache");
+    } else if (name.equals("mornicraft") && args.length == 2 && args[0].equalsIgnoreCase("drache")) {
+      options.addAll(HardDragon.ATTACK_NAMES);
     } else if ((name.equals("tpaccept") || name.equals("tpdeny")) && args.length == 1 && sender instanceof Player p) {
       options.addAll(plugin.social().askers(p));
     } else if ((args.length == 1 && List.of("tpa", "tpahere", "msg", "ignore", "seen").contains(name))

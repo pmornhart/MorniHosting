@@ -3279,7 +3279,9 @@
       "graves": "Graves",
       "combat": "Combat log",
       "limits": "Limits",
-      "clans": "Clans"
+      "clans": "Clans",
+      "dragon": "Ender dragon",
+      "dragonAttacks": "The dragon's attacks"
     },
     "fields": {
       "tpa": "Teleport requests (/tpa)",
@@ -3317,7 +3319,21 @@
       "backLimit": "/back",
       "backLimitHours": "… within",
       "clans": "Clans",
-      "clanMaxMembers": "Members per clan"
+      "clanMaxMembers": "Members per clan",
+      "dragonHealth": "Health",
+      "dragonDamage": "Hit strength",
+      "dragonAttackSeconds": "Time between attacks",
+      "dragonRagePercent": "Rage from",
+      "dragonXp": "Extra experience on victory",
+      "dragonBrood": "Dragon brood",
+      "dragonLightning": "Lightning",
+      "dragonFireballs": "Rain of fire",
+      "dragonFangs": "Fangs from the ground",
+      "dragonEndermen": "Endermen attack",
+      "dragonLevitation": "Floating shots",
+      "dragonShockwave": "Wing blast",
+      "dragonCrystals": "New end crystals in rage",
+      "dragonEgg": "Dragon egg at every victory"
     },
     "hints": {
       "tpa": "/tpa, /tpahere, /tpaccept – with buttons to accept",
@@ -3335,7 +3351,7 @@
       "creeperDamage": "Off: creepers explode, the ground stays whole",
       "fireSpread": "Off: fire stays where it was lit",
       "endermanGrief": "Off: endermen leave blocks alone",
-      "hardDragon": "Three times the health, harder hits, calls phantoms for help – off: the normal dragon",
+      "hardDragon": "A stronger dragon with its own attacks – off: the normal dragon",
       "welcome": "Big title and card – once per player",
       "sidebar": "Time, game time, online, ping, commands – everyone can hide it with /leiste",
       "showLink": "In /info and the welcome (needs a panel domain)",
@@ -3355,7 +3371,21 @@
       "backLimit": "How often everyone may go back with /back",
       "backLimitHours": "Time span of the limit",
       "clans": "Everyone can found a clan with /clan: menu, clan base, clan chat /cc, own tag (up to 4 characters) before the name in chat, tab list and above the head, no damage between members",
-      "clanMaxMembers": "How many players a clan may have at most (leader included)"
+      "clanMaxMembers": "How many players a clan may have at most (leader included)",
+      "dragonHealth": "The normal dragon has 200 health",
+      "dragonDamage": "100 % = as strong as the normal dragon",
+      "dragonAttackSeconds": "How often it attacks with lightning, fire and the rest – twice as often in rage",
+      "dragonRagePercent": "With this little health left it rages: faster attacks, new end crystals",
+      "dragonXp": "On top of the normal experience",
+      "dragonBrood": "At ¾, ½ and ¼ of its health it calls phantoms for help",
+      "dragonLightning": "Lightning strikes where players stand – it sparks a moment before, whoever steps aside is fine",
+      "dragonFireballs": "Fireballs rain from the sky onto the players",
+      "dragonFangs": "Fangs shoot out of the ground round the players – smoke rises a moment before",
+      "dragonEndermen": "Endermen nearby go for the players, new ones come if needed",
+      "dragonLevitation": "Homing shots make players float up into the air",
+      "dragonShockwave": "Whoever stands too close to the dragon is thrown away",
+      "dragonCrystals": "When it rages, three end crystals stand on the pillars again and heal it",
+      "dragonEgg": "Normally the dragon egg only comes with the first victory"
     },
     "units": {
       "teleportDelay": "{{n}} s",
@@ -3373,6 +3403,11 @@
       "tpaLimitHours": "{{n}} h",
       "backLimitHours": "{{n}} h",
       "clanMaxMembers": "{{n}}",
+      "dragonHealth": "{{n}} health",
+      "dragonDamage": "{{n}} %",
+      "dragonAttackSeconds": "{{n}} s",
+      "dragonRagePercent": "{{n}} % health",
+      "dragonXp": "{{n}} XP",
       "unlimited": "no limit",
       "off": "off"
     },

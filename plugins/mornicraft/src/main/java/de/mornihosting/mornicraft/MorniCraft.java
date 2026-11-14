@@ -36,6 +36,7 @@ public final class MorniCraft extends JavaPlugin {
   private Clans clans;
   private TeamBoard teamBoard;
   private Portals portals;
+  private HardDragon dragon;
 
   @Override
   public void onEnable() {
@@ -76,7 +77,10 @@ public final class MorniCraft extends JavaPlugin {
     clans = new Clans(this);
     pm.registerEvents(clans, this);
     portals = new Portals(this);
-    pm.registerEvents(new HardDragon(this), this);
+    // Portals built the old way move to their new place once the worlds are there.
+    Bukkit.getScheduler().runTaskLater(this, portals::migrate, 40L);
+    dragon = new HardDragon(this);
+    pm.registerEvents(dragon, this);
     seats = new Seats(this);
     pm.registerEvents(seats, this);
     pm.registerEvents(new UpdateCheck(this), this);
@@ -152,6 +156,10 @@ public final class MorniCraft extends JavaPlugin {
 
   Limits limits() {
     return limits;
+  }
+
+  HardDragon dragon() {
+    return dragon;
   }
 
   Portals portals() {
