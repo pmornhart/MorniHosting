@@ -1,7 +1,24 @@
 import { ForcePasswordDialog } from '@/features/auth/ForcePasswordDialog';
 import { CrashAlerts } from './CrashAlerts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, ChevronsUpDown, Inbox, LayoutGrid, LogOut, Menu, Moon, Plus, ScrollText, ShieldCheck, Sun, UserRound, Users, Waypoints, WifiOff, X } from 'lucide-react';
+import {
+  Bell,
+  ChevronsUpDown,
+  Inbox,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  Moon,
+  Plus,
+  ScrollText,
+  ShieldCheck,
+  Sun,
+  UserRound,
+  Users,
+  Waypoints,
+  WifiOff,
+  X,
+} from 'lucide-react';
 import { Dialog as SheetPrimitive } from 'radix-ui';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';

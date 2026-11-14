@@ -2,6 +2,7 @@ import { useState, type ReactElement, type ReactNode } from 'react';
 import { GAME_ART_IDS, PROJECT_LOGOS, type GameArtId, type LogoProject } from '@mornihosting/shared';
 import demoImages from 'virtual:demo-images';
 import { cn } from '@/lib/utils';
+import { apiUrl } from '@/lib/api';
 
 const LOGOS = PROJECT_LOGOS;
 export type { LogoProject };
@@ -43,6 +44,7 @@ const GAME_ART = Object.fromEntries(GAME_ART_IDS.map((id) => [id, `/api/game-art
   GameArtId,
   string
 >;
+const gameArtUrl = (game: GameArtId): string => apiUrl(GAME_ART[game]);
 
 export function GameArt({
   game,
@@ -54,7 +56,7 @@ export function GameArt({
   className?: string;
 }): ReactElement {
   const [failed, setFailed] = useState(false);
-  const src = DEMO ? EMBEDDED.gameArt[game] : GAME_ART[game];
+  const src = DEMO ? EMBEDDED.gameArt[game] : gameArtUrl(game);
   if (!src || failed) return <>{fallback}</>;
   return (
     <img

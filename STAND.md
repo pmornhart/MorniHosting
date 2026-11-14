@@ -178,6 +178,8 @@
 
 - Motor-Modus + begrenzte Schlüssel (14.11., Branch `claude/moinmorni-motor`, für MoinMorni): `MH_HEADLESS=true` – keine Weboberfläche und keine Startseite, nur die API (eine andere App ist die Oberfläche). API-Schlüssel mit Bereichen (`packages/shared/src/token-scopes.ts`: `servers:read|control|files|config|manage`, `networks`, `users`, `events`, `admin`; `scopeFor(method, path)` ordnet jede Anfrage zu), Spalte `api_tokens.scopes` (Migration `0014_token_scopes.sql`, leer = alles wie bisher), Prüfung in `auth/hook.ts` → `token_scope`. Live-Verbindung `/api/ws` geht auch mit Schlüssel (Bereich `events`) – so hört MoinMorni ohne eingehenden Port mit (statt signierter Webhooks). Befehl `node dist/cli.js service-token <app> [bereiche…]`: Dienst-Konto `dienst-<app>` (Admin, kann sich nicht anmelden) + neuer Schlüssel. 407 Tests.
 
+- Server-Seiten einbettbar (14.11., Branch `claude/moinmorni-motor`): `apps/web/src/lib/api.ts` `setApiBase(path)` + `apiUrl(path)` – alle Anfragen, Uploads, die Live-Verbindung, Bilder (Server-Icon, Köpfe, Item-Icons, Spielbilder) und Downloads laufen darüber. Einstieg `apps/web/src/embed.ts` (in `.fallowrc.jsonc` eingetragen): `serverRoutes` (Server-Seite mit allen Reitern), `queryClient`, `SessionProvider`/`meQuery`, `TooltipProvider`, `ServerIcon`/`StatePill`/`PlayerHead`; Anleitung oben in der Datei. MoinMorni leitet `/panel/motor/api/*` an den Motor weiter und hängt die Routen mit basename `/panel` ein.
+
 ## Lokal testen (Sandbox)
 
 - Backend simuliert: `MH_SECRET=… MH_DATA_DIR=./data MH_DOCKER_DRIVER=fake MH_DEMO=true pnpm --filter @mornihosting/server dev`

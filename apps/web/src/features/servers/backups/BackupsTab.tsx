@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/misc';
 import { Pill, Tag, type PillTone } from '@/components/ui/pill';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { api } from '@/lib/api';
+import { api, apiUrl } from '@/lib/api';
 import { formatBytes, formatDateTime, formatRelative } from '@/lib/format';
 import { useServer } from '../ServerLayout';
 import { TabIntro } from '@/components/tab-intro';
@@ -234,7 +234,7 @@ export default function BackupsTab(): ReactElement {
                   {t('common.restore')}
                 </Button>
                 <Button size="icon-sm" variant="ghost" asChild aria-label={t('common.download')}>
-                  <a href={`/api/servers/${server.id}/backups/${b.id}/download`} download>
+                  <a href={apiUrl(`/api/servers/${server.id}/backups/${b.id}/download`)} download>
                     <Download />
                   </a>
                 </Button>

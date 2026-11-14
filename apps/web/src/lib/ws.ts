@@ -1,5 +1,5 @@
 import type { WsClientMessage, WsServerMessage } from '@mornihosting/shared';
-import { csrfToken } from './api';
+import { csrfToken, apiUrl } from './api';
 
 type Listener = (message: WsServerMessage) => void;
 
@@ -41,7 +41,7 @@ function setConnected(value: boolean): void {
 function connect(): void {
   if (state.socket) return;
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const socket = new WebSocket(`${protocol}//${location.host}/api/ws`);
+  const socket = new WebSocket(`${protocol}//${location.host}${apiUrl('/api/ws')}`);
   state.socket = socket;
   socket.addEventListener('open', () => {
     state.delay = RECONNECT_MIN_MS;
