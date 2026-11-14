@@ -45,6 +45,8 @@ const envSchema = z.object({
   MH_ROUTER_JAVA_PORT: z.coerce.number().int().min(0).max(PORT_MAX).default(DEFAULT_ROUTER_JAVA_PORT),
   MH_ROUTER_BEDROCK_PORT: z.coerce.number().int().min(0).max(PORT_MAX).default(DEFAULT_ROUTER_BEDROCK_PORT),
   MH_DEMO: booleanFromEnv.default(false),
+  /** Motor mode: no web interface and no start page, only the API (another app, e.g. MoinMorni, is the front). */
+  MH_HEADLESS: booleanFromEnv.default(false),
   MH_WEB_DIR: z.string().optional(),
   MH_MAX_UPLOAD_MB: z.coerce.number().int().positive().default(DEFAULT_MAX_UPLOAD_MB),
   MH_PLUGIN_UPLOAD_MB: z.coerce.number().int().positive().default(DEFAULT_PLUGIN_UPLOAD_MB),
@@ -77,6 +79,8 @@ export interface Config {
   /** Ports of the address router in the panel container (0 = off). */
   readonly routerPorts: { readonly java: number; readonly bedrock: number };
   readonly demo: boolean;
+  /** Motor mode: API only, no web interface. */
+  readonly headless: boolean;
   readonly webDir: string;
   readonly maxUploadBytes: number;
   readonly pluginUploadBytes: number;
@@ -121,6 +125,7 @@ export function loadConfig(env: NodeJS.ProcessEnv, version: string): Config {
     netbirdApi: e.MH_NETBIRD_API ?? NETBIRD_DEFAULT_API,
     routerPorts: { java: e.MH_ROUTER_JAVA_PORT, bedrock: e.MH_ROUTER_BEDROCK_PORT },
     demo: e.MH_DEMO,
+    headless: e.MH_HEADLESS,
     webDir: e.MH_WEB_DIR ? path.resolve(e.MH_WEB_DIR) : path.resolve(here, '../../web/dist'),
     maxUploadBytes: e.MH_MAX_UPLOAD_MB * BYTES_PER_MB,
     pluginUploadBytes: e.MH_PLUGIN_UPLOAD_MB * BYTES_PER_MB,

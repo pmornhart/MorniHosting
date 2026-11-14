@@ -58,12 +58,31 @@ export async function toApiError(response: Response): Promise<ApiError> {
     : new ApiError(response.status, 'http_' + response.status);
 }
 
+const API_PREFIX = '/api/';
+// Trailing slashes of a base path: "/panel/motor/" → "/panel/motor". Matches "/" at the end only, not "/panel".
+// https://regex101.com/?flavor=javascript&regex=%2F%2B%24&testString=%2Fpanel%2Fmotor%2F
+const TRAILING_SLASHES = /\/+$/;
+const base = { path: '' };
+
+/**
+ * Embedding (e.g. MoinMorni shows these pages with MorniHosting as its motor): every request goes to
+ * `${path}/api/...` instead of `/api/...` – one switch for fetch, uploads, the live connection, pictures, downloads.
+ */
+export function setApiBase(path: string): void {
+  base.path = path.replace(TRAILING_SLASHES, '');
+}
+
+/** The address of an API path in this page (with the embedding base, if any). */
+export function apiUrl(path: string): string {
+  return path.startsWith(API_PREFIX) ? `${base.path}${path}` : path;
+}
+
 export async function api<TResult>(path: string, options: RequestOptions = {}): Promise<TResult> {
   const method = options.method ?? 'GET';
   const headers: Record<string, string> = { ...options.headers };
   if (options.body !== undefined) headers['content-type'] = 'application/json';
   if (UNSAFE.includes(method)) headers['x-csrf-token'] = session.csrf;
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     method,
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
@@ -90,7 +109,7 @@ export async function upload<TResult>(
 ): Promise<TResult> {
   return new Promise<TResult>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', path);
+    xhr.open('POST', apiUrl(path));
     xhr.setRequestHeader('x-csrf-token', session.csrf);
     xhr.upload.addEventListener('progress', (e) => onProgress?.({ loaded: e.loaded, total: e.total }));
     xhr.addEventListener('load', () => {

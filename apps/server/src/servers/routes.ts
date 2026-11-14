@@ -145,7 +145,7 @@ export function registerServerRoutes(
     access.assertAny(auth.user, request.params.id);
     // Friends outside need the public address; someone at home only gets in through the LAN address.
     return {
-      ...(await connectionInfo(servers.row(request.params.id), ctx.settings)),
+      ...(await connectionInfo(servers.addressRow(request.params.id), ctx.settings)),
       viewerAtHome: isHomeNetworkAddress(request.ip),
       srv:
         ctx.db

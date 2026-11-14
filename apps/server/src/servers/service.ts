@@ -23,6 +23,7 @@ import {
 import type { Actor } from '../audit/service.js';
 import type { UserRow } from '../auth/context.js';
 import type { AppContext } from '../context.js';
+import type { ContainerSpec } from '../docker/driver.js';
 import { roles, serverAccess, servers, stats, users } from '../db/schema.js';
 import { randomToken } from '../lib/crypto.js';
 import { SYSTEM_ACTOR } from '../audit/service.js';
@@ -120,6 +121,12 @@ export interface ServerService {
   readonly onBeforeStart: (prepare: (id: string) => void) => () => void;
   /** Extra environment for the container, worked out just before each start (e.g. Geyser's public address). */
   readonly onStartEnv: (provide: (id: string) => Promise<Readonly<Record<string, string>>>) => void;
+  /** Another server whose address players use instead (a server behind a network proxy: the proxy's). */
+  readonly onAddressStandIn: (provider: (row: ServerRow) => ServerRow | null) => void;
+  /** The row whose address players use for this server (itself, or e.g. its network proxy). */
+  readonly addressRow: (id: string) => ServerRow;
+  /** Last word on the container before it is created (e.g. networks take the ports of servers behind a proxy). */
+  readonly onContainerSpec: (transform: (id: string, spec: ContainerSpec) => ContainerSpec) => void;
   /** Awaited after a server was created, before the answer goes out (e.g. NetBird sets up its address). */
   readonly onCreated: (listener: (id: string) => Promise<void>) => void;
   /** Called after a server's host ports changed (server port, Geyser, voice chat). */
@@ -430,6 +437,10 @@ export function createServerService(ctx: AppContext): ServerService {
   /** Features that keep files in sync with the panel (e.g. voice chat) refresh them here. */
   const beforeStart = new Set<(id: string) => void>();
   const startEnv = new Set<(id: string) => Promise<Readonly<Record<string, string>>>>();
+  const specTransforms = new Set<(id: string, spec: ContainerSpec) => ContainerSpec>();
+  const addressStandIns = new Set<(row: ServerRow) => ServerRow | null>();
+  const standInFor = (r: ServerRow): ServerRow =>
+    [...addressStandIns].map((provide) => provide(r)).find((other) => other !== null) ?? r;
   let quota: QuotaGuard | null = null;
   const portListeners = new Set<(id: string) => void>();
   const createdListeners = new Set<(id: string) => Promise<void>>();
@@ -477,7 +488,7 @@ export function createServerService(ctx: AppContext): ServerService {
     cpuLimit: r.cpuLimit,
     diskLimitMb: r.diskLimitMb,
     port: r.port,
-    address: addressOf(r),
+    address: addressOf(standInFor(r)),
     autoStart: r.autoStart,
     hasIcon: fs.existsSync(path.join(serverDir(config, r.id), 'server-icon.png')),
     live: live(r.id),
@@ -683,7 +694,11 @@ export function createServerService(ctx: AppContext): ServerService {
         }),
       ),
     );
-    const spec = { ...built, env: Object.assign({}, built.env, ...extra) as Record<string, string> };
+    const withEnv = { ...built, env: Object.assign({}, built.env, ...extra) as Record<string, string> };
+    const spec = [...specTransforms].reduce(
+      (current, transform) => transform(id, current),
+      withEnv as ContainerSpec,
+    );
     const containerId = await docker.createContainer(spec);
     db.update(servers)
       .set({ containerId, crash: null, desiredRunning: true, updatedAt: nowIso() })
@@ -1473,6 +1488,13 @@ export function createServerService(ctx: AppContext): ServerService {
     },
     onStartEnv: (provide) => {
       startEnv.add(provide);
+    },
+    onAddressStandIn: (provider) => {
+      addressStandIns.add(provider);
+    },
+    addressRow: (id) => standInFor(row(id)),
+    onContainerSpec: (transform) => {
+      specTransforms.add(transform);
     },
     onBeforeStart: (prepare) => {
       beforeStart.add(prepare);

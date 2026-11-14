@@ -80,7 +80,8 @@
     "member": "Mitglied",
     "theme": "Design",
     "approvals": "Freigaben",
-    "requestServer": "Server anfragen"
+    "requestServer": "Server anfragen",
+    "networks": "Netzwerke"
   },
   "states": {
     "installing": "Wird eingerichtet",
@@ -594,7 +595,7 @@
     "cannot_reset_self": "Dein eigenes Passwort änderst du unter „Mein Konto“.",
     "demo_readonly": "In der Demo kann man keine Dateien hochladen. Im echten Panel geht das per Drag & Drop.",
     "voicechat_java_only": "Voice-Chat gibt es nur für Java-Server.",
-    "voicechat_unsupported": "Für diese Server-Software gibt es Simple Voice Chat nicht. Es geht mit Paper, Purpur, Fabric, Forge und NeoForge.",
+    "voicechat_unsupported": "Für diese Server-Software gibt es Simple Voice Chat nicht. Es geht mit Paper, Purpur, Fabric, Forge, NeoForge und Velocity.",
     "netbird_unauthorized": "NetBird hat den API-Schlüssel abgelehnt. Prüfe ihn im NetBird-Dashboard.",
     "netbird_unreachable": "NetBird ist gerade nicht erreichbar ({{host}}).",
     "netbird_rejected": "NetBird sagt: {{message}}",
@@ -690,7 +691,14 @@
     "impressum_not_image": "Das ist kein Bild (PNG, JPG oder WebP).",
     "impressum_too_big": "Das Bild ist zu groß (höchstens {{mb}} MB).",
     "via_unsupported": "Für diese Software gibt es ViaVersion nicht.",
-    "mornicraft_inactive": "Das ist kein MorniCraft-Server."
+    "mornicraft_inactive": "Das ist kein MorniCraft-Server.",
+    "network_not_found": "Dieses Netzwerk gibt es nicht (mehr).",
+    "network_server_taken": "Dieser Server gehört schon zu einem Netzwerk.",
+    "network_proxy_not_velocity": "Der Proxy muss ein Velocity-Server sein.",
+    "network_member_software": "Hinter einem Velocity-Proxy laufen nur Paper- und Purpur-Server.",
+    "network_member_name_taken": "Diesen Namen gibt es im Netzwerk schon.",
+    "network_member_unknown": "Diesen Server gibt es im Netzwerk nicht.",
+    "network_member_name": "Nur Kleinbuchstaben, Ziffern, „-“ und „_“."
   },
   "update": {
     "text": "Deine Minecraft-Server laufen beim Update weiter.",
@@ -3604,5 +3612,55 @@
       "save": "Speichern",
       "saved": "Gespeichert ✓"
     }
+  },
+  "networks": {
+    "title": "Netzwerke",
+    "subtitle": "Ein Proxy vorne, deine Server dahinter: Spieler kommen über eine Adresse herein und wechseln zwischen den Servern.",
+    "emptyTitle": "Noch kein Netzwerk",
+    "emptyText": "Ein Netzwerk verbindet einen Velocity-Proxy mit mehreren Paper- oder Purpur-Servern – zum Beispiel Lobby, Survival und Minispiele unter einer Adresse.",
+    "create": "Netzwerk anlegen",
+    "createText": "Wähle einen Velocity-Server als Proxy. Die Server dahinter fügst du danach hinzu.",
+    "name": "Name",
+    "proxy": "Proxy (Velocity)",
+    "chooseProxy": "Velocity-Server wählen",
+    "createButton": "Anlegen",
+    "noProxy": "Du hast noch keinen freien Velocity-Server.",
+    "createProxy": "Velocity-Server erstellen",
+    "created": "Netzwerk angelegt",
+    "saved": "Gespeichert",
+    "deleted": "Netzwerk gelöscht – die Server melden Spieler wieder selbst an.",
+    "summary_one": "Proxy und {{count}} Server",
+    "summary_other": "Proxy und {{count}} Server",
+    "address": "Adresse: {{address}}",
+    "players_one": "{{count}} Spieler",
+    "players_other": "{{count}} Spieler",
+    "members": "Server im Netzwerk",
+    "noMembers": "Noch keine Server – füge unten einen hinzu.",
+    "addServer": "Server hinzufügen",
+    "chooseServer": "Paper- oder Purpur-Server wählen",
+    "memberName": "Name im Netzwerk",
+    "add": "Hinzufügen",
+    "memberAdded": "Server hinzugefügt",
+    "memberRemoved": "Server aus dem Netzwerk genommen – er hat wieder seinen eigenen Port.",
+    "removeMember": "{{name}} aus dem Netzwerk nehmen",
+    "noCandidates": "Kein freier Paper- oder Purpur-Server da.",
+    "restartRequired": "Neustart nötig",
+    "landing": "Startserver",
+    "makeLanding": "Als Startserver",
+    "onlineMode": "Konten prüfen",
+    "onlineModeHint": "Nur echte Minecraft-Konten (empfohlen). Aus nur zum Testen.",
+    "delete": "Netzwerk löschen",
+    "deleteTitle": "„{{name}}“ löschen?",
+    "deleteText": "Die Server bleiben erhalten, bekommen ihren eigenen Port zurück und melden Spieler wieder selbst an. Bitte danach neu starten.",
+    "howTitle": "So funktioniert’s",
+    "how1": "Spieler verbinden sich nur mit dem Proxy. Die Server dahinter haben keine Ports nach außen – niemand kommt am Proxy vorbei.",
+    "how2": "Vor jedem Start trägt das Panel alles ein: Weiterleitung mit geheimem Schlüssel, Serverliste und Startserver.",
+    "how3": "Geyser, „Alle Versionen“ und Voice-Chat schaltest du am Proxy ein – sie gelten dann für das ganze Netzwerk.",
+    "how4": "Neue Server im Netzwerk brauchen einmal einen Neustart; der Proxy übernimmt die Liste sofort."
+  },
+  "networkInfo": {
+    "proxy": "Dieser Server ist der Proxy von „{{network}}“.",
+    "member": "Dieser Server gehört zu „{{network}}“ (Name im Netzwerk: {{name}}). Spieler kommen über den Proxy herein, er hat keinen eigenen Port nach außen.",
+    "manage": "Netzwerk verwalten"
   }
 }

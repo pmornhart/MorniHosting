@@ -29,6 +29,7 @@ export const VOICE_CHAT_SOFTWARE: readonly SoftwareId[] = [
   'fabric',
   'forge',
   'neoforge',
+  'velocity',
 ];
 const MOD_PAGE = 'https://modrinth.com/plugin/simple-voice-chat';
 const PORT_MIN = 1;

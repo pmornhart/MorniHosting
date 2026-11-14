@@ -7,6 +7,7 @@ import { Badge, LogoMark } from './art';
 import { blockOf, McBlock } from './mc-block';
 import { Pill, type PillTone } from './ui/pill';
 import demoImages from 'virtual:demo-images';
+import { apiUrl } from '@/lib/api';
 
 const STATE_TONES: Readonly<Record<ServerState, PillTone>> = {
   installing: 'warn',
@@ -58,7 +59,7 @@ function useIconVersion(id: string): number {
 /** The server's own server-icon.png if it has one, otherwise the Minecraft block of its software. */
 export function ServerIcon({ id, software, hasIcon, className }: ServerIconProps): ReactElement {
   const version = useIconVersion(id);
-  const iconUrl = `/api/servers/${id}/icon${version ? `?v=${version}` : ''}`;
+  const iconUrl = apiUrl(`/api/servers/${id}/icon${version ? `?v=${version}` : ''}`);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (!hasIcon || failedUrl === iconUrl) {
     if (isGameId(software)) return <Badge glyph={`game-${software}`} seed={id} className={className} />;
@@ -167,7 +168,10 @@ export function PlayerHead({
   const usable = !failed && !DEMO && lookup !== null;
   return (
     <img
-      src={embedded ?? (usable ? `/api/heads/${encodeURIComponent(lookup)}?v=${round}` : playerFace(name))}
+      src={
+        embedded ??
+        (usable ? apiUrl(`/api/heads/${encodeURIComponent(lookup)}?v=${round}`) : playerFace(name))
+      }
       alt=""
       loading="lazy"
       referrerPolicy="no-referrer"

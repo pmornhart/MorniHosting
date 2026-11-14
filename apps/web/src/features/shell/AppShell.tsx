@@ -2,9 +2,9 @@ import { ForcePasswordDialog } from '@/features/auth/ForcePasswordDialog';
 import { CrashAlerts } from './CrashAlerts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Inbox,
   Bell,
   ChevronsUpDown,
+  Inbox,
   LayoutGrid,
   LogOut,
   Menu,
@@ -15,6 +15,7 @@ import {
   Sun,
   UserRound,
   Users,
+  Waypoints,
   WifiOff,
   X,
 } from 'lucide-react';
@@ -78,6 +79,7 @@ function useNavItems(): { main: NavItem[]; admin: NavItem[] } {
     admin: [
       { to: '/approvals', label: t('nav.approvals'), icon: Inbox, show: admin, badge: pendingCount },
       { to: '/users', label: t('nav.users'), icon: Users, show: admin },
+      { to: '/networks', label: t('nav.networks'), icon: Waypoints, show: admin },
       { to: '/notifications', label: t('nav.notifications'), icon: Bell, show: admin },
       { to: '/settings', label: t('nav.settings'), icon: ShieldCheck, show: admin },
       { to: '/audit', label: t('nav.audit'), icon: ScrollText, show: admin },

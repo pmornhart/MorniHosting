@@ -24,6 +24,7 @@ const toEntry = (r: Row): ApiTokenEntry => ({
   createdAt: r.createdAt,
   lastUsedAt: r.lastUsedAt,
   expiresAt: r.expiresAt,
+  scopes: r.scopes ?? null,
 });
 
 export function registerTokenRoutes(app: Api, ctx: AppContext): void {
@@ -54,10 +55,15 @@ export function registerTokenRoutes(app: Api, ctx: AppContext): void {
         tokenHash: sha256Hex(token),
         prefix: token.slice(0, PREFIX_SHOWN),
         expiresAt,
+        scopes: request.body.scopes,
       })
       .returning()
       .get();
-    ctx.audit.record(actorOf(request), 'token.create', null, { name: row.name, expiresAt });
+    ctx.audit.record(actorOf(request), 'token.create', null, {
+      name: row.name,
+      expiresAt,
+      scopes: row.scopes?.join(',') ?? 'alle',
+    });
     return { token, entry: toEntry(row) };
   });
 

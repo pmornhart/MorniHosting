@@ -81,4 +81,27 @@ describe('live connection (WebSocket)', () => {
     expect(await decided).toEqual({ type: 'approvals' });
     socket.terminate();
   });
+
+  test('another app on the machine connects with an API key that has the area "events"', async () => {
+    const make = async (scopes: string[]): Promise<string> =>
+      (
+        await t.app.inject({
+          method: 'POST',
+          url: '/api/tokens',
+          headers: { cookie: s.cookie, 'x-csrf-token': s.csrf },
+          payload: { name: scopes.join('+'), scopes },
+        })
+      ).json<{ token: string }>().token;
+    const withKey = (token: string) =>
+      t.app.injectWS('/api/ws', {
+        headers: { authorization: `Bearer ${token}` },
+        connection: socket,
+        socket,
+      } as never);
+    const live = await withKey(await make(['events', 'servers:read']));
+    say(live, { type: 'ping' });
+    expect(await nextMessage(live)).toEqual({ type: 'pong' });
+    live.terminate();
+    await expect(withKey(await make(['servers:read']))).rejects.toThrow();
+  });
 });

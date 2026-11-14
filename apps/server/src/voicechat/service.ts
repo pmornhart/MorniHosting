@@ -13,6 +13,8 @@ import { serial } from '../lib/serial.js';
  * Simple Voice Chat with one switch: installs the plugin (Paper and friends) or the mod (Fabric, Forge,
  * NeoForge) from Modrinth, opens a UDP port and writes voicechat-server.properties, so the players'
  * mods find the voice server. Inside the container it always listens on 24454; the host port may differ.
+ * On a Velocity proxy the voice chat rides on the proxy's own port (UDP next to TCP, see networks): the plugin
+ * forwards to the servers behind it, which keep their voice port inside the Minecraft network.
  */
 
 const SOURCE = 'modrinth';
@@ -27,8 +29,12 @@ const CONFIG_DIRS: Partial<Readonly<Record<SoftwareId, string>>> = {
   fabric: MOD_DIR,
   forge: MOD_DIR,
   neoforge: MOD_DIR,
+  velocity: PLUGIN_DIR,
 };
 const CONFIG_FILE = 'voicechat-server.properties';
+const PROXY_CONFIG_FILE = 'voicechat-proxy.properties';
+/** Velocity plugin: -1 = the proxy's own port. */
+const PROXY_SAME_PORT = '-1';
 // The voice chat jar, also when switched off: "voicechat-bukkit-2.6.26.jar" and
 // "voicechat-fabric-1.21.4-2.6.26.jar.disabled" match, "Geyser-Spigot.jar" does not.
 // https://regex101.com/?flavor=javascript&regex=%5Evoicechat-&flags=i&testString=voicechat-bukkit-2.6.26.jar%0Avoicechat-fabric-1.21.4-2.6.26.jar.disabled%0AGeyser-Spigot.jar
@@ -61,9 +67,14 @@ export function createVoiceChatService(
 
   const writeConfig = (serverId: string): void => {
     const dir = configDirOf(serverId);
-    const file = path.join(dir, CONFIG_FILE);
+    const row = servers.row(serverId);
+    const proxy = row.software === 'velocity';
+    const file = path.join(dir, proxy ? PROXY_CONFIG_FILE : CONFIG_FILE);
     const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-    const updates = { port: String(PORT_VOICE_CHAT), voice_host: servers.voiceHost(serverId) };
+    // Inside the container Velocity listens on another port than the published one: tell the players the outside one.
+    const updates = proxy
+      ? { port: PROXY_SAME_PORT, voice_host: String(row.publicPort ?? row.port) }
+      : { port: String(PORT_VOICE_CHAT), voice_host: servers.voiceHost(serverId) };
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(file, serialiseProperties(parseProperties(text), updates));
   };
@@ -89,9 +100,10 @@ export function createVoiceChatService(
       if (!(err instanceof AppError && err.code === 'content_already_installed')) throw err;
     }
     const row = servers.row(serverId);
+    const proxy = row.software === 'velocity';
     const existing = row.extraPorts.find((p) => p.purpose === VOICE_PURPOSE);
-    const port = existing?.port ?? servers.freePort(PORT_VOICE_CHAT, 'udp', serverId);
-    if (!existing) {
+    const port = proxy ? row.port : (existing?.port ?? servers.freePort(PORT_VOICE_CHAT, 'udp', serverId));
+    if (!existing && !proxy) {
       servers.setExtraPorts(serverId, [
         ...row.extraPorts,
         { port, containerPort: PORT_VOICE_CHAT, protocol: 'udp', purpose: VOICE_PURPOSE },

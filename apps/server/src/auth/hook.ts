@@ -1,9 +1,10 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { and, eq, gt, isNull, or } from 'drizzle-orm';
+import { scopeFor } from '@mornihosting/shared';
 import type { AppContext } from '../context.js';
 import { apiTokens, users } from '../db/schema.js';
 import { sha256Hex, safeEqual } from '../lib/crypto.js';
-import { AppError } from '../lib/errors.js';
+import { AppError, forbidden } from '../lib/errors.js';
 import { HTTP_FORBIDDEN } from '../lib/http-status.js';
 import { MS_PER_MINUTE, MS_PER_SECOND } from '../lib/units.js';
 import { setAuth } from './context.js';
@@ -126,6 +127,9 @@ function resolveApiToken(ctx: AppContext, request: FastifyRequest, raw: string):
   if (!row.token.lastUsedAt || Date.now() - Date.parse(row.token.lastUsedAt) > TOKEN_TOUCH_MS) {
     ctx.db.update(apiTokens).set({ lastUsedAt: now }).where(eq(apiTokens.id, row.token.id)).run();
   }
+  // A key limited to areas only reaches the requests of those areas (e.g. a status page: servers:read).
+  const needed = scopeFor(request.method, request.url.split('?')[0] ?? request.url);
+  if (row.token.scopes && !row.token.scopes.includes(needed)) throw forbidden('token_scope');
   setAuth(request, { user: row.user, sessionId: null, csrfToken: null, tokenId: row.token.id });
   return true;
 }

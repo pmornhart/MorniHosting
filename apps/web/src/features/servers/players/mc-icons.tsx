@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react';
 import { cn } from '@/lib/utils';
 import demoImages from 'virtual:demo-images';
+import { apiUrl } from '@/lib/api';
 
 /** The demo file cannot reach the panel; it carries the pictures itself. */
 const DEMO = import.meta.env.MODE === 'demo';
@@ -117,7 +118,7 @@ export function ItemIcon({
   const embedded = DEMO && !mob ? demoImages.items[name] : undefined;
   return (
     <img
-      src={embedded ?? `/api/item-icons/${mob ? 'mob' : 'item'}/${name}`}
+      src={embedded ?? apiUrl(`/api/item-icons/${mob ? 'mob' : 'item'}/${name}`)}
       alt=""
       loading="lazy"
       onError={() => setFailed(true)}

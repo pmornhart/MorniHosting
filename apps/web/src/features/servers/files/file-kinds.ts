@@ -11,6 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { FileEntry } from '@mornihosting/shared';
+import { apiUrl } from '@/lib/api';
 
 /** What the file manager knows about a file from its name: icon, and whether the editor can open it. */
 
@@ -99,5 +100,5 @@ export function parentOf(path: string): string {
 }
 
 export function downloadUrl(serverId: string, path: string): string {
-  return `/api/servers/${serverId}/files/download?path=${encodeURIComponent(path)}`;
+  return apiUrl(`/api/servers/${serverId}/files/download?path=${encodeURIComponent(path)}`);
 }
