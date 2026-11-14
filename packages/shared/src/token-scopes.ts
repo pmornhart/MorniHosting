@@ -18,6 +18,12 @@ export const TOKEN_SCOPES = [
 ] as const;
 export type TokenScope = (typeof TOKEN_SCOPES)[number];
 
+/**
+ * Service accounts (`service-token` in the CLI) start with this name. They cannot sign in and do not count as
+ * people – the setup wizard stays open until the first real person has an account.
+ */
+export const SERVICE_ACCOUNT_PREFIX = 'dienst-';
+
 export const tokenScopesSchema = z.array(z.enum(TOKEN_SCOPES)).min(1).max(TOKEN_SCOPES.length);
 
 const READ = 'GET';

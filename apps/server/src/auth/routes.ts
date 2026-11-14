@@ -1,8 +1,9 @@
-import { count, eq, sql } from 'drizzle-orm';
+import { count, eq, notLike, sql } from 'drizzle-orm';
 import {
   accountUpdateSchema,
   loginInputSchema,
   passwordChangeSchema,
+  SERVICE_ACCOUNT_PREFIX,
   setupInputSchema,
   twoFactorDisableSchema,
   twoFactorInputSchema,
@@ -29,8 +30,15 @@ export function meFor(ctx: AppContext, user: UserRow, csrfToken: string): MeResp
   return { user: toUserInfo(user), csrfToken, access: ctx.access.accessMap(user) };
 }
 
+/** People with an account – service accounts of other apps (motor mode) do not close the setup wizard. */
 function userCount(ctx: AppContext): number {
-  return ctx.db.select({ n: count() }).from(users).get()?.n ?? 0;
+  return (
+    ctx.db
+      .select({ n: count() })
+      .from(users)
+      .where(notLike(users.username, `${SERVICE_ACCOUNT_PREFIX}%`))
+      .get()?.n ?? 0
+  );
 }
 
 /** By user name, or by e-mail address when the input has an "@" (user names cannot contain one). */

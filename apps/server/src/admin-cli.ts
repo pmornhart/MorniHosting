@@ -1,6 +1,6 @@
 import { asc, eq, sql } from 'drizzle-orm';
 import { createAuditService, SYSTEM_ACTOR } from './audit/service.js';
-import { TOKEN_SCOPES, type TokenScope } from '@mornihosting/shared';
+import { SERVICE_ACCOUNT_PREFIX, TOKEN_SCOPES, type TokenScope } from '@mornihosting/shared';
 import { hashPassword, randomPassword } from './auth/passwords.js';
 import { API_TOKEN_PREFIX } from './auth/hook.js';
 import type { Db } from './db/index.js';
@@ -94,7 +94,6 @@ const resetTwoFactor: Command = async (db, [username]) => {
   };
 };
 
-const SERVICE_PREFIX = 'dienst-';
 const PREFIX_SHOWN = 10;
 // An app name for a service account: lower case letters, digits and "-". Accepts "moinmorni", "status-seite";
 // rejects "MoinMorni", "zwei wörter".
@@ -110,7 +109,7 @@ const serviceToken: Command = async (db, [app, ...areas]) => {
   if (!app || !APP_NAME.test(app)) return usage();
   const unknown = areas.filter((a) => !TOKEN_SCOPES.some((s) => s === a));
   if (unknown.length) return { ok: false, message: `Unbekannte Bereiche: ${unknown.join(', ')}` };
-  const username = `${SERVICE_PREFIX}${app}`;
+  const username = `${SERVICE_ACCOUNT_PREFIX}${app}`;
   const existing = findUser(db, username);
   const user =
     existing ??

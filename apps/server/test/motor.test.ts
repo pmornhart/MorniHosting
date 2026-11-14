@@ -94,6 +94,22 @@ describe('limited API keys and the motor mode', () => {
     expect((await runCommand(t.ctx.db, 'list-users', [])).message).toContain('dienst-moinmorni');
   });
 
+  test('a service account made before the first person keeps the setup wizard open', async () => {
+    t = await createTestApp({ MH_HEADLESS: 'true' });
+    expect((await runCommand(t.ctx.db, 'service-token', ['moinmorni'])).ok).toBe(true);
+    const status = await t.app.inject({ method: 'GET', url: '/api/system/status' });
+    expect(status.json()).toMatchObject({ setupRequired: true });
+    const setup = await t.app.inject({
+      method: 'POST',
+      url: '/api/setup',
+      payload: { username: 'philip', password: 'Test-Passwort-12345', locale: 'de' },
+    });
+    expect(setup.statusCode).toBe(200);
+    expect((await t.app.inject({ method: 'GET', url: '/api/system/status' })).json()).toMatchObject({
+      setupRequired: false,
+    });
+  });
+
   test('motor mode serves no web interface, only the API', async () => {
     const web = fs.mkdtempSync(path.join(os.tmpdir(), 'mh-web-'));
     fs.writeFileSync(path.join(web, 'index.html'), '<!doctype html><title>Panel</title>');
