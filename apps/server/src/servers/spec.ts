@@ -104,6 +104,9 @@ function memoryLimitBytes(row: Pick<ServerRow, 'software' | 'memoryMb'>): number
   return mb * BYTES_PER_MB;
 }
 
+/** Where itzg/mc-proxy keeps Velocity's files inside the container. */
+const PROXY_HOME = '/server';
+
 export function buildContainerSpec(config: Config, row: ServerRow, timezone: string): ContainerSpec {
   const game = gameOf(row.software);
   if (game) return buildGameSpec(config, row, game, timezone);
@@ -124,6 +127,9 @@ export function buildContainerSpec(config: Config, row: ServerRow, timezone: str
     memoryLimitBytes: memoryLimitBytes(row),
     ...(row.cpuLimit ? { cpus: row.cpuLimit } : {}),
     dataDir: serverDir(config, row.id),
+    // itzg/mc-proxy runs Velocity in /server (not /data): without this mount velocity.toml and the plugins the
+    // panel installs would live in an anonymous volume that is thrown away on every start.
+    ...(row.software === 'velocity' ? { mounts: [{ subdir: '', path: PROXY_HOME }] } : {}),
     labels: {
       'mornihosting.server': row.id,
       'mornihosting.edition': row.edition,

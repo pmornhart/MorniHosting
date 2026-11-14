@@ -45,6 +45,8 @@ import { createGeyserService } from './geyser/service.js';
 import { createOrderService } from './orders/service.js';
 import { registerVoiceChatRoutes } from './voicechat/routes.js';
 import { createVoiceChatService } from './voicechat/service.js';
+import { createNetworkService } from './networks/service.js';
+import { registerNetworkRoutes } from './networks/routes.js';
 import { registerMarketRoutes } from './market/routes.js';
 import { createMarketService } from './market/service.js';
 import { registerImportRoutes } from './servers/import-routes.js';
@@ -222,6 +224,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const market = createMarketService(ctx, servers, files);
   const geyser = createGeyserService(ctx, servers, market);
   const voiceChat = createVoiceChatService(ctx, servers, market);
+  const networks = createNetworkService(ctx, servers, market);
   const playerDetails = createPlayerDetailService(servers);
   const craftAttack = createCraftAttackService(ctx, { servers, market, players: playerDetails, geyser });
   const orders = createOrderService(ctx, {
@@ -320,6 +323,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerMarketRoutes(app, ctx, servers, market);
   registerGeyserRoutes(app, ctx, geyser);
   registerVoiceChatRoutes(app, ctx, voiceChat);
+  registerNetworkRoutes(app, ctx, networks);
   const netbirdExit = createNetbirdExit(ctx, undefined, options.resolver);
   const exitWatch = createExitWatch(ctx, netbirdExit, alerts, netbird);
   registerNetbirdRoutes(app, netbird, dns, netbirdExit);

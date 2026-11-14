@@ -415,3 +415,30 @@ export const chargePayments = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.chargeId, t.month] })],
 );
+
+/**
+ * Networks: a Velocity proxy and the servers behind it. The forwarding secret is sealed; a server belongs to at
+ * most one network (as proxy or member), so deleting a server just drops its row here.
+ */
+export const networks = sqliteTable('networks', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  proxyServerId: text('proxy_server_id').notNull().unique(),
+  /** Velocity's modern-forwarding secret, sealed. */
+  secret: text('secret').notNull(),
+  /** Member name players land on first; null = the first member. */
+  defaultMember: text('default_member'),
+  onlineMode: integer('online_mode', { mode: 'boolean' }).notNull().default(true),
+  createdAt: createdAt(),
+});
+
+export const networkMembers = sqliteTable('network_members', {
+  serverId: text('server_id').primaryKey(),
+  networkId: text('network_id')
+    .notNull()
+    .references(() => networks.id, { onDelete: 'cascade' }),
+  /** Name in the proxy ("lobby", "duels"). */
+  name: text('name').notNull(),
+  position: integer('position').notNull().default(0),
+  createdAt: createdAt(),
+});
