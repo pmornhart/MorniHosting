@@ -13,6 +13,48 @@ const MESSAGE_MAX = 200;
 const AUTH_FAILURES: readonly number[] = [HTTP_UNAUTHORIZED, HTTP_FORBIDDEN];
 const UNKNOWN_TOKEN = 'invalid token';
 
+/**
+ * Why NetBird could not be reached, from the low-level error under fetch's "fetch failed" – shown to the admin
+ * (errors.netbird_unreachable_<reason>), so "not reachable" says whether it is the name, a hang or a refusal.
+ */
+type Unreachable = 'dns' | 'timeout' | 'refused' | 'tls' | 'route';
+const REASONS: Readonly<Record<string, Unreachable>> = {
+  ENOTFOUND: 'dns',
+  EAI_AGAIN: 'dns',
+  TimeoutError: 'timeout',
+  AbortError: 'timeout',
+  ETIMEDOUT: 'timeout',
+  UND_ERR_CONNECT_TIMEOUT: 'timeout',
+  ECONNREFUSED: 'refused',
+  ECONNRESET: 'refused',
+  UND_ERR_SOCKET: 'refused',
+  ENETUNREACH: 'route',
+  EHOSTUNREACH: 'route',
+  CERT_HAS_EXPIRED: 'tls',
+  ERR_TLS_CERT_ALTNAME_INVALID: 'tls',
+  DEPTH_ZERO_SELF_SIGNED_CERT: 'tls',
+  UNABLE_TO_VERIFY_LEAF_SIGNATURE: 'tls',
+  SELF_SIGNED_CERT_IN_CHAIN: 'tls',
+};
+/** Reasons that are often over a second later (a hang, a reset): one more try before giving up. */
+const RETRY: readonly Unreachable[] = ['timeout', 'refused'];
+const MAX_CAUSE_DEPTH = 5;
+
+/** The error chain (fetch wraps the real reason in "cause"), as names and codes to look up. */
+function errorNames(err: unknown, depth = 0): string[] {
+  if (!(err instanceof Error) || depth > MAX_CAUSE_DEPTH) return [];
+  const code = (err as { code?: unknown }).code;
+  return [err.name, ...(typeof code === 'string' ? [code] : []), ...errorNames(err.cause, depth + 1)];
+}
+
+export function unreachableReason(err: unknown): Unreachable | null {
+  return (
+    errorNames(err)
+      .map((name) => REASONS[name])
+      .find((reason): reason is Unreachable => reason !== undefined) ?? null
+  );
+}
+
 const domainSchema = z.object({
   id: z.string(),
   domain: z.string(),
@@ -206,16 +248,25 @@ async function rejection(response: Response, host: string): Promise<AppError> {
 export const createNetbirdClient: NetbirdClientFactory = (apiUrl, token) => {
   const { origin, host } = new URL(apiUrl);
   const base = `${origin}/api`;
+  const send = (method: string, path: string, body?: unknown): Promise<Response> =>
+    fetchResponse(`${base}${path}`, {
+      method,
+      headers: { authorization: `Token ${token}`, 'content-type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
   const call = async (method: string, path: string, body?: unknown): Promise<Response> => {
     try {
-      return await fetchResponse(`${base}${path}`, {
-        method,
-        headers: { authorization: `Token ${token}`, 'content-type': 'application/json' },
-        body: body === undefined ? undefined : JSON.stringify(body),
+      return await send(method, path, body).catch((err: unknown) => {
+        // Reading is safe to repeat; a hang or a reset is often gone a moment later.
+        const reason = unreachableReason(err);
+        if (method === 'GET' && reason && RETRY.includes(reason)) return send(method, path, body);
+        throw err;
       });
     } catch (err) {
-      const host = err instanceof UpstreamError ? new URL(err.url).host : 'netbird';
-      throw new AppError(HTTP_BAD_GATEWAY, 'netbird_unreachable', { host }, { cause: err });
+      const where = err instanceof UpstreamError ? new URL(err.url).host : host;
+      const reason = unreachableReason(err);
+      const code = reason ? `netbird_unreachable_${reason}` : 'netbird_unreachable';
+      throw new AppError(HTTP_BAD_GATEWAY, code, { host: where }, { cause: err });
     }
   };
   const json = async <TValue>(schema: z.ZodType<TValue>, method: string, path: string, body?: unknown) => {
