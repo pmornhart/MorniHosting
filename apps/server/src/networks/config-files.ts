@@ -89,6 +89,14 @@ export function patchToml(
   return [...newHead, ...out].join(NEWLINE).replace(MANY_NEWLINES, '\n\n').trimEnd() + NEWLINE;
 }
 
+/** Entfernt einen Schlüssel vor dem ersten [Abschnitt] (z. B. eine eingebettete Tabelle „x = {}“). */
+function withoutTopKey(text: string, key: string): string {
+  const lines = text.split(NEWLINE);
+  const firstSection = lines.findIndex(isSectionHeader);
+  const topEnd = firstSection === -1 ? lines.length : firstSection;
+  return lines.filter((line, i) => i >= topEnd || keyOf(line) !== key).join(NEWLINE);
+}
+
 function sectionBody(entries: Readonly<Record<string, TomlValue>>): string[] {
   return [...Object.entries(entries).map(([k, v]) => `${tomlKey(k)} = ${tomlValue(v)}`), ''];
 }
@@ -119,7 +127,9 @@ export function velocityToml(existing: string | null, w: VelocityWiring): string
     '# Von MorniHosting angelegt – Netzwerk-Einstellungen werden vor jedem Start gesetzt.\nconfig-version = "2.7"\n';
   const servers = Object.fromEntries(w.servers.map((s) => [s.name, s.address]));
   return patchToml(
-    base,
+    // Velocity schreibt eine leere Tabelle beim Speichern als „forced-hosts = {}“ nach oben; daneben stünde unser
+    // [forced-hosts] – doppelt definiert (Velocity verzeiht das, die Gesundheitsprüfung des Containers nicht).
+    withoutTopKey(base, 'forced-hosts'),
     {
       bind: `0.0.0.0:${w.port}`,
       'online-mode': w.onlineMode,
