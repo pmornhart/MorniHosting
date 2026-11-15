@@ -180,6 +180,8 @@
 
 - Server-Seiten einbettbar (14.11., Branch `claude/moinmorni-motor`): `apps/web/src/lib/api.ts` `setApiBase(path)` + `apiUrl(path)` – alle Anfragen, Uploads, die Live-Verbindung, Bilder (Server-Icon, Köpfe, Item-Icons, Spielbilder) und Downloads laufen darüber. Einstieg `apps/web/src/embed.ts` (in `.fallowrc.jsonc` eingetragen): `serverRoutes` (Server-Seite mit allen Reitern), `queryClient`, `SessionProvider`/`meQuery`, `TooltipProvider`, `ServerIcon`/`StatePill`/`PlayerHead`; Anleitung oben in der Datei. MoinMorni leitet `/panel/motor/api/*` an den Motor weiter und hängt die Routen mit basename `/panel` ein.
 
+- Funde aus der MoinMorni-Gesamtprobe mit echtem Docker (15.11., Branch `claude/moinmorni-konto`, PR #117): Minecraft 26.x legt neue Server mit **eingeschalteter Whitelist** an – neue Java-Server bekommen beim Anlegen `white-list=false` (Craft Attack schaltet sie danach ein), der simulierte Server ergänzt fehlende server.properties-Schlüssel wie Minecraft. **Velocity lief als root**: das Startskript von itzg/mc-proxy las aus der Umgebung `UID=1000` „läuft schon als 1000“ und wechselte nie den Benutzer (Plugin-Ordner gehörten root, Floodgate-Einstellung im Netzwerk ließ sich nicht schreiben) – Velocity bekommt kein UID/GID mehr. velocity.toml ohne doppelte `forced-hosts` (Velocity speichert `forced-hosts = {}` oben; Proxy war „unhealthy“). Motor-Modus: `MH_TRUST_PROXY_FROM` (z. B. `moinmorni`) – nur dessen X-Forwarded-For zählt, Grenzen gelten pro Besucher (`lib/trusted-hosts.ts`). 412 Tests.
+
 ## Lokal testen (Sandbox)
 
 - Backend simuliert: `MH_SECRET=… MH_DATA_DIR=./data MH_DOCKER_DRIVER=fake MH_DEMO=true pnpm --filter @mornihosting/server dev`
