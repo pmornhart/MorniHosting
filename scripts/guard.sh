@@ -12,13 +12,13 @@
 # Docker läuft mit "live-restore": startet Docker neu, laufen die Spielserver weiter.
 # Jeder Eingriff steht in /var/log/mornihosting-guard.log.
 #
-# Befehle: check (Standard) · status · install · uninstall
+# Befehle: check (Standard) · status · dns (nur DNS prüfen) · install · uninstall
 set -euo pipefail
 
 COMMAND="${1:-check}"
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 UNIT_DIR="/etc/systemd/system"
-STATE_DIR="/var/lib/mornihosting"
+STATE_DIR="${MH_GUARD_STATE_DIR:-/var/lib/mornihosting}"
 FAIL_FILE="${STATE_DIR}/netbird-failures"
 PANEL_FAIL_FILE="${STATE_DIR}/panel-failures"
 INSTALL_DIR="${MH_INSTALL_DIR:-/opt/mornihosting}"
@@ -41,14 +41,26 @@ EXIT_FIX_COMMAND='bash -c "$(curl -fsSL https://raw.githubusercontent.com/pmornh
 EXIT_SETTLE_SECONDS=8
 PANEL_EXIT_NAME="MorniHosting Ausgang"
 EXIT_OURS="${STATE_DIR}/exit-deselected"
-LOG_FILE="/var/log/mornihosting-guard.log"
+LOG_FILE="${MH_GUARD_LOG:-/var/log/mornihosting-guard.log}"
 LOG_KEEP_LINES=500
 # So oft hintereinander darf NetBird getrennt sein, bevor der Dienst neu startet (1 Prüfung = 1 Minute).
 RESTART_AFTER="${NETBIRD_RESTART_AFTER:-2}"
 UP_TIMEOUT_SECONDS=60
 CHECK_TIMEOUT_SECONDS=8
 FALLBACK_DNS=("1.1.1.1" "9.9.9.9")
-DNS_TEST_HOST="github.com"
+RESOLV_CONF="${MH_RESOLV_CONF:-/etc/resolv.conf}"
+# DNS gilt als kaputt, wenn keiner dieser Namen aufgelöst werden kann – ein einzelner langsamer Name ist kein Ausfall.
+DNS_TEST_HOSTS=("github.com" "cloudflare.com" "google.com")
+DNS_TIMEOUT_SECONDS=4
+# So oft hintereinander (1 Prüfung = 1 Minute) muss DNS fehlen, bevor der Wächter eingreift.
+DNS_FIX_AFTER=2
+DNS_FAIL_FILE="${STATE_DIR}/dns-failures"
+# Wird DNS so oft in so vielen Stunden zurückgesetzt, meldet der Wächter einmal das Dauerproblem statt jedes Mal "repariert".
+DNS_FIXES_FILE="${STATE_DIR}/dns-fixes"
+DNS_FLAP_LIMIT=3
+DNS_FLAP_HOURS=6
+DNS_DOWN_SENT="${STATE_DIR}/dns-down-sent"
+DNS_FLAP_SENT="${STATE_DIR}/dns-flap-sent"
 # Internet-Prüfung: Jede Antwort zählt (auch 4xx), nur keine Antwort heißt "kein Internet". Mehrere Ziele ohne
 # Abfrage-Grenze – vorher api.github.com: das erlaubt nur 60 Abfragen pro Stunde, nach einer Stunde kam "zu viele"
 # und der Wächter schaltete den Ausgang ab (Hausanschluss jede Stunde sichtbar).
@@ -57,7 +69,7 @@ WEB_TEST_URLS=("https://1.1.1.1/cdn-cgi/trace" "https://www.google.com/generate_
 EXIT_DEAD_AFTER=3
 EXIT_FAIL_FILE="${STATE_DIR}/exit-failures"
 # Proxmox schreibt /etc/resolv.conf in Containern bei jedem Start neu – außer diese Datei existiert.
-PVE_IGNORE_RESOLV="/etc/.pve-ignore.resolv.conf"
+PVE_IGNORE_RESOLV="$(dirname "${RESOLV_CONF}")/.pve-ignore.$(basename "${RESOLV_CONF}")"
 
 log() {
   mkdir -p "$(dirname "${LOG_FILE}")"
@@ -102,7 +114,13 @@ flush_events() {
   : >"${PENDING_EVENTS}"
 }
 
-dns_ok() { timeout "${CHECK_TIMEOUT_SECONDS}" getent hosts "${DNS_TEST_HOST}" >/dev/null 2>&1; }
+dns_ok() {
+  local host
+  for host in "${DNS_TEST_HOSTS[@]}"; do
+    timeout "${DNS_TIMEOUT_SECONDS}" getent hosts "${host}" >/dev/null 2>&1 && return 0
+  done
+  return 1
+}
 web_ok() {
   local url
   for url in "${WEB_TEST_URLS[@]}"; do
@@ -117,15 +135,99 @@ netbird_connected() {
   grep -q '^Management: Connected' <<<"${out}" && grep -q '^Signal: Connected' <<<"${out}"
 }
 
+# Die DNS-Server, die gerade eingetragen sind (durch Leerzeichen getrennt).
+resolv_servers() { awk '/^nameserver/ { print $2 }' "${RESOLV_CONF}" 2>/dev/null | paste -sd' ' - || true; }
+
+# Wer die Einstellung zuletzt geschrieben hat – steht im Text der Meldung, damit man die Ursache sieht.
+resolv_writer() {
+  local servers="$1"
+  if grep -qi 'netbird' "${RESOLV_CONF}" 2>/dev/null || grep -qE '(^| )100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.' <<<"${servers}"; then
+    echo "NetBird"
+  elif [[ -z "${servers}" ]]; then
+    echo "niemand (leer)"
+  else
+    echo "Proxmox oder das System"
+  fi
+}
+
+# Merkt sich, wann DNS repariert wurde, und sagt, wie oft in den letzten DNS_FLAP_HOURS Stunden.
+count_dns_fixes() {
+  local now since
+  now="$(date +%s)"
+  since=$((now - DNS_FLAP_HOURS * 3600))
+  { [[ -f "${DNS_FIXES_FILE}" ]] && awk -v s="${since}" '$1 >= s' "${DNS_FIXES_FILE}"; echo "${now}"; } >"${DNS_FIXES_FILE}.tmp"
+  mv "${DNS_FIXES_FILE}.tmp" "${DNS_FIXES_FILE}"
+  wc -l <"${DNS_FIXES_FILE}" | tr -d ' '
+}
+
+# Eine Meldung höchstens einmal in DNS_FLAP_HOURS Stunden (Merkdatei mit Zeitstempel).
+once_in_a_while() {
+  local stamp="$1"
+  [[ -n "$(find "${stamp}" -mmin -$((DNS_FLAP_HOURS * 60)) 2>/dev/null)" ]] && return 1
+  touch "${stamp}"
+}
+
 fix_dns() {
-  dns_ok && return 0
-  log "DNS geht nicht – trage ${FALLBACK_DNS[*]} fest ein"
+  mkdir -p "${STATE_DIR}"
+  if dns_ok; then
+    echo 0 >"${DNS_FAIL_FILE}"
+    if [[ -f "${DNS_DOWN_SENT}" ]]; then
+      rm -f "${DNS_DOWN_SENT}"
+      event container dns:down ok "DNS geht wieder" "Der Container kann wieder Adressen auflösen."
+    fi
+    return 0
+  fi
+  local failures before writer
+  failures="$(count_up "${DNS_FAIL_FILE}")"
+  # Einmal keine Antwort ist noch kein Ausfall (Netz kurz weg, Ausgang wechselt gerade).
+  if ((failures < DNS_FIX_AFTER)); then
+    log "DNS antwortet gerade nicht – warte noch eine Prüfung ab"
+    return 0
+  fi
+  before="$(resolv_servers)"
+  writer="$(resolv_writer "${before}")"
+  if [[ "${before}" == "${FALLBACK_DNS[*]}" ]]; then
+    # Die festen Server stehen schon drin: neu schreiben ändert nichts, also auch nicht "repariert" melden.
+    log "DNS geht seit ${failures} Prüfungen nicht, obwohl ${FALLBACK_DNS[*]} eingetragen sind"
+    if [[ ! -f "${DNS_DOWN_SENT}" ]]; then
+      touch "${DNS_DOWN_SENT}"
+      event container dns:down action "DNS geht nicht" "Der Container kann seit ${failures} Minuten keine Adressen auflösen, obwohl die festen DNS-Server (${FALLBACK_DNS[*]}) eingetragen sind. Meist ist das Internet weg oder der NetBird-Ausgang lässt DNS nicht durch." \
+        "Schau im Container nach, was los ist:" "bash ${SCRIPT_PATH} status"
+    fi
+    return 0
+  fi
+  log "DNS geht nicht (eingetragen war: ${before:-nichts}, von ${writer}) – trage ${FALLBACK_DNS[*]} fest ein"
   touch "${PVE_IGNORE_RESOLV}" 2>/dev/null || true
   {
     printf '# MorniHosting NetBird-Wächter: feste DNS-Server (Proxmox überschreibt sie nicht mehr)\n'
     printf 'nameserver %s\n' "${FALLBACK_DNS[@]}"
-  } >/etc/resolv.conf
-  event container dns fixed "DNS repariert" "Der Container konnte keine Adressen mehr auflösen. Der Wächter hat feste DNS-Server (${FALLBACK_DNS[*]}) eingetragen."
+  } >"${RESOLV_CONF}"
+  if ! dns_ok; then
+    log "DNS geht auch mit ${FALLBACK_DNS[*]} nicht"
+    if [[ ! -f "${DNS_DOWN_SENT}" ]]; then
+      touch "${DNS_DOWN_SENT}"
+      event container dns:down action "DNS geht nicht" "Der Container konnte keine Adressen auflösen (eingetragen war: ${before:-nichts}, von ${writer}). Auch mit festen DNS-Servern (${FALLBACK_DNS[*]}) kommt keine Antwort – meist ist das Internet weg oder der NetBird-Ausgang lässt DNS nicht durch." \
+        "Schau im Container nach, was los ist:" "bash ${SCRIPT_PATH} status"
+    fi
+    return 0
+  fi
+  echo 0 >"${DNS_FAIL_FILE}"
+  local fixes
+  fixes="$(count_dns_fixes)"
+  if ((fixes >= DNS_FLAP_LIMIT)); then
+    # Immer wieder dasselbe: einmal das Dauerproblem melden statt jedes Mal "repariert".
+    once_in_a_while "${DNS_FLAP_SENT}" || return 0
+    if [[ "${writer}" == "NetBird" ]]; then
+      event container dns:flapping action "DNS wird immer wieder umgestellt" "In den letzten ${DNS_FLAP_HOURS} Stunden musste der Wächter DNS ${fixes}-mal reparieren. Jedes Mal hatte NetBird seinen eigenen DNS-Server (${before}) eingetragen, der nicht antwortete. Der Wächter repariert es weiter selbst, meldet es aber erst in ${DNS_FLAP_HOURS} Stunden wieder." \
+        "Damit es aufhört: NetBird die DNS-Verwaltung in diesem Container abnehmen (im NetBird-Dashboard unter DNS, oder im Container):" "netbird down && netbird up --disable-dns"
+    else
+      event container dns:flapping action "DNS wird immer wieder umgestellt" "In den letzten ${DNS_FLAP_HOURS} Stunden musste der Wächter DNS ${fixes}-mal reparieren (zuletzt stand ${before:-nichts} drin, von ${writer}). Der Wächter repariert es weiter selbst, meldet es aber erst in ${DNS_FLAP_HOURS} Stunden wieder." \
+        "Schau im Container nach, wer die DNS-Einstellung zurücksetzt:" "bash ${SCRIPT_PATH} status"
+    fi
+    return 0
+  fi
+  rm -f "${DNS_DOWN_SENT}"
+  event container dns fixed "DNS repariert" "Der Container konnte keine Adressen mehr auflösen (eingetragen war: ${before:-nichts}, von ${writer}). Der Wächter hat feste DNS-Server (${FALLBACK_DNS[*]}) eingetragen – jetzt geht es wieder."
 }
 
 # IDs der ausgewählten Standard-Routen (0.0.0.0/0, ::/0) aus "netbird networks ls" (ältere Versionen: "routes list").
@@ -368,7 +470,7 @@ check() {
 }
 
 status() {
-  printf 'DNS:      %s\n' "$(dns_ok && echo ok || echo kaputt)"
+  printf 'DNS:      %s (eingetragen: %s)\n' "$(dns_ok && echo ok || echo kaputt)" "$(resolv_servers)"
   printf 'Internet: %s\n' "$(web_ok && echo ok || echo weg)"
   printf 'NetBird:  %s\n' "$(command -v netbird >/dev/null 2>&1 && { netbird_connected && echo verbunden || echo getrennt; } || echo 'nicht installiert')"
   printf 'Docker:   %s\n' "$(docker_ok && echo ok || echo 'antwortet nicht')"
@@ -421,6 +523,11 @@ case "${COMMAND}" in
     check
     ;;
   status) status ;;
+  dns)
+    # Ohne root nur mit eigener Datei (Tests).
+    [[ ${EUID} -eq 0 || -n "${MH_RESOLV_CONF:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
+    fix_dns
+    ;;
   event)
     # Vom Host-Wächter: guard.sh event <quelle> <schlüssel> <status> <titel> <was> [<du musst>] [<befehl>]
     shift
