@@ -159,7 +159,7 @@ export function NetbirdExitCard({ apiUrl }: { apiUrl: string }): ReactElement {
           {error}
         </p>
       ) : null}
-      {save.error ? (
+      {save.error && errorText(save.error) !== error ? (
         <p role="alert" className="rounded-[10px] bg-destructive-soft px-3 py-2 text-sm">
           {errorText(save.error)}
         </p>

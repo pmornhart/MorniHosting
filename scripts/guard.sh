@@ -12,7 +12,7 @@
 # Docker läuft mit "live-restore": startet Docker neu, laufen die Spielserver weiter.
 # Jeder Eingriff steht in /var/log/mornihosting-guard.log.
 #
-# Befehle: check (Standard) · status · dns (nur DNS prüfen) · install · uninstall
+# Befehle: check (Standard) · status · dns (nur DNS prüfen) · netbird-api (nur NetBird-API prüfen) · install · uninstall
 set -euo pipefail
 
 COMMAND="${1:-check}"
@@ -61,6 +61,15 @@ DNS_FLAP_LIMIT=3
 DNS_FLAP_HOURS=6
 DNS_DOWN_SENT="${STATE_DIR}/dns-down-sent"
 DNS_FLAP_SENT="${STATE_DIR}/dns-flap-sent"
+# Die NetBird-API (MH_NETBIRD_API in der .env): Das Panel braucht sie für Server-Adressen und „Hausanschluss
+# verstecken“. Läuft alles über einen Ausgang, der auf dem NetBird-Server selbst sitzt, kommt das Panel dort oft
+# nicht an (der NetBird-Dienst selbst nimmt einen eigenen Weg und bleibt verbunden). Dann leitet der Wächter nur
+# die Verbindung zum NetBird-Server am Ausgang vorbei – der sieht deinen Anschluss ohnehin schon.
+ENV_FILE="${INSTALL_DIR}/.env"
+NETBIRD_API_FAIL_FILE="${STATE_DIR}/netbird-api-failures"
+NETBIRD_API_FIX_AFTER=2
+NETBIRD_API_SENT="${STATE_DIR}/netbird-api-sent"
+NETBIRD_BYPASS_FILE="${STATE_DIR}/netbird-api-bypass"
 # Internet-Prüfung: Jede Antwort zählt (auch 4xx), nur keine Antwort heißt "kein Internet". Mehrere Ziele ohne
 # Abfrage-Grenze – vorher api.github.com: das erlaubt nur 60 Abfragen pro Stunde, nach einer Stunde kam "zu viele"
 # und der Wächter schaltete den Ausgang ab (Hausanschluss jede Stunde sichtbar).
@@ -228,6 +237,79 @@ fix_dns() {
   fi
   rm -f "${DNS_DOWN_SENT}"
   event container dns fixed "DNS repariert" "Der Container konnte keine Adressen mehr auflösen (eingetragen war: ${before:-nichts}, von ${writer}). Der Wächter hat feste DNS-Server (${FALLBACK_DNS[*]}) eingetragen – jetzt geht es wieder."
+}
+
+netbird_api_url() {
+  local url
+  url="$(grep -E '^MH_NETBIRD_API=' "${ENV_FILE}" 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d "\"' " || true)"
+  printf '%s' "${url%/}"
+}
+url_host() {
+  local host="${1#*://}"
+  host="${host%%/*}"
+  printf '%s' "${host%%:*}"
+}
+# Jede HTTP-Antwort zählt (ohne Schlüssel kommt 401) – dann ist der NetBird-Server da.
+netbird_api_ok() { curl -sS -m "${CHECK_TIMEOUT_SECONDS}" -o /dev/null "$1/api/peers" >/dev/null 2>&1; }
+# Der normale Weg ins Internet (ohne Ausgang): "<gateway> <gerät>".
+main_gateway() {
+  ip -4 route show table main default 2>/dev/null |
+    awk '{ for (i = 1; i <= NF; i++) { if ($i == "via") g = $(i + 1); if ($i == "dev") d = $(i + 1) } if (g != "") { print g " " d; exit } }' || true
+}
+# Ein Ziel am Ausgang vorbei: eine Route nur für diese Adresse über den normalen Weg (gewinnt gegen den Ausgang).
+bypass_ip() {
+  local target="$1" gw dev
+  read -r gw dev <<<"$(main_gateway)"
+  [[ -n "${gw}" && -n "${dev}" ]] || return 1
+  ip route replace "${target}/32" via "${gw}" dev "${dev}" 2>/dev/null
+}
+# Nach einem Neustart sind die Routen weg – die gemerkten jedes Mal wieder setzen.
+reapply_bypass() {
+  [[ -s "${NETBIRD_BYPASS_FILE}" ]] || return 0
+  local target
+  while IFS= read -r target; do
+    [[ -n "${target}" ]] && { bypass_ip "${target}" || true; }
+  done <"${NETBIRD_BYPASS_FILE}"
+}
+
+keep_netbird_api() {
+  local url host failures targets target
+  url="$(netbird_api_url)"
+  [[ -n "${url}" ]] || return 0
+  mkdir -p "${STATE_DIR}"
+  reapply_bypass
+  host="$(url_host "${url}")"
+  if netbird_api_ok "${url}"; then
+    echo 0 >"${NETBIRD_API_FAIL_FILE}"
+    if [[ -f "${NETBIRD_API_SENT}" ]]; then
+      rm -f "${NETBIRD_API_SENT}"
+      event container netbird:api ok "NetBird-API wieder erreichbar" "Das Panel erreicht den NetBird-Server (${host}) wieder."
+    fi
+    return 0
+  fi
+  failures="$(count_up "${NETBIRD_API_FAIL_FILE}")"
+  ((failures < NETBIRD_API_FIX_AFTER)) && return 0
+  if [[ -n "$(selected_exit_ids)" ]]; then
+    targets="$(getent ahostsv4 "${host}" 2>/dev/null | awk '{ print $1 }' | sort -u || true)"
+    while IFS= read -r target; do
+      [[ -n "${target}" ]] || continue
+      bypass_ip "${target}" || continue
+      grep -qxF "${target}" "${NETBIRD_BYPASS_FILE}" 2>/dev/null || echo "${target}" >>"${NETBIRD_BYPASS_FILE}"
+    done <<<"${targets}"
+    if [[ -s "${NETBIRD_BYPASS_FILE}" ]] && netbird_api_ok "${url}"; then
+      log "NetBird-API (${host}) über den Ausgang nicht erreichbar – Verbindung dorthin läuft jetzt am Ausgang vorbei"
+      echo 0 >"${NETBIRD_API_FAIL_FILE}"
+      rm -f "${NETBIRD_API_SENT}"
+      event container netbird:api fixed "NetBird-Verbindung repariert" "Das Panel kam über den NetBird-Ausgang nicht zum NetBird-Server (${host}). Der Wächter lässt jetzt nur diese eine Verbindung direkt laufen – Spieler, Downloads und Mails gehen weiter über den Ausgang, dein Hausanschluss bleibt versteckt."
+      return 0
+    fi
+  fi
+  log "NetBird-API (${host}) seit ${failures} Prüfungen nicht erreichbar"
+  if [[ ! -f "${NETBIRD_API_SENT}" ]]; then
+    touch "${NETBIRD_API_SENT}"
+    event container netbird:api action "NetBird-API nicht erreichbar" "Das Panel erreicht den NetBird-Server (${host}) seit ${failures} Minuten nicht. Server-Adressen und die Hausanschluss-Prüfung lassen sich so lange nicht ändern – die Spieler merken davon nichts." \
+      "Prüf auf dem NetBird-Server, ob NetBird läuft:" "docker ps"
+  fi
 }
 
 # IDs der ausgewählten Standard-Routen (0.0.0.0/0, ::/0) aus "netbird networks ls" (ältere Versionen: "routes list").
@@ -461,6 +543,7 @@ check() {
     fix_dns
     reconnect
     retry_exit
+    keep_netbird_api
   else
     fix_dns
   fi
@@ -472,6 +555,9 @@ check() {
 status() {
   printf 'DNS:      %s (eingetragen: %s)\n' "$(dns_ok && echo ok || echo kaputt)" "$(resolv_servers)"
   printf 'Internet: %s\n' "$(web_ok && echo ok || echo weg)"
+  local api
+  api="$(netbird_api_url)"
+  [[ -n "${api}" ]] && printf 'NetBird-API: %s (%s)\n' "$(netbird_api_ok "${api}" && echo ok || echo 'nicht erreichbar')" "$(url_host "${api}")"
   printf 'NetBird:  %s\n' "$(command -v netbird >/dev/null 2>&1 && { netbird_connected && echo verbunden || echo getrennt; } || echo 'nicht installiert')"
   printf 'Docker:   %s\n' "$(docker_ok && echo ok || echo 'antwortet nicht')"
   printf 'Panel:    %s\n' "$(container_ok mornihosting && echo läuft || echo aus)"
@@ -523,6 +609,10 @@ case "${COMMAND}" in
     check
     ;;
   status) status ;;
+  netbird-api)
+    [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
+    keep_netbird_api
+    ;;
   dns)
     # Ohne root nur mit eigener Datei (Tests).
     [[ ${EUID} -eq 0 || -n "${MH_RESOLV_CONF:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
