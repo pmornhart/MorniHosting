@@ -130,6 +130,10 @@ function writeJson(file: string, value: unknown): void {
   fs.writeFileSync(file, JSON.stringify(value, null, JSON_INDENT));
 }
 
+// Line breaks at the end of a file – "motd=x\n\n" → "motd=x".
+// https://regex101.com/?flavor=javascript&regex=%5Cn%2B%24&testString=motd%3Dx%0A%0A
+const TRAILING_NEWLINE = /\n+$/;
+
 function writeIfMissing(file: string, content: string): void {
   if (!fs.existsSync(file)) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -149,10 +153,18 @@ function prepareFiles(spec: ContainerSpec): void {
     .filter((f, i, all) => all.findIndex((g) => g.key === f.key) === i)
     .map((f) => `${f.key}=${f.key === 'motd' ? (spec.env['MOTD'] ?? f.defaultValue) : f.defaultValue}`);
   const port = edition === 'bedrock' ? 'server-port=19132' : 'server-port=25565';
-  writeIfMissing(
-    path.join(dir, 'server.properties'),
-    `#Minecraft server properties\n${[...props, port].join('\n')}\n`,
-  );
+  // Like Minecraft: keep what is already there (e.g. "white-list=false" written by the panel), add what is missing.
+  const file = path.join(dir, 'server.properties');
+  const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  const known = new Set(existing.split('\n').map((line) => line.split('=')[0]?.trim()));
+  const missing = [...props, port].filter((line) => !known.has(line.split('=')[0]));
+  if (!existing || missing.length > 0)
+    fs.writeFileSync(
+      file,
+      existing
+        ? `${existing.replace(TRAILING_NEWLINE, '')}\n${missing.join('\n')}\n`
+        : `#Minecraft server properties\n${missing.join('\n')}\n`,
+    );
   if (edition === 'java') {
     writeIfMissing(path.join(dir, 'eula.txt'), 'eula=true\n');
     ['ops.json', 'whitelist.json', 'banned-players.json', 'banned-ips.json', 'usercache.json'].forEach((f) =>

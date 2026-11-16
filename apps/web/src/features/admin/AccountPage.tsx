@@ -26,7 +26,7 @@ interface TwoFactorSetup {
 
 const PASSWORD_MIN = 10;
 
-function ProfileCard(): ReactElement {
+export function ProfileCard(): ReactElement {
   const { t } = useTranslation();
   const { me } = useSession();
   const [displayName, setDisplayName] = useState(me.user.displayName);
@@ -71,7 +71,7 @@ function ProfileCard(): ReactElement {
   );
 }
 
-function PasswordCard(): ReactElement {
+export function PasswordCard(): ReactElement {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [current, setCurrent] = useState('');
@@ -143,7 +143,7 @@ function PasswordCard(): ReactElement {
   );
 }
 
-function TwoFactorCard(): ReactElement {
+export function TwoFactorCard(): ReactElement {
   const { t } = useTranslation();
   const { me } = useSession();
   const [setup, setSetup] = useState<TwoFactorSetup | null>(null);

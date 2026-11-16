@@ -84,8 +84,10 @@ function javaEnv(row: ServerRow, timezone: string): Record<string, string> {
       MEMORY: `${row.memoryMb}M`,
       SKIP_CHOWN_DATA: 'true',
       TZ: timezone,
-      UID: RUN_UID,
-      GID: RUN_UID,
+      // Kein UID/GID wie bei den Spielservern: das Startskript von itzg/mc-proxy liest daraus „läuft schon als
+      // 1000“ und ließ Velocity dann als root laufen (Plugin-Ordner gehörten root, das Panel konnte z. B. die
+      // Floodgate-Einstellung nicht schreiben). Ohne startet es als root, gibt /server dem Benutzer 1000
+      // („bungeecord“) und wechselt zu ihm.
     };
   }
   return base;

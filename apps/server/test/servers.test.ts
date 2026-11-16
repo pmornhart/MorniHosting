@@ -91,6 +91,19 @@ describe('server lifecycle with the fake driver', () => {
     }
   });
 
+  test('a new Java server starts with the whitelist off (Minecraft 26.x turns it on by itself)', async () => {
+    const created = (
+      await t.app.inject({
+        method: 'POST',
+        url: '/api/servers',
+        headers: authHeaders(s),
+        payload: { ...paper, version: '26.3', port: 25570 },
+      })
+    ).json<ServerSummary>();
+    const props = fs.readFileSync(path.join(t.dataDir, 'servers', created.id, 'server.properties'), 'utf8');
+    expect(props).toContain('white-list=false');
+  });
+
   test('create, start, command, stop', async () => {
     const created = (
       await t.app.inject({ method: 'POST', url: '/api/servers', headers: authHeaders(s), payload: paper })
