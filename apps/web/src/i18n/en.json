@@ -894,7 +894,7 @@
       "autoStart": "Start automatically",
       "autoStartHint": "Starts the server when the machine or the panel restarts.",
       "idleMemory": "Release memory when idle",
-      "idleMemoryHint": "The server stays online and players get in right away. While nobody is online, Minecraft (1.21.2 and later) pauses the world after a minute – farms and redstone carry on once someone joins – and Java hands unused memory back. An empty server then needs only a fraction of it. Applies from the next restart.",
+      "idleMemoryHint": "The server stays online and players get in right away. While nobody is online, Minecraft (1.21.2 and later) pauses the world after a minute – farms and redstone carry on once someone joins – and Java hands unused memory back. An empty server then needs only about half as much. Applies from the next restart.",
       "idleMemoryHintProxy": "The proxy stays online, but starts small and hands unused memory back while little is going on. Applies from the next restart.",
       "publicPort": "Public port (optional)",
       "publicPortHint": "When NetBird, playit.gg or your router use a different port to the outside. The address card then shows that one."

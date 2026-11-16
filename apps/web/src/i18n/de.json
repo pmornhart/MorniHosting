@@ -894,7 +894,7 @@
       "autoStart": "Automatisch starten",
       "autoStartHint": "Startet den Server mit, wenn der Rechner oder das Panel neu startet.",
       "idleMemory": "Arbeitsspeicher im Leerlauf freigeben",
-      "idleMemoryHint": "Der Server bleibt online, man kommt sofort hinein. Ist niemand online, hält Minecraft (ab 1.21.2) nach einer Minute die Welt an – Farmen und Redstone laufen dann erst weiter, wenn jemand kommt – und Java gibt ungenutzten Arbeitsspeicher zurück. So braucht ein leerer Server nur einen Bruchteil davon. Gilt ab dem nächsten Neustart.",
+      "idleMemoryHint": "Der Server bleibt online, man kommt sofort hinein. Ist niemand online, hält Minecraft (ab 1.21.2) nach einer Minute die Welt an – Farmen und Redstone laufen dann erst weiter, wenn jemand kommt – und Java gibt ungenutzten Arbeitsspeicher zurück. So braucht ein leerer Server nur noch etwa die Hälfte. Gilt ab dem nächsten Neustart.",
       "idleMemoryHintProxy": "Der Proxy bleibt online, startet aber klein und gibt ungenutzten Arbeitsspeicher zurück, solange wenig los ist. Gilt ab dem nächsten Neustart.",
       "publicPort": "Öffentlicher Port (optional)",
       "publicPortHint": "Wenn NetBird, playit.gg oder dein Router nach außen einen anderen Port nutzt. Die Adress-Karte zeigt dann diesen."
