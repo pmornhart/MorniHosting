@@ -180,6 +180,9 @@ final class Graves implements Listener {
     if (!plugin.settings().graves() || e.getKeepInventory()) return;
     Player p = e.getEntity();
     List<ItemStack> items = new ArrayList<>(e.getDrops());
+    items.removeIf(i -> i == null || i.getType().isAir() || i.getAmount() <= 0);
+    // Nothing to keep (empty pockets, no experience): no grave – it would only stand around empty.
+    if (items.isEmpty() && e.getDroppedExp() <= 0) return;
     Grave g = build(p, items, e.getDroppedExp());
     if (g == null) return; // no place anywhere near (the void): the items drop as usual
     e.getDrops().clear();
@@ -357,6 +360,7 @@ final class Graves implements Listener {
   /** The name board on the cross (fractions of the cross's block): across, height, thickness. */
   private static final float BOARD_LEFT = 0.28f;
   private static final float BOARD_RIGHT = 0.72f;
+  private static final float BOARD_MIDDLE = (BOARD_LEFT + BOARD_RIGHT) / 2;
   private static final float BOARD_LOW = 0.92f;
   private static final float BOARD_HIGH = 1.14f;
   private static final float BOARD_THICK = 0.035f;
@@ -393,7 +397,8 @@ final class Graves implements Listener {
       float scale = Math.min(MAX_TEXT_SCALE, (BOARD_RIGHT - BOARD_LEFT - 0.06f) / (CHAR_WIDTH * Math.max(1, name.length())));
       float out = footPositive ? front + BOARD_THICK + TEXT_OUT : front - BOARD_THICK - TEXT_OUT;
       float middle = (BOARD_LOW + BOARD_HIGH) / 2 - LINE_HEIGHT * scale / 2;
-      Location textAt = blockCorner.clone().add(alongX ? out : HALF, middle, alongX ? HALF : out);
+      // Across: the board's middle (not HALF – that is half a head, 0.25, and put the name onto the stone arm).
+      Location textAt = blockCorner.clone().add(alongX ? out : BOARD_MIDDLE, middle, alongX ? BOARD_MIDDLE : out);
       textAt.setYaw(yawOf(foot));
       Class<? extends Entity> textType = Class.forName("org.bukkit.entity.TextDisplay").asSubclass(Entity.class);
       Entity text = textAt.getWorld().spawn(textAt, textType);
@@ -874,6 +879,24 @@ final class Graves implements Listener {
   }
 
   /** For /mod: how many graves someone has lying around. */
+  /** Where this player's graves are (for the MoinMorni panel): world, x, y, z, things inside, since when. */
+  List<java.util.Map<String, Object>> summaryOf(UUID owner) {
+    List<java.util.Map<String, Object>> out = new ArrayList<>();
+    for (Grave g : graves.values()) {
+      if (!g.owner.equals(owner) || g.blocks.isEmpty()) continue;
+      String[] at = g.blocks.keySet().iterator().next().split(";");
+      java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+      m.put("world", at[0]);
+      m.put("x", Integer.parseInt(at[1]));
+      m.put("y", Integer.parseInt(at[2]));
+      m.put("z", Integer.parseInt(at[3]));
+      m.put("items", g.items.stream().filter(java.util.Objects::nonNull).mapToInt(ItemStack::getAmount).sum());
+      m.put("since", g.created);
+      out.add(m);
+    }
+    return out;
+  }
+
   long countOf(UUID owner) {
     return graves.values().stream().filter(g -> g.owner.equals(owner)).count();
   }

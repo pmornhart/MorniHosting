@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>de.mornihosting</groupId>
   <artifactId>mornicraft</artifactId>
-  <version>1.10.0</version>
+  <version>1.11.1</version>
   <packaging>jar</packaging>
   <name>MorniCraft</name>
 
@@ -50,6 +50,12 @@
       <resource>
         <directory>src/main/resources</directory>
         <filtering>true</filtering>
+      </resource>
+      <!-- The spawn island's datapack: MorniCraft builds the island itself (network, or spawn-island: on). -->
+      <resource>
+        <directory>datapack</directory>
+        <targetPath>spawnpack</targetPath>
+        <filtering>false</filtering>
       </resource>
     </resources>
   </build>

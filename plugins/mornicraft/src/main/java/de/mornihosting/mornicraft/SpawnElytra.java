@@ -97,8 +97,17 @@ final class SpawnElytra implements Listener {
   }
 
   private void tick() {
+    try {
+      tickAll();
+    } finally {
+      plugin.quiet();
+    }
+  }
+
+  private void tickAll() {
     long now = System.currentTimeMillis();
     for (Player p : Bukkit.getOnlinePlayers()) {
+      plugin.voice(p);
       UUID id = p.getUniqueId();
       if (!survival(p)) {
         armed.remove(id); // creative and spectator fly anyway: leave their flight alone

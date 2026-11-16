@@ -2,7 +2,7 @@ name: MorniCraft
 version: '${project.version}'
 main: de.mornihosting.mornicraft.MorniCraft
 api-version: '1.17'
-softdepend: [floodgate]
+softdepend: [floodgate, MoinMorni]
 description: Spawn, Zuhause, Teleports, Nachrichten und Start-Elytra für MorniCraft-Server (MorniHosting).
 author: MorniHosting
 website: https://github.com/pmornhart/MorniCraft
@@ -108,6 +108,12 @@ commands:
       description: 'Rang vergeben (Owner/Admin): /rang <spieler> <rang> [weg] – auch kurz /vip <spieler>',
       usage: '/rang <spieler> <rang> [weg]',
       aliases: [rank],
+    }
+  mcadmin:
+    {
+      description: 'Admin: Einstellungen neu laden oder Drachen-Angriff (im MoinMorni-Netzwerk statt /mornicraft)',
+      permission: mornicraft.admin,
+      usage: '/mcadmin reload | /mcadmin drache <angriff>',
     }
   mornicraft:
     {

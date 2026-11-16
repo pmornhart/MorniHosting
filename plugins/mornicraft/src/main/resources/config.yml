@@ -5,6 +5,14 @@
 #  (Dashboard → Server → Einstellungen → MorniCraft) – dann dort ändern.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# MoinMorni-Netzwerk (moinmorni.net): läuft dessen Plugin auf dem Server, kommen Ränge, Chat, Strafen und
+# Sprache aus dem Netzwerk und die Einstellungen aus dem MoinMorni-Panel (Datei network.json, nicht von Hand
+# ändern). auto = einschalten, wenn das Netzwerk da ist; off = MorniCraft läuft immer allein.
+network: auto
+# Spawn-Insel über dem Meer: MorniCraft baut sie beim ersten Start selbst. network = nur im MoinMorni-Netzwerk
+# (mit MorniHosting baut das Panel sie), on = auch allein, off = nie.
+spawn-island: network
+
 # Sprache der Texte im Spiel: de oder en
 language: de
 # Name oben in der Leiste rechts und im Begrüßungs-Titel

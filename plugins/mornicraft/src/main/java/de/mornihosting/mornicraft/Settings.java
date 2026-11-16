@@ -47,7 +47,19 @@ record Settings(
     boolean clans,
     int clanMaxMembers,
     boolean hardDragon,
-    Dragon dragon) {
+    Dragon dragon,
+    Net net) {
+
+  /**
+   * MorniCraft in the MoinMorni network (null alone or under MorniHosting): the rules in both languages (the
+   * network's rules, one per line), the network's address ("moinmorni.net") and the panel's pages for the team.
+   */
+  record Net(List<String> rulesDe, List<String> rulesEn, String address, String panelPlayers,
+      String panelPunishments) {
+    List<String> rules(boolean english) {
+      return english && !rulesEn.isEmpty() ? rulesEn : rulesDe;
+    }
+  }
 
   /**
    * The mighty ender dragon: health, hit strength in percent, seconds between special attacks, rage below this
@@ -114,7 +126,22 @@ record Settings(
 
   private static final int MAX_COMBAT_SECONDS = 120;
 
+  /**
+   * A switch like "network: auto|off" or "spawn-island: network|on|off". YAML reads a bare on/off (also yes/no,
+   * true/false) as a boolean – then getString would give "true"/"false" and the switch did nothing.
+   */
+  static String mode(FileConfiguration c, String key, String fallback) {
+    Object v = c.get(key);
+    if (v instanceof Boolean b) return b ? "on" : "off";
+    return v == null ? fallback : String.valueOf(v).trim().toLowerCase(java.util.Locale.ROOT);
+  }
+
   static Settings from(FileConfiguration c) {
+    return from(c, false);
+  }
+
+  /** `networked`: in the MoinMorni network (settings from its panel, see {@link Network#overlay}). */
+  static Settings from(FileConfiguration c, boolean networked) {
     List<Group> configured = c.getMapList("groups").stream().map(Settings::group).toList();
     // Without MorniHosting nobody writes the list: then the built-in one, in the server's language.
     List<Group> groups = configured.isEmpty()
@@ -122,7 +149,7 @@ record Settings(
         : configured;
     return new Settings(
         c.getString("language", "de"),
-        c.getString("server-name", "MorniCraft"),
+        c.getString("server-name", networked ? "MorniCraft auf MoinMorni" : "MorniCraft"),
         c.getString("timezone", "Europe/Berlin"),
         c.getBoolean("sidebar", true),
         c.getBoolean("update-check", true),
@@ -163,7 +190,10 @@ record Settings(
         Math.max(2, c.getInt("clans.max-members", 10)),
         // The mighty ender dragon: three times the health, harder hits, a brood of phantoms.
         c.getBoolean("hard-dragon", true),
-        Dragon.from(c));
+        Dragon.from(c),
+        networked ? new Net(c.getStringList("network.rules-de"), c.getStringList("network.rules-en"),
+            c.getString("network.address", "moinmorni.net"), c.getString("network.panel-players", ""),
+            c.getString("network.panel-punishments", "")) : null);
   }
 
   private static Map<String, Limit> limits(FileConfiguration c) {

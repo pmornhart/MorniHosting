@@ -593,10 +593,47 @@ final class Portals {
       if (d == null) d = data(AIR);
       w.getBlockAt(Integer.parseInt(r[0]), Integer.parseInt(r[1]), Integer.parseInt(r[2])).setBlockData(d, false);
     }
+    if (kind == Kind.NETHER) clearVines(w, rows);
     try {
       Files.deleteIfExists(file(kind));
     } catch (IOException e) {
       plugin.getLogger().log(Level.WARNING, "Could not delete " + file(kind), e);
+    }
+  }
+
+  /** Weeping vines are at most this long – they keep growing under the infested islet after the build. */
+  private static final int VINE_REACH = 26;
+
+  /**
+   * Vines that grew after the build are not in the snapshot: clear every weeping/twisting vine under and in the
+   * area the portal changed (up in the sky, so there were none before).
+   */
+  private static void clearVines(World w, List<String[]> rows) {
+    if (rows.isEmpty()) return;
+    int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
+    int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
+    for (String[] r : rows) {
+      int x = Integer.parseInt(r[0]), y = Integer.parseInt(r[1]), z = Integer.parseInt(r[2]);
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+      minZ = Math.min(minZ, z);
+      maxZ = Math.max(maxZ, z);
+    }
+    int bottom = Math.max(w.getMinHeight(), minY - VINE_REACH);
+    BlockData air = Bukkit.createBlockData(org.bukkit.Material.AIR);
+    for (int x = minX; x <= maxX; x++) {
+      for (int z = minZ; z <= maxZ; z++) {
+        for (int y = bottom; y <= maxY; y++) {
+          org.bukkit.block.Block b = w.getBlockAt(x, y, z);
+          switch (b.getType()) {
+            case WEEPING_VINES, WEEPING_VINES_PLANT, TWISTING_VINES, TWISTING_VINES_PLANT -> b.setBlockData(air, false);
+            default -> {
+            }
+          }
+        }
+      }
     }
   }
 

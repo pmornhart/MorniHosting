@@ -107,6 +107,18 @@ final class Ranks implements Listener {
 
   /** Reads the ranks from the config (the built-in ones when there are none) and puts them on everyone online. */
   void load(FileConfiguration c) {
+    if (plugin.network() != null) {
+      // In the MoinMorni network the ranks are the network's: no own ranks, badges or ranks given in the game.
+      given.clear();
+      managed = false;
+      packUrl = "";
+      packSha = "";
+      withPack.clear();
+      ranks = networkRanks();
+      for (Player p : Bukkit.getOnlinePlayers()) apply(p);
+      paintAll();
+      return;
+    }
     ranks = c.isSet("ranks") ? parse(c.getMapList("ranks")) : DefaultRanks.ranks();
     managed = c.getBoolean("managed-by-panel", false);
     // What the new config already says needs no in-game entry any more.
@@ -303,8 +315,62 @@ final class Ranks implements Listener {
     }
   }
 
+  // ---------------------------------------------------------------- ranks from the MoinMorni network
+
+  /** What the network last said about each player's rank (checked every second, see {@link #watchNetwork}). */
+  private final Map<UUID, Network.Rank> netRanks = new ConcurrentHashMap<>();
+
+  private static Rank fromNetwork(Network.Rank n) {
+    // "player" (and every rank without a symbol) is everyone else's: no prefix, no line in the bar.
+    boolean plain = n.symbol().isEmpty();
+    return new Rank(n.id(), Network.rankName(n.id(), false), n.symbol(), color(n.colour()), List.of(), List.of(),
+        plain, "");
+  }
+
+  /** The ranks of everyone online, highest first (the teams sort the tab list by them). */
+  private List<Rank> networkRanks() {
+    Network net = plugin.network();
+    Map<String, Network.Rank> byId = new HashMap<>();
+    for (Player p : Bukkit.getOnlinePlayers()) {
+      Network.Rank n = net.rank(p.getUniqueId());
+      netRanks.put(p.getUniqueId(), n);
+      byId.putIfAbsent(n.id(), n);
+    }
+    return byId.values().stream().sorted(java.util.Comparator.comparingInt(Network.Rank::position))
+        .limit(MAX).map(Ranks::fromNetwork).toList();
+  }
+
+  /**
+   * Every second: has the network told something new about someone's rank or rights (the hub's profile comes a
+   * moment after joining, a rank can change in the panel)? Then rights, tab list, heads and bar follow.
+   */
+  void watchNetwork() {
+    Network net = plugin.network();
+    if (net == null) return;
+    boolean changed = false;
+    for (Player p : Bukkit.getOnlinePlayers()) {
+      Network.Rank now = net.rank(p.getUniqueId());
+      if (!now.equals(netRanks.get(p.getUniqueId()))) {
+        netRanks.put(p.getUniqueId(), now);
+        changed = true;
+      }
+    }
+    netRanks.keySet().removeIf(id -> Bukkit.getPlayer(id) == null);
+    if (!changed) return;
+    ranks = networkRanks();
+    for (Player p : Bukkit.getOnlinePlayers()) apply(p);
+    paintAll();
+    plugin.sidebar().update();
+  }
+
   /** The player's rank: given in the game, else the first (highest) that lists them, else the default one. */
   Rank of(Player p) {
+    if (plugin.network() != null) {
+      Network.Rank n = netRanks.get(p.getUniqueId());
+      if (n == null) return fallbackRank();
+      Rank r = byId(n.id());
+      return r != null ? r : fromNetwork(n);
+    }
     String own = given.get(p.getUniqueId());
     if (own != null) {
       Rank r = byId(own);
@@ -422,7 +488,15 @@ final class Ranks implements Listener {
     PermissionAttachment old = granted.remove(p.getUniqueId());
     if (old != null) p.removeAttachment(old);
     Rank r = of(p);
-    if (r != null && !r.permissions().isEmpty()) {
+    Network net = plugin.network();
+    if (net != null) {
+      // The network's rights decide what MorniCraft lets someone do (team tools, no waiting, building at the spawn …).
+      PermissionAttachment a = p.addAttachment(plugin);
+      Network.RIGHTS.forEach((right, nodes) -> {
+        if (net.hasRight(p.getUniqueId(), right)) nodes.forEach(node -> a.setPermission(node, true));
+      });
+      granted.put(p.getUniqueId(), a);
+    } else if (r != null && !r.permissions().isEmpty()) {
       PermissionAttachment a = p.addAttachment(plugin);
       r.permissions().forEach(node -> a.setPermission(node, true));
       granted.put(p.getUniqueId(), a);
@@ -539,6 +613,10 @@ final class Ranks implements Listener {
 
   @EventHandler(priority = EventPriority.LOW)
   public void onJoin(PlayerJoinEvent e) {
+    if (plugin.network() != null) {
+      netRanks.put(e.getPlayer().getUniqueId(), plugin.network().rank(e.getPlayer().getUniqueId()));
+      ranks = networkRanks();
+    }
     apply(e.getPlayer());
     paintAll();
     Player p = e.getPlayer();

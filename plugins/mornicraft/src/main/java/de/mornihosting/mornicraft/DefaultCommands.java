@@ -17,6 +17,36 @@ final class DefaultCommands {
     return new Settings.Command(use, en ? english : de, true);
   }
 
+  /**
+   * In the MoinMorni network: the same list, without what is switched off in the panel and without the admin part
+   * (settings come from the panel there), plus the network's own commands. /msg, /gefaengnis, /stumm … are the
+   * network's now – same names, they work on every server.
+   */
+  static List<Settings.Group> network(boolean en, Settings s) {
+    java.util.Set<String> off = new java.util.HashSet<>();
+    if (!s.spawnCommand()) off.add("/spawn");
+    if (!s.homes()) off.addAll(List.of("/sethome", "/home", "/homes", "/delhome"));
+    if (!s.tpa()) off.addAll(List.of("/tpa", "/tpahere", "/tpaccept", "/tpdeny"));
+    if (!s.back()) off.add("/back");
+    java.util.List<Settings.Group> out = new java.util.ArrayList<>();
+    out.add(new Settings.Group("MoinMorni", List.of(
+        c(en, "/lobby", "Zurück in die Lobby von MoinMorni", "Back to the MoinMorni lobby"),
+        c(en, "/sprache <de|en>", "Deine Sprache im ganzen Netzwerk", "Your language in the whole network"),
+        c(en, "/freunde", "Deine Freunde im Netzwerk", "Your friends in the network"),
+        c(en, "/party", "Mit Freunden zusammen spielen", "Play together with friends"),
+        op(en, "/mcadmin reload", "MorniCraft neu laden (Einstellungen kommen sonst von selbst)", "Reload MorniCraft (settings arrive by themselves otherwise)"),
+        op(en, "/mcadmin drache <angriff>", "Drachen-Angriff zum Ausprobieren", "Try a dragon attack"))));
+    for (Settings.Group g : groups(en)) {
+      if (g.commands().stream().anyMatch(c -> c.use().startsWith("/mornicraft"))) continue;
+      if (!s.clans() && g.title().equals("Clan")) continue;
+      List<Settings.Command> kept = g.commands().stream()
+          .filter(c -> !off.contains(c.use().split(" ")[0]))
+          .toList();
+      if (!kept.isEmpty()) out.add(new Settings.Group(g.title(), kept));
+    }
+    return List.copyOf(out);
+  }
+
   static List<Settings.Group> groups(boolean en) {
     return List.of(
         new Settings.Group(en ? "Spawn & flying" : "Spawn & Fliegen", List.of(

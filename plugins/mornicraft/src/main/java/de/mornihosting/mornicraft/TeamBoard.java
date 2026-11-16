@@ -61,6 +61,8 @@ final class TeamBoard {
   TeamBoard(MorniCraft plugin) {
     this.plugin = plugin;
     this.dir = new File(plugin.getDataFolder(), "team");
+    // In the MoinMorni network the team works in the MoinMorni panel: no files for MorniHosting.
+    if (plugin.network() != null) return;
     Bukkit.getScheduler().runTaskTimer(plugin, this::writeState, 40, STATE_TICKS);
     Bukkit.getScheduler().runTaskTimer(plugin, this::runActions, 40, ACTION_TICKS);
   }
@@ -90,6 +92,34 @@ final class TeamBoard {
 
   // ---------------------------------------------------------------- /teamdashboard
 
+  /**
+   * In the MoinMorni network: the panel's pages – the players (or one player's page, with everything the network
+   * knows), the punishments. MorniCraft's settings are there too (Settings → MorniCraft).
+   */
+  void networkLinks(Player p, OfflinePlayer about) {
+    Ui ui = plugin.ui();
+    Settings.Net net = plugin.settings().net();
+    if (net.panelPlayers().isEmpty()) {
+      p.sendMessage(ui.fail("net.board.nopanel"));
+      return;
+    }
+    List<Component> buttons = new ArrayList<>();
+    Component hover = ui.bare("net.board.hover");
+    if (about != null && about.getName() != null) {
+      buttons.add(Ui.button(ui.bare("net.board.player", Ui.v("name", about.getName())), Ui.ACCENT, hover,
+          ClickEvent.openUrl(net.panelPlayers() + "/" + about.getUniqueId())));
+    }
+    buttons.add(Ui.button(ui.bare("net.board.players"), Ui.ACCENT_2, hover, ClickEvent.openUrl(net.panelPlayers())));
+    if (!net.panelPunishments().isEmpty()) {
+      buttons.add(Ui.button(ui.bare("net.board.punishments"), Ui.GOLD, hover, ClickEvent.openUrl(net.panelPunishments())));
+    }
+    List<Component> lines = new ArrayList<>();
+    lines.add(ui.words("net.board.text"));
+    lines.add(Component.empty());
+    lines.addAll(Ui.rows(buttons, Component.text("  "), Ui.CARD_PX));
+    ui.card(p, ui.flat("net.board.title"), lines);
+  }
+
   void command(CommandSender sender) {
     Ui ui = plugin.ui();
     if (!(sender instanceof Player p)) {
@@ -98,6 +128,10 @@ final class TeamBoard {
     }
     if (!team(p)) {
       sender.sendMessage(ui.fail("teamboard.noperm"));
+      return;
+    }
+    if (plugin.settings().net() != null) {
+      networkLinks(p, null);
       return;
     }
     String base = plugin.settings().teamLink();

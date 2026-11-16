@@ -110,8 +110,17 @@ final class Combat implements Listener {
 
   /** Every quarter second: the bars count down; time up = out of combat. */
   private void tick() {
+    try {
+      tickAll();
+    } finally {
+      plugin.quiet();
+    }
+  }
+
+  private void tickAll() {
     long now = System.currentTimeMillis();
     for (Player p : Bukkit.getOnlinePlayers()) {
+      plugin.voice(p);
       UUID id = p.getUniqueId();
       Long t = until.get(id);
       BossBar bar = bars.get(id);
@@ -198,9 +207,9 @@ final class Combat implements Listener {
     }
     p.setHealth(0);
     String foeName = foe == null ? "?" : foe.getName();
-    Component line = Component.text("⚔ ", NamedTextColor.RED)
-        .append(ui().words("combat.logged", Ui.v("name", p.getName()), Ui.v("foe", foeName)));
-    Bukkit.getOnlinePlayers().stream().filter(o -> !o.equals(p)).forEach(o -> o.sendMessage(line));
+    Bukkit.getOnlinePlayers().stream().filter(o -> !o.equals(p)).forEach(o -> plugin.speak(o, () -> o.sendMessage(
+        Component.text("⚔ ", NamedTextColor.RED)
+            .append(ui().words("combat.logged", Ui.v("name", p.getName()), Ui.v("foe", foeName))))));
     plugin.getLogger().info(p.getName() + " logged out in combat with " + foeName + " – killed");
   }
 
@@ -214,7 +223,7 @@ final class Combat implements Listener {
     d.combatLogged = false;
     plugin.store().save(p.getUniqueId(), d);
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
-      if (p.isOnline()) p.sendMessage(ui().fail("combat.youlogged"));
+      if (p.isOnline()) plugin.speak(p, () -> p.sendMessage(ui().fail("combat.youlogged")));
     }, TICK * 2);
   }
 
