@@ -1,5 +1,5 @@
 /**
- * Embedding MorniHosting's server pages in another app (e.g. morni.net, which runs MorniHosting as its "motor"
+ * Embedding MorniHosting's server pages in another app (e.g. MoinMorni, which runs MorniHosting as its "motor"
  * without a web interface of its own: MH_HEADLESS=true).
  *
  * How the other app uses it:

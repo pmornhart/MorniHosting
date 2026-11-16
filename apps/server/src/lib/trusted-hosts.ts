@@ -1,7 +1,7 @@
 import dns from 'node:dns';
 
 /**
- * The addresses of a few named hosts (e.g. "morninet" in the same Docker network), looked up now and again every
+ * The addresses of a few named hosts (e.g. "moinmorni" in the same Docker network), looked up now and again every
  * minute – a container gets a new address when it is recreated. IP addresses are taken as they are.
  */
 const REFRESH_MS = 60_000;

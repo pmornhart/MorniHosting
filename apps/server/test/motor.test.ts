@@ -77,7 +77,7 @@ describe('limited API keys and the motor mode', () => {
   test('service-token: an admin service account for another app, limited to its areas', async () => {
     t = await createTestApp();
     await setupAdmin(t);
-    const result = await runCommand(t.ctx.db, 'service-token', ['morninet', 'servers:read', 'networks']);
+    const result = await runCommand(t.ctx.db, 'service-token', ['moinmorni', 'servers:read', 'networks']);
     expect(result.ok).toBe(true);
     const bearer = { authorization: `Bearer ${result.message}` };
     expect((await t.app.inject({ method: 'GET', url: '/api/networks', headers: bearer })).statusCode).toBe(
@@ -87,16 +87,16 @@ describe('limited API keys and the motor mode', () => {
       403,
     );
     // A second key for the same app reuses the account.
-    const again = await runCommand(t.ctx.db, 'service-token', ['morninet']);
+    const again = await runCommand(t.ctx.db, 'service-token', ['moinmorni']);
     const all = { authorization: `Bearer ${again.message}` };
     expect((await t.app.inject({ method: 'GET', url: '/api/settings', headers: all })).statusCode).toBe(200);
-    expect((await runCommand(t.ctx.db, 'service-token', ['morninet', 'alles'])).ok).toBe(false);
-    expect((await runCommand(t.ctx.db, 'list-users', [])).message).toContain('dienst-morninet');
+    expect((await runCommand(t.ctx.db, 'service-token', ['moinmorni', 'alles'])).ok).toBe(false);
+    expect((await runCommand(t.ctx.db, 'list-users', [])).message).toContain('dienst-moinmorni');
   });
 
   test('a service account made before the first person keeps the setup wizard open', async () => {
     t = await createTestApp({ MH_HEADLESS: 'true' });
-    expect((await runCommand(t.ctx.db, 'service-token', ['morninet'])).ok).toBe(true);
+    expect((await runCommand(t.ctx.db, 'service-token', ['moinmorni'])).ok).toBe(true);
     const status = await t.app.inject({ method: 'GET', url: '/api/system/status' });
     expect(status.json()).toMatchObject({ setupRequired: true });
     const setup = await t.app.inject({

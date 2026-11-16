@@ -65,7 +65,7 @@ const TRAILING_SLASHES = /\/+$/;
 const base = { path: '' };
 
 /**
- * Embedding (e.g. morni.net shows these pages with MorniHosting as its motor): every request goes to
+ * Embedding (e.g. MoinMorni shows these pages with MorniHosting as its motor): every request goes to
  * `${path}/api/...` instead of `/api/...` – one switch for fetch, uploads, the live connection, pictures, downloads.
  */
 export function setApiBase(path: string): void {

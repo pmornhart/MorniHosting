@@ -34,7 +34,7 @@ const envSchema = z.object({
   MH_IMAGE_BEDROCK: z.string().default('itzg/minecraft-bedrock-server'),
   MH_IMAGE_PROXY: z.string().default('itzg/mc-proxy'),
   MH_TRUST_PROXY: booleanFromEnv.default(false),
-  /** Names (or IPs) of the only proxies whose X-Forwarded-For counts, comma-separated – e.g. "morninet". */
+  /** Names (or IPs) of the only proxies whose X-Forwarded-For counts, comma-separated – e.g. "moinmorni". */
   MH_TRUST_PROXY_FROM: z.string().default(''),
   MH_COOKIE_SECURE: z.enum(['auto', 'true', 'false']).default('auto'),
   MH_LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
@@ -56,7 +56,7 @@ const envSchema = z.object({
   MH_ROUTER_JAVA_PORT: z.coerce.number().int().min(0).max(PORT_MAX).default(DEFAULT_ROUTER_JAVA_PORT),
   MH_ROUTER_BEDROCK_PORT: z.coerce.number().int().min(0).max(PORT_MAX).default(DEFAULT_ROUTER_BEDROCK_PORT),
   MH_DEMO: booleanFromEnv.default(false),
-  /** Motor mode: no web interface and no start page, only the API (another app, e.g. morni.net, is the front). */
+  /** Motor mode: no web interface and no start page, only the API (another app, e.g. MoinMorni, is the front). */
   MH_HEADLESS: booleanFromEnv.default(false),
   MH_WEB_DIR: z.string().optional(),
   MH_MAX_UPLOAD_MB: z.coerce.number().int().positive().default(DEFAULT_MAX_UPLOAD_MB),
