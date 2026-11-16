@@ -1,6 +1,8 @@
 /* eslint-disable ts-patterns/no-magic-numbers -- tests compare against literal expected values */
 import net from 'node:net';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import type { AppContext } from '../src/context.js';
+import { createRouterForwards } from '../src/gateway/forwards.js';
 import {
   bedrockAddress,
   cleanAddress,
@@ -9,7 +11,9 @@ import {
   type AddressRouter,
   type RouteTarget,
 } from '../src/gateway/router.js';
+import { AppError } from '../src/lib/errors.js';
 import { forwardTargetProblem, singleIpv4 } from '../src/lib/net-guard.js';
+import type { NetbirdAutomation, PortTarget } from '../src/netbird/service.js';
 import { backend, handshake, talk } from './router-wire.js';
 
 describe('address router', () => {
@@ -123,5 +127,53 @@ describe('address router', () => {
     expect(singleIpv4('10.20.30.0/24')).toBeNull();
     expect(singleIpv4('nas.example.org')).toBeNull();
     expect(singleIpv4(null)).toBeNull();
+  });
+
+  test('NetBird cannot be asked: players are turned away, NetBird is asked again after 10 s instead of a minute', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const stored = new Map<string, unknown>([
+        ['router_forwards', [{ domain: 'moinmorni.net', javaPort: 25567, bedrockPort: null }]],
+      ]);
+      const warnings: unknown[] = [];
+      const ctx = {
+        settings: { getValue: (key: string) => stored.get(key) },
+        log: { warn: (...args: unknown[]) => warnings.push(args) },
+      } as unknown as AppContext;
+      // First NetBird does not answer, then it does.
+      const unreachable = (): PortTarget => {
+        throw new AppError(502, 'netbird_unreachable_timeout', { host: 'netbird.example.org' });
+      };
+      const found = (): PortTarget => ({
+        found: true,
+        host: '10.20.30.40',
+        port: 25565,
+        service: 'moinmorni-proxy.moinmorni.net',
+      });
+      const asked = { count: 0 };
+      const netbird = {
+        portTarget: async () => (asked.count++ === 0 ? unreachable() : found()),
+      } as unknown as NetbirdAutomation;
+      const forwards = createRouterForwards(ctx, netbird, () => null);
+
+      expect(await forwards.resolve('moinmorni.net', 'java')).toBeNull();
+      vi.setSystemTime(Date.now() + 5000);
+      expect(await forwards.resolve('moinmorni.net', 'java')).toBeNull();
+      expect(asked.count).toBe(1);
+      // One line in the log for both attempts.
+      expect(warnings).toHaveLength(1);
+      vi.setSystemTime(Date.now() + 6000);
+      expect(await forwards.resolve('moinmorni.net', 'java')).toEqual({ host: '10.20.30.40', port: 25565 });
+      expect(asked.count).toBe(2);
+      // Found: kept for a minute.
+      vi.setSystemTime(Date.now() + 50_000);
+      expect(await forwards.resolve('moinmorni.net', 'java')).toEqual({ host: '10.20.30.40', port: 25565 });
+      expect(asked.count).toBe(2);
+      // A domain that is not on the list never asks NetBird.
+      expect(await forwards.resolve('fremd.example.org', 'java')).toBeNull();
+      expect(asked.count).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

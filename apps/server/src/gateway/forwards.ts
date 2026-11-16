@@ -8,7 +8,7 @@ import type { Actor } from '../audit/service.js';
 import type { AppContext } from '../context.js';
 import { AppError, badRequest } from '../lib/errors.js';
 import { forwardTargetProblem, ownNetworks } from '../lib/net-guard.js';
-import { MS_PER_MINUTE } from '../lib/units.js';
+import { MS_PER_MINUTE, MS_PER_SECOND } from '../lib/units.js';
 import type { NetbirdAutomation } from '../netbird/service.js';
 import type { RouteTarget, RouterKind } from './router.js';
 
@@ -23,6 +23,8 @@ import type { RouteTarget, RouterKind } from './router.js';
 const FORWARDS_KEY = 'router_forwards';
 /** NetBird is asked at most once a minute per port: a port's target hardly ever moves. */
 const CACHE_MS = MS_PER_MINUTE;
+/** NetBird could not be asked: players try again after a few seconds, not a whole minute. */
+const RETRY_AFTER_ERROR_SECONDS = 10;
 /** A domain whose target cannot be found is written to the log at most once a minute. */
 const LOG_EVERY_MS = MS_PER_MINUTE;
 const PORT_OF: Readonly<Record<RouterKind, 'javaPort' | 'bedrockPort'>> = {
@@ -87,6 +89,10 @@ export function createRouterForwards(
     if (hit && hit.until > Date.now() && !fresh) return hit.found;
     const found = ask(port);
     cache.set(port, { until: Date.now() + CACHE_MS, found });
+    void found.then(({ check }) => {
+      if (check.problem === 'netbird_error' && cache.get(port)?.found === found)
+        cache.set(port, { until: Date.now() + RETRY_AFTER_ERROR_SECONDS * MS_PER_SECOND, found });
+    });
     return found;
   };
 

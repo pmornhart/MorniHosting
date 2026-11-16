@@ -3,6 +3,7 @@ import {
   clientPort,
   PORT_BEDROCK,
   ROUTER_PUBLIC_PORTS,
+  ROUTER_SERVICE_NAMES,
   SOFTWARE,
   toNetbirdName,
   type NetbirdBehindProxy,
@@ -83,10 +84,6 @@ const SUFFIX: Readonly<Record<NetbirdPurpose, string>> = {
   'router-bedrock': '',
 };
 /** The router's own NetBird names (players never type them: any name on the router's port reaches it). */
-const ROUTER_NAMES: Readonly<Record<RouterKind, string>> = {
-  java: 'mh-router-java',
-  bedrock: 'mh-router-bedrock',
-};
 const ROUTER_PURPOSE: Readonly<Record<RouterKind, NetbirdPurpose>> = {
   java: 'router-java',
   bedrock: 'router-bedrock',
@@ -759,7 +756,7 @@ export function createNetbirdAutomation(
         }
         const want: Wanted = {
           purpose: ROUTER_PURPOSE[kind],
-          domain: `${ROUTER_NAMES[kind]}.${cfg.domain}`,
+          domain: `${ROUTER_SERVICE_NAMES[kind]}.${cfg.domain}`,
           mode: 'tcp',
           port: ctx.config.routerPorts[kind],
           listenPort: ROUTER_PUBLIC_PORTS[kind],

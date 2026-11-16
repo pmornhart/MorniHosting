@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import {
   clientPort,
   PORT_BEDROCK,
+  ROUTER_SERVICE_NAMES,
   type NetbirdPurpose,
   type NetbirdServerInfo,
   type NetbirdServiceInfo,
@@ -23,6 +24,33 @@ import { brandOf, netbirdStatusQuery } from './netbird';
 const ORDER: readonly NetbirdPurpose[] = ['main', 'geyser', 'voice'];
 /** The TCP half of Geyser has the same address as the UDP half: not listed on its own. */
 const HIDDEN: readonly NetbirdPurpose[] = ['geyser-signal'];
+
+/** NetBird names of an address router (another panel's: "mh-router-java.mornihosting.de"). */
+const ROUTER_PREFIXES = Object.values(ROUTER_SERVICE_NAMES).map((name) => `${name}.`);
+
+/**
+ * When another panel's address router holds the usual ports: that panel can send this domain on ("Weitere Domains
+ * über diesen Verteiler") – the note names the ports to enter there.
+ */
+function RouterHint({ server, domain }: { server: ServerDetail; domain: string }): ReactElement | null {
+  const { t } = useTranslation();
+  const all = server.netbird?.services ?? [];
+  const holder = all.find((s) => ROUTER_PREFIXES.some((prefix) => s.heldBy?.startsWith(prefix)))?.heldBy;
+  if (!holder) return null;
+  const portOf = (purpose: NetbirdPurpose): number | null =>
+    all.find((s) => s.purpose === purpose)?.port ?? null;
+  const java = server.edition === 'java' ? portOf('main') : null;
+  const bedrock = portOf('geyser-signal') ?? portOf('geyser');
+  const ports = [
+    java ? t('netbirdAuto.routerHintJava', { port: java }) : null,
+    bedrock ? t('netbirdAuto.routerHintBedrock', { port: bedrock }) : null,
+  ].filter((p): p is string => p !== null);
+  return (
+    <p className="rounded-[10px] bg-secondary px-3 py-2 text-[13px]">
+      {t('netbirdAuto.routerHint', { holder, domain, ports: ports.join(', ') })}
+    </p>
+  );
+}
 
 /**
  * What players type for one service. On the domain itself that is the domain (the port decides where they land),
@@ -54,40 +82,43 @@ export function NetbirdAddresses({
   const java = server.edition === 'java';
   if (!services.length) return null;
   return (
-    <ul className="grid gap-1.5 rounded-[12px] bg-secondary px-3 py-2 text-[13px]">
-      {services.map((s) => {
-        const address = playerAddress(s, server, domain);
-        return (
-          <li key={s.purpose} className="grid gap-1">
-            <span className="flex flex-wrap items-center gap-2">
-              <Globe className="size-4 text-primary" aria-hidden />
-              <span className="text-muted-foreground">{t(`netbirdAuto.purpose.${s.purpose}`)}</span>
-              <code className="font-mono font-semibold">{address}</code>
-              <CopyButton text={address} className="size-7" />
-            </span>
-            {s.wanted ? (
-              <span className="flex items-start gap-2 text-warning">
-                <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-                <span>
-                  {t('netbirdAuto.portTaken', {
-                    wanted: s.wanted,
-                    holder: s.heldBy ?? t('netbirdAuto.portTakenSomeone'),
-                    address,
-                  })}
-                  {java && s.purpose === 'main' && s.port
-                    ? ` ${t('netbirdAuto.srvHint', {
-                        name: `_minecraft._tcp.${domain}`,
-                        target: s.domain,
-                        port: s.port,
-                      })}`
-                    : ''}
-                </span>
+    <>
+      <ul className="grid gap-1.5 rounded-[12px] bg-secondary px-3 py-2 text-[13px]">
+        {services.map((s) => {
+          const address = playerAddress(s, server, domain);
+          return (
+            <li key={s.purpose} className="grid gap-1">
+              <span className="flex flex-wrap items-center gap-2">
+                <Globe className="size-4 text-primary" aria-hidden />
+                <span className="text-muted-foreground">{t(`netbirdAuto.purpose.${s.purpose}`)}</span>
+                <code className="font-mono font-semibold">{address}</code>
+                <CopyButton text={address} className="size-7" />
               </span>
-            ) : null}
-          </li>
-        );
-      })}
-    </ul>
+              {s.wanted ? (
+                <span className="flex items-start gap-2 text-warning">
+                  <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  <span>
+                    {t('netbirdAuto.portTaken', {
+                      wanted: s.wanted,
+                      holder: s.heldBy ?? t('netbirdAuto.portTakenSomeone'),
+                      address,
+                    })}
+                    {java && s.purpose === 'main' && s.port
+                      ? ` ${t('netbirdAuto.srvHint', {
+                          name: `_minecraft._tcp.${domain}`,
+                          target: s.domain,
+                          port: s.port,
+                        })}`
+                      : ''}
+                  </span>
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      <RouterHint server={server} domain={domain} />
+    </>
   );
 }
 
