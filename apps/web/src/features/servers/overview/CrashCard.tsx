@@ -23,7 +23,7 @@ const MANUAL: Readonly<Record<string, (crash: CrashInfo) => { label: string; to:
   'world-broken': () => ({ label: 'crash.openBackups', to: 'backups' }),
 };
 
-export const crashHelpKey = (serverId: string) => ['crash-help', serverId] as const;
+const crashHelpKey = (serverId: string) => ['crash-help', serverId] as const;
 
 /** Runs one repair; shared by the card on the server page and the popup. */
 export function useCrashFix(serverId: string) {

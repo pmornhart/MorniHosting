@@ -98,7 +98,7 @@ export function Food({ value }: { value: number | null }): ReactElement {
 }
 
 /** Red question mark for items without a known picture (modded items), as in other panels. */
-export function UnknownItem({ className }: { className?: string }): ReactElement {
+function UnknownItem({ className }: { className?: string }): ReactElement {
   return <Pixels rows={UNKNOWN} colours={{ r: '#e53935' }} className={className} />;
 }
 

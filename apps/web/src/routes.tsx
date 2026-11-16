@@ -1,42 +1,57 @@
-import { Suspense, type ComponentType, type ReactElement } from 'react';
+import { Suspense, type ReactElement } from 'react';
 import { Navigate, type RouteObject } from 'react-router';
 import { Skeleton } from '@/components/ui/misc';
 import { lazyPage } from '@/lib/lazy-page';
 import { ServerLayout } from '@/features/servers/ServerLayout';
 
-/** A page module without a default export, loaded only when it is opened. */
-function namedPage<K extends string>(
-  load: () => Promise<Record<K, unknown>>,
-  key: K,
-): ReturnType<typeof lazyPage<object>> {
-  return lazyPage<object>(async () => ({ default: (await load())[key] as ComponentType<object> }));
-}
-
-const DiscordLinkPageLazy = namedPage(() => import('@/features/admin/DiscordLinkPage'), 'DiscordLinkPage');
-const ApprovalsPageLazy = namedPage(() => import('@/features/approvals/ApprovalsPage'), 'ApprovalsPage');
-const AccountPageLazy = lazyPage<object>(async () => ({
-  default: (await import('@/features/admin/AccountPage')).AccountPage,
-}));
-const AuditPageLazy = namedPage(() => import('@/features/admin/AuditPage'), 'AuditPage');
-const NotificationsPageLazy = namedPage(
-  () => import('@/features/admin/NotificationsPage'),
-  'NotificationsPage',
-);
-const PanelSettingsPageLazy = namedPage(
-  () => import('@/features/admin/PanelSettingsPage'),
-  'PanelSettingsPage',
-);
-const UsersPageLazy = namedPage(() => import('@/features/admin/UsersPage'), 'UsersPage');
-const NetworksPageLazy = namedPage(() => import('@/features/networks/NetworksPage'), 'NetworksPage');
-const CreateServerPageLazy = namedPage(
-  () => import('@/features/servers/create/CreateServerPage'),
-  'CreateServerPage',
-);
-const ImportServerPageLazy = namedPage(
-  () => import('@/features/servers/create/ImportServerPage'),
-  'ImportServerPage',
-);
-const ConsoleHomeLazy = namedPage(() => import('@/features/servers/ConsoleHome'), 'ConsoleHome');
+/**
+ * Pages with a named export, loaded only when they are opened. The export is picked by destructuring so that the
+ * unused-code check (fallow) sees which export is used.
+ */
+const DiscordLinkPageLazy = lazyPage<object>(async () => {
+  const { DiscordLinkPage } = await import('@/features/admin/DiscordLinkPage');
+  return { default: DiscordLinkPage };
+});
+const ApprovalsPageLazy = lazyPage<object>(async () => {
+  const { ApprovalsPage } = await import('@/features/approvals/ApprovalsPage');
+  return { default: ApprovalsPage };
+});
+const AccountPageLazy = lazyPage<object>(async () => {
+  const { AccountPage } = await import('@/features/admin/AccountPage');
+  return { default: AccountPage };
+});
+const AuditPageLazy = lazyPage<object>(async () => {
+  const { AuditPage } = await import('@/features/admin/AuditPage');
+  return { default: AuditPage };
+});
+const NotificationsPageLazy = lazyPage<object>(async () => {
+  const { NotificationsPage } = await import('@/features/admin/NotificationsPage');
+  return { default: NotificationsPage };
+});
+const PanelSettingsPageLazy = lazyPage<object>(async () => {
+  const { PanelSettingsPage } = await import('@/features/admin/PanelSettingsPage');
+  return { default: PanelSettingsPage };
+});
+const UsersPageLazy = lazyPage<object>(async () => {
+  const { UsersPage } = await import('@/features/admin/UsersPage');
+  return { default: UsersPage };
+});
+const NetworksPageLazy = lazyPage<object>(async () => {
+  const { NetworksPage } = await import('@/features/networks/NetworksPage');
+  return { default: NetworksPage };
+});
+const CreateServerPageLazy = lazyPage<object>(async () => {
+  const { CreateServerPage } = await import('@/features/servers/create/CreateServerPage');
+  return { default: CreateServerPage };
+});
+const ImportServerPageLazy = lazyPage<object>(async () => {
+  const { ImportServerPage } = await import('@/features/servers/create/ImportServerPage');
+  return { default: ImportServerPage };
+});
+const ConsoleHomeLazy = lazyPage<object>(async () => {
+  const { ConsoleHome } = await import('@/features/servers/ConsoleHome');
+  return { default: ConsoleHome };
+});
 const VersionTab = lazyPage(() => import('@/features/servers/version/VersionTab'));
 const NetworkTab = lazyPage(() => import('@/features/servers/network/NetworkTab'));
 const AdvancedTab = lazyPage(() => import('@/features/servers/advanced/AdvancedTab'));
