@@ -39,7 +39,12 @@ const AIKAR_WITHOUT_PRETOUCH = [
   '-Dusing.aikars.flags=https://mcflags.emc.gs',
   '-Daikars.new.flags=true',
 ];
-const GIVE_BACK = ['-XX:G1PeriodicGCInterval=60000', '-XX:MinHeapFreeRatio=10', '-XX:MaxHeapFreeRatio=30'];
+const GIVE_BACK = [
+  '-XX:G1PeriodicGCInterval=60000',
+  '-XX:TrimNativeHeapInterval=60000',
+  '-XX:MinHeapFreeRatio=10',
+  '-XX:MaxHeapFreeRatio=30',
+];
 
 describe('release idle memory: always online, little RAM and CPU time without players', () => {
   let t: TestApp;
@@ -134,9 +139,10 @@ describe('release idle memory: always online, little RAM and CPU time without pl
     );
   });
 
-  test('Java 8 does not know the periodic collection (the JVM would not start): only the rest', async () => {
+  test('Java 8 knows neither periodic collection nor native trimming (the JVM would not start): only the rest', async () => {
     const old = await create({ ...paper, version: '1.12.2', releaseIdleMemory: true });
     expect(flags(old.id)).not.toContain('-XX:G1PeriodicGCInterval=60000');
+    expect(flags(old.id)).not.toContain('-XX:TrimNativeHeapInterval=60000');
     expect(flags(old.id)).toEqual(
       expect.arrayContaining(['-XX:MinHeapFreeRatio=10', '-XX:MaxHeapFreeRatio=30']),
     );

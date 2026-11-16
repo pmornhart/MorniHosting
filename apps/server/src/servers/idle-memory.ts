@@ -10,8 +10,9 @@ import { readPropertiesFile, writePropertiesFile } from './properties-file.js';
  * - Aikar's garbage-collector settings stay, but without AlwaysPreTouch: that flag makes the whole start heap real
  *   memory at once, even on an empty server.
  * - G1 returns what it no longer needs: a periodic collection after a quiet minute, and a heap that shrinks when most
- *   of it is free (Min/MaxHeapFreeRatio). Java 8 has no periodic collection (the flag would stop the JVM from
- *   starting), so it only gets the rest.
+ *   of it is free (Min/MaxHeapFreeRatio). Memory freed outside the heap (chunk loading, compression) goes back every
+ *   minute too (TrimNativeHeapInterval; a single trim after a player left gave back about 95 MB). Java 8 knows neither
+ *   (the flags would stop the JVM from starting), so it only gets the free ratios.
  * - Minecraft (1.21.2+) pauses the world after a minute without players (pause-when-empty-seconds); Paper keeps
  *   plugins, chunk loading and logins running meanwhile. A player joining resumes it at once.
  *
@@ -25,6 +26,8 @@ type IdleRow = Pick<ServerRow, 'software' | 'version' | 'javaTag' | 'memoryMb'>;
 export const IDLE_INIT_MEMORY_MB = 256;
 /** A quiet minute without any garbage collection → G1 looks for memory to give back. */
 export const IDLE_GC_INTERVAL_MS = 60_000;
+/** Every minute Java hands memory it freed outside the heap back to the system (glibc keeps it otherwise). */
+export const IDLE_TRIM_INTERVAL_MS = 60_000;
 /** G1 shrinks the heap when more than this share of it is free, and keeps at least the smaller one free. */
 export const IDLE_MAX_HEAP_FREE_PERCENT = 30;
 export const IDLE_MIN_HEAP_FREE_PERCENT = 10;
@@ -68,11 +71,19 @@ function aikarWithoutPreTouch(memoryMb: number): string[] {
   ];
 }
 
-/** Flags that hand unused heap back to the system (periodic collection only from Java 12 on). */
+/**
+ * Flags that hand unused memory back to the system. Java 8 knows neither the periodic collection (Java 12+) nor
+ * native trimming (17.0.9, 21.0.1, 22+) – an unknown flag would stop the JVM, so it only gets the free ratios.
+ */
 function giveBack(row: IdleRow): string[] {
   const java8 = (row.javaTag ?? javaTagFor(row.software, row.version)) === 'java8';
   return [
-    ...(java8 ? [] : [`-XX:G1PeriodicGCInterval=${IDLE_GC_INTERVAL_MS}`]),
+    ...(java8
+      ? []
+      : [
+          `-XX:G1PeriodicGCInterval=${IDLE_GC_INTERVAL_MS}`,
+          `-XX:TrimNativeHeapInterval=${IDLE_TRIM_INTERVAL_MS}`,
+        ]),
     `-XX:MinHeapFreeRatio=${IDLE_MIN_HEAP_FREE_PERCENT}`,
     `-XX:MaxHeapFreeRatio=${IDLE_MAX_HEAP_FREE_PERCENT}`,
   ];

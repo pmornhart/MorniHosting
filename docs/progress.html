@@ -132,8 +132,8 @@ footer { color: var(--muted); font-size: 13px; }
 <script type="application/json" id="data">
 {
   "goal": "Ein selbst gehostetes Panel für Minecraft-Server: alles, was man braucht, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-11-16T16:10:00+00:00",
-  "now": "NetBird für ein zweites Produkt: eigene Namen, gemeinsamer Ausgang, Spiel direkt auf der Domain.",
+  "updated": "2026-11-16T20:30:00+00:00",
+  "now": "Arbeitsspeicher im Leerlauf freigeben: Server bleiben online und brauchen leer etwa die Hälfte.",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -594,6 +594,11 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "NetBird für MoinMorni: Marke, gemeinsamer Ausgang, Spiel auf der Domain",
       "status": "fertig",
       "detail": "MH_BRAND benennt alles in NetBird (Netzwerk, Gruppe, Resources, Ausgang) – so teilen sich MorniHosting und MoinMorni ein NetBird-Konto und denselben IONOS-Ausgang, ohne sich anzufassen. Ein Server kann direkt auf der Domain liegen (Spieler tippen nur moinmorni.net), Voice-Chat am Velocity-Proxy jetzt auch über NetBird, Meldungen live über /api/ws, die NetBird-Karten einbettbar, Wächter für ein anderes Produkt einrichtbar – im Container und auf dem Proxmox-Host (eigener Host-Wächter je Produkt), UDP auf den Java-Ports im Port-Skript für selbst betriebenes NetBird. 453 Tests + 5 Playwright-Abläufe, NetBird nur nachgebaut."
+    },
+    {
+      "title": "Arbeitsspeicher im Leerlauf freigeben",
+      "status": "fertig",
+      "detail": "Neuer Schalter je Java-Server in den Einstellungen: Der Server bleibt online und man kommt sofort hinein, aber ohne Spieler braucht er nur noch etwa die Hälfte des Arbeitsspeichers. Kleiner Start-Heap, Aikars Flags ohne AlwaysPreTouch, Java gibt ungenutzten Speicher zurück, Minecraft hält leere Welten nach einer Minute an. Gemessen mit Paper 26.1.2: ein leerer 1,5-GB-Modus braucht 0,7 statt 1,4 GB. Standard aus; MoinMorni schaltet ihn für alle Netzwerk-Server ein."
     }
   ],
   "shots": [
@@ -761,6 +766,16 @@ footer { color: var(--muted); font-size: 13px; }
       "img": "progress/quota-handy.webp",
       "caption": "Kontingente auf dem Handy",
       "time": "2026-11-02T20:31:52+00:00"
+    },
+    {
+      "img": "progress/leerlauf-computer.webp",
+      "caption": "Server-Einstellungen → Allgemein: Arbeitsspeicher im Leerlauf freigeben",
+      "time": "2026-11-16T20:30:00+00:00"
+    },
+    {
+      "img": "progress/leerlauf-handy.webp",
+      "caption": "Der Schalter auf dem Handy",
+      "time": "2026-11-16T20:30:00+00:00"
     }
   ],
   "files": [
@@ -771,6 +786,14 @@ footer { color: var(--muted); font-size: 13px; }
     {
       "tag": "geändert",
       "path": "apps/server/src/netbird/ (client, exit, service, routes, exit-watch), alerts/service.ts, ws.ts, gateway/service.ts, config.ts (MH_BRAND), scripts/guard.sh, scripts/netbird-proxy-ports.sh, proxmox/dauerbetrieb.sh, NetBird-Karten + embed.ts, Texte de/en, docs/netbird.md, docs/dauerbetrieb.md"
+    },
+    {
+      "tag": "neu",
+      "path": "apps/server/src/servers/idle-memory.ts, apps/server/drizzle/0015_release_idle_memory.sql, apps/server/test/idle-memory.test.ts"
+    },
+    {
+      "tag": "geändert",
+      "path": "servers/spec.ts, servers/service.ts, db/schema.ts, packages/shared/src/api.ts, GeneralCard.tsx, Texte de/en, README (FAQ RAM)"
     }
   ],
   "eta": null,
