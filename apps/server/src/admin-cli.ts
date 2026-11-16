@@ -28,7 +28,7 @@ const USAGE = [
   '  reset-2fa <name>         Zwei-Faktor-Anmeldung ausschalten (z. B. Handy verloren)',
   '  service-token <app> [bereiche…]',
   '                           Dienst-Konto „dienst-<app>“ (Admin, ohne Anmeldung) mit neuem API-Schlüssel,',
-  `                           z. B. für MoinMorni. Bereiche: ${TOKEN_SCOPES.join(', ')} (ohne = alle)`,
+  `                           z. B. für morni.net. Bereiche: ${TOKEN_SCOPES.join(', ')} (ohne = alle)`,
   '',
   'Beispiel: docker exec mornihosting node /app/server/dist/cli.js reset-password philip',
 ].join('\n');
@@ -95,13 +95,13 @@ const resetTwoFactor: Command = async (db, [username]) => {
 };
 
 const PREFIX_SHOWN = 10;
-// An app name for a service account: lower case letters, digits and "-". Accepts "moinmorni", "status-seite";
-// rejects "MoinMorni", "zwei wörter".
-// https://regex101.com/?flavor=javascript&regex=%5E%5Ba-z0-9-%5D%7B2%2C30%7D%24&testString=moinmorni
+// An app name for a service account: lower case letters, digits and "-". Accepts "morninet", "status-seite";
+// rejects "MorniNet", "zwei wörter".
+// https://regex101.com/?flavor=javascript&regex=%5E%5Ba-z0-9-%5D%7B2%2C30%7D%24&testString=morninet
 const APP_NAME = /^[a-z0-9-]{2,30}$/;
 
 /**
- * A key for another app on the same machine (e.g. MoinMorni in motor mode): a service account that is admin but
+ * A key for another app on the same machine (e.g. morni.net in motor mode): a service account that is admin but
  * cannot sign in (random password nobody knows), plus a fresh key – shown once. Older keys of the app stay valid
  * until they are deleted.
  */

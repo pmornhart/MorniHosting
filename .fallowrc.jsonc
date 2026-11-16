@@ -2,7 +2,7 @@
 {
   // Die Demo-Website hat einen eigenen Einstieg: apps/web/demo.html → src/demo/main.ts, beim Demo-Bau
   // ersetzt webauthn-shim.ts das Passkey-Paket (vite.config.ts).
-  // embed.ts ist der Einstieg für Apps, die die Server-Seiten einbetten (MoinMorni im Motor-Modus).
+  // embed.ts ist der Einstieg für Apps, die die Server-Seiten einbetten (morni.net im Motor-Modus).
   "entry": ["apps/web/src/demo/main.ts", "apps/web/src/demo/webauthn-shim.ts", "apps/web/src/embed.ts"],
   // demo.css bindet nur der Demo-Bau ein: vite.config.ts ersetzt dort globals.css durch diese Datei.
   "ignorePatterns": ["apps/web/src/styles/demo.css"],

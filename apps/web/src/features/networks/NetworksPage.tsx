@@ -106,7 +106,7 @@ function CreateNetwork({ proxies }: { readonly proxies: readonly ServerSummary[]
               value={name}
               maxLength={40}
               onChange={(e) => setName(e.target.value)}
-              placeholder="MoinMorni"
+              placeholder="morni.net"
             />
           </div>
           <div className="grid gap-1.5">

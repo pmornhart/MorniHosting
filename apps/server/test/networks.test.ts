@@ -243,7 +243,7 @@ describe('networks', () => {
     });
     const lobby = await create({ name: 'Lobby', port: 25570 });
     const duels = await create({ name: 'Duels', port: 25571 });
-    const created = await call('POST', '/api/networks', { name: 'MoinMorni', proxyServerId: proxy.id });
+    const created = await call('POST', '/api/networks', { name: 'morni.net', proxyServerId: proxy.id });
     expect(created.statusCode).toBe(200);
     const net = created.json<NetworkView>();
     await call('POST', `/api/networks/${net.id}/members`, { serverId: lobby.id, name: 'lobby' });
