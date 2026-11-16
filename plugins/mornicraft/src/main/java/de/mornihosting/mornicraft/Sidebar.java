@@ -138,6 +138,14 @@ final class Sidebar implements Listener {
     }
   }
 
+  /** The lines in the player's language (in the MoinMorni network each player has their own). */
+  private List<Component> linesFor(Player p) {
+    if (plugin.network() == null) return lines(p);
+    List<List<Component>> out = new ArrayList<>(1);
+    Texts.as(plugin.network().language(p.getUniqueId()), () -> out.add(lines(p)));
+    return out.get(0);
+  }
+
   private List<Component> lines(Player p) {
     Ui ui = plugin.ui();
     World w = SpawnArea.world();
@@ -168,8 +176,11 @@ final class Sidebar implements Listener {
     Ranks.Rank rank = plugin.ranks().of(p);
     if (rank != null && !rank.fallback()) {
       boolean picture = !rank.tag().isEmpty() && plugin.ranks().seesBadges(p);
-      rows.add(new Component[] {dot(rank.color()), Component.text(ui.flat("sidebar.rank"), Ui.SOFT),
-          picture ? plugin.ranks().label(rank, p) : Component.text(rank.name(), rank.color())});
+      // In the network: the network's rank ("♛ Owner"), in the player's language.
+      Component value = plugin.network() != null
+          ? Component.text(rank.symbol() + " " + Network.rankName(rank.id(), ui.english()), rank.color())
+          : picture ? plugin.ranks().label(rank, p) : Component.text(rank.name(), rank.color());
+      rows.add(new Component[] {dot(rank.color()), Component.text(ui.flat("sidebar.rank"), Ui.SOFT), value});
     }
     rows.add(row(Ui.ACCENT_2, ui.flat("sidebar.clock"), Component.text(clock, NamedTextColor.WHITE)));
     rows.add(row(night ? Ui.MAIL : Ui.GOLD, ui.flat("sidebar.day", Ui.v("n", day)), Component.text(gameTime, NamedTextColor.WHITE)));
@@ -250,7 +261,7 @@ final class Sidebar implements Listener {
         continue;
       }
       if (o.getDisplaySlot() != DisplaySlot.SIDEBAR) o.setDisplaySlot(DisplaySlot.SIDEBAR);
-      List<Component> lines = lines(p);
+      List<Component> lines = linesFor(p);
       for (int i = 0; i < KEYS.length; i++) {
         Team t = b.getTeam("mc" + i);
         if (t == null) continue;

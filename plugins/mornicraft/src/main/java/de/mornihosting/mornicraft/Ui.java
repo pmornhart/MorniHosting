@@ -25,7 +25,10 @@ import org.bukkit.entity.Player;
  */
 final class Ui {
   static final TextColor ACCENT = TextColor.color(0x34d399);
-  static final TextColor ACCENT_2 = TextColor.color(0x22d3ee);
+  /** Second colour of the gradients: blue alone or under MorniHosting, gold in the MoinMorni network. */
+  static TextColor ACCENT_2 = TextColor.color(0x22d3ee);
+  private static final TextColor BLUE = TextColor.color(0x22d3ee);
+  private static final TextColor NETWORK_GOLD = TextColor.color(0xfbbf24);
   static final TextColor SOFT = TextColor.color(0xb4c2bc);
   static final TextColor DIM = TextColor.color(0x4b5753);
   static final TextColor BAD = TextColor.color(0xf87171);
@@ -112,6 +115,16 @@ final class Ui {
     }
     if (row != null) rows.add(row);
     return rows;
+  }
+
+  /** MoinMorni's look (emerald to gold) or MorniCraft's own (emerald to blue). */
+  static void theme(boolean network) {
+    ACCENT_2 = network ? NETWORK_GOLD : BLUE;
+  }
+
+  /** The texts come out in English right now (the player's language in the network, else the server's). */
+  boolean english() {
+    return texts.english();
   }
 
   boolean bedrock(Audience to) {

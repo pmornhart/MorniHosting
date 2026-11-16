@@ -42,8 +42,13 @@ final class Welcome implements Listener {
     }
     Bukkit.getScheduler().runTaskLater(plugin, () -> {
       if (!p.isOnline()) return;
-      if (greet) greet(p);
-      else plugin.social().waiting(p);
+      Runnable say = () -> {
+        if (greet) greet(p);
+        else plugin.social().waiting(p);
+      };
+      // In the MoinMorni network: in the player's language.
+      if (plugin.network() != null) Texts.as(plugin.network().language(p.getUniqueId()), say);
+      else say.run();
     }, AFTER_JOIN_TICKS);
   }
 
@@ -58,6 +63,7 @@ final class Welcome implements Listener {
     lines.add(ui.words("welcome.first", Ui.v("name", p.getName())));
     lines.add(Component.text("● ", Ui.ACCENT).append(ui.words("welcome.online", Ui.v("count", Bukkit.getOnlinePlayers().size()))));
     if (plugin.settings().elytra()) lines.add(Component.text("✦ ", Ui.ACCENT_2).append(ui.words("welcome.spawn")));
+    if (plugin.network() != null) lines.add(Component.text("⌂ ", Ui.GOLD).append(ui.words("net.welcome")));
     Component mail = plugin.social().waitingLine(p);
     if (mail != null) lines.add(mail);
     lines.add(Component.empty());

@@ -64,6 +64,12 @@ final class Social implements Listener {
     return plugin.store().get(viewer).ignored.contains(sender.toString());
   }
 
+  /** To everyone (and the console), each in their own language. */
+  private void say(java.util.function.Supplier<Component> line) {
+    Bukkit.getOnlinePlayers().forEach(o -> plugin.speak(o, () -> o.sendMessage(line.get())));
+    Bukkit.getConsoleSender().sendMessage(line.get());
+  }
+
   // ── Teleport requests ────────────────────────────────────────────────────────────────
 
   void request(Player from, Player to, boolean here) {
@@ -82,21 +88,24 @@ final class Social implements Listener {
     open.put(from.getUniqueId(), new Request(from.getUniqueId(), here, System.currentTimeMillis()));
     from.sendMessage(ui().ok("tpa.sent", Ui.v("name", to.getName())));
     plugin.limits().count(from, "tpa");
-    Component accept = Ui.button(ui().bare("tpa.accept"), Ui.ACCENT, ui().bare("tpa.accept.hover"),
-        ClickEvent.runCommand("/tpaccept " + from.getName()));
-    Component deny = Ui.button(ui().bare("tpa.deny"), Ui.BAD, ui().bare("tpa.deny.hover"),
-        ClickEvent.runCommand("/tpdeny " + from.getName()));
-    ui().card(to, ui().flat("tpa.title"), List.of(
-        ui().words(here ? "tpahere.got" : "tpa.got", Ui.v("name", from.getName())),
-        accept.append(Ui.gap()).append(deny)));
+    // Built in the language of the one who gets it (in the MoinMorni network each player has their own).
+    plugin.speak(to, () -> {
+      Component accept = Ui.button(ui().bare("tpa.accept"), Ui.ACCENT, ui().bare("tpa.accept.hover"),
+          ClickEvent.runCommand("/tpaccept " + from.getName()));
+      Component deny = Ui.button(ui().bare("tpa.deny"), Ui.BAD, ui().bare("tpa.deny.hover"),
+          ClickEvent.runCommand("/tpdeny " + from.getName()));
+      ui().card(to, ui().flat("tpa.title"), List.of(
+          ui().words(here ? "tpahere.got" : "tpa.got", Ui.v("name", from.getName())),
+          accept.append(Ui.gap()).append(deny)));
+    });
     to.playSound(PING);
     if (plugin.bedrock().menus(to)) {
       String name = from.getName();
-      plugin.bedrock().ask(to, ui().flat("tpa.title"), ui().flat(here ? "tpahere.got" : "tpa.got", Ui.v("name", name)),
+      plugin.speak(to, () -> plugin.bedrock().ask(to, ui().flat("tpa.title"), ui().flat(here ? "tpahere.got" : "tpa.got", Ui.v("name", name)),
           ui().flat("tpa.accept"), ui().flat("tpa.deny"), yes -> {
             if (yes) accept(to, name);
             else deny(to, name);
-          });
+          }));
     }
   }
 
@@ -122,12 +131,12 @@ final class Social implements Listener {
     requests.get(target.getUniqueId()).remove(r.from());
     Player from = Bukkit.getPlayer(r.from());
     target.sendMessage(ui().ok("tpa.youaccepted"));
-    from.sendMessage(ui().ok("tpa.accepted", Ui.v("name", target.getName())));
+    plugin.speak(from, () -> from.sendMessage(ui().ok("tpa.accepted", Ui.v("name", target.getName()))));
     // Who travels has to stand still: the asker for /tpa, the asked one for /tpahere.
     Player traveller = r.here() ? target : from;
     Player host = r.here() ? from : target;
-    plugin.teleporter().teleport(traveller, ui().bare("dest.player", Ui.v("name", host.getName())),
-        () -> host.isOnline() ? host.getLocation() : null, null);
+    plugin.speak(traveller, () -> plugin.teleporter().teleport(traveller,
+        ui().bare("dest.player", Ui.v("name", host.getName())), () -> host.isOnline() ? host.getLocation() : null, null));
   }
 
   void deny(Player target, String name) {
@@ -139,7 +148,9 @@ final class Social implements Listener {
     requests.get(target.getUniqueId()).remove(r.from());
     target.sendMessage(ui().note("✖", Ui.SOFT, "tpa.youdenied"));
     Player from = Bukkit.getPlayer(r.from());
-    if (from != null) from.sendMessage(ui().note("✖", Ui.BAD, "tpa.denied", Ui.v("name", target.getName())));
+    if (from != null) {
+      plugin.speak(from, () -> from.sendMessage(ui().note("✖", Ui.BAD, "tpa.denied", Ui.v("name", target.getName()))));
+    }
   }
 
   // ── Messages ─────────────────────────────────────────────────────────────────────────
@@ -266,15 +277,15 @@ final class Social implements Listener {
     }
     lastAfk.put(p.getUniqueId(), now);
     if (away.remove(p.getUniqueId())) {
-      Bukkit.broadcast(ui().note("☀", Ui.GOLD, "afk.off", Ui.v("name", p.getName())));
+      say(() -> ui().note("☀", Ui.GOLD, "afk.off", Ui.v("name", p.getName())));
     } else {
       away.add(p.getUniqueId());
-      Bukkit.broadcast(ui().note("☾", Ui.SOFT, "afk.on", Ui.v("name", p.getName())));
+      say(() -> ui().note("☾", Ui.SOFT, "afk.on", Ui.v("name", p.getName())));
     }
   }
 
   private void backAgain(Player p) {
-    if (away.remove(p.getUniqueId())) Bukkit.broadcast(ui().note("☀", Ui.GOLD, "afk.off", Ui.v("name", p.getName())));
+    if (away.remove(p.getUniqueId())) say(() -> ui().note("☀", Ui.GOLD, "afk.off", Ui.v("name", p.getName())));
   }
 
   @EventHandler(ignoreCancelled = true)

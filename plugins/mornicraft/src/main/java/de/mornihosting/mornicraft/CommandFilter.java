@@ -34,7 +34,7 @@ final class CommandFilter implements Listener {
   /** The command names written on the command list ("/sethome [name]" → "sethome"). */
   private Set<String> listed() {
     Set<String> names = new HashSet<>(ALWAYS);
-    for (Settings.Group g : plugin.settings().groups()) {
+    for (Settings.Group g : plugin.commands().groups()) {
       for (Settings.Command c : g.commands()) {
         String use = c.use().trim();
         if (!use.startsWith("/")) continue;
@@ -42,6 +42,11 @@ final class CommandFilter implements Listener {
       }
     }
     if (!plugin.settings().clans()) names.removeAll(List.of("clan", "cc"));
+    // In the MoinMorni network these are the network's (the proxy brings them); ours would only be in the way.
+    if (plugin.network() != null) {
+      names.removeAll(NetworkMode.NETWORK_COMMANDS);
+      names.remove("mornicraft");
+    }
     return names;
   }
 
@@ -49,7 +54,9 @@ final class CommandFilter implements Listener {
   public void onSend(PlayerCommandSendEvent e) {
     Set<String> keep = listed();
     // Team tools only for the team (they say no anyway, but nobody else needs to see them).
-    if (e.getPlayer().isOp() || e.getPlayer().hasPermission("mornicraft.ranks")) keep.add("rang");
+    if (plugin.network() == null && (e.getPlayer().isOp() || e.getPlayer().hasPermission("mornicraft.ranks"))) {
+      keep.add("rang");
+    }
     if (e.getPlayer().isOp() || e.getPlayer().hasPermission(Moderation.PERMISSION)) keep.add("teamdashboard");
     Set<String> hide = new HashSet<>();
     for (Map.Entry<String, Map<String, Object>> cmd : plugin.getDescription().getCommands().entrySet()) {

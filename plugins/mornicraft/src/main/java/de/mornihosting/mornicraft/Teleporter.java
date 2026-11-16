@@ -102,6 +102,14 @@ final class Teleporter implements Listener {
   }
 
   private void tick() {
+    try {
+      tickAll();
+    } finally {
+      plugin.quiet();
+    }
+  }
+
+  private void tickAll() {
     Iterator<Map.Entry<UUID, Pending>> it = pending.entrySet().iterator();
     while (it.hasNext()) {
       Map.Entry<UUID, Pending> e = it.next();
@@ -111,6 +119,7 @@ final class Teleporter implements Listener {
         it.remove();
         continue;
       }
+      plugin.voice(p);
       Location now = p.getLocation();
       if (!now.getWorld().equals(w.start().getWorld()) || now.distanceSquared(w.start()) > STILL) {
         it.remove();

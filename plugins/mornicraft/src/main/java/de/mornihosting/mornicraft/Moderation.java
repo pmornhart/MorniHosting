@@ -177,9 +177,9 @@ final class Moderation implements Listener {
 
   /** Tells the whole team (and the console). */
   private void tellTeam(String key, Ui.Value... values) {
-    Component line = Component.text("⚑ ", Ui.GOLD).append(ui().words(key, values));
-    Bukkit.getOnlinePlayers().stream().filter(Moderation::staff).forEach(p -> p.sendMessage(line));
-    Bukkit.getConsoleSender().sendMessage(line);
+    Bukkit.getOnlinePlayers().stream().filter(Moderation::staff).forEach(p -> plugin.speak(p,
+        () -> p.sendMessage(Component.text("⚑ ", Ui.GOLD).append(ui().words(key, values)))));
+    Bukkit.getConsoleSender().sendMessage(Component.text("⚑ ", Ui.GOLD).append(ui().words(key, values)));
   }
 
   // ---------------------------------------------------------------- the cell
@@ -338,8 +338,8 @@ final class Moderation implements Listener {
     lockIn(target);
     target.showTitle(Title.title(Component.text("⚑ " + ui().flat("jail.title"), NamedTextColor.RED),
         Component.text(ui().flat("jail.subtitle", Ui.v("time", span(ms))), Ui.SOFT)));
-    target.sendMessage(ui().fail(d.jailReason.isEmpty() ? "jail.you" : "jail.you.reason", Ui.v("time", span(ms)),
-        Ui.v("reason", d.jailReason)));
+    plugin.speak(target, () -> target.sendMessage(ui().fail(d.jailReason.isEmpty() ? "jail.you" : "jail.you.reason", Ui.v("time", span(ms)),
+        Ui.v("reason", d.jailReason))));
     plugin.history("jail", target.getName(), by.getName(), d.jailReason, ms);
     tellTeam("jail.team", Ui.v("by", by.getName()), Ui.v("name", target.getName()), Ui.v("time", span(ms)),
         Ui.v("reason", d.jailReason.isEmpty() ? "–" : d.jailReason));
@@ -389,15 +389,24 @@ final class Moderation implements Listener {
     target.setFallDistance(0);
     target.teleport(to != null ? to : SpawnArea.spawn(), PlayerTeleportEvent.TeleportCause.PLUGIN);
     target.showTitle(Title.title(Component.text("✔ " + ui().flat("jail.free.title"), Ui.ACCENT), Component.empty()));
-    target.sendMessage(ui().ok("jail.free"));
+    plugin.speak(target, () -> target.sendMessage(ui().ok("jail.free")));
     if (early && by != null) plugin.history("free", target.getName(), by.getName(), "", 0);
     if (early && by != null) tellTeam("jail.team.free", Ui.v("by", by.getName()), Ui.v("name", target.getName()));
   }
 
   /** Every second: the bars count down, time served = free. */
   private void tick() {
+    try {
+      tickAll();
+    } finally {
+      plugin.quiet();
+    }
+  }
+
+  private void tickAll() {
     long now = System.currentTimeMillis();
     for (Player p : Bukkit.getOnlinePlayers()) {
+      plugin.voice(p);
       PlayerStore.Data d = plugin.store().get(p.getUniqueId());
       if (d.jailUntil == 0) continue;
       if (d.jailUntil <= now) {
@@ -430,8 +439,8 @@ final class Moderation implements Listener {
     PlayerStore.Data d = plugin.store().get(target.getUniqueId());
     d.muteUntil = System.currentTimeMillis() + ms;
     plugin.store().save(target.getUniqueId(), d);
-    target.sendMessage(ui().fail(reason == null || reason.isEmpty() ? "mute.you" : "mute.you.reason",
-        Ui.v("time", span(ms)), Ui.v("reason", reason == null ? "" : reason)));
+    plugin.speak(target, () -> target.sendMessage(ui().fail(reason == null || reason.isEmpty() ? "mute.you" : "mute.you.reason",
+        Ui.v("time", span(ms)), Ui.v("reason", reason == null ? "" : reason))));
     plugin.history("mute", target.getName(), by.getName(), reason == null ? "" : reason, ms);
     tellTeam("mute.team", Ui.v("by", by.getName()), Ui.v("name", target.getName()), Ui.v("time", span(ms)));
   }
@@ -444,14 +453,14 @@ final class Moderation implements Listener {
     }
     d.muteUntil = 0;
     plugin.store().save(target.getUniqueId(), d);
-    target.sendMessage(ui().ok("mute.free"));
+    plugin.speak(target, () -> target.sendMessage(ui().ok("mute.free")));
     plugin.history("unmute", target.getName(), by.getName(), "", 0);
     tellTeam("mute.team.free", Ui.v("by", by.getName()), Ui.v("name", target.getName()));
   }
 
   void freeze(CommandSender by, Player target) {
     if (frozen.remove(target.getUniqueId())) {
-      target.sendMessage(ui().ok("freeze.off"));
+      plugin.speak(target, () -> target.sendMessage(ui().ok("freeze.off")));
       target.clearTitle();
       plugin.history("unfreeze", target.getName(), by.getName(), "", 0);
       tellTeam("freeze.team.off", Ui.v("by", by.getName()), Ui.v("name", target.getName()));
@@ -536,14 +545,14 @@ final class Moderation implements Listener {
     Player p = e.getPlayer();
     PlayerStore.Data d = plugin.store().get(p.getUniqueId());
     if (d.jailUntil == 0) return;
-    Bukkit.getScheduler().runTaskLater(plugin, () -> {
+    Bukkit.getScheduler().runTaskLater(plugin, () -> plugin.speak(p, () -> {
       if (!p.isOnline()) return;
       if (d.jailUntil <= System.currentTimeMillis()) release(null, p, false);
       else {
         lockIn(p);
         p.sendMessage(ui().fail("jail.still", Ui.v("time", left(d.jailUntil - System.currentTimeMillis()))));
       }
-    }, 5L);
+    }), 5L);
   }
 
   @EventHandler
@@ -740,6 +749,14 @@ final class Moderation implements Listener {
       });
       return;
     }
+    if (plugin.network() != null && (slot == JAIL || slot == MUTE || slot == KICK)) {
+      // In the MoinMorni network punishments are the network's: they apply on every server and in Discord.
+      later(p, () -> {
+        p.closeInventory();
+        networkPunish(p, target);
+      });
+      return;
+    }
     switch (slot) {
       case GO -> later(p, () -> {
         p.closeInventory();
@@ -760,7 +777,7 @@ final class Moderation implements Listener {
         target.setFoodLevel(20);
         target.setSaturation(20);
         target.setFireTicks(0);
-        target.sendMessage(ui().ok("mod.healed"));
+        plugin.speak(target, () -> target.sendMessage(ui().ok("mod.healed")));
         open(p, target);
       });
       case FREEZE -> later(p, () -> {
@@ -793,6 +810,22 @@ final class Moderation implements Listener {
       default -> {
         // The glass and the head do nothing.
       }
+    }
+  }
+
+  /** The network's commands for this player, ready to send (click → in the chat line), and their panel page. */
+  private void networkPunish(Player p, Player target) {
+    String n = target.getName();
+    java.util.function.BiFunction<String, String, Component> b = (label, cmd) -> Ui.button(Component.text(label),
+        Ui.GOLD, Component.text(cmd, NamedTextColor.WHITE), net.kyori.adventure.text.event.ClickEvent.suggestCommand(cmd));
+    List<Component> buttons = List.of(b.apply("⚑ " + ui().flat("mod.jail"), "/gefaengnis " + n + " 1h "),
+        b.apply("✉ " + ui().flat("mod.mute"), "/mute " + n + " 1h "),
+        b.apply("⚐ " + ui().flat("mod.kick"), "/kick " + n + " "),
+        b.apply(ui().english() ? "⛔ Ban" : "⛔ Bann", "/ban " + n + " 1d "));
+    p.sendMessage(ui().note("ℹ", Ui.ACCENT_2, "net.punish.hint"));
+    Ui.rows(buttons, Component.text("  "), Ui.CARD_PX).forEach(p::sendMessage);
+    if (plugin.settings().net() != null && !plugin.settings().net().panelPlayers().isEmpty()) {
+      plugin.teamBoard().networkLinks(p, target);
     }
   }
 

@@ -425,12 +425,40 @@ final class Texts {
       Map.entry("update.available", new String[] {"MorniCraft <hl><version></hl> ist da", "MorniCraft <hl><version></hl> is out"}),
       Map.entry("update.open", new String[] {"Herunterladen", "Download"}),
       Map.entry("reload", new String[] {"Einstellungen neu geladen", "Settings reloaded"}),
+      // In the MoinMorni network
+      Map.entry("net.command", new String[] {
+          "Das macht auf MoinMorni das Netzwerk – tippe <hl><usage></hl>",
+          "On MoinMorni the network does that – type <hl><usage></hl>"}),
+      Map.entry("net.page", new String[] {"➜ Dein Profil auf moinmorni.net", "➜ Your profile on moinmorni.net"}),
+      Map.entry("net.page.hover", new String[] {"Öffnet dein Profil mit Statistiken", "Opens your profile with stats"}),
+      Map.entry("net.welcome", new String[] {
+          "Du bist auf <hl>MorniCraft</hl> im Netzwerk <hl>MoinMorni</hl> – zurück in die Lobby mit <hl>/lobby</hl>",
+          "You're on <hl>MorniCraft</hl> in the <hl>MoinMorni</hl> network – back to the lobby with <hl>/lobby</hl>"}),
+      Map.entry("net.team.online", new String[] {"Gerade online im Team:", "Team online right now:"}),
+      Map.entry("net.team.none", new String[] {"Gerade ist niemand aus dem Team auf MorniCraft", "Nobody from the team is on MorniCraft right now"}),
+      Map.entry("net.team.web", new String[] {"➜ Das ganze Team", "➜ The whole team"}),
+      Map.entry("net.team.web.hover", new String[] {"Öffnet die Team-Seite auf moinmorni.net", "Opens the team page on moinmorni.net"}),
+      Map.entry("net.board.title", new String[] {"Team-Dashboard", "Team dashboard"}),
+      Map.entry("net.board.text", new String[] {
+          "Spieler, Strafen und alle Einstellungen von MorniCraft findest du im MoinMorni-Panel",
+          "Players, punishments and all MorniCraft settings are in the MoinMorni panel"}),
+      Map.entry("net.board.players", new String[] {"➜ Spieler", "➜ Players"}),
+      Map.entry("net.board.player", new String[] {"➜ <name> im Panel", "➜ <name> in the panel"}),
+      Map.entry("net.board.punishments", new String[] {"➜ Strafen", "➜ Punishments"}),
+      Map.entry("net.board.hover", new String[] {"Öffnet das MoinMorni-Panel (mit deinem Team-Konto)", "Opens the MoinMorni panel (with your team account)"}),
+      Map.entry("net.board.nopanel", new String[] {"Die Panel-Adresse fehlt noch – frag einen Admin", "The panel address is missing – ask an admin"}),
+      Map.entry("net.punish.hint", new String[] {"Strafen gelten im ganzen Netzwerk:", "Punishments apply in the whole network:"}),
       // Time
       Map.entry("time.minutes", new String[] {"<n> Min.", "<n> min"}),
       Map.entry("time.hours", new String[] {"<n> Std.", "<n> h"}),
       Map.entry("time.days", new String[] {"<n> Tagen", "<n> days"}));
 
   private final int lang;
+  /**
+   * In the MoinMorni network every player has their own language: while MorniCraft answers one player (a command,
+   * a click, the bar on the right) their language counts here. Without the network nothing is set: the server's.
+   */
+  private static final ThreadLocal<Integer> PLAYER_LANG = new ThreadLocal<>();
 
   Texts(String language) {
     this.lang = "en".equalsIgnoreCase(language) ? 1 : 0;
@@ -438,6 +466,48 @@ final class Texts {
 
   String get(String key) {
     String[] pair = TEXTS.get(key);
-    return pair == null ? key : pair[lang];
+    Integer own = PLAYER_LANG.get();
+    return pair == null ? key : pair[own != null ? own : lang];
+  }
+
+  /** True when the texts come out in English right now (the player's or the server's language). */
+  boolean english() {
+    Integer own = PLAYER_LANG.get();
+    return (own != null ? own : lang) == 1;
+  }
+
+  /** From now on (in this thread) the texts in this language ("de"/"en"); null = the server's again. */
+  static void use(String language) {
+    if (language == null) PLAYER_LANG.remove();
+    else PLAYER_LANG.set("en".equalsIgnoreCase(language) ? 1 : 0);
+  }
+
+  /** Language before each {@link #enter} (an event inside an event gives the outer one's back afterwards). */
+  private static final ThreadLocal<java.util.ArrayDeque<Integer>> BEFORE = ThreadLocal.withInitial(java.util.ArrayDeque::new);
+  private static final int NONE = -1;
+
+  /** From now on this language, until {@link #leave} gives back the one before. */
+  static void enter(String language) {
+    Integer before = PLAYER_LANG.get();
+    BEFORE.get().push(before == null ? NONE : before);
+    use(language);
+  }
+
+  static void leave() {
+    Integer before = BEFORE.get().poll();
+    if (before == null || before == NONE) PLAYER_LANG.remove();
+    else PLAYER_LANG.set(before);
+  }
+
+  /** Runs something with the texts in this language, then back to what was before. */
+  static void as(String language, Runnable r) {
+    Integer before = PLAYER_LANG.get();
+    use(language);
+    try {
+      r.run();
+    } finally {
+      if (before == null) PLAYER_LANG.remove();
+      else PLAYER_LANG.set(before);
+    }
   }
 }

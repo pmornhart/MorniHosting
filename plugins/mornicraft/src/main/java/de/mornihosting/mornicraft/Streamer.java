@@ -134,8 +134,8 @@ final class Streamer {
     plugin.store().save(p.getUniqueId(), d);
     p.sendMessage(on ? plugin.ui().ok("streamer.now.on") : plugin.ui().note("○", Ui.SOFT, "streamer.now.off"));
     if (on && showsLive(p)) {
-      Component note = liveMark().append(plugin.ui().words("streamer.broadcast", Ui.v("name", p.getName())));
-      Bukkit.getOnlinePlayers().stream().filter(o -> !o.equals(p)).forEach(o -> o.sendMessage(note));
+      Bukkit.getOnlinePlayers().stream().filter(o -> !o.equals(p)).forEach(o -> plugin.speak(o, () -> o.sendMessage(
+          liveMark().append(plugin.ui().words("streamer.broadcast", Ui.v("name", p.getName()))))));
     }
     plugin.sidebar().update();
     plugin.ranks().paintAll();

@@ -165,6 +165,13 @@ final class Clans implements Listener {
     return c == null ? Component.empty() : Component.text("[" + t + "] ", colorOf(c));
   }
 
+  /** The colour of this player's clan tag as "#rrggbb" (no clan: ""). */
+  String tagColour(UUID id) {
+    String t = tagText(id);
+    Clan c = t.isEmpty() ? null : of(id);
+    return c == null ? "" : colorOf(c).asHexString();
+  }
+
   /** The clan tag of this player ("MC"), or "" (no clan, clans off). */
   String tagText(UUID id) {
     if (!on()) return "";
@@ -301,19 +308,21 @@ final class Clans implements Listener {
     }
     invites.put(to.getUniqueId(), new Invite(c.key(), p.getUniqueId(), System.currentTimeMillis()));
     p.sendMessage(ui().ok("clan.invited", Ui.v("name", to.getName())));
-    Component yes = Ui.button(ui().bare("clan.accept"), Ui.ACCENT, ui().bare("clan.accept"),
-        ClickEvent.runCommand("/clan accept " + c.name));
-    Component no = Ui.button(ui().bare("clan.deny"), Ui.BAD, ui().bare("clan.deny"), ClickEvent.runCommand("/clan deny"));
-    ui().card(to, ui().flat("clan.title"), List.of(
-        ui().words("clan.invite.got", Ui.v("name", p.getName()), Ui.v("clan", c.name), Ui.v("tag", c.tag)),
-        yes.append(Ui.gap()).append(no)));
+    plugin.speak(to, () -> {
+      Component yes = Ui.button(ui().bare("clan.accept"), Ui.ACCENT, ui().bare("clan.accept"),
+          ClickEvent.runCommand("/clan accept " + c.name));
+      Component no = Ui.button(ui().bare("clan.deny"), Ui.BAD, ui().bare("clan.deny"), ClickEvent.runCommand("/clan deny"));
+      ui().card(to, ui().flat("clan.title"), List.of(
+          ui().words("clan.invite.got", Ui.v("name", p.getName()), Ui.v("clan", c.name), Ui.v("tag", c.tag)),
+          yes.append(Ui.gap()).append(no)));
+    });
     if (plugin.bedrock().menus(to)) {
-      plugin.bedrock().ask(to, ui().flat("clan.title"),
+      plugin.speak(to, () -> plugin.bedrock().ask(to, ui().flat("clan.title"),
           ui().flat("clan.invite.got", Ui.v("name", p.getName()), Ui.v("clan", c.name), Ui.v("tag", c.tag)),
           ui().flat("clan.accept"), ui().flat("clan.deny"), ok -> {
             if (ok) accept(to, c.name);
             else deny(to);
-          });
+          }));
     }
   }
 
@@ -339,7 +348,7 @@ final class Clans implements Listener {
     c.names.put(p.getUniqueId(), p.getName());
     memberOf.put(p.getUniqueId(), c.key());
     save();
-    tell(c, ui().note("⚑", CLAN, "clan.joined", Ui.v("name", p.getName()), Ui.v("clan", c.name)));
+    tell(c, () -> ui().note("⚑", CLAN, "clan.joined", Ui.v("name", p.getName()), Ui.v("clan", c.name)));
   }
 
   void deny(Player p) {
@@ -350,7 +359,7 @@ final class Clans implements Listener {
     }
     p.sendMessage(ui().ok("clan.denied"));
     Player from = Bukkit.getPlayer(inv.from());
-    if (from != null) from.sendMessage(ui().fail("clan.theydenied", Ui.v("name", p.getName())));
+    if (from != null) plugin.speak(from, () -> from.sendMessage(ui().fail("clan.theydenied", Ui.v("name", p.getName()))));
   }
 
   private boolean confirmed(Player p, String key) {
@@ -382,7 +391,7 @@ final class Clans implements Listener {
     memberOf.remove(p.getUniqueId());
     save();
     p.sendMessage(ui().ok("clan.left", Ui.v("clan", c.name)));
-    tell(c, ui().note("⚑", CLAN, "clan.memberleft", Ui.v("name", p.getName())));
+    tell(c, () -> ui().note("⚑", CLAN, "clan.memberleft", Ui.v("name", p.getName())));
   }
 
   void kick(Player p, String who) {
@@ -399,7 +408,7 @@ final class Clans implements Listener {
     c.names.remove(target);
     memberOf.remove(target);
     save();
-    tell(c, ui().note("⚑", CLAN, "clan.kicked", Ui.v("name", name)));
+    tell(c, () -> ui().note("⚑", CLAN, "clan.kicked", Ui.v("name", name)));
     Player gone = Bukkit.getPlayer(target);
     if (gone != null) gone.sendMessage(ui().fail("clan.youkicked", Ui.v("clan", c.name)));
   }
@@ -408,7 +417,7 @@ final class Clans implements Listener {
     Clan c = mine(p);
     if (c == null || !leads(p, c)) return;
     if (!confirmed(p, "clan.confirm.disband")) return;
-    tell(c, ui().fail("clan.disbanded", Ui.v("clan", c.name)));
+    tell(c, () -> ui().fail("clan.disbanded", Ui.v("clan", c.name)));
     remove(c);
   }
 
@@ -424,7 +433,7 @@ final class Clans implements Listener {
     if (c == null || !leads(p, c)) return;
     c.base = PlayerStore.Home.of(p.getLocation());
     save();
-    tell(c, ui().note("⌂", CLAN, "clan.baseset", Ui.v("name", p.getName())));
+    tell(c, () -> ui().note("⌂", CLAN, "clan.baseset", Ui.v("name", p.getName())));
   }
 
   void base(Player p) {
@@ -455,7 +464,7 @@ final class Clans implements Listener {
     }
     c.tag = t;
     save();
-    tell(c, ui().note("⚑", CLAN, "clan.newtag", Ui.v("tag", t)));
+    tell(c, () -> ui().note("⚑", CLAN, "clan.newtag", Ui.v("tag", t)));
   }
 
   void pvp(Player p) {
@@ -463,7 +472,7 @@ final class Clans implements Listener {
     if (c == null || !leads(p, c)) return;
     c.pvp = !c.pvp;
     save();
-    tell(c, ui().note("⚔", CLAN, c.pvp ? "clan.pvp.on" : "clan.pvp.off"));
+    tell(c, () -> ui().note("⚔", CLAN, c.pvp ? "clan.pvp.on" : "clan.pvp.off"));
   }
 
   /** "/clan farbe <farbe>": the tag's colour; without a colour the choice as buttons. */
@@ -487,7 +496,7 @@ final class Clans implements Listener {
     }
     c.color = paint != null ? paint.id() : (wanted.startsWith("#") ? wanted : "#" + wanted).toLowerCase(Locale.ROOT);
     save();
-    tell(c, Component.text("■ ", colorOf(c)).append(ui().words("clan.newcolor", Ui.v("color", colorName(c)), Ui.v("tag", c.tag))));
+    tell(c, () -> Component.text("■ ", colorOf(c)).append(ui().words("clan.newcolor", Ui.v("color", colorName(c)), Ui.v("tag", c.tag))));
   }
 
   /** The next colour of the palette (the menu's wool button). */
@@ -508,7 +517,7 @@ final class Clans implements Listener {
     }
     c.leader = target;
     save();
-    tell(c, ui().note("♛", CLAN, "clan.newleader", Ui.v("name", c.names.get(target))));
+    tell(c, () -> ui().note("♛", CLAN, "clan.newleader", Ui.v("name", c.names.get(target))));
   }
 
   void chat(Player p, String text) {
@@ -530,7 +539,7 @@ final class Clans implements Listener {
         .append(Component.text(p.getName(), NamedTextColor.WHITE).decoration(TextDecoration.BOLD, false))
         .append(Component.text(" » ", NamedTextColor.GRAY).decoration(TextDecoration.BOLD, false))
         .append(Component.text(text, CLAN).decoration(TextDecoration.BOLD, false));
-    tell(c, line);
+    tell(c, () -> line);
     plugin.getLogger().info("[Clan " + c.name + "] " + p.getName() + ": " + text);
   }
 
@@ -561,10 +570,11 @@ final class Clans implements Listener {
     ui().card(p, ui().flat("clan.list"), lines, false);
   }
 
-  private void tell(Clan c, Component msg) {
+  /** To every member online, each in their own language (built per member). */
+  private void tell(Clan c, java.util.function.Supplier<Component> msg) {
     for (UUID id : c.members) {
       Player m = Bukkit.getPlayer(id);
-      if (m != null) m.sendMessage(msg);
+      if (m != null) plugin.speak(m, () -> m.sendMessage(msg.get()));
     }
   }
 

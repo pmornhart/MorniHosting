@@ -46,14 +46,34 @@ final class Commands implements TabExecutor {
 
   @Override
   public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    if (plugin.network() == null || !(sender instanceof Player p)) return run(sender, command, args);
+    // In the MoinMorni network: the answer in the player's language.
+    boolean[] done = new boolean[1];
+    Texts.as(plugin.network().language(p.getUniqueId()), () -> done[0] = run(sender, command, args));
+    return done[0];
+  }
+
+  /** The network's command for what MorniCraft leaves to it (shown when someone reaches ours through an alias). */
+  private static final Map<String, String> NETWORK_USAGE = Map.of(
+      "msg", "/msg <spieler> <text>", "r", "/r <text>", "gefaengnis", "/gefaengnis <spieler> [dauer] [grund]",
+      "frei", "/frei <spieler>", "stumm", "/mute <spieler> [dauer] [grund]", "entstummen", "/unmute <spieler>",
+      "rang", "/rang <spieler> <rang>", "abzeichen", "/profil");
+
+  private boolean run(CommandSender sender, Command command, String[] args) {
     String name = command.getName().toLowerCase(Locale.ROOT);
-    if (name.equals("mornicraft")) {
+    if (plugin.network() != null && sender instanceof Player && NETWORK_USAGE.containsKey(name)) {
+      sender.sendMessage(ui().note("ℹ", Ui.ACCENT_2, "net.command", Ui.v("usage", NETWORK_USAGE.get(name))));
+      return true;
+    }
+    // In the MoinMorni network /mornicraft belongs to the network (its settings): the same as /mcadmin here.
+    if (name.equals("mornicraft") || name.equals("mcadmin")) {
+      String own = "/" + name;
       if (args.length == 2 && List.of("drache", "dragon").contains(args[0].toLowerCase(Locale.ROOT))) {
         plugin.dragon().command(sender, args[1]);
         return true;
       }
       if (args.length != 1 || !args[0].equalsIgnoreCase("reload")) {
-        sender.sendMessage(ui().fail("usage", Ui.v("usage", "/mornicraft reload")));
+        sender.sendMessage(ui().fail("usage", Ui.v("usage", own + " reload · " + own + " drache <angriff>")));
         return true;
       }
       plugin.reload();
@@ -348,6 +368,10 @@ final class Commands implements TabExecutor {
 
   /** The personal page of this player, or null without a panel domain. */
   String pageOf(CommandSender who) {
+    if (s().net() != null) {
+      // In the network: the player's public profile on the website (stats of all modes).
+      return "https://" + s().net().address() + "/spieler/" + URLEncoder.encode(who.getName(), StandardCharsets.UTF_8);
+    }
     String link = s().link();
     if (link == null || link.isBlank()) return null;
     return link.replace("{name}", URLEncoder.encode(who.getName(), StandardCharsets.UTF_8));
@@ -358,7 +382,15 @@ final class Commands implements TabExecutor {
     if (plugin.streamer().hides(who, Streamer.IP)) return null;
     String page = pageOf(who);
     if (page == null) return null;
+    if (s().net() != null) {
+      return Ui.button(ui().bare("net.page"), Ui.ACCENT_2, ui().bare("net.page.hover"), ClickEvent.openUrl(page));
+    }
     return Ui.button(ui().bare(key), Ui.ACCENT_2, ui().bare("info.page.hover"), ClickEvent.openUrl(page));
+  }
+
+  /** The command list (/info, suggestions): in the network the built-in one, in the player's language. */
+  List<Settings.Group> groups() {
+    return plugin.network() != null ? DefaultCommands.network(ui().english(), s()) : s().groups();
   }
 
   /** All commands, one line per group: the command names are clickable, the explanation is on hover. */
@@ -367,7 +399,7 @@ final class Commands implements TabExecutor {
     boolean op = to.isOp();
     List<Component> lines = new ArrayList<>();
     // One line per group: its name, then the commands (short; hover shows how and what, click puts it in the chat).
-    for (Settings.Group g : s().groups()) {
+    for (Settings.Group g : groups()) {
       Map<String, List<Settings.Command>> byBase = new LinkedHashMap<>();
       g.commands().stream().filter(c -> (op || !c.opOnly()) && c.use().startsWith("/"))
           .forEach(c -> byBase.computeIfAbsent(c.use().split(" ")[0], k -> new ArrayList<>()).add(c));
@@ -408,7 +440,8 @@ final class Commands implements TabExecutor {
   }
 
   void rules(CommandSender to) {
-    List<String> rules = s().rules();
+    // In the network: the network's rules (the same as on the website and in Discord), in the player's language.
+    List<String> rules = s().net() != null ? s().net().rules(ui().english()) : s().rules();
     List<Component> lines = new ArrayList<>();
     if (rules.isEmpty()) lines.add(ui().words("rules.none"));
     for (int i = 0; i < rules.size(); i++) {
@@ -420,6 +453,10 @@ final class Commands implements TabExecutor {
 
   /** Who has which rank: online names bright, the others dimmed. The default rank (everyone) is left out. */
   void team(CommandSender to) {
+    if (plugin.network() != null) {
+      networkTeam(to);
+      return;
+    }
     List<Component> lines = new ArrayList<>();
     for (Ranks.Rank r : plugin.ranks().all()) {
       List<Ranks.Member> members = plugin.ranks().members(r);
@@ -440,10 +477,37 @@ final class Commands implements TabExecutor {
     ui().card(to, ui().flat("team.title"), lines);
   }
 
+  /**
+   * In the network: who of the team is on MorniCraft right now (with the network's rank), and a button to the team
+   * page on the website – the ranks themselves are handed out in the MoinMorni panel or with the network's /rang.
+   */
+  private void networkTeam(CommandSender to) {
+    List<Component> names = new ArrayList<>();
+    Bukkit.getOnlinePlayers().stream()
+        .map(p -> Map.entry(p, plugin.ranks().of(p)))
+        .filter(e -> e.getValue() != null && !e.getValue().fallback())
+        .sorted(Comparator.comparingInt(e -> plugin.ranks().all().indexOf(e.getValue())))
+        .forEach(e -> names.add(e.getValue().prefix().append(Component.text(e.getKey().getName(), e.getValue().color()))));
+    List<Component> lines = new ArrayList<>();
+    if (names.isEmpty()) {
+      lines.add(ui().words("net.team.none"));
+    } else {
+      lines.add(ui().words("net.team.online"));
+      lines.addAll(Ui.rows(names, Component.text("   "), Ui.CARD_PX - 8));
+    }
+    lines.add(Component.empty());
+    lines.add(Ui.button(ui().bare("net.team.web"), Ui.ACCENT_2, ui().bare("net.team.web.hover"),
+        ClickEvent.openUrl("https://" + s().net().address() + "/team")));
+    ui().card(to, ui().flat("team.title"), lines);
+  }
+
   // ── Tab completion ──────────────────────────────────────────────────────────────────
 
   @Override
   public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+    if (plugin.network() != null && NETWORK_USAGE.containsKey(command.getName().toLowerCase(Locale.ROOT))) {
+      return List.of();
+    }
     String name = command.getName().toLowerCase(Locale.ROOT);
     String last = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
     List<String> options = new ArrayList<>();
@@ -469,10 +533,10 @@ final class Commands implements TabExecutor {
     } else if (name.equals("clan") && args.length == 2
         && List.of("invite", "kick", "leader").contains(args[0].toLowerCase(Locale.ROOT))) {
       Bukkit.getOnlinePlayers().forEach(o -> options.add(o.getName()));
-    } else if (name.equals("mornicraft") && args.length == 1) {
+    } else if ((name.equals("mornicraft") || name.equals("mcadmin")) && args.length == 1) {
       options.add("reload");
       options.add("drache");
-    } else if (name.equals("mornicraft") && args.length == 2 && args[0].equalsIgnoreCase("drache")) {
+    } else if ((name.equals("mornicraft") || name.equals("mcadmin")) && args.length == 2 && args[0].equalsIgnoreCase("drache")) {
       options.addAll(HardDragon.ATTACK_NAMES);
     } else if ((name.equals("tpaccept") || name.equals("tpdeny")) && args.length == 1 && sender instanceof Player p) {
       options.addAll(plugin.social().askers(p));
