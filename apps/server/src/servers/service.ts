@@ -43,6 +43,7 @@ import {
 } from '../games/settings.js';
 import { missingDependencies } from './mod-deps.js';
 import { pluginPackages } from './plugin-packages.js';
+import { writePropertiesFile } from './properties-file.js';
 import { hostMemoryMb, refreshHostMemory } from '../system/host.js';
 import { analyseCrash } from './crash.js';
 import { createDownloadMeter, type DownloadProgress } from './steam-progress.js';
@@ -1230,6 +1231,10 @@ export function createServerService(ctx: AppContext): ServerService {
         })
         .run();
       fs.mkdirSync(serverDir(config, id), { recursive: true });
+      // Minecraft 26.x creates a new server with its whitelist switched on, so nobody could join. The panel's
+      // default is "off" (switch in the Players tab); Craft Attack turns it on again right after this.
+      if (input.edition === 'java' && input.software !== 'velocity')
+        writePropertiesFile(serverDir(config, id), { 'white-list': 'false' });
       grantOwner(creator, id);
       audit.record(actor, 'server.create', id, {
         name: input.name,

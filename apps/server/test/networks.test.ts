@@ -87,6 +87,20 @@ describe('network config files', () => {
     ).toBe(out);
   });
 
+  test('velocity.toml: Velocitys „forced-hosts = {}“ oben fällt weg, damit die Tabelle nur einmal da ist', () => {
+    // So sieht die Datei aus, nachdem Velocity sie gespeichert hat (gesehen in der Gesamtprobe mit echtem Docker).
+    const saved =
+      'config-version = "2.9"\nbind = "0.0.0.0:25577"\nforced-hosts = {}\n\n[servers]\nlobby = "mh-a:25565"\n\n[forced-hosts]\n';
+    const out = velocityToml(saved, {
+      port: 25577,
+      onlineMode: true,
+      servers: [{ name: 'lobby', address: 'mh-a:25565' }],
+      tryOrder: ['lobby'],
+    });
+    expect(out.match(/forced-hosts/g)).toHaveLength(1); // eslint-disable-line ts-patterns/require-regex-example -- "forced-hosts" anywhere in the file
+    expect(out).toContain('[forced-hosts]');
+  });
+
   test('velocity.toml from nothing has everything Velocity needs to start', () => {
     const out = velocityToml(null, { port: 25577, onlineMode: false, servers: [], tryOrder: [] });
     expect(out).toContain('config-version = "2.7"');

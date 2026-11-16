@@ -31,6 +31,8 @@ const envSchema = z.object({
   MH_IMAGE_BEDROCK: z.string().default('itzg/minecraft-bedrock-server'),
   MH_IMAGE_PROXY: z.string().default('itzg/mc-proxy'),
   MH_TRUST_PROXY: booleanFromEnv.default(false),
+  /** Names (or IPs) of the only proxies whose X-Forwarded-For counts, comma-separated – e.g. "moinmorni". */
+  MH_TRUST_PROXY_FROM: z.string().default(''),
   MH_COOKIE_SECURE: z.enum(['auto', 'true', 'false']).default('auto'),
   MH_LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   MH_TIMEZONE: z.string().optional(),
@@ -67,6 +69,7 @@ export interface Config {
   readonly mcNetwork: string;
   readonly images: { readonly java: string; readonly bedrock: string; readonly proxy: string };
   readonly trustProxy: boolean;
+  readonly trustProxyFrom: readonly string[];
   readonly cookieSecure: 'auto' | 'true' | 'false';
   readonly logLevel: Env['MH_LOG_LEVEL'];
   readonly timezone: string;
@@ -115,6 +118,9 @@ export function loadConfig(env: NodeJS.ProcessEnv, version: string): Config {
     mcNetwork: e.MH_MC_NETWORK,
     images: { java: e.MH_IMAGE_JAVA, bedrock: e.MH_IMAGE_BEDROCK, proxy: e.MH_IMAGE_PROXY },
     trustProxy: e.MH_TRUST_PROXY,
+    trustProxyFrom: e.MH_TRUST_PROXY_FROM.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
     cookieSecure: e.MH_COOKIE_SECURE,
     logLevel: e.MH_LOG_LEVEL,
     timezone: e.MH_TIMEZONE ?? e.TZ ?? 'Europe/Berlin',

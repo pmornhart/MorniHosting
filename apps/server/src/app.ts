@@ -110,6 +110,7 @@ import { createCrashHelpService } from './crash/service.js';
 import { registerCrashRoutes } from './crash/routes.js';
 import { registerPaymentRoutes } from './payments/routes.js';
 import { createNotifyService } from './notify/service.js';
+import { trustedHosts } from './lib/trusted-hosts.js';
 
 export interface BuildOptions {
   readonly config: Config;
@@ -168,9 +169,12 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
 
   // The visitor's real IP comes from X-Forwarded-For only behind a proxy the admin trusts, or the own HTTPS gateway.
   const proxies = { isGateway: (_address: string): boolean => false };
+  // An app that embeds the panel (motor mode) sends every visitor through itself: its X-Forwarded-For counts, so
+  // limits and the audit log see the visitor instead of that one app.
+  const fromApp = trustedHosts(config.trustProxyFrom);
   const app = Fastify({
     logger: options.logger === false ? false : { level: config.logLevel },
-    trustProxy: (address: string) => config.trustProxy || proxies.isGateway(address),
+    trustProxy: (address: string) => config.trustProxy || proxies.isGateway(address) || fromApp.has(address),
     bodyLimit: BODY_LIMIT_MB * BYTES_PER_MB,
   }).withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);

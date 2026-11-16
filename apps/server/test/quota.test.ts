@@ -145,6 +145,39 @@ describe('quotas: how much each person may have', () => {
     expect(spec.cpus).toBe(1.5);
   });
 
+  test('Velocity bekommt kein UID/GID – sonst lief der Proxy als root (Startskript von itzg/mc-proxy)', () => {
+    const row = {
+      id: 'vel',
+      name: 'proxy',
+      edition: 'java',
+      software: 'velocity',
+      version: '3.4.0',
+      memoryMb: 1024,
+      cpuLimit: null,
+      diskLimitMb: null,
+      port: 25577,
+      rconPassword: 'x',
+      javaTag: null,
+      image: 'itzg/mc-proxy:latest',
+      containerId: null,
+      extraPorts: [],
+      extraEnv: {},
+      gameSettings: {},
+      geyser: false,
+      voiceChat: false,
+      backupSettings: { keep: 5, exclude: [] },
+    };
+    const spec = buildContainerSpec(t.ctx.config, row as never, 'Europe/Berlin');
+    expect(spec.env['TYPE']).toBe('VELOCITY');
+    expect(spec.env['UID']).toBeUndefined();
+    const paperSpec = buildContainerSpec(
+      t.ctx.config,
+      { ...row, software: 'paper' } as never,
+      'Europe/Berlin',
+    );
+    expect(paperSpec.env['UID']).toBe('1000');
+  });
+
   test('several servers share the quota fairly instead of the first taking everything', async () => {
     await as(admin, 'PUT', '/api/quotas/defaults', { servers: 2, memoryMb: 8192, cpus: 2, diskMb: 20480 });
     expect((await order(4096, 25565)).json()).toMatchObject({ cpuLimit: 1, diskLimitMb: 10240 });
