@@ -7,62 +7,10 @@ import {
   javaAddress,
   startRouter,
   type AddressRouter,
+  type RouteTarget,
 } from '../src/gateway/router.js';
-
-const varInt = (value: number): Buffer => {
-  const bytes: number[] = [];
-  const write = (v: number): void => {
-    const low = v & 0x7f;
-    const rest = v >>> 7;
-    bytes.push(rest ? low | 0x80 : low);
-    if (rest) write(rest);
-  };
-  write(value);
-  return Buffer.from(bytes);
-};
-
-/** A Java handshake packet as the client sends it (protocol 774, next state 2 = login). */
-function handshake(address: string, port = 25565): Buffer {
-  const text = Buffer.from(address, 'utf8');
-  const portBytes = Buffer.alloc(2);
-  portBytes.writeUInt16BE(port);
-  const body = Buffer.concat([varInt(0), varInt(774), varInt(text.length), text, portBytes, varInt(2)]);
-  return Buffer.concat([varInt(body.length), body]);
-}
-
-/** A backend that remembers what it got and answers "hallo". */
-function backend(): Promise<{ port: number; got: () => Buffer; close: () => void }> {
-  const chunks: Buffer[] = [];
-  const server = net.createServer((socket) => {
-    socket.on('data', (c) => {
-      chunks.push(c);
-      socket.write('hallo');
-    });
-  });
-  return new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      resolve({
-        port: typeof address === 'object' && address ? address.port : 0,
-        got: () => Buffer.concat(chunks),
-        close: () => server.close(),
-      });
-    });
-  });
-}
-
-function talk(port: number, data: Buffer): Promise<string> {
-  return new Promise((resolve) => {
-    const socket = net.connect({ host: '127.0.0.1', port }, () => socket.write(data));
-    const answer: Buffer[] = [];
-    socket.on('data', (c) => {
-      answer.push(c);
-      socket.end();
-    });
-    socket.on('close', () => resolve(Buffer.concat(answer).toString()));
-    socket.on('error', () => resolve(''));
-  });
-}
+import { forwardTargetProblem, singleIpv4 } from '../src/lib/net-guard.js';
+import { backend, handshake, talk } from './router-wire.js';
 
 describe('address router', () => {
   const opened: AddressRouter[] = [];
@@ -111,5 +59,69 @@ describe('address router', () => {
     } finally {
       target.close();
     }
+  });
+
+  test('a lookup may take its time (another product: NetBird is asked); a failing one closes the connection', async () => {
+    const target = await backend();
+    try {
+      const asked: RouteTarget[] = [];
+      const errors: unknown[] = [];
+      // Like another product's domain: the answer comes a moment later and names an address in the home network,
+      // which the connect function of the test points at its own backend.
+      const lookup = async (address: string): Promise<RouteTarget | null> => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        if (address === 'kaputt.example.org') throw new Error('NetBird antwortet nicht');
+        return address === 'moinmorni.net' ? { host: '10.20.30.40', port: 25565 } : null;
+      };
+      const connect = (to: RouteTarget): net.Socket => {
+        asked.push(to);
+        return net.connect({ host: '127.0.0.1', port: target.port });
+      };
+      const java = await startRouter({
+        kind: 'java',
+        host: '127.0.0.1',
+        port: 0,
+        lookup,
+        connect,
+        onError: (err) => errors.push(err),
+      });
+      opened.push(java);
+
+      const login = Buffer.concat([handshake('MoinMorni.net.\0FML3\0', 25565), Buffer.from('LOGIN')]);
+      expect(await talk(java.port(), login)).toBe('hallo');
+      expect(target.got().equals(login)).toBe(true);
+      expect(asked).toEqual([{ host: '10.20.30.40', port: 25565 }]);
+
+      expect(await talk(java.port(), handshake('kaputt.example.org'))).toBe('');
+      expect(errors).toHaveLength(1);
+      expect(asked).toHaveLength(1);
+    } finally {
+      target.close();
+    }
+  });
+
+  test('the router only forwards into the home network or to NetBird machines, never to its own networks', () => {
+    const docker = ['172.18.0.3/16', '172.19.0.2/16'];
+    expect(forwardTargetProblem('10.20.30.40', docker)).toBeNull();
+    expect(forwardTargetProblem('192.168.1.30', docker)).toBeNull();
+    expect(forwardTargetProblem('172.31.0.9', docker)).toBeNull();
+    // NetBird machines (CGNAT range 100.64.0.0/10).
+    expect(forwardTargetProblem('100.92.14.9', docker)).toBeNull();
+    // Never into the internet, never to the panel's own machine or link-local addresses.
+    expect(forwardTargetProblem('203.0.113.50', docker)).toBe('not_private');
+    expect(forwardTargetProblem('100.128.0.1', docker)).toBe('not_private');
+    expect(forwardTargetProblem('127.0.0.1', docker)).toBe('not_private');
+    expect(forwardTargetProblem('169.254.169.254', docker)).toBe('not_private');
+    expect(forwardTargetProblem('fd00::5', docker)).toBe('not_private');
+    expect(forwardTargetProblem('moinmorni.net', docker)).toBe('not_private');
+    // The panel's own (Docker) networks: the Docker API proxy lives there.
+    expect(forwardTargetProblem('172.18.0.2', docker)).toBe('own_network');
+    expect(forwardTargetProblem('172.19.200.1', docker)).toBe('own_network');
+
+    expect(singleIpv4('10.20.30.40')).toBe('10.20.30.40');
+    expect(singleIpv4(' 10.20.30.40/32 ')).toBe('10.20.30.40');
+    expect(singleIpv4('10.20.30.0/24')).toBeNull();
+    expect(singleIpv4('nas.example.org')).toBeNull();
+    expect(singleIpv4(null)).toBeNull();
   });
 });

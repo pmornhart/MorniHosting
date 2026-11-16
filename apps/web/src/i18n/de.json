@@ -610,6 +610,8 @@
     "netbird_token_missing": "Bitte trag den API-Schlüssel von NetBird ein.",
     "netbird_name_taken": "Den Namen {{name}} hat schon ein anderer Server.",
     "netbird_domain_server_behind_proxy": "„{{server}}“ steckt hinter dem Proxy „{{proxy}}“ und ist von außen nicht erreichbar. Nimm den Proxy – von dort kommen Spieler ins Netzwerk (zuerst auf den Startserver, meist die Lobby).",
+    "router_forward_twice": "Die Domain {{domain}} steht schon in der Liste.",
+    "router_forward_own_domain": "{{domain}} ist die Domain dieses Panels – ihre Spieler kommen schon auf die eigenen Server.",
     "netbird_failed": "NetBird konnte nicht eingerichtet werden.",
     "minecraft_taken": "{{name}} ist schon mit einem anderen Konto im Panel verbunden.",
     "netbird_token_unknown": "{{host}} kennt diesen Schlüssel nicht. Er ist richtig aufgebaut, wurde aber auf einem anderen NetBird-Server angelegt – oder inzwischen gelöscht. Betreibst du NetBird selbst, trag bei „Eigener NetBird-Server?“ dessen Adresse ein (die Adresse, unter der du das NetBird-Dashboard öffnest).",
@@ -1672,7 +1674,8 @@
       "via_enable": "Alle Versionen (ViaVersion) eingeschaltet",
       "via_disable": "Alle Versionen (ViaVersion) ausgeschaltet",
       "server_mornicraft": "MorniCraft-Einstellungen geändert",
-      "netbird_domain_server": "Server direkt auf der Domain geändert"
+      "netbird_domain_server": "Server direkt auf der Domain geändert",
+      "netbird_forwards": "Weitere Domains über den Verteiler geändert"
     }
   },
   "ddos": {
@@ -3688,5 +3691,44 @@
     "proxy": "Dieser Server ist der Proxy von „{{network}}“.",
     "member": "Dieser Server gehört zu „{{network}}“ (Name im Netzwerk: {{name}}). Spieler kommen über den Proxy herein, er hat keinen eigenen Port nach außen.",
     "manage": "Netzwerk verwalten"
+  },
+  "routerForwards": {
+    "title": "Weitere Domains über diesen Verteiler",
+    "summaryNone": "(z. B. ein zweites Produkt auf deinem NetBird-Server)",
+    "summary_one": "{{count}} Domain",
+    "summary_other": "{{count}} Domains",
+    "summaryProblems_one": "{{count}} Domain mit Problem",
+    "summaryProblems_other": "{{count}} Domains mit Problem",
+    "text": "Läuft auf deinem NetBird-Server noch ein zweites Produkt (z. B. MoinMorni), kannst du dessen Domain hier eintragen. Dann tippen Spieler dort auch ohne Port.",
+    "how": "So geht's: NetBird leitet Minecraft nur nach dem Port weiter, und die Ports 25565 (Java) und 19132 (Bedrock) hält schon dieser Verteiler von {{brand}}. Er liest den eingetippten Namen und schickt Spieler der eingetragenen Domain dorthin, wohin NetBird die Ports des anderen Produkts schickt – nur ins Heimnetz oder zu NetBird-Rechnern.",
+    "domain": "Domain",
+    "javaPort": "Java-Port",
+    "bedrockPort": "Bedrock-Port",
+    "portsHint": "Die Ports, die das andere Produkt in NetBird hat – sie stehen dort unter „Spiel direkt auf …“ (z. B. moinmorni.net:25567, Bedrock-Port 19134). Ein Feld leer lassen, wenn es kein Java oder kein Bedrock gibt.",
+    "add": "Hinzufügen",
+    "added": "{{domain}} geht jetzt über den Verteiler",
+    "remove": "Entfernen",
+    "removed": "{{domain}} entfernt",
+    "recheck": "Neu prüfen",
+    "portLabel": "{{kind}} · Port {{port}}",
+    "kind": {
+      "java": "Java",
+      "bedrock": "Bedrock"
+    },
+    "found": "gefunden: {{target}}",
+    "notFound": "nicht gefunden",
+    "routerOff": "Der Verteiler hat Port {{port}} in NetBird gerade nicht – darüber geht es erst, wenn er ihn wieder hat.",
+    "shadowed": "Ein eigener Server heißt auch so („{{server}}“) – Spieler, die {{domain}} tippen, landen dort. Gib ihm einen anderen Namen, dann geht es zu dieser Domain.",
+    "problems": {
+      "no_netbird": "NetBird ist nicht verbunden.",
+      "no_service": "In deinem NetBird gibt es keinen TCP-Dienst auf Port {{port}}. Stimmt die Portnummer?",
+      "own_service": "Port {{port}} gehört zu {{brand}} selbst ({{service}}). Trag den Port des anderen Produkts ein.",
+      "service_off": "Der Dienst {{service}} ist in NetBird ausgeschaltet.",
+      "no_target": "Der Dienst {{service}} hat in NetBird kein Ziel.",
+      "no_address": "Das Ziel von {{service}} ist keine einzelne IP-Adresse. Der Verteiler braucht eine Adresse im Heimnetz oder einen NetBird-Rechner.",
+      "not_private": "Das Ziel {{target}} liegt nicht im Heimnetz und ist kein NetBird-Rechner. Dorthin leitet der Verteiler nicht weiter – sonst käme jeder über ihn ins Internet.",
+      "own_network": "Das Ziel {{target}} liegt in einem internen Netz von {{brand}}. Dorthin leitet der Verteiler nicht weiter.",
+      "netbird_error": "NetBird konnte gerade nicht gefragt werden: {{error}}"
+    }
   }
 }

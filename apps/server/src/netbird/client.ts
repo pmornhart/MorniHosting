@@ -72,17 +72,25 @@ const peerSchema = z.object({
   /** The public address NetBird sees the machine connect from (its internet IP). */
   connection_ip: z.string().catch(''),
 });
+/** Where a service sends its traffic: a machine ("peer") or a network resource ("host", "subnet", "domain"). */
+const targetSchema = z
+  .object({
+    target_id: z.string().catch(''),
+    target_type: z.string().catch(''),
+    /** The backend's IP or name (NetBird fills it for resources). */
+    host: z.string().nullable().optional().catch(null),
+    port: z.number().int().nullable().optional().catch(null),
+    enabled: z.boolean().catch(true),
+  })
+  .loose();
 const serviceSchema = z.object({
   id: z.string(),
   domain: z.string(),
   /** http, tcp, udp (or tls): NetBird keeps one service per outside port and protocol. */
   mode: z.string().catch(''),
   listen_port: z.number().int().nullable().optional(),
-  targets: z
-    .array(z.object({ target_id: z.string().catch('') }).loose())
-    .nullable()
-    .optional()
-    .catch([]),
+  enabled: z.boolean().catch(true),
+  targets: z.array(targetSchema).nullable().optional().catch([]),
 });
 const errorSchema = z.object({ message: z.string() });
 const namedSchema = z.object({ id: z.string(), name: z.string().catch('') });
@@ -124,6 +132,7 @@ const listOf = <TItem extends z.ZodType>(item: TItem) =>
 export type NetbirdDomain = z.infer<typeof domainSchema>;
 export type NetbirdPeer = z.infer<typeof peerSchema>;
 export type NetbirdService = z.infer<typeof serviceSchema>;
+export type NetbirdServiceTarget = z.infer<typeof targetSchema>;
 
 export type NetbirdNamed = z.infer<typeof namedSchema>;
 export type NetbirdRoute = z.infer<typeof routeSchema>;

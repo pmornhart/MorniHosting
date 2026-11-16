@@ -215,7 +215,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const schedules = createScheduleService(ctx, servers, backups);
   const webhooks = createWebhookService(ctx, options.resolver);
   const netbird = createNetbirdAutomation(ctx, servers);
-  const gateway = createAddressGateway(ctx);
+  const gateway = createAddressGateway(ctx, netbird);
   const dns = createDnsAutomation(ctx, servers);
   const https = createHttpsGateway(ctx, () => dns.status().domain);
   proxies.isGateway = https.isGateway;
@@ -330,7 +330,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerNetworkRoutes(app, ctx, networks);
   const netbirdExit = createNetbirdExit(ctx, undefined, options.resolver);
   const exitWatch = createExitWatch(ctx, netbirdExit, alerts, netbird);
-  registerNetbirdRoutes(app, netbird, dns, netbirdExit);
+  registerNetbirdRoutes(app, { netbird, dns, exit: netbirdExit, forwards: gateway.forwards });
   registerDnsRoutes(app, dns);
   registerHttpsRoutes(app, https);
   registerGameArtRoutes(app, ctx);

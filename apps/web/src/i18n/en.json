@@ -610,6 +610,8 @@
     "netbird_token_missing": "Please enter the NetBird API key.",
     "netbird_name_taken": "Another server already uses the name {{name}}.",
     "netbird_domain_server_behind_proxy": "“{{server}}” sits behind the proxy “{{proxy}}” and can't be reached from outside. Pick the proxy – players get into the network from there (first onto the start server, usually the lobby).",
+    "router_forward_twice": "The domain {{domain}} is already on the list.",
+    "router_forward_own_domain": "{{domain}} is this panel's own domain – its players already reach its own servers.",
     "netbird_failed": "NetBird could not be set up.",
     "minecraft_taken": "{{name}} is already linked to another account in the panel.",
     "netbird_token_unknown": "{{host}} does not know this key. It is well-formed but was created on another NetBird server – or has been deleted since. If you run NetBird yourself, enter its address under “Your own NetBird server?” (the address where you open the NetBird dashboard).",
@@ -1672,7 +1674,8 @@
       "via_enable": "All versions (ViaVersion) switched on",
       "via_disable": "All versions (ViaVersion) switched off",
       "server_mornicraft": "MorniCraft settings changed",
-      "netbird_domain_server": "Server on the domain itself changed"
+      "netbird_domain_server": "Server on the domain itself changed",
+      "netbird_forwards": "More domains through the router changed"
     }
   },
   "ddos": {
@@ -3688,5 +3691,44 @@
     "proxy": "This server is the proxy of “{{network}}”.",
     "member": "This server is part of “{{network}}” (name in the network: {{name}}). Players come in through the proxy; it has no port of its own to the outside.",
     "manage": "Manage network"
+  },
+  "routerForwards": {
+    "title": "More domains through this router",
+    "summaryNone": "(e.g. a second product on your NetBird server)",
+    "summary_one": "{{count}} domain",
+    "summary_other": "{{count}} domains",
+    "summaryProblems_one": "{{count}} domain with a problem",
+    "summaryProblems_other": "{{count}} domains with a problem",
+    "text": "If a second product runs on your NetBird server (e.g. MoinMorni), you can enter its domain here. Then players type that domain without a port too.",
+    "how": "How it works: NetBird forwards Minecraft by port only, and ports 25565 (Java) and 19132 (Bedrock) are already held by this router of {{brand}}. It reads the name players typed and sends players of an entered domain to where NetBird sends the other product's ports – only into the home network or to NetBird machines.",
+    "domain": "Domain",
+    "javaPort": "Java port",
+    "bedrockPort": "Bedrock port",
+    "portsHint": "The ports the other product has in NetBird – it shows them under “Game on … itself” (e.g. moinmorni.net:25567, Bedrock port 19134). Leave a field empty if there is no Java or no Bedrock.",
+    "add": "Add",
+    "added": "{{domain}} now goes through the router",
+    "remove": "Remove",
+    "removed": "{{domain}} removed",
+    "recheck": "Check again",
+    "portLabel": "{{kind}} · port {{port}}",
+    "kind": {
+      "java": "Java",
+      "bedrock": "Bedrock"
+    },
+    "found": "found: {{target}}",
+    "notFound": "not found",
+    "routerOff": "The router does not have port {{port}} in NetBird right now – this only works once it has it again.",
+    "shadowed": "A server of your own has that name too (“{{server}}”) – players who type {{domain}} land there. Give it another name, then they reach this domain.",
+    "problems": {
+      "no_netbird": "NetBird is not connected.",
+      "no_service": "There is no TCP service on port {{port}} in your NetBird. Is the port number right?",
+      "own_service": "Port {{port}} belongs to {{brand}} itself ({{service}}). Enter the other product's port.",
+      "service_off": "The service {{service}} is switched off in NetBird.",
+      "no_target": "The service {{service}} has no target in NetBird.",
+      "no_address": "The target of {{service}} is not a single IP address. The router needs an address in the home network or a NetBird machine.",
+      "not_private": "The target {{target}} is not in the home network and not a NetBird machine. The router does not forward there – otherwise anyone could use it to reach the internet.",
+      "own_network": "The target {{target}} is in an internal network of {{brand}}. The router does not forward there.",
+      "netbird_error": "NetBird could not be asked right now: {{error}}"
+    }
   }
 }

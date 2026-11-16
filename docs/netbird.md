@@ -113,7 +113,12 @@ Port, mit einem SRV-Eintrag bei deinem DNS-Anbieter (die Server-Seite nennt Name
 SRV – dort braucht es solange die Portnummer.
 
 Läuft im selben Panel der Adress-Verteiler, schickt er die Domain selbst an den gewählten Server (Java ohne Port,
-Bedrock mit 19132).
+Bedrock mit 19132). Gehört der Verteiler zu einem anderen Panel auf demselben NetBird-Server, kann er die Domain
+ebenfalls weiterreichen – siehe „Zwei Produkte auf einem NetBird-Server“ unten.
+
+**Server hinter einem Proxy** (z. B. die Lobby eines Netzwerks) gehen hier nicht: Sie haben keine Ports nach außen und
+nehmen keine direkten Anmeldungen an. Nimm den Proxy des Netzwerks – von dort kommen Spieler auf den Startserver. Das
+Panel lehnt solche Server ab; war einer schon gewählt, zeigt die Karte eine Warnung mit „Proxy … nehmen“.
 
 ## Zwei Produkte in einem NetBird-Konto (MH_BRAND)
 
@@ -127,6 +132,36 @@ der eigene (Vorschlag beim Verbinden, Ausgang, Selbstheilung).
 So kommen sich zwei Panels in einem Konto nicht in die Quere. Jedes braucht aber **seine eigene Domain** in NetBird
 (z. B. `mornihosting.de` und `moinmorni.net`): Dienste unter der eigenen Domain, die das Panel nicht kennt, hält es für
 eigene Reste und räumt sie weg, wenn sie einen Port blockieren.
+
+## Zwei Produkte auf einem NetBird-Server
+
+Laufen zwei Produkte über denselben selbst betriebenen NetBird-Server – z. B. MorniHosting auf `mornihosting.de` und
+MoinMorni auf `moinmorni.net` –, gibt es die Ports 25565 und 19132 dort nur einmal. NetBird leitet TCP und UDP nur nach
+dem Port weiter, egal welcher Name eingetippt wurde, und beide Ports hält der Adress-Verteiler von MorniHosting.
+MoinMorni bekommt darum die nächsten freien Ports (z. B. Java 25567, Bedrock 19134), und Spieler müssten
+`moinmorni.net:25567` tippen.
+
+Damit es auch dort ohne Port geht, nimmt der Verteiler weitere Domains mit: **Admin-Bereich → NetBird → Weitere Domains
+über diesen Verteiler**. Dort die Domain des anderen Produkts und die Ports eintragen, die es in NetBird hat (MoinMorni
+zeigt sie unter „Spiel direkt auf …“), z. B. `moinmorni.net`, Java-Port 25567, Bedrock-Port 19134. Per API (nur Admins):
+`PUT /api/netbird/forwards` mit `{ "forwards": [{ "domain": "moinmorni.net", "javaPort": 25567, "bedrockPort": 19134 }] }`,
+`GET /api/netbird/forwards?fresh=1` prüft neu.
+
+- Der Verteiler liest den eingetippten Namen (Java: Handshake, Bedrock: Host-Zeile der Signaling-Anfrage). Steht er in
+  der Liste, fragt er NetBird, wohin der TCP-Dienst mit diesem Außen-Port geht – zur Resource (Networks) oder zum
+  NetBird-Rechner, der dort als Ziel steht –, und verbindet sich dorthin, bei MoinMorni zu dessen Container im Heimnetz.
+  Die Bytes gehen unverändert durch.
+- Die Antwort von NetBird merkt sich das Panel eine Minute lang. Die Liste zeigt je Port „gefunden: <Ziel>“ oder
+  warum nicht.
+- Das Bedrock-Spiel selbst läuft danach über den eigenen UDP-Port des anderen Produkts; dessen Geyser nennt ihn dem
+  Gerät selbst.
+- Weitergeleitet wird nur ins Heimnetz (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) oder zu NetBird-Rechnern
+  (100.64.0.0/10), nie ins Internet und nie in die internen Docker-Netze des Panels (dort liegt der Zugang zu Docker).
+  Ports, die dem Panel selbst gehören, gehen auch nicht (das wäre eine Schleife).
+- Eigene Server gehen vor: Heißt ein eigener Server so wie der erste Teil der Domain (z. B. „moinmorni“), landen
+  Spieler dort – die Liste warnt dann.
+- Ist NetBird nicht verbunden oder das Ziel nicht zu finden, schließt der Verteiler die Verbindung und schreibt eine
+  Zeile ins Protokoll („address router: no target for this domain“, höchstens einmal pro Minute und Domain).
 
 ## Von Hand
 

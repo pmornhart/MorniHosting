@@ -19,6 +19,7 @@ import { NetbirdAddresses } from '@/features/netbird/NetbirdServerField';
 import { brandOf, netbirdStatusQuery } from '@/features/netbird/netbird';
 import { serverQuery, serversQuery } from '@/features/servers/live';
 import { NetbirdExitCard } from './NetbirdExitCard';
+import { RouterForwards } from './RouterForwards';
 
 const PANEL_NAME = 'panel';
 const DEFAULT_PANEL_PORT = 8080;
@@ -518,6 +519,8 @@ export function NetbirdAutomationCard({
             panelPort={panelPort}
           />
           <DomainGame status={status} domain={domain} suggested={suggestedDomainServer} />
+          {/* Only with the address router in NetBird: other products' domains go through it. */}
+          {status.router.java || status.router.bedrock ? <RouterForwards status={status} /> : null}
           <NetbirdExitCard apiUrl={status.apiUrl} brand={status.brand} />
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={() => setEditing(true)}>

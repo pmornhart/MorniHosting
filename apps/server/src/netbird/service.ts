@@ -12,6 +12,7 @@ import {
   type NetbirdServerInfo,
   type NetbirdServiceInfo,
   type NetbirdStatus,
+  type RouterForwardProblem,
 } from '@mornihosting/shared';
 import type { Actor } from '../audit/service.js';
 import type { AppContext } from '../context.js';
@@ -21,7 +22,13 @@ import { createKeyedLock } from '../lib/locks.js';
 import { GEYSER_PURPOSE, VOICE_PURPOSE, type ServerService, type TunnelAddress } from '../servers/service.js';
 import type { ServerRow } from '../servers/spec.js';
 import type { RouterKind } from '../gateway/router.js';
-import { createNetbirdClient, type NetbirdClient, type NetbirdClientFactory } from './client.js';
+import { singleIpv4 } from '../lib/net-guard.js';
+import {
+  createNetbirdClient,
+  type NetbirdClient,
+  type NetbirdClientFactory,
+  type NetbirdServiceTarget,
+} from './client.js';
 
 /**
  * NetBird automation: with an API token, a domain and the machine MorniHosting runs on, the panel keeps
@@ -129,6 +136,18 @@ type PortNote = Pick<NetbirdServiceInfo, 'wanted' | 'heldBy'>;
 
 type Mapping = typeof netbirdServices.$inferSelect;
 
+/** Where NetBird sends an outside TCP port, or why that is not known (see `portTarget`). */
+export type PortTarget =
+  | { readonly found: true; readonly host: string; readonly port: number; readonly service: string }
+  | {
+      readonly found: false;
+      readonly problem: Extract<
+        RouterForwardProblem,
+        'no_netbird' | 'no_service' | 'own_service' | 'service_off' | 'no_target' | 'no_address'
+      >;
+      readonly service: string | null;
+    };
+
 export interface NetbirdAutomation {
   readonly status: () => NetbirdStatus;
   readonly discover: (input: { apiUrl?: string; token?: string }) => Promise<NetbirdDiscovery>;
@@ -154,6 +173,12 @@ export interface NetbirdAutomation {
     /** Leftovers NetBird refused to delete, with its answer. */
     readonly stuck: readonly { readonly name: string; readonly reason: string }[];
   } | null>;
+  /**
+   * Where NetBird sends an outside TCP port of another product in the same account (e.g. MoinMorni's Java port 25567):
+   * the IP address and port of the service's target – a machine's NetBird IP or a network resource's address. Never one
+   * of this panel's own services (its router would only send players back to itself). For the address router.
+   */
+  readonly portTarget: (listenPort: number) => Promise<PortTarget>;
 }
 
 export function createNetbirdAutomation(
@@ -892,6 +917,37 @@ export function createNetbirdAutomation(
     );
   };
 
+  /** The IP address behind a service target: a machine's NetBird IP, else the address of its network resource. */
+  const targetAddress = async (
+    client: NetbirdClient,
+    target: NetbirdServiceTarget,
+  ): Promise<string | null> => {
+    if (target.target_type === 'peer')
+      return singleIpv4((await client.peers()).find((p) => p.id === target.target_id)?.ip);
+    const lists = await Promise.all((await client.networks()).map((n) => client.resources(n.id)));
+    const resource = lists.flat().find((r) => r.id === target.target_id);
+    return singleIpv4(resource?.address) ?? singleIpv4(target.host);
+  };
+
+  const portTarget: NetbirdAutomation['portTarget'] = async (listenPort) => {
+    const cfg = config();
+    if (!cfg) return { found: false, problem: 'no_netbird', service: null };
+    const client = clientFor(cfg);
+    const service = (await client.services()).find((s) => s.listen_port === listenPort && s.mode === 'tcp');
+    const missing = (problem: Extract<PortTarget, { found: false }>['problem']): PortTarget => ({
+      found: false,
+      problem,
+      service: service?.domain ?? null,
+    });
+    if (!service) return missing('no_service');
+    if (knownIds().has(service.id)) return missing('own_service');
+    if (!service.enabled) return missing('service_off');
+    const target = (service.targets ?? []).find((t) => t.enabled && t.port);
+    if (!target?.port) return missing('no_target');
+    const host = await targetAddress(client, target);
+    return host ? { found: true, host, port: target.port, service: service.domain } : missing('no_address');
+  };
+
   const heal: NetbirdAutomation['heal'] = async () => {
     const cfg = config();
     if (!cfg) return null;
@@ -924,6 +980,7 @@ export function createNetbirdAutomation(
   return {
     status,
     heal,
+    portTarget,
     discover: async (input) => {
       const client = clientFromInput(input);
       const [domains, peers] = await Promise.all([client.domains(), client.peers()]);

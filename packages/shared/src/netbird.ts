@@ -76,6 +76,71 @@ export const netbirdDomainServerSchema = z.object({
   serverId: z.string().trim().min(1).max(ID_MAX).nullable(),
 });
 
+/**
+ * "Weitere Domains über diesen Verteiler": another product on the same NetBird server (e.g. MoinMorni on
+ * moinmorni.net) cannot have the ports games use without one typed – the address router holds them. Its domain is
+ * entered here with the outside ports it has in NetBird (e.g. 25567 and 19134, as its page shows them); players who type
+ * that domain are then sent where NetBird sends those ports.
+ */
+export const ROUTER_FORWARDS_MAX = 20;
+export const routerForwardSchema = z
+  .object({
+    domain: hostnameSchema.toLowerCase(),
+    /** Outside TCP port of the other product's Java (or proxy) service in NetBird; null = no Java. */
+    javaPort: portSchema.nullable(),
+    /** Outside port of its Bedrock service (TCP half, signaling); null = no Bedrock. */
+    bedrockPort: portSchema.nullable(),
+  })
+  .refine((f) => f.javaPort !== null || f.bedrockPort !== null, { message: 'port_missing' });
+export type RouterForward = z.infer<typeof routerForwardSchema>;
+export const routerForwardsSchema = z.object({
+  forwards: z.array(routerForwardSchema).max(ROUTER_FORWARDS_MAX),
+});
+
+/**
+ * Why the router cannot send players of a forwarded domain on: NetBird not connected, no TCP service on that port,
+ * the port belongs to this panel itself, the service is switched off or has no target, the target is no IP address,
+ * not in the home network or NetBird (the router is no open relay), in one of the panel's own internal networks,
+ * or NetBird could not be asked.
+ */
+export type RouterForwardProblem =
+  | 'no_netbird'
+  | 'no_service'
+  | 'own_service'
+  | 'service_off'
+  | 'no_target'
+  | 'no_address'
+  | 'not_private'
+  | 'own_network'
+  | 'netbird_error';
+
+export interface RouterForwardCheck {
+  /** Where NetBird sends the port, e.g. "10.20.30.40:25565"; null when it is not known. */
+  readonly target: string | null;
+  /** The NetBird service on that port, e.g. "moinmorni-proxy.moinmorni.net". */
+  readonly service: string | null;
+  /** null: players get through. */
+  readonly problem: RouterForwardProblem | null;
+  /** NetBird's error when it could not be asked. */
+  readonly error: {
+    readonly code: string;
+    readonly params: Readonly<Record<string, string | number>>;
+  } | null;
+}
+
+export interface RouterForwardView extends RouterForward {
+  readonly java: RouterForwardCheck | null;
+  readonly bedrock: RouterForwardCheck | null;
+  /** A server of this panel answers to the same name first (its name is the domain's first part): players land there. */
+  readonly shadowedBy: string | null;
+}
+
+export interface RouterForwardsStatus {
+  /** The router holds 25565 / 19132 in NetBird: only then do other domains get through it. */
+  readonly router: { readonly java: boolean; readonly bedrock: boolean };
+  readonly forwards: readonly RouterForwardView[];
+}
+
 /** An empty name puts the panel on the domain itself. */
 export const netbirdPanelSchema = z.object({
   name: z.union([netbirdNameSchema, z.literal('')]),

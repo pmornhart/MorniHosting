@@ -1,6 +1,7 @@
 /* eslint-disable ts-patterns/no-magic-numbers -- tests compare against literal expected values */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -9,11 +10,13 @@ import type {
   NetbirdExitStatus,
   NetbirdServerInfo,
   NetbirdStatus,
+  RouterForwardsStatus,
   ServerDetail,
   ServerSummary,
 } from '@mornihosting/shared';
 import { loadConfig } from '../src/config.js';
 import { netbirdServices, servers as serverTable, settings } from '../src/db/schema.js';
+import { startRouter, type AddressRouter, type RouteTarget } from '../src/gateway/router.js';
 import {
   authHeaders,
   createTestApp,
@@ -23,6 +26,7 @@ import {
   type Session,
   type TestApp,
 } from './helpers.js';
+import { backend, handshake, talk } from './router-wire.js';
 
 const TOKEN = 'nbp_test_token_1234';
 /** A key from another (self-hosted) NetBird server. */
@@ -1126,7 +1130,7 @@ describe('NetBird automation', () => {
         path.join(second.app.dataDir, 'servers', id, 'plugins/voicechat/voicechat-proxy.properties'),
         'utf8',
       );
-      expect(props).toMatch(/voice_host=25565/);
+      expect(props).toContain('voice_host=25565');
 
       // Off the domain again: back to the server's own name.
       await second.send('PUT', '/api/netbird/domain-server', { serverId: null });
@@ -1330,6 +1334,214 @@ describe('NetBird automation', () => {
       await routed.cleanup();
     }
   });
+  test('other domains through the router: MoinMorni on the same NetBird server, players type moinmorni.net without a port', async () => {
+    netbird = createFakeNetbird({ secondPanel: true, customPorts: true });
+    // MorniHosting with its address router: NetBird sends TCP 25565 and 19132 to it.
+    const routed = await createTestApp({ MH_ROUTER_JAVA_PORT: '24565', MH_ROUTER_BEDROCK_PORT: '19100' });
+    const admin = await setupAdmin(routed);
+    const rcall = (method: 'GET' | 'PUT' | 'POST' | 'DELETE', url: string, payload?: object) =>
+      routed.app.inject({ method, url, payload, headers: authHeaders(admin) });
+    await rcall('PUT', '/api/netbird', {
+      apiUrl: 'https://api.netbird.io',
+      token: TOKEN,
+      domain: BASE,
+      peerId: 'peer-mh',
+    });
+    // MoinMorni (MorniHosting as its motor) in its own container in the home network, its proxy on its domain:
+    // 25565/19132 are taken, so it gets the next ports.
+    const second = await secondPanel({ MH_LAN_IP: '10.20.30.40' });
+    const backends = { java: await backend(), bedrock: await backend() };
+    const routers: AddressRouter[] = [];
+    try {
+      const proxy = await proxyWithEverything(second.send);
+      switchOnGeyserAndVoice(second.app, proxy);
+      await second.send('PUT', '/api/netbird/domain-server', { serverId: proxy });
+      const javaPort = netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`)?.listen_port;
+      const bedrockPort = netbird.byDomain(`moinmorni-proxy-bedrock-tcp.${SECOND_DOMAIN}`)?.listen_port;
+      expect([javaPort, bedrockPort]).toEqual([25566, 19133]);
+
+      // The admin types what MoinMorni shows: the domain and its two outside ports.
+      const saved = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: 'MoinMorni.net', javaPort, bedrockPort }],
+      });
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect(saved.json<RouterForwardsStatus>()).toEqual({
+        router: { java: true, bedrock: true },
+        forwards: [
+          {
+            domain: SECOND_DOMAIN,
+            javaPort: 25566,
+            bedrockPort: 19133,
+            java: {
+              target: '10.20.30.40:25565',
+              service: `moinmorni-proxy.${SECOND_DOMAIN}`,
+              problem: null,
+              error: null,
+            },
+            bedrock: {
+              target: '10.20.30.40:19132',
+              service: `moinmorni-proxy-bedrock-tcp.${SECOND_DOMAIN}`,
+              problem: null,
+              error: null,
+            },
+            shadowedBy: null,
+          },
+        ],
+      });
+
+      // Real TCP: the router finds MoinMorni's address in NetBird; the test's connect points it at its backends.
+      const dialled: RouteTarget[] = [];
+      const connect = (to: RouteTarget): net.Socket => {
+        dialled.push(to);
+        const port = to.port === 25565 ? backends.java.port : backends.bedrock.port;
+        return net.connect({ host: '127.0.0.1', port });
+      };
+      const java = await startRouter({
+        kind: 'java',
+        host: '127.0.0.1',
+        port: 0,
+        lookup: routed.gateway.route,
+        connect,
+      });
+      const bedrock = await startRouter({
+        kind: 'bedrock',
+        host: '127.0.0.1',
+        port: 0,
+        lookup: routed.gateway.route,
+        connect,
+      });
+      routers.push(java, bedrock);
+      const serviceReads = () =>
+        netbird.calls.filter((c) => c.method === 'GET' && c.path === '/api/reverse-proxies/services').length;
+      const readsBefore = serviceReads();
+
+      // Java: every byte arrives unchanged, the handshake (with Forge's extra and the port typed) included.
+      const javaJoin = Buffer.concat([handshake('MoinMorni.net.\0FML3\0', 25565), Buffer.from('LOGIN')]);
+      expect(await talk(java.port(), javaJoin)).toBe('hallo');
+      expect(backends.java.got().equals(javaJoin)).toBe(true);
+      // Bedrock: the signaling request (plain HTTP over TCP) with the domain in its Host header.
+      const offer = Buffer.from('POST /ws HTTP/1.1\r\nHost: moinmorni.net:19132\r\n\r\n{"offer":1}');
+      expect(await talk(bedrock.port(), offer)).toBe('hallo');
+      expect(backends.bedrock.got().equals(offer)).toBe(true);
+      expect(dialled).toEqual([
+        { host: '10.20.30.40', port: 25565 },
+        { host: '10.20.30.40', port: 19132 },
+      ]);
+      // NetBird was asked when saving; for players the answer is kept for a minute.
+      expect(serviceReads()).toBe(readsBefore);
+
+      // An unknown domain is closed, nothing is dialled.
+      expect(await talk(java.port(), handshake('fremd.example.org'))).toBe('');
+      expect(dialled).toHaveLength(2);
+
+      // The panel's own servers come first: one named "moinmorni" catches the domain (the list says so).
+      const own = (
+        await rcall('POST', '/api/servers', {
+          edition: 'java',
+          software: 'paper',
+          version: '1.21.4',
+          memoryMb: 2048,
+          port: 25570,
+          eula: true,
+          startNow: false,
+          name: 'Moinmorni Kopie',
+          netbirdName: 'moinmorni',
+        })
+      ).json<ServerSummary>();
+      expect(await routed.gateway.route(SECOND_DOMAIN, 'java')).toEqual({
+        host: `mh-${own.id}`,
+        port: 25565,
+      });
+      const shadowed = (await rcall('GET', '/api/netbird/forwards')).json<RouterForwardsStatus>();
+      expect(shadowed.forwards[0]?.shadowedBy).toBe('Moinmorni Kopie');
+      await rcall('DELETE', `/api/servers/${own.id}`);
+      await waitFor(async () => (await routed.gateway.route(SECOND_DOMAIN, 'java'))?.port === 25565);
+      expect(await routed.gateway.route(SECOND_DOMAIN, 'java')).toEqual({ host: '10.20.30.40', port: 25565 });
+
+      // Never into the internet: MoinMorni's resource now points at a public address.
+      const resource = [...netbird.resources.values()].find((r) => r.address === '10.20.30.40');
+      if (resource) resource.address = '203.0.113.50';
+      const outside = (await rcall('GET', '/api/netbird/forwards?fresh=1')).json<RouterForwardsStatus>();
+      expect(outside.forwards[0]?.java).toMatchObject({
+        target: '203.0.113.50:25565',
+        problem: 'not_private',
+      });
+      const warn = vi.spyOn(routed.ctx.log, 'warn');
+      expect(await talk(java.port(), javaJoin)).toBe('');
+      expect(dialled).toHaveLength(2);
+      // One line in the log says why (and not one per player: at most once a minute per domain).
+      expect(await talk(java.port(), javaJoin)).toBe('');
+      const lines = warn.mock.calls.filter(([, text]) => String(text).includes('no target'));
+      expect(lines).toEqual([
+        [
+          expect.objectContaining({ domain: SECOND_DOMAIN, kind: 'java', problem: 'not_private' }),
+          'address router: no target for this domain, connection closed',
+        ],
+      ]);
+
+      // The router's own ports cannot be a target: they would only lead back to the router.
+      const loop = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: SECOND_DOMAIN, javaPort: 25565, bedrockPort: null }],
+      });
+      expect(loop.json<RouterForwardsStatus>().forwards[0]).toMatchObject({
+        java: { problem: 'own_service', service: `mh-router-java.${BASE}` },
+        bedrock: null,
+      });
+      // Bedrock players of an entered domain never land on one of the panel's own servers.
+      expect(await routed.gateway.route(SECOND_DOMAIN, 'bedrock')).toBeNull();
+
+      // Typing mistakes: a domain twice, the panel's own domain, no port at all.
+      const twice = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [
+          { domain: SECOND_DOMAIN, javaPort: 25566, bedrockPort: null },
+          { domain: SECOND_DOMAIN, javaPort: 25567, bedrockPort: null },
+        ],
+      });
+      expect(twice.json()).toMatchObject({
+        error: 'router_forward_twice',
+        params: { domain: SECOND_DOMAIN },
+      });
+      const ownDomain = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: BASE, javaPort: 25566, bedrockPort: null }],
+      });
+      expect(ownDomain.json()).toMatchObject({ error: 'router_forward_own_domain' });
+      const noPort = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: SECOND_DOMAIN, javaPort: null, bedrockPort: null }],
+      });
+      expect(noPort.statusCode).toBe(400);
+
+      // NetBird disconnected: players of the domain are turned away, the panel keeps running.
+      await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: SECOND_DOMAIN, javaPort: 25566, bedrockPort: 19133 }],
+      });
+      await rcall('DELETE', '/api/netbird');
+      const gone = (await rcall('GET', '/api/netbird/forwards?fresh=1')).json<RouterForwardsStatus>();
+      expect(gone.forwards[0]?.java).toMatchObject({ target: null, problem: 'no_netbird' });
+      expect(await talk(java.port(), javaJoin)).toBe('');
+      expect((await rcall('GET', '/api/netbird')).statusCode).toBe(200);
+      // Only admins see or change the list.
+      await rcall('POST', '/api/users', {
+        username: 'lena',
+        password: 'lena-passwort-1',
+        displayName: 'Lena',
+        canCreateServers: true,
+      });
+      const lena = await login(routed, 'lena', 'lena-passwort-1');
+      const asLena = await routed.app.inject({
+        method: 'GET',
+        url: '/api/netbird/forwards',
+        headers: authHeaders(lena),
+      });
+      expect(asLena.statusCode).toBe(403);
+    } finally {
+      await Promise.all(routers.map((r) => r.close()));
+      backends.java.close();
+      backends.bedrock.close();
+      await second.app.cleanup();
+      await routed.cleanup();
+    }
+  });
+
   test('hiding the home connection: only the MorniHosting container goes out, not the chosen routing machine', async () => {
     // The addresses run over another machine (like the Proxmox host routing into the LAN).
     await call('PUT', '/api/netbird', {

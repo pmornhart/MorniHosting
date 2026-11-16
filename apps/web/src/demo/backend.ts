@@ -28,6 +28,8 @@ import {
   type DnsStatus,
   type HttpsStatus,
   type NetbirdStatus,
+  type RouterForward,
+  type RouterForwardsStatus,
   type MeResponse,
   type PanelSettings,
   type PasskeyEntry,
@@ -768,6 +770,33 @@ function setDomainServer(id: string | null): void {
   netbird.status = { ...netbird.status, domainServer: chosen ? { id: chosen.id, name: chosen.name } : null };
 }
 const netbird = { status: NOT_CONNECTED, nextPort: 31000 };
+
+/**
+ * "Weitere Domains über diesen Verteiler": a pretend second product on the same NetBird server, whose services have
+ * the outside ports 25567 (Java) and 19134 (Bedrock); other ports find nothing.
+ */
+const DEMO_OTHER = { address: '10.20.30.40', java: 25567, bedrock: 19134 } as const;
+const forwardsState: { list: RouterForward[] } = { list: [] };
+function forwardsStatus(): RouterForwardsStatus {
+  const check = (port: number | null, wanted: number, inside: number) =>
+    port === null
+      ? null
+      : {
+          target: port === wanted ? `${DEMO_OTHER.address}:${inside}` : null,
+          service: port === wanted ? `spiel.demo-${wanted}.example.org` : null,
+          problem: port === wanted ? null : ('no_service' as const),
+          error: null,
+        };
+  return {
+    router: netbird.status.router,
+    forwards: forwardsState.list.map((f) => ({
+      ...f,
+      java: check(f.javaPort, DEMO_OTHER.java, 25565),
+      bedrock: check(f.bedrockPort, DEMO_OTHER.bedrock, 19132),
+      shadowedBy: null,
+    })),
+  };
+}
 
 /* ---------- Own domain (mornihosting.de at INWX, with HTTPS) ---------- */
 
@@ -1585,6 +1614,15 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
     },
   ],
   ['GET', '/api/netbird/exit', () => ok(exitStatus())],
+  ['GET', '/api/netbird/forwards', () => ok(forwardsStatus())],
+  [
+    'PUT',
+    '/api/netbird/forwards',
+    ({ body }) => {
+      forwardsState.list = Array.isArray(body['forwards']) ? (body['forwards'] as RouterForward[]) : [];
+      return ok(forwardsStatus());
+    },
+  ],
   [
     'PUT',
     '/api/netbird/exit',
