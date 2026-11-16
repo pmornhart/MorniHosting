@@ -21,6 +21,17 @@ Anderer Container als 100 bzw. nicht „mornihosting“ genannt: `CTID=105 bash 
 
 „Absichtlich gestoppt“ erkennt der Host-Wächter an den Proxmox-Aufgaben (`vzstop`, `vzshutdown` seit dem letzten Hochfahren).
 Wird der ganze Host heruntergefahren, startet der Container beim nächsten Hochfahren wieder.
+Startest du den Container über Proxmox neu oder läuft ein Backup, wartet der Host-Wächter, bis Proxmox fertig ist
+(höchstens 10 Minuten), statt dazwischen zu starten.
+
+Einmal am Tag gibt der Host-Wächter gelöschten Platz an Proxmox zurück (fstrim). Das läuft im Hintergrund und sperrt
+den Container nicht. Ältere Fassungen nahmen dafür `pct fstrim`: Das sperrt den Container („CT is locked (fstrim)“),
+und brach es ab, startete er nicht mehr. Findet der Host-Wächter so eine Sperre an einem ausgeschalteten Container,
+bricht er das fstrim ab und startet den Container – der Start geht vor.
+
+Bleibt NetBird getrennt, startet der Wächter im Container es in den ersten 10 Minuten jede Minute neu, danach alle
+10 Minuten. Die Meldung nennt den Grund so, wie NetBird ihn angibt. Ist NetBird abgemeldet (Anmeldung abgelaufen),
+startet er es nicht neu, sondern sagt dir, wie du es mit einem Setup-Key wieder anmeldest.
 
 ## Nachsehen
 

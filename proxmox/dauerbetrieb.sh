@@ -25,17 +25,21 @@ COMMAND="${1:-setup}"
 REPO_RAW="https://raw.githubusercontent.com/pmornhart/MorniHosting/main"
 HOST_GUARD="/usr/local/sbin/mornihosting-host-guard"
 UNIT_DIR="/etc/systemd/system"
-CONF_FILE="/etc/mornihosting-host-guard.conf"
-STATE_DIR="/var/lib/mornihosting-host-guard"
-LOG_FILE="/var/log/mornihosting-host-guard.log"
+CONF_FILE="${MH_HOST_GUARD_CONF:-/etc/mornihosting-host-guard.conf}"
+STATE_DIR="${MH_HOST_GUARD_STATE_DIR:-/var/lib/mornihosting-host-guard}"
+LOG_FILE="${MH_HOST_GUARD_LOG:-/var/log/mornihosting-host-guard.log}"
 LOG_KEEP_LINES=500
-TASK_FILES=("/var/log/pve/tasks/active" "/var/log/pve/tasks/index")
+PVE_TASK_DIR="${MH_PVE_TASK_DIR:-/var/log/pve/tasks}"
+TASK_FILES=("${PVE_TASK_DIR}/active" "${PVE_TASK_DIR}/index")
+# Läuft eine Proxmox-Aufgabe für den Container (Neustart, Start, Stopp …), wartet der Wächter so lange auf sie.
+TASK_GRACE_SECONDS=600
 INSTALL_DIR="/opt/mornihosting"
 MAX_MEMORY_MB=32768
 SWAP_MB=4096
 HUNG_RESTART_AFTER=3
 FSTRIM_EVERY_MINUTES=1440
 FSTRIM_WAIT_SECONDS=1800
+FSTRIM_TIMEOUT_SECONDS=1800
 STORAGE_WARN_PERCENT=85
 STORAGE_CLEAR_MARGIN=5
 EXEC_TIMEOUT_SECONDS=30
@@ -59,7 +63,7 @@ log() {
 }
 
 need_root_on_proxmox() {
-  [[ ${EUID} -eq 0 ]] || {
+  [[ "$(id -u)" -eq 0 ]] || {
     msg_error "Bitte als root auf dem Proxmox-Host ausführen."
     exit 1
   }
@@ -178,21 +182,84 @@ host_drop_dead_exit() {
   done <<<"${ids}"
 }
 
-# Bricht "pct fstrim" ab (Zeitlimit, Neustart des Hosts), bleibt die Sperre "lock: fstrim" stehen – dann
-# startet der Container nicht mehr ("CT is locked (fstrim)"). Läuft kein fstrim mehr, wird sie hier gelöst.
+ct_lock() { pct config "$1" 2>/dev/null | awk '/^lock:/ { print $2; exit }'; }
+
+# Läuft gerade eine Proxmox-Aufgabe für den Container (Neustart über die Oberfläche, Start, Stopp, Umzug …)
+# oder ist er gesperrt (Backup, Snapshot …), funkt der Wächter nicht dazwischen – sonst startet er ihn mitten
+# im Neustart oder im Backup ein zweites Mal. Eine Aufgabe, die länger als 10 Minuten läuft, gilt als hängend.
+# Proxmox nennt den Prozess einer Aufgabe "task UPID:knoten:pid:pstart:startzeit:typ:id:benutzer:".
+ct_busy() {
+  local ctid="$1" lock pid age
+  lock="$(ct_lock "${ctid}")"
+  [[ -n "${lock}" && "${lock}" != "fstrim" ]] && return 0
+  while IFS= read -r pid; do
+    [[ -n "${pid}" ]] || continue
+    age="$(ps -o etimes= -p "${pid}" 2>/dev/null | tr -d ' ')"
+    [[ -n "${age}" ]] && ((age < TASK_GRACE_SECONDS)) && return 0
+  done < <(pgrep -f "^task UPID:[^:]*:[0-9A-Fa-f]*:[0-9A-Fa-f]*:[0-9A-Fa-f]*:[a-z]*:${ctid}:" 2>/dev/null || true)
+  return 1
+}
+
+# Ältere Fassungen dieses Wächters gaben Platz mit "pct fstrim" zurück. Das sperrt den Container ("lock: fstrim")
+# und hängt sein Dateisystem auf dem Host ein. Bricht es ab, bleibt beides stehen – dann startet er nicht mehr
+# ("CT is locked (fstrim)"). Läuft er, wird nur eine verwaiste Sperre gelöst.
 release_stale_lock() {
   local ctid="$1"
-  pct config "${ctid}" 2>/dev/null | grep -q '^lock: fstrim' || return 0
-  pgrep -f "pct fstrim ${ctid}" >/dev/null 2>&1 && return 0
+  [[ "$(ct_lock "${ctid}")" == "fstrim" ]] || return 0
+  pgrep -f "pct fstrim ${ctid}( |$)" >/dev/null 2>&1 && return 0
   pct unlock "${ctid}" >/dev/null 2>&1 && log "Hängende fstrim-Sperre von Container ${ctid} gelöst"
   return 0
+}
+
+# Der Container ist aus und soll laufen: Der Start geht vor. Ein noch laufendes fstrim wird abgebrochen, das dabei
+# eingehängte Dateisystem ausgehängt und die Sperre gelöst. Platz kann später noch zurückgegeben werden.
+clear_fstrim_lock() {
+  local ctid="$1"
+  [[ "$(ct_lock "${ctid}")" == "fstrim" ]] || return 0
+  if pgrep -f "pct fstrim ${ctid}( |$)" >/dev/null 2>&1; then
+    pkill -f "pct fstrim ${ctid}( |$)" >/dev/null 2>&1 || true
+    pkill -f "fstrim -v /var/lib/lxc/${ctid}/rootfs" >/dev/null 2>&1 || true
+    sleep 3
+  fi
+  pct unmount "${ctid}" >/dev/null 2>&1 || true
+  pct unlock "${ctid}" >/dev/null 2>&1 || true
+  log "fstrim-Sperre von Container ${ctid} gelöst – der Start geht vor"
+}
+
+# Was im laufenden Container getrimmt wird: das Dateisystem selbst und eigene Laufwerke (mp0, mp1 …), keine
+# eingebundenen Host-Ordner und nichts Schreibgeschütztes. Über /proc/<pid>/root – ohne Sperre, ohne Einhängen.
+trim_paths() {
+  local ctid="$1" pid
+  pid="$(lxc-info -n "${ctid}" -p -H 2>/dev/null || true)"
+  [[ "${pid}" =~ ^[0-9]+$ ]] || return 0
+  echo "/proc/${pid}/root/"
+  pct config "${ctid}" 2>/dev/null | awk -v root="/proc/${pid}/root" '
+    /^mp[0-9]+:/ {
+      vol = $2; sub(/,.*/, "", vol)
+      if (vol ~ /^\// || $0 ~ /,ro=1/) next
+      path = $0; sub(/.*,mp=/, "", path); sub(/,.*/, "", path)
+      print root path
+    }'
+}
+
+# Gibt gelöschten Platz im Hintergrund zurück (eigene systemd-Einheit, niedrigste Priorität): Der Wächter prüft
+# währenddessen weiter, und ein Neustart des Containers ist nie gesperrt.
+trim_in_background() {
+  local ctid="$1" unit="mornihosting-fstrim-$1" paths=()
+  systemctl is-active --quiet "${unit}" 2>/dev/null && return 0
+  mapfile -t paths < <(trim_paths "${ctid}")
+  ((${#paths[@]} > 0)) || return 1
+  # shellcheck disable=SC2016 # $path wird erst in der Hintergrund-Shell aufgelöst
+  systemd-run --unit="${unit}" --collect --quiet --nice=19 -p IOSchedulingClass=idle \
+    timeout -k 30 "${FSTRIM_TIMEOUT_SECONDS}" sh -c 'for path; do fstrim -v "$path"; done' fstrim "${paths[@]}" \
+    >/dev/null 2>&1
 }
 
 # Läuft gerade ein fstrim (Host-Wächter), ist der Container gesperrt und "pct set" scheitert mit
 # "CT is locked (fstrim)". Die Einrichtung wartet darauf (höchstens 30 Min.) und löst eine hängende Sperre.
 wait_for_fstrim() {
   local ctid="$1" waited=0
-  while pct config "${ctid}" 2>/dev/null | grep -q '^lock: fstrim' && pgrep -f "pct fstrim ${ctid}" >/dev/null 2>&1; do
+  while pct config "${ctid}" 2>/dev/null | grep -q '^lock: fstrim' && pgrep -f "pct fstrim ${ctid}( |$)" >/dev/null 2>&1; do
     ((waited == 0)) && msg_info "Proxmox gibt gerade freien Platz zurück (fstrim) – warte, bis das fertig ist …"
     ((waited >= FSTRIM_WAIT_SECONDS)) && break
     sleep 10
@@ -210,9 +277,9 @@ keep_storage() {
   mkdir -p "${STATE_DIR}"
   if [[ -z "$(find "${stamp}" -mmin -"${FSTRIM_EVERY_MINUTES}" 2>/dev/null)" ]]; then
     touch "${stamp}"
-    timeout 1800 pct fstrim "${ctid}" >/dev/null 2>&1 && log "Gelöschten Platz von Container ${ctid} zurückgegeben (fstrim)"
-    release_stale_lock "${ctid}"
+    trim_in_background "${ctid}" && log "Gelöschten Platz von Container ${ctid} zurückgeben (fstrim läuft im Hintergrund)"
   fi
+  release_stale_lock "${ctid}"
   storage="$(pct config "${ctid}" | awk -F'[ :,]+' '/^rootfs:/ { print $2 }')"
   [[ -n "${storage}" ]] || return 0
   used="$(pvesm status --storage "${storage}" 2>/dev/null | awk 'NR == 2 { gsub(/%/, "", $NF); print int($NF) }')"
@@ -237,25 +304,41 @@ guard() {
   ctid="$(find_ctid)"
   mkdir -p "${STATE_DIR}"
   host_drop_dead_exit
-  local hung_file="${STATE_DIR}/hung-${ctid}"
+  # Proxmox arbeitet gerade am Container (Neustart über die Oberfläche, Backup …): nicht dazwischenfunken.
+  ct_busy "${ctid}" && return 0
+  local hung_file="${STATE_DIR}/hung-${ctid}" failed_file="${STATE_DIR}/start-failed-${ctid}"
   if ! ct_running "${ctid}"; then
     echo 0 >"${hung_file}"
     if stopped_on_purpose "${ctid}"; then
       return 0
     fi
     log "Container ${ctid} ist aus, ohne dass ihn jemand gestoppt hat – starte ihn"
-    release_stale_lock "${ctid}"
-    if pct start "${ctid}" >/dev/null 2>&1; then
-      host_event "${ctid}" container fixed "MorniHosting-Container neu gestartet" \
-        "Container ${ctid} war aus, ohne dass ihn jemand gestoppt hat. Der Host-Wächter hat ihn sofort wieder gestartet."
+    clear_fstrim_lock "${ctid}"
+    local out reason
+    if out="$(pct start "${ctid}" 2>&1)"; then
+      if [[ -f "${failed_file}" ]]; then
+        rm -f "${failed_file}"
+        host_event "${ctid}" container ok "MorniHosting-Container läuft wieder" \
+          "Container ${ctid} ließ sich eine Weile nicht starten und läuft jetzt wieder."
+      else
+        host_event "${ctid}" container fixed "MorniHosting-Container neu gestartet" \
+          "Container ${ctid} war aus, ohne dass ihn jemand gestoppt hat. Der Host-Wächter hat ihn sofort wieder gestartet."
+      fi
     else
-      log "Start von ${ctid} ging nicht – nächster Versuch in einer Minute"
-      host_event "${ctid}" container action "MorniHosting-Container startet nicht" \
-        "Container ${ctid} ist aus und lässt sich nicht starten. Panel und alle Server sind offline." \
-        "In der Proxmox-Shell nachsehen, warum:" "pct start ${ctid} --debug"
+      # Der letzte Satz von Proxmox nennt den Grund, z. B. "CT is locked (backup)".
+      reason="$(printf '%s\n' "${out}" | awk 'NF { line = $0 } END { print line }')"
+      log "Start von ${ctid} ging nicht (${reason:-ohne Grund}) – nächster Versuch in einer Minute"
+      # Einmal pro Ausfall melden, nicht jede Minute.
+      if [[ ! -f "${failed_file}" ]]; then
+        touch "${failed_file}"
+        host_event "${ctid}" container action "MorniHosting-Container startet nicht" \
+          "Container ${ctid} ist aus und lässt sich nicht starten (Proxmox sagt: ${reason:-nichts}). Panel und alle Server sind offline. Der Host-Wächter versucht es jede Minute weiter." \
+          "In der Proxmox-Shell nachsehen, warum:" "pct start ${ctid} --debug"
+      fi
     fi
     return 0
   fi
+  rm -f "${failed_file}"
   # Läuft er, antwortet aber nicht mehr (hängt)? Nach 3 Minuten wird er neu gestartet.
   if timeout "${EXEC_TIMEOUT_SECONDS}" pct exec "${ctid}" -- true >/dev/null 2>&1; then
     echo 0 >"${hung_file}"
@@ -271,7 +354,7 @@ guard() {
       echo 0 >"${hung_file}"
       timeout 120 pct reboot "${ctid}" >/dev/null 2>&1 || {
         pct stop "${ctid}" --skiplock 1 >/dev/null 2>&1 || true
-        release_stale_lock "${ctid}"
+        clear_fstrim_lock "${ctid}"
         pct start "${ctid}" >/dev/null 2>&1 || true
       }
     fi
@@ -382,9 +465,8 @@ setup() {
 
   install_host_guard "${ctid}"
   msg_ok "Host-Wächter läuft (jede Minute)"
-  msg_info "Gelöschten Platz an Proxmox zurückgeben (fstrim, kann ein paar Minuten dauern) …"
-  timeout 1800 pct fstrim "${ctid}" >/dev/null 2>&1 && msg_ok "Platz zurückgegeben"
   release_stale_lock "${ctid}"
+  trim_in_background "${ctid}" && msg_ok "Gelöschter Platz wird im Hintergrund an Proxmox zurückgegeben"
   mkdir -p "${STATE_DIR}" && touch "${STATE_DIR}/fstrim-${ctid}"
 
   printf '\n'
