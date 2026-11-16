@@ -12,6 +12,11 @@
  * 5. Optional: the account cards (password, two-factor login, passkeys, e-mail, Minecraft account) for an own
  *    account page, and `ForcePasswordDialog` once inside the signed-in part (asks for an own password after a
  *    start password).
+ * 6. Optional: the NetBird cards for an own page about reachability (admins only, like in MorniHosting's admin area):
+ *    `NetbirdAutomationCard` (connect NetBird, domain and machine; the website on the domain – `panelName=""` and
+ *    `panelPort` of the app's own web port put it on the domain itself; a game server on the domain itself;
+ *    "Hausanschluss verstecken" inside), or `NetbirdExitCard` alone. Their texts name the product as the motor's
+ *    MH_BRAND says (e.g. "morni.net"), so NetBird objects and texts carry the app's name, not "MorniHosting".
  *
  * Everything the pages fetch, upload, open live or show as a picture goes through `apiUrl`, so step 2 is all it
  * takes to point them at the motor.
@@ -31,6 +36,12 @@ export { PasskeysCard } from './features/admin/PasskeysCard';
 export { EmailCard } from './features/admin/EmailCard';
 export { MinecraftAccountCard } from './features/admin/MinecraftAccountCard';
 export { ForcePasswordDialog } from './features/auth/ForcePasswordDialog';
+// NetBird: connect it, the website and a game server on the domain itself, "Hausanschluss verstecken", a server's
+// own address field.
+export { NetbirdAutomationCard } from './features/admin/NetbirdAutomationCard';
+export { NetbirdExitCard } from './features/admin/NetbirdExitCard';
+export { NetbirdServerField } from './features/netbird/NetbirdServerField';
+export { netbirdStatusQuery } from './features/netbird/netbird';
 
 const SERVER_ROUTE = 'servers/:serverId';
 

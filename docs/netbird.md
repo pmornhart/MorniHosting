@@ -81,6 +81,52 @@ Die NetBird-Dienste dafür heißen `mh-router-java.<domain>` und `mh-router-bedr
 
 Auf dem NetBird-Server müssen 25565/tcp und 19132/tcp offen sein. Das erledigt `scripts/netbird-proxy-ports.sh` schon, wenn du es einmal ausgeführt hast.
 
+## Spiel direkt auf der Domain
+
+Ein Server kann direkt auf deiner Domain laufen: Spieler tippen nur `deine-domain.de` – ohne Namen davor. Einstellen
+unter **Admin-Bereich → NetBird → Spiel direkt auf …** (Server wählen, **Übernehmen**) oder per API
+`PUT /api/netbird/domain-server` mit `{ "serverId": "…" }` (`null` = keiner). Hat der Server noch keinen Namen,
+bekommt er einen aus seinem eigenen.
+
+Was NetBird erlaubt (geprüft im Quelltext von NetBird, `management/internals/modules/reverseproxy/service/manager`):
+
+- **Ein Dienst pro Name.** HTTP und TCP/UDP können sich keinen Namen teilen („domain already taken“). Die Webseite
+  bzw. das Panel bekommt darum die Domain selbst (HTTP, „Pass Host Header“), die Spiel-Dienste behalten eigene Namen
+  (`<name>.deine-domain.de`, `<name>-bedrock…`, `<name>-voice…`).
+- **TCP und UDP gehen nach dem Port**, nicht nach dem Namen: Der NetBird-Proxy schickt jede Verbindung auf Port 25565
+  zum TCP-Dienst mit diesem Port, egal welcher Name eingetippt wurde. Zeigt `deine-domain.de` auf den Proxy (das tut
+  sie für die Webseite ohnehin), landen Spieler mit `deine-domain.de` also auf dem Spiel.
+- **Ein Dienst pro Port und Protokoll** auf einem Proxy. Der Server auf der Domain bittet darum um die Ports, die
+  Spiele ohne Eingabe nehmen: Java 25565 (TCP), Bedrock/Geyser 19132 (UDP und TCP fürs Finden seit Bedrock 26.60),
+  bei einem Velocity-Proxy mit Voice-Chat derselbe Port auch für UDP. Zusammengehörige Hälften (TCP + UDP) bekommen
+  immer dieselbe Nummer.
+- **NetBird Cloud** vergibt die Ports selbst und lehnt gewählte ab (auch beim Ändern). Dann steht die Portnummer in
+  der Adresse (`deine-domain.de:31234`). Ohne Portnummer geht es nur mit einem selbst betriebenen NetBird, dessen
+  Proxy eigene Ports erlaubt.
+
+**Hat schon jemand den Port?** Zum Beispiel der Adress-Verteiler eines anderen Panels im selben NetBird-Konto (der
+nimmt 25565 und 19132 über TCP). Dann wird ihm nichts weggenommen: Der Server bekommt die nächste Nummer, die in
+beiden Protokollen frei ist (z. B. 25566), und seine Seite sagt, wer den gewünschten Port hat. Alle fünf Minuten
+probiert das Panel, ob er frei geworden ist, und nimmt ihn dann von selbst. Für Java geht es bis dahin trotzdem ohne
+Port, mit einem SRV-Eintrag bei deinem DNS-Anbieter (die Server-Seite nennt Name, Ziel und Port). Bedrock kennt kein
+SRV – dort braucht es solange die Portnummer.
+
+Läuft im selben Panel der Adress-Verteiler, schickt er die Domain selbst an den gewählten Server (Java ohne Port,
+Bedrock mit 19132).
+
+## Zwei Produkte in einem NetBird-Konto (MH_BRAND)
+
+Alles, was das Panel in NetBird anlegt, trägt seinen Namen: das Netzwerk „MorniHosting“, die Gruppe, die Resources
+„MorniHosting <Server>“ und „MorniHosting Panel“, der Ausgang „MorniHosting Ausgang“. Ein anderes Produkt, das
+MorniHosting als unsichtbaren Motor einbaut (morni.net), setzt `MH_BRAND=morni.net` – dann heißt alles „morni.net …“,
+auch in den Meldungen und in den eingebetteten Karten (`apps/web/src/embed.ts`). Aus der Marke wird auch der Name des
+eigenen Rechners in NetBird abgeleitet („mornihosting“, „morninet“): Der Rechner, dessen Name ihn enthält, gilt als
+der eigene (Vorschlag beim Verbinden, Ausgang, Selbstheilung).
+
+So kommen sich zwei Panels in einem Konto nicht in die Quere. Jedes braucht aber **seine eigene Domain** in NetBird
+(z. B. `mornihosting.de` und `morni.net`): Dienste unter der eigenen Domain, die das Panel nicht kennt, hält es für
+eigene Reste und räumt sie weg, wenn sie einen Port blockieren.
+
 ## Von Hand
 
 Lieber alles selbst eintragen? Öffne im Panel **Admin-Bereich → Domain → Reiter „NetBird“** und trag deine
@@ -259,6 +305,14 @@ Ziel: Weder Besucher noch Dienste, die MorniHosting aufruft (Modrinth, Mojang, M
 
 Die Heim-IP merkt sich das Panel einmal verschlüsselt, nur für diese Prüfung. Angezeigt oder verschickt wird sie nie. Am Router zu Hause sind danach keine Portfreigaben mehr nötig.
 
+**Zwei Produkte über denselben Ausgang** (z. B. MorniHosting und morni.net über den IONOS-Server): Jedes legt seine
+eigene Gruppe „<Marke> Ausgang“ (nur sein Rechner) und seine eigene Route `0.0.0.0/0` über den Ausgang an. NetBird
+nimmt mehrere solche Routen über einen Rechner an – seine Prüfung („… already has this route“) schaut seit vielen
+Versionen (geprüft v0.25 bis heute) nur auf Rechner-Gruppen, nicht auf einzelne Rechner. Sollte ein NetBird das
+einmal ablehnen, setzt das zweite Panel seine Gruppe in die schon vorhandene Route dazu (die Karte sagt dann
+„fährt in der Route … mit“). Beim Ausschalten nimmt jedes Panel nur seine eigene Gruppe heraus; die Route verschwindet
+erst, wenn niemand sie mehr nutzt. Gruppen anderer in einer Route bleiben immer erhalten.
+
 ## Wächter (hält alles stabil)
 
 `install.sh`, `update.sh` und das Proxmox-Skript richten auf Rechnern mit NetBird den Wächter ein
@@ -270,4 +324,28 @@ Die Heim-IP merkt sich das Panel einmal verschlüsselt, nur für diese Prüfung.
 
 Status und letzte Eingriffe: `sudo /opt/mornihosting/scripts/guard.sh status`
 (Protokoll: `/var/log/mornihosting-guard.log`). Sofort einrichten ohne Update:
-`sudo bash /opt/mornihosting/scripts/guard.sh install`.
+`sudo bash /opt/mornihosting/scripts/guard.sh install`. Nur den Ausgang prüfen: `guard.sh exit`.
+
+**Für ein anderes Produkt** (das MorniHosting als Motor einbaut) kommt alles aus der Umgebung beim `install`:
+
+| Variable              | Vorgabe                      | Beispiel morni.net                              |
+| --------------------- | ---------------------------- | ----------------------------------------------- |
+| `MH_BRAND`            | `MorniHosting`               | `morni.net` (Meldungen, „morni.net Ausgang“)    |
+| `MH_GUARD_NAME`       | `mornihosting`               | `morninet` (Timer, Protokoll, Zustand)          |
+| `MH_INSTALL_DIR`      | `/opt/<Name>`                | `/opt/morninet` (docker-compose.yml)            |
+| `MH_ENV_FILE`         | `<Installationsordner>/.env` | – (liest `MH_NETBIRD_API`)                      |
+| `MH_DATA_VOLUME`      | `<Name>-data`                | `morninet-motor-data` (Meldungen an den Motor)  |
+| `MH_GUARD_CONTAINERS` | `<Name> <Name>-socket-proxy` | `morninet morninet-motor morninet-socket-proxy` |
+| `MH_UPDATE_LOCK`      | `/run/<Name>-update.lock`    | – (legt das Update an, solange es läuft)        |
+
+`install` schreibt die gesetzten Werte in ein eigenes Startskript `/usr/local/sbin/<Name>-guard`, das auch der Timer
+`<Name>-guard.timer` aufruft. Status dann mit `sudo morninet-guard status`.
+
+## Meldungen für ein Produkt mit Motor
+
+Was das Panel an Admins meldet (Wächter, „Hausanschluss nicht mehr versteckt“, NetBird repariert, Server startet
+nicht …), geht zusätzlich live über `/api/ws` raus: nach `{"type":"subscribe","channel":"alerts","after":"<letzte ID>"}`
+kommt jede Meldung als `{"type":"alert","alert":{…}}` (Schlüssel, Art, Status `fixed|fixing|action|ok`, Titel, was los
+ist, was zu tun ist, Befehl). Nur Admins bzw. Schlüssel mit dem Bereich `events`. Mit `after` kommen zuerst die
+Meldungen, die seitdem kamen (die letzten 100 hebt das Panel auf) – so verpasst ein Produkt ohne eigenes Discord oder
+eigene Mail (morni.net zeigt sie im Team-Log) nichts, wenn seine Verbindung kurz weg war.

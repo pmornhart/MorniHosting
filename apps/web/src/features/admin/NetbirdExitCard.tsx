@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, EyeOff, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
+import { CheckCircle2, EyeOff, Info, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NetbirdExitStatus } from '@mornihosting/shared';
@@ -25,9 +25,9 @@ const translatedError = (error: NetbirdExitStatus['error']): string | null => {
 /**
  * "Hausanschluss verstecken": all internet traffic of the panel's machine goes out through another NetBird
  * machine (normally the NetBird server). Visitors come in through NetBird anyway, so the home connection's IP
- * appears nowhere.
+ * appears nowhere. `brand` names the product in the texts (an app embedding the card passes its own).
  */
-export function NetbirdExitCard({ apiUrl }: { apiUrl: string }): ReactElement {
+export function NetbirdExitCard({ apiUrl, brand }: { apiUrl: string; brand?: string }): ReactElement {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data } = useQuery({
@@ -58,7 +58,7 @@ export function NetbirdExitCard({ apiUrl }: { apiUrl: string }): ReactElement {
         <EyeOff className="size-4 text-primary" aria-hidden />
         {t('netbirdExit.title')}
       </b>
-      <p className="text-[13px] text-muted-foreground">{t('netbirdExit.text')}</p>
+      <p className="text-[13px] text-muted-foreground">{t('netbirdExit.text', brand ? { brand } : {})}</p>
 
       {data?.enabled ? (
         <div className="grid gap-2.5">
@@ -81,6 +81,14 @@ export function NetbirdExitCard({ apiUrl }: { apiUrl: string }): ReactElement {
           ) : null}
           {data.hidden === null && !error ? (
             <p className="text-sm text-muted-foreground">{t('netbirdExit.unknown')}</p>
+          ) : null}
+          {data.sharedWith ? (
+            <p className="flex items-start gap-2 rounded-[10px] bg-secondary px-3 py-2 text-[13px]">
+              <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+              <span>
+                {t('netbirdExit.sharedWith', { route: data.sharedWith, ...(brand ? { brand } : {}) })}
+              </span>
+            </p>
           ) : null}
           {data.leaks.length ? (
             <div role="alert" className="grid gap-1 rounded-[10px] bg-destructive-soft px-3 py-2 text-sm">

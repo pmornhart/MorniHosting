@@ -132,8 +132,8 @@ footer { color: var(--muted); font-size: 13px; }
 <script type="application/json" id="data">
 {
   "goal": "Ein selbst gehostetes Panel für Minecraft-Server: alles, was man braucht, so einfach wie die Panels der großen Hoster.",
-  "updated": "2026-11-12T21:00:00+00:00",
-  "now": "XXL-Test: alle Spiele echt mit Docker gestartet – 12 von 12 testbaren laufen.",
+  "updated": "2026-11-16T16:10:00+00:00",
+  "now": "NetBird für ein zweites Produkt: eigene Namen, gemeinsamer Ausgang, Spiel direkt auf der Domain.",
   "steps": [
     {
       "title": "Vorbereitung",
@@ -589,6 +589,11 @@ footer { color: var(--muted); font-size: 13px; }
       "title": "XXL-Test aller Spiele (echtes Docker)",
       "status": "fertig",
       "detail": "Vanilla, Paper (+Geyser/Voice/Backup), Purpur, Fabric, Forge, NeoForge, Velocity, Bedrock, Factorio, Garry's Mod, Satisfactory laufen. Behoben: Steam-„Missing configuration“, Satisfactory ohne IPv6. ETS2 braucht hochgeladene Dateien; CS2 (60 GB) und Hytale (Konto) nicht testbar."
+    },
+    {
+      "title": "NetBird für morni.net: Marke, gemeinsamer Ausgang, Spiel auf der Domain",
+      "status": "fertig",
+      "detail": "MH_BRAND benennt alles in NetBird (Netzwerk, Gruppe, Resources, Ausgang) – so teilen sich MorniHosting und morni.net ein NetBird-Konto und denselben IONOS-Ausgang, ohne sich anzufassen. Ein Server kann direkt auf der Domain liegen (Spieler tippen nur morni.net), Voice-Chat am Velocity-Proxy jetzt auch über NetBird, Meldungen live über /api/ws, die NetBird-Karten einbettbar, Wächter für ein anderes Produkt einrichtbar. 444 Tests + 5 Playwright-Abläufe, NetBird nur nachgebaut."
     }
   ],
   "shots": [
@@ -761,11 +766,11 @@ footer { color: var(--muted); font-size: 13px; }
   "files": [
     {
       "tag": "neu",
-      "path": "apps/server/src/stalwart/ (client.ts, service.ts, routes.ts), apps/web/src/features/admin/StalwartCard.tsx, packages/shared/src/stalwart.ts, apps/server/test/stalwart.test.ts"
+      "path": "apps/server/test/guard-product.test.ts, PUT /api/netbird/domain-server, WebSocket-Kanal „alerts“"
     },
     {
       "tag": "geändert",
-      "path": "DNS-Automatik (A-Eintrag für den Mailserver), Mail-Schnellstart (fester Servername), Texte de/en"
+      "path": "apps/server/src/netbird/ (client, exit, service, routes, exit-watch), alerts/service.ts, ws.ts, gateway/service.ts, config.ts (MH_BRAND), scripts/guard.sh, NetBird-Karten + embed.ts, Texte de/en, docs/netbird.md"
     }
   ],
   "eta": null,

@@ -14,6 +14,12 @@ import { startRouter, type AddressRouter, type RouteLookup, type RouterKind } fr
 /** Geyser's Bedrock port inside a Java server's container (TCP for signaling, UDP for the game). */
 const GEYSER_INSIDE_PORT = 19132;
 const BEDROCK_ALIAS = '-bedrock';
+/** The NetBird setup: its domain and the server players reach on the domain itself. */
+const NETBIRD_KEY = 'netbird';
+interface NetbirdDomain {
+  readonly domain?: string;
+  readonly domainServerId?: string | null;
+}
 
 export interface AddressGateway {
   readonly lookup: RouteLookup;
@@ -28,7 +34,14 @@ export function createAddressGateway(ctx: AppContext): AddressGateway {
   const lookup: RouteLookup = (address, kind) => {
     const first = address.split('.')[0] ?? '';
     const name = first.endsWith(BEDROCK_ALIAS) ? first.slice(0, -BEDROCK_ALIAS.length) : first;
-    const named = ctx.db.select().from(serverTable).where(eq(serverTable.netbirdName, name)).get();
+    // The domain itself ("mornihosting.de") belongs to the server chosen for it.
+    const netbird = ctx.settings.getValue<NetbirdDomain>(NETBIRD_KEY);
+    const onDomain =
+      netbird?.domainServerId && address === netbird.domain
+        ? ctx.db.select().from(serverTable).where(eq(serverTable.id, netbird.domainServerId)).get()
+        : undefined;
+    const named =
+      onDomain ?? ctx.db.select().from(serverTable).where(eq(serverTable.netbirdName, name)).get();
     // Bedrock without a usable name (no Host header): with just one Bedrock-ready server, that one.
     const onlyGeyser = (): typeof named => {
       const geyser = ctx.db

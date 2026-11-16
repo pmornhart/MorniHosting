@@ -5,15 +5,19 @@ import { getAuth } from './auth/context.js';
 import { originAllowed } from './auth/hook.js';
 import type { Api, AppContext } from './context.js';
 import type { ServerService } from './servers/service.js';
+import type { AlertService } from './alerts/service.js';
 import { safeEqual } from './lib/crypto.js';
 import { MS_PER_SECOND } from './lib/units.js';
 
 /**
  * One WebSocket per browser tab. The tab subscribes to the live status of its servers
  * and to the console of the server it shows; every message is checked against the user's rights.
+ * Admins (also an app's key with the area "events") may listen for alerts: an app that runs the panel as its motor
+ * tells its own team about them.
  */
 
 const CSRF_MAX = 200;
+const ALERT_ID_MAX = 64;
 /** How long a socket from an unknown origin may take to prove itself before it is closed. */
 const PROOF_SECONDS = 10;
 
@@ -21,6 +25,11 @@ const clientMessage = z.union([
   z.object({ type: z.literal('hello'), csrf: z.string().max(CSRF_MAX) }),
   z.object({ type: z.literal('subscribe'), channel: z.literal('servers') }),
   z.object({ type: z.literal('subscribe'), channel: z.literal('console'), serverId: z.string() }),
+  z.object({
+    type: z.literal('subscribe'),
+    channel: z.literal('alerts'),
+    after: z.string().max(ALERT_ID_MAX).optional(),
+  }),
   z.object({ type: z.literal('unsubscribe'), channel: z.literal('console'), serverId: z.string() }),
   z.object({ type: z.literal('ping') }),
 ]);
@@ -30,7 +39,12 @@ const POLICY_VIOLATION = 1008;
 const ACCESS_REFRESH_SECONDS = 30;
 const MAX_MESSAGE_BYTES = 4096;
 
-export function registerWebSocket(app: Api, ctx: AppContext, servers: ServerService): void {
+export function registerWebSocket(
+  app: Api,
+  ctx: AppContext,
+  servers: ServerService,
+  alerts?: AlertService,
+): void {
   app.get('/api/ws', { websocket: true }, (socket: WebSocket, request) => {
     const auth = getAuth(request);
     if (!auth) {
@@ -44,7 +58,7 @@ export function registerWebSocket(app: Api, ctx: AppContext, servers: ServerServ
     const proof = { ok: originAllowed(ctx, request) };
     const reject = (): void => socket.close(POLICY_VIOLATION, 'unauthorized');
     const proofTimer = proof.ok ? null : setTimeout(reject, PROOF_SECONDS * MS_PER_SECOND);
-    const subscriptions = { servers: false, consoles: new Set<string>() };
+    const subscriptions = { servers: false, alerts: false, consoles: new Set<string>() };
     const cache = { access: ctx.access.accessMap(user), at: Date.now() };
     const rightsFor = (serverId: string): readonly string[] => {
       // A server created after the socket opened is unknown to the cache; look again right away.
@@ -77,6 +91,9 @@ export function registerWebSocket(app: Api, ctx: AppContext, servers: ServerServ
       }),
       ctx.events.on('approvals.changed', ({ userId }) => {
         if (subscriptions.servers && (user.isAdmin || userId === user.id)) send({ type: 'approvals' });
+      }),
+      ctx.events.on('alert', (alert) => {
+        if (subscriptions.alerts) send({ type: 'alert', alert });
       }),
     ];
 
@@ -115,6 +132,17 @@ export function registerWebSocket(app: Api, ctx: AppContext, servers: ServerServ
       if (msg.channel === 'servers') {
         subscriptions.servers = true;
         servers.list(user).forEach((s) => send({ type: 'live', serverId: s.id, live: s.live }));
+        return;
+      }
+      if (msg.channel === 'alerts') {
+        if (!user.isAdmin) {
+          send({ type: 'error', code: 'forbidden' });
+          return;
+        }
+        subscriptions.alerts = true;
+        // What came while this connection was away (the app gives the last alert it saw).
+        if (msg.after !== undefined)
+          alerts?.since(msg.after).forEach((alert) => send({ type: 'alert', alert }));
         return;
       }
       if (!rightsFor(msg.serverId).includes('console')) {

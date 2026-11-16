@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   netbirdConfigSchema,
   netbirdDiscoverSchema,
+  netbirdDomainServerSchema,
   netbirdExitSchema,
   netbirdPanelSchema,
   netbirdServerSchema,
@@ -57,6 +58,12 @@ export function registerNetbirdRoutes(
   app.post('/api/netbird/panel', { schema: { body: netbirdPanelSchema } }, async (request) => {
     requireAdmin(request);
     return netbird.setupPanel(request.body, actorOf(request));
+  });
+
+  // The server players reach on the domain itself (e.g. a network's proxy on "morni.net").
+  app.put('/api/netbird/domain-server', { schema: { body: netbirdDomainServerSchema } }, async (request) => {
+    requireAdmin(request);
+    return netbird.setDomainServer(request.body.serverId, actorOf(request));
   });
 
   app.put(

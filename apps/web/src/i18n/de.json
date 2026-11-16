@@ -1670,7 +1670,8 @@
       "impressum_update": "Impressum geändert",
       "via_enable": "Alle Versionen (ViaVersion) eingeschaltet",
       "via_disable": "Alle Versionen (ViaVersion) ausgeschaltet",
-      "server_mornicraft": "MorniCraft-Einstellungen geändert"
+      "server_mornicraft": "MorniCraft-Einstellungen geändert",
+      "netbird_domain_server": "Server direkt auf der Domain geändert"
     }
   },
   "ddos": {
@@ -1952,7 +1953,7 @@
   },
   "netbirdAuto": {
     "title": "Server-Adressen automatisch (NetBird)",
-    "text": "Verbinde NetBird einmal und wähle deine Domain. Danach gibst du jedem Server nur noch einen Namen, und MorniHosting legt in NetBird alles selbst an, z. B. minecraft.deine-domain.de.",
+    "text": "Verbinde NetBird einmal und wähle deine Domain. Danach gibst du jedem Server nur noch einen Namen, und {{brand}} legt in NetBird alles selbst an, z. B. minecraft.deine-domain.de.",
     "connectedPill": "Verbunden",
     "notConnected": "Nicht verbunden",
     "tokenLabel": "API-Schlüssel von NetBird",
@@ -1960,33 +1961,33 @@
     "tokenKeep": "Leer lassen, um den gespeicherten Schlüssel zu behalten.",
     "ownServer": "Eigener NetBird-Server?",
     "apiUrl": "Adresse der NetBird-API",
-    "apiUrlHint": "Für NetBird Cloud bleibt hier https://api.netbird.io. Betreibst du NetBird selbst, trag die Adresse deines NetBird-Dashboards ein, z. B. https://netbird.deine-domain.de. Ist NetBird auf dem Rechner mit MorniHosting installiert, übernimmt das Panel die Adresse beim nächsten Update selbst.",
+    "apiUrlHint": "Für NetBird Cloud bleibt hier https://api.netbird.io. Betreibst du NetBird selbst, trag die Adresse deines NetBird-Dashboards ein, z. B. https://netbird.deine-domain.de. Ist NetBird auf dem Rechner mit {{brand}} installiert, übernimmt das Panel die Adresse beim nächsten Update selbst.",
     "connect": "Verbinden",
     "connecting": "Verbinde …",
     "noDomains": "In deinem NetBird ist noch keine Domain eingetragen. Wie das geht, steht oben im Reiter „NetBird“ (Schritt 2).",
     "domain": "Deine Domain",
     "domainHint": "Aus „Reverse Proxy → Custom Domains“. Nur bestätigte Domains lassen sich wählen.",
     "domainPending": "(noch nicht bestätigt)",
-    "machine": "Rechner mit MorniHosting",
-    "machineHint": "Der Rechner in deinem NetBird-Netz, auf dem MorniHosting läuft. Mit dem Proxmox-Einzeiler heißt er „mornihosting“.",
+    "machine": "Rechner mit {{brand}}",
+    "machineHint": "Der Rechner in deinem NetBird-Netz, auf dem {{brand}} läuft. Mit dem Proxmox-Einzeiler heißt er „{{machine}}“.",
     "online": "online",
     "offline": "offline",
     "connected": "NetBird verbunden",
     "summary": "Server-Namen werden zu <b>name.{{domain}}</b> · Rechner: <b>{{machine}}</b>",
-    "portNote": "Den Port nach außen vergibt NetBird selbst. MorniHosting zeigt deinen Freunden die fertige Adresse, z. B. minecraft.{{domain}}:31234.",
+    "portNote": "Den Port nach außen vergibt NetBird selbst. {{brand}} zeigt deinen Freunden die fertige Adresse, z. B. minecraft.{{domain}}:31234.",
     "change": "Ändern",
     "disconnect": "Trennen",
     "disconnectTitle": "NetBird trennen?",
-    "disconnectText": "MorniHosting löscht die Dienste der Server in NetBird wieder, die Server haben danach keine Adresse über NetBird mehr. Die Adresse des Panels bleibt bestehen.",
+    "disconnectText": "{{brand}} löscht die Dienste der Server in NetBird wieder, die Server haben danach keine Adresse über NetBird mehr. Die Adresse des Panels bleibt bestehen.",
     "disconnected": "NetBird getrennt",
     "panelTitle": "Adresse fürs Panel",
-    "panelText": "Macht das Panel unter deiner Domain mit HTTPS erreichbar – mit „Pass Host Header“, damit Passkeys gehen. Gibt es den Dienst in NetBird schon, wird er übernommen und richtig eingestellt. Kennt das Panel die Heimnetz-Adresse des Rechners, legt es in NetBird unter „Networks → MorniHosting“ für das Panel und jeden Server eine eigene Resource an.",
+    "panelText": "Macht das Panel unter deiner Domain mit HTTPS erreichbar – mit „Pass Host Header“, damit Passkeys gehen. Gibt es den Dienst in NetBird schon, wird er übernommen und richtig eingestellt. Kennt das Panel die Heimnetz-Adresse des Rechners, legt es in NetBird unter „Networks → {{brand}}“ für das Panel und jeden Server eine eigene Resource an.",
     "panelName": "Name",
     "panelPort": "Port des Panels",
     "panelButton": "Einrichten",
     "panelDone": "Panel ist erreichbar unter {{address}}",
     "fieldLabel": "Adresse im Internet",
-    "fieldHint": "Nur der Name – MorniHosting richtet den Rest ein (über NetBird oder deine eigene Domain). Entfernen nimmt die Adresse wieder weg.",
+    "fieldHint": "Nur der Name – {{brand}} richtet den Rest ein (über NetBird oder deine eigene Domain). Entfernen nimmt die Adresse wieder weg.",
     "createHint": "Wird aus dem Namen vorgeschlagen. Leer lassen, wenn der Server keine eigene Adresse bekommen soll.",
     "saving": "Wird eingerichtet …",
     "serverSaved": "Adresse eingerichtet",
@@ -2003,13 +2004,28 @@
     "selfHosted": {
       "title": "Selbst betriebenes NetBird: Ports freigeben",
       "fixed": "Der NetBird-Proxy lässt von sich aus nur Port 443 durch. Gib diese Ports einmal frei – in der docker-compose.yml deines NetBird-Servers beim Dienst netbird-proxy, danach „docker compose up -d“. Neue Server bekommen den nächsten freien Port (25566, 25567 …); am einfachsten gibst du gleich einen Bereich frei, z. B. „25565-25575:25565-25575/tcp“.",
-      "random": "Der NetBird-Proxy lässt von sich aus nur Port 443 durch, und dein NetBird vergibt für jeden Server einen eigenen Port. Gib jeden dieser Ports frei – in der docker-compose.yml deines NetBird-Servers beim Dienst netbird-proxy, danach „docker compose up -d“. Erlaubt dein Proxy eigene Ports, nimmt MorniHosting automatisch die Server-Ports (25565 …).",
+      "random": "Der NetBird-Proxy lässt von sich aus nur Port 443 durch, und dein NetBird vergibt für jeden Server einen eigenen Port. Gib jeden dieser Ports frei – in der docker-compose.yml deines NetBird-Servers beim Dienst netbird-proxy, danach „docker compose up -d“. Erlaubt dein Proxy eigene Ports, nimmt {{brand}} automatisch die Server-Ports (25565 …).",
       "firewall": "Hat dein Anbieter eine eigene Firewall im Kundenmenü (z. B. IONOS, Hetzner), dort dieselben Ports öffnen – die kann kein Skript erreichen. Von Hand geht es auch: die Ports oben in der docker-compose.yml beim netbird-proxy eintragen oder den Proxy mit „network_mode: host“ laufen lassen.",
       "auto": "Am einfachsten: diesen Befehl einmal auf deinem NetBird-Server ausführen. Er gibt 25565–25575/tcp, 19132–19140/udp und 24454–24460/udp im netbird-proxy frei (und in ufw/firewalld, falls aktiv) und startet nur den Proxy neu.",
       "once": "(nur einmal nötig – schon erledigt? Dann einfach zu lassen)"
     },
     "managedDns": "Wird über deine eigene Domain eingerichtet.",
-    "panelNameHint": "Leer lassen, dann läuft das Panel direkt unter {{domain}}."
+    "panelNameHint": "Leer lassen, dann läuft das Panel direkt unter {{domain}}.",
+    "domainGame": {
+      "title": "Spiel direkt auf {{domain}}",
+      "text": "Ein Server kann direkt auf deiner Domain laufen: Spieler tippen nur {{domain}} – ohne Namen davor. Die Adresse fürs Panel (oder die Webseite) darf trotzdem auf {{domain}} liegen: NetBird leitet Minecraft nach dem Port weiter (Java 25565, Bedrock 19132), egal welcher Name eingetippt wurde.",
+      "label": "Server",
+      "none": "Keiner",
+      "button": "Übernehmen",
+      "done": "„{{server}}“ ist jetzt direkt unter {{domain}} erreichbar",
+      "off": "Kein Server mehr direkt auf der Domain",
+      "current": "Spieler tippen {{domain}} und landen auf <b>{{server}}</b>.",
+      "cloud": "NetBird Cloud vergibt die Ports selbst – Spieler brauchen dann die Portnummer, die auf der Server-Seite steht."
+    },
+    "onDomain": "Spieler tippen nur {{domain}}",
+    "portTaken": "Port {{wanted}} hat gerade {{holder}}. Bis er frei wird, brauchen Spieler {{address}} – das Panel probiert alle paar Minuten, ob er frei ist.",
+    "portTakenSomeone": "einen anderen Dienst in deinem NetBird",
+    "srvHint": "Java geht trotzdem ohne Port, mit einem SRV-Eintrag bei deinem DNS-Anbieter: Name {{name}}, Ziel {{target}}, Port {{port}}."
   },
   "minecraftAccount": {
     "title": "Minecraft-Konto",
@@ -2897,7 +2913,7 @@
   },
   "netbirdExit": {
     "title": "Hausanschluss verstecken",
-    "text": "Alles, was der MorniHosting-Rechner ins Internet schickt (Downloads, Mails, Updates, die Game-Server selbst), geht dann durch NetBird und kommt erst bei einem anderen NetBird-Rechner heraus – meist dem NetBird-Server. Besucher kommen sowieso über NetBird herein. So taucht die IP deines Hausanschlusses nirgends auf.",
+    "text": "Alles, was der {{brand}}-Rechner ins Internet schickt (Downloads, Mails, Updates, die Game-Server selbst), geht dann durch NetBird und kommt erst bei einem anderen NetBird-Rechner heraus – meist dem NetBird-Server. Besucher kommen sowieso über NetBird herein. So taucht die IP deines Hausanschlusses nirgends auf.",
     "machine": "Ausgang über",
     "machineHint": "Der Rechner, über den alles ins Internet geht. Dahinter steht seine öffentliche IP.",
     "offline": "gerade offline",
@@ -2912,7 +2928,8 @@
     "agentTitle": "Kein Ausgang zur Auswahl? NetBird-Agent auf dem NetBird-Server installieren",
     "agentText": "Auf dem NetBird-Server (z. B. bei IONOS) einmal ausführen. Den Setup-Key bekommst du im NetBird-Dashboard unter „Setup Keys“.",
     "agentHint": "Danach taucht der Server hier als Ausgang auf (Seite neu laden).",
-    "dnsAutomation": "Die DNS-Automatik unter „Eigene Domain“ ist an und würde die IP deines Hausanschlusses bei deinem DNS-Anbieter eintragen. Trenne sie dort."
+    "dnsAutomation": "Die DNS-Automatik unter „Eigene Domain“ ist an und würde die IP deines Hausanschlusses bei deinem DNS-Anbieter eintragen. Trenne sie dort.",
+    "sharedWith": "Dein NetBird erlaubt pro Ausgangs-Rechner nur eine Route ins Internet. {{brand}} fährt darum in der Route „{{route}}“ mit – dort ändert sich sonst nichts, und beim Ausschalten nimmt {{brand}} nur seine eigene Gruppe wieder heraus."
   },
   "mailTests": {
     "title": "Mail-Test",

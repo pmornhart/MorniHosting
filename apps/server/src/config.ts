@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { NETBIRD_DEFAULT_API, netbirdApiUrlSchema } from '@mornihosting/shared';
+import { brandSlug, NETBIRD_DEFAULT_API, netbirdApiUrlSchema } from '@mornihosting/shared';
 
 const DEFAULT_PORT = 8080;
 const MIN_SECRET_LENGTH = 32;
@@ -11,6 +11,9 @@ const PORT_MAX = 65535;
 /** Inside the panel container; docker-compose.yml publishes them, NetBird sends 25565/19132 there. */
 const DEFAULT_ROUTER_JAVA_PORT = 24565;
 const DEFAULT_ROUTER_BEDROCK_PORT = 19100;
+const DEFAULT_BRAND = 'MorniHosting';
+/** NetBird allows 40 characters for a route's name; "<brand> Ausgang" must fit. */
+const BRAND_MAX = 32;
 
 const booleanFromEnv = z
   .enum(['true', 'false', '1', '0', 'yes', 'no'])
@@ -43,6 +46,12 @@ const envSchema = z.object({
   MH_UPDATE_BRANCH: z.string().default('main'),
   /** NetBird server this machine is connected to; install.sh and update.sh read it from `netbird status`. */
   MH_NETBIRD_API: netbirdApiUrlSchema.optional().catch(undefined),
+  /**
+   * Name in front of everything the panel makes in NetBird (network, group, resources, "<name> Ausgang") and in its
+   * messages. Another app running the panel as its motor sets its own (e.g. "morni.net"), so two of them can share
+   * one NetBird account without touching each other's things.
+   */
+  MH_BRAND: z.string().trim().max(BRAND_MAX).optional(),
   /** Address router (every server by name, no port): ports inside the panel container; 0 = off. */
   MH_ROUTER_JAVA_PORT: z.coerce.number().int().min(0).max(PORT_MAX).default(DEFAULT_ROUTER_JAVA_PORT),
   MH_ROUTER_BEDROCK_PORT: z.coerce.number().int().min(0).max(PORT_MAX).default(DEFAULT_ROUTER_BEDROCK_PORT),
@@ -79,6 +88,13 @@ export interface Config {
   readonly updateBranch: string;
   /** Default NetBird API address: the server this machine is connected to, else NetBird Cloud. */
   readonly netbirdApi: string;
+  /** Name in front of the NetBird objects and in messages, e.g. "MorniHosting" or "morni.net". */
+  readonly brand: string;
+  /**
+   * The brand as a machine name ("mornihosting", "morninet"): the NetBird machine whose name contains it is taken for
+   * the panel's own one (the Proxmox scripts call the container so).
+   */
+  readonly machineHint: string;
   /** Ports of the address router in the panel container (0 = off). */
   readonly routerPorts: { readonly java: number; readonly bedrock: number };
   readonly demo: boolean;
@@ -129,6 +145,8 @@ export function loadConfig(env: NodeJS.ProcessEnv, version: string): Config {
     updateRepo: e.MH_UPDATE_REPO,
     updateBranch: e.MH_UPDATE_BRANCH,
     netbirdApi: e.MH_NETBIRD_API ?? NETBIRD_DEFAULT_API,
+    brand: e.MH_BRAND || DEFAULT_BRAND,
+    machineHint: brandSlug(e.MH_BRAND ?? '') || brandSlug(DEFAULT_BRAND),
     routerPorts: { java: e.MH_ROUTER_JAVA_PORT, bedrock: e.MH_ROUTER_BEDROCK_PORT },
     demo: e.MH_DEMO,
     headless: e.MH_HEADLESS,

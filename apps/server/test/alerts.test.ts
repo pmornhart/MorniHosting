@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, expect, test } from 'vitest';
-import { alertKind } from '@mornihosting/shared';
+import { alertKind, type AlertEvent } from '@mornihosting/shared';
 import { createAlertService } from '../src/alerts/service.js';
 import type { Notice, NotifyService } from '../src/notify/service.js';
 import { createTestApp, setupAdmin, type TestApp } from './helpers.js';
@@ -74,4 +74,39 @@ test('every watchdog key belongs to a kind one can switch off', () => {
   expect(alertKind('host-exit')).toBe('host-offline');
   expect(alertKind('netbird-exit')).toBe('netbird-exit');
   expect(alertKind('unbekannt')).toBe('other');
+});
+
+test('in another product (MH_BRAND) the watchdog speaks of its container, and every alert goes out as an event', async () => {
+  await t.cleanup();
+  t = await createTestApp({ MH_BRAND: 'morni.net' });
+  await setupAdmin(t);
+  const events: AlertEvent[] = [];
+  t.ctx.events.on('alert', (event) => events.push(event));
+  const alerts = createAlertService(t.ctx, notify);
+  const file = path.join(t.dataDir, 'guard', 'events.jsonl');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(
+    file,
+    `${JSON.stringify({ source: 'container', key: 'docker', status: 'fixed', title: 'Docker neu gestartet', what: 'Docker hing.' })}\n`,
+  );
+  alerts.readEvents();
+  expect(sent[0]?.discord.text).toContain('(morni.net-Container)');
+  expect(events).toEqual([
+    expect.objectContaining({
+      key: 'docker',
+      kind: 'docker',
+      status: 'fixed',
+      source: 'container',
+      what: 'Docker hing. (morni.net-Container)',
+    }),
+  ]);
+  // Kept for a connection that comes back: everything after the one it saw.
+  alerts.alert({
+    key: 'disk',
+    title: 'Festplatte fast voll',
+    what: 'Nur noch 900 MB frei.',
+    status: 'action',
+  });
+  expect(alerts.since(events[0]?.id ?? '').map((e) => e.key)).toEqual(['disk']);
+  expect(alerts.since('unbekannt').map((e) => e.key)).toEqual(['docker', 'disk']);
 });

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015 # "a && b || c" ist hier gewollt: nur für die Anzeige im Status
 # MorniHosting-Wächter: hält diesen Rechner (den MorniHosting-Container) am Laufen.
+# Auch für ein anderes Produkt, das MorniHosting als Motor einbaut (z. B. morni.net): Marke, Namen, Ordner und
+# Container kommen dann aus der Umgebung (MH_BRAND, MH_GUARD_NAME, MH_INSTALL_DIR, MH_ENV_FILE, MH_DATA_VOLUME,
+# MH_GUARD_CONTAINERS, MH_UPDATE_LOCK). "install" schreibt sie in ein eigenes Startskript /usr/local/sbin/<name>-guard,
+# das auch der Timer aufruft – Status dann mit "<name>-guard status".
 #
 # Läuft jede Minute als root (systemd-Timer, eingerichtet mit "guard.sh install") und repariert selbst:
 #   1. Internet weg, weil ein NetBird-Ausgang (Exit-Node) nicht antwortet → Ausgang abwählen
@@ -10,28 +14,44 @@
 #   5. Panel oder Socket-Proxy aus oder krank (3 Min.)                 → Container neu starten / neu anlegen
 #   6. Festplatte fast voll                                           → alte Docker-Images und Reste löschen
 # Docker läuft mit "live-restore": startet Docker neu, laufen die Spielserver weiter.
-# Jeder Eingriff steht in /var/log/mornihosting-guard.log.
+# Jeder Eingriff steht in /var/log/mornihosting-guard.log (bzw. /var/log/<name>-guard.log).
 #
-# Befehle: check (Standard) · status · dns (nur DNS prüfen) · netbird (nur NetBird prüfen) · netbird-api (nur NetBird-API prüfen) · install · uninstall
+# Befehle: check (Standard) · status · dns (nur DNS prüfen) · netbird (nur NetBird prüfen) · netbird-api (nur NetBird-API prüfen) · exit (nur den Ausgang prüfen) · install · uninstall
 set -euo pipefail
 
 COMMAND="${1:-check}"
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
-UNIT_DIR="/etc/systemd/system"
-STATE_DIR="${MH_GUARD_STATE_DIR:-/var/lib/mornihosting}"
+# Für welches Produkt: Name in Meldungen und vor dem NetBird-Ausgang, technischer Name für Dateien und Dienste.
+BRAND="${MH_BRAND:-MorniHosting}"
+DEFAULT_NAME="mornihosting"
+GUARD_NAME="${MH_GUARD_NAME:-${DEFAULT_NAME}}"
+UNIT_DIR="${MH_UNIT_DIR:-/etc/systemd/system}"
+WRAPPER="${MH_WRAPPER_DIR:-/usr/local/sbin}/${GUARD_NAME}-guard"
+STATE_DIR="${MH_GUARD_STATE_DIR:-/var/lib/${GUARD_NAME}}"
 FAIL_FILE="${STATE_DIR}/netbird-failures"
 PANEL_FAIL_FILE="${STATE_DIR}/panel-failures"
-INSTALL_DIR="${MH_INSTALL_DIR:-/opt/mornihosting}"
-DOCKER_DAEMON_JSON="/etc/docker/daemon.json"
+INSTALL_DIR="${MH_INSTALL_DIR:-/opt/${GUARD_NAME}}"
+# Container, die laufen müssen – der erste ist das Panel (bzw. die Webseite des Produkts).
+read -r -a CONTAINERS <<<"${MH_GUARD_CONTAINERS:-${GUARD_NAME} ${GUARD_NAME}-socket-proxy}"
+# Ein laufendes Update legt diese Datei an (update.sh des Produkts).
+UPDATE_LOCK="${MH_UPDATE_LOCK:-/run/${GUARD_NAME}-update.lock}"
+# Einstellungen eines anderen Produkts: "install" schreibt die gesetzten ins eigene Startskript (dazu die Ordner
+# für Zustand und Protokoll, falls auch die abweichen).
+PRODUCT_SETTINGS=(MH_BRAND MH_GUARD_NAME MH_INSTALL_DIR MH_ENV_FILE MH_DATA_VOLUME MH_GUARD_CONTAINERS MH_UPDATE_LOCK)
+EXTRA_SETTINGS=(MH_GUARD_STATE_DIR MH_GUARD_LOG)
+# Wie man den Status abfragt (steht in Meldungen): mit eigenem Startskript über dieses.
+STATUS_COMMAND="bash ${SCRIPT_PATH} status"
+[[ -x "${WRAPPER}" ]] && STATUS_COMMAND="${WRAPPER} status"
+DOCKER_DAEMON_JSON="${MH_DOCKER_DAEMON_JSON:-/etc/docker/daemon.json}"
 # So oft hintereinander darf das Panel nicht antworten, bevor es neu startet.
 PANEL_RESTART_AFTER=3
 # Unter so viel freiem Platz (MB) wird aufgeräumt.
 DISK_CLEAN_BELOW_MB=3072
 # So oft wird ein abgewählter NetBird-Ausgang wieder probiert, und so lange darf er sich einrichten.
 EXIT_RETRY_MINUTES=5
-# Meldungen ans Panel (Discord + Mail): erst hier gesammelt, dann ins Datenvolume des Panels.
+# Meldungen ans Panel (Discord + Mail): erst hier gesammelt, dann ins Datenvolume des Panels (bzw. des Motors).
 PENDING_EVENTS="${STATE_DIR}/events-pending.jsonl"
-VOLUME_NAME="mornihosting-data"
+VOLUME_NAME="${MH_DATA_VOLUME:-${GUARD_NAME}-data}"
 PANEL_UID=1000
 EVENTS_MAX_BYTES=1048576
 # So oft hintereinander darf NetBird scheitern, bevor du eine Meldung "du musst etwas tun" bekommst.
@@ -43,9 +63,9 @@ NETBIRD_LOGIN_SENT="${STATE_DIR}/netbird-login-sent"
 # shellcheck disable=SC2016 # der Befehl wird so, wie er ist, in die Meldung geschrieben
 EXIT_FIX_COMMAND='bash -c "$(curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/main/scripts/netbird-exit-node.sh)"'
 EXIT_SETTLE_SECONDS=8
-PANEL_EXIT_NAME="MorniHosting Ausgang"
+PANEL_EXIT_NAME="${BRAND} Ausgang"
 EXIT_OURS="${STATE_DIR}/exit-deselected"
-LOG_FILE="${MH_GUARD_LOG:-/var/log/mornihosting-guard.log}"
+LOG_FILE="${MH_GUARD_LOG:-/var/log/${GUARD_NAME}-guard.log}"
 LOG_KEEP_LINES=500
 # So oft hintereinander darf NetBird getrennt sein, bevor der Dienst neu startet (1 Prüfung = 1 Minute).
 RESTART_AFTER="${NETBIRD_RESTART_AFTER:-2}"
@@ -69,7 +89,7 @@ DNS_FLAP_SENT="${STATE_DIR}/dns-flap-sent"
 # verstecken“. Läuft alles über einen Ausgang, der auf dem NetBird-Server selbst sitzt, kommt das Panel dort oft
 # nicht an (der NetBird-Dienst selbst nimmt einen eigenen Weg und bleibt verbunden). Dann leitet der Wächter nur
 # die Verbindung zum NetBird-Server am Ausgang vorbei – der sieht deinen Anschluss ohnehin schon.
-ENV_FILE="${INSTALL_DIR}/.env"
+ENV_FILE="${MH_ENV_FILE:-${INSTALL_DIR}/.env}"
 NETBIRD_API_FAIL_FILE="${STATE_DIR}/netbird-api-failures"
 NETBIRD_API_FIX_AFTER=2
 NETBIRD_API_SENT="${STATE_DIR}/netbird-api-sent"
@@ -197,7 +217,7 @@ once_in_a_while() {
 write_fixed_dns() {
   touch "${PVE_IGNORE_RESOLV}" 2>/dev/null || true
   {
-    printf '# MorniHosting NetBird-Wächter: feste DNS-Server (Proxmox überschreibt sie nicht mehr)\n'
+    printf '# %s NetBird-Wächter: feste DNS-Server (Proxmox überschreibt sie nicht mehr)\n' "${BRAND}"
     printf 'nameserver %s\n' "${FALLBACK_DNS[@]}"
   } >"${RESOLV_CONF}"
 }
@@ -228,7 +248,7 @@ fix_dns() {
     if [[ ! -f "${DNS_DOWN_SENT}" ]]; then
       touch "${DNS_DOWN_SENT}"
       event container dns:down action "DNS geht nicht" "Der Container kann seit ${failures} Minuten keine Adressen auflösen, obwohl die festen DNS-Server (${FALLBACK_DNS[*]}) eingetragen sind. Meist ist das Internet weg oder der NetBird-Ausgang lässt DNS nicht durch." \
-        "Schau im Container nach, was los ist:" "bash ${SCRIPT_PATH} status"
+        "Schau im Container nach, was los ist:" "${STATUS_COMMAND}"
     fi
     return 0
   fi
@@ -239,7 +259,7 @@ fix_dns() {
     if [[ ! -f "${DNS_DOWN_SENT}" ]]; then
       touch "${DNS_DOWN_SENT}"
       event container dns:down action "DNS geht nicht" "Der Container konnte keine Adressen auflösen (eingetragen war: ${before:-nichts}, von ${writer}). Auch mit festen DNS-Servern (${FALLBACK_DNS[*]}) kommt keine Antwort – meist ist das Internet weg oder der NetBird-Ausgang lässt DNS nicht durch." \
-        "Schau im Container nach, was los ist:" "bash ${SCRIPT_PATH} status"
+        "Schau im Container nach, was los ist:" "${STATUS_COMMAND}"
     fi
     return 0
   fi
@@ -254,7 +274,7 @@ fix_dns() {
         "Damit es aufhört: NetBird die DNS-Verwaltung in diesem Container abnehmen (im NetBird-Dashboard unter DNS, oder im Container):" "netbird down && netbird up --disable-dns"
     else
       event container dns:flapping action "DNS wird immer wieder umgestellt" "In den letzten ${DNS_FLAP_HOURS} Stunden musste der Wächter DNS ${fixes}-mal reparieren (zuletzt stand ${before:-nichts} drin, von ${writer}). Der Wächter repariert es weiter selbst, meldet es aber erst in ${DNS_FLAP_HOURS} Stunden wieder." \
-        "Schau im Container nach, wer die DNS-Einstellung zurücksetzt:" "bash ${SCRIPT_PATH} status"
+        "Schau im Container nach, wer die DNS-Einstellung zurücksetzt:" "${STATUS_COMMAND}"
     fi
     return 0
   fi
@@ -359,7 +379,7 @@ retry_exit() {
   local stamp="${STATE_DIR}/exit-retry" ids
   mkdir -p "${STATE_DIR}"
   [[ -n "$(find "${stamp}" -mmin -"${EXIT_RETRY_MINUTES}" 2>/dev/null)" ]] && return 0
-  # Nur der Ausgang des Panels ("MorniHosting Ausgang") und welche, die der Wächter selbst abgewählt hat –
+  # Nur der Ausgang des Panels ("<Marke> Ausgang") und welche, die der Wächter selbst abgewählt hat –
   # fremde Ausgänge (z. B. "Mailserver Ausgang") bleiben, wie sie sind.
   ids="$(exit_ids unselected | while IFS= read -r id; do
     if [[ "${id}" == "${PANEL_EXIT_NAME}" ]] || grep -qxF "${id}" "${EXIT_OURS}" 2>/dev/null; then echo "${id}"; fi
@@ -448,7 +468,7 @@ reconnect() {
     if [[ ! -f "${NETBIRD_LOGIN_SENT}" ]]; then
       touch "${NETBIRD_LOGIN_SENT}"
       event container netbird action "NetBird ist abgemeldet" \
-        "NetBird im MorniHosting-Container ist abgemeldet (${reason}). Neustarten hilft hier nicht. Deine Server sind über die Domain gerade nicht erreichbar (im Heimnetz schon)." \
+        "NetBird im ${BRAND}-Container ist abgemeldet (${reason}). Neustarten hilft hier nicht. Deine Server sind über die Domain gerade nicht erreichbar (im Heimnetz schon)." \
         "Im NetBird-Dashboard einen Setup-Key erstellen (am besten ohne Ablauf) und im Container (pct enter <ID>) einfügen. Beim Rechner im Dashboard die Option Login expiration ausschalten, dann passiert das nicht wieder:" \
         "netbird up --setup-key <DEIN-SETUP-KEY>"
     fi
@@ -520,27 +540,33 @@ container_ok() {
   [[ "${state}" == "true" || "${state}" == "true healthy" || "${state}" == "true starting" ]]
 }
 
+all_containers_ok() {
+  local name
+  for name in "${CONTAINERS[@]}"; do
+    container_ok "${name}" || return 1
+  done
+}
 keep_panel() {
   command -v docker >/dev/null 2>&1 || return 0
   [[ -f "${INSTALL_DIR}/docker-compose.yml" ]] || return 0
   docker_ok || return 0
   mkdir -p "${STATE_DIR}"
-  if container_ok mornihosting && container_ok mornihosting-socket-proxy; then
+  if all_containers_ok; then
     echo 0 >"${PANEL_FAIL_FILE}"
     return 0
   fi
   # Ein laufendes Update startet das Panel selbst neu – nicht dazwischenfunken (höchstens 30 Min. alt).
-  if [[ -n "$(find /run/mornihosting-update.lock -mmin -30 2>/dev/null)" ]]; then
+  if [[ -n "$(find "${UPDATE_LOCK}" -mmin -30 2>/dev/null)" ]]; then
     return 0
   fi
   local failures
   failures="$(count_up "${PANEL_FAIL_FILE}")"
   ((failures < PANEL_RESTART_AFTER)) && return 0
   # Reste eines abgebrochenen Neustarts blockieren Compose ("name … is already in use").
-  docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_mornihosting(-[a-z-]+)?$' | xargs -r docker rm -f >/dev/null 2>&1 || true
+  docker ps -a --format '{{.Names}}' | grep -E "^[0-9a-f]{12}_${GUARD_NAME}(-[a-z-]+)?\$" | xargs -r docker rm -f >/dev/null 2>&1 || true
   log "Panel seit ${failures} Prüfungen aus oder krank – starte es neu"
   (cd "${INSTALL_DIR}" && timeout 300 docker compose up -d >/dev/null 2>&1) || true
-  container_ok mornihosting || docker restart mornihosting >/dev/null 2>&1 || true
+  container_ok "${CONTAINERS[0]}" || docker restart "${CONTAINERS[0]}" >/dev/null 2>&1 || true
   echo 0 >"${PANEL_FAIL_FILE}"
   event container panel fixed "Panel neu gestartet" "Das Panel war ${failures} Minuten aus oder antwortete nicht und wurde neu gestartet."
 }
@@ -613,9 +639,9 @@ status() {
   [[ -n "${api}" ]] && printf 'NetBird-API: %s (%s)\n' "$(netbird_api_ok "${api}" && echo ok || echo 'nicht erreichbar')" "$(url_host "${api}")"
   printf 'NetBird:  %s\n' "$(command -v netbird >/dev/null 2>&1 && { netbird_connected && echo verbunden || echo "getrennt ($(netbird_reason))"; } || echo 'nicht installiert')"
   printf 'Docker:   %s\n' "$(docker_ok && echo ok || echo 'antwortet nicht')"
-  printf 'Panel:    %s\n' "$(container_ok mornihosting && echo läuft || echo aus)"
+  printf 'Panel:    %s\n' "$(all_containers_ok && echo läuft || echo aus) (${CONTAINERS[*]})"
   printf 'Platz:    %s MB frei\n' "$(free_disk_mb)"
-  printf 'Wächter:  %s\n' "$(systemctl is-active mornihosting-guard.timer 2>/dev/null || echo aus)"
+  printf 'Wächter:  %s\n' "$(systemctl is-active "${GUARD_NAME}-guard.timer" 2>/dev/null || echo aus)"
   [[ -f "${LOG_FILE}" ]] && {
     printf '\nLetzte Eingriffe:\n'
     tail -n 10 "${LOG_FILE}"
@@ -623,19 +649,47 @@ status() {
   return 0
 }
 
+# Gesetzte Einstellungen als export-Zeilen fürs eigene Startskript: custom_settings <name>…
+custom_settings() {
+  local name
+  for name in "$@"; do
+    [[ -n "${!name:-}" ]] && printf 'export %s=%q\n' "${name}" "${!name}"
+  done
+  return 0
+}
+
+# Ein anderes Produkt (eigener Name oder eigene Einstellungen) bekommt ein Startskript, das sie mitbringt.
+write_wrapper() {
+  mkdir -p "$(dirname "${WRAPPER}")"
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf '# %s-Wächter (eingerichtet mit guard.sh install): %s status · check · dns · netbird\n' "${BRAND}" "${WRAPPER}"
+    custom_settings "${PRODUCT_SETTINGS[@]}" "${EXTRA_SETTINGS[@]}"
+    printf 'exec bash %q "$@"\n' "${SCRIPT_PATH}"
+  } >"${WRAPPER}.tmp"
+  chmod 755 "${WRAPPER}.tmp"
+  mv "${WRAPPER}.tmp" "${WRAPPER}"
+}
+
 install_units() {
-  cat >"${UNIT_DIR}/mornihosting-guard.service" <<UNIT
+  local start="${SCRIPT_PATH}"
+  if [[ "${GUARD_NAME}" != "${DEFAULT_NAME}" || -n "$(custom_settings "${PRODUCT_SETTINGS[@]}")" ]]; then
+    write_wrapper
+    start="${WRAPPER}"
+  fi
+  mkdir -p "${UNIT_DIR}"
+  cat >"${UNIT_DIR}/${GUARD_NAME}-guard.service" <<UNIT
 [Unit]
-Description=MorniHosting: Rechner prüfen und reparieren (NetBird, DNS, Docker, Panel, Platz)
+Description=${BRAND}: Rechner prüfen und reparieren (NetBird, DNS, Docker, Panel, Platz)
 After=network-online.target netbird.service
 
 [Service]
 Type=oneshot
-ExecStart=${SCRIPT_PATH} check
+ExecStart=${start} check
 UNIT
-  cat >"${UNIT_DIR}/mornihosting-guard.timer" <<UNIT
+  cat >"${UNIT_DIR}/${GUARD_NAME}-guard.timer" <<UNIT
 [Unit]
-Description=MorniHosting-Wächter jede Minute
+Description=${BRAND}-Wächter jede Minute
 
 [Timer]
 OnBootSec=45s
@@ -646,10 +700,12 @@ AccuracySec=10s
 WantedBy=timers.target
 UNIT
   # Den Vorgänger (nur NetBird) ablösen.
-  systemctl disable --now mornihosting-netbird.timer >/dev/null 2>&1 || true
-  rm -f "${UNIT_DIR}/mornihosting-netbird.service" "${UNIT_DIR}/mornihosting-netbird.timer"
+  if [[ "${GUARD_NAME}" == "${DEFAULT_NAME}" ]]; then
+    systemctl disable --now mornihosting-netbird.timer >/dev/null 2>&1 || true
+    rm -f "${UNIT_DIR}/mornihosting-netbird.service" "${UNIT_DIR}/mornihosting-netbird.timer"
+  fi
   systemctl daemon-reload
-  systemctl enable --now mornihosting-guard.timer >/dev/null
+  systemctl enable --now "${GUARD_NAME}-guard.timer" >/dev/null
   # Docker und NetBird sollen nach jedem Neustart von allein wieder da sein.
   systemctl enable docker containerd >/dev/null 2>&1 || true
   ensure_netbird_service
@@ -671,6 +727,12 @@ case "${COMMAND}" in
     [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
     keep_netbird_api
     ;;
+  exit)
+    # Nur den NetBird-Ausgang prüfen: toten abwählen, abgewählten wieder probieren.
+    [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
+    drop_dead_exit
+    retry_exit
+    ;;
   dns)
     # Ohne root nur mit eigener Datei (Tests).
     [[ ${EUID} -eq 0 || -n "${MH_RESOLV_CONF:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
@@ -682,18 +744,20 @@ case "${COMMAND}" in
     event "$@"
     ;;
   install)
-    [[ ${EUID} -eq 0 ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
+    # Ohne root nur mit eigenem Ordner für die Dienste (Tests).
+    [[ ${EUID} -eq 0 || -n "${MH_UNIT_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
     command -v systemctl >/dev/null 2>&1 || { echo "Kein systemd – Wächter nicht eingerichtet." >&2; exit 0; }
     install_units
-    echo "MorniHosting-Wächter läuft (jede Minute). Status: ${SCRIPT_PATH} status"
+    [[ -x "${WRAPPER}" ]] && STATUS_COMMAND="${WRAPPER} status"
+    echo "${BRAND}-Wächter läuft (jede Minute). Status: ${STATUS_COMMAND}"
     ;;
   uninstall)
-    systemctl disable --now mornihosting-guard.timer >/dev/null 2>&1 || true
-    rm -f "${UNIT_DIR}/mornihosting-guard.service" "${UNIT_DIR}/mornihosting-guard.timer"
+    systemctl disable --now "${GUARD_NAME}-guard.timer" >/dev/null 2>&1 || true
+    rm -f "${UNIT_DIR}/${GUARD_NAME}-guard.service" "${UNIT_DIR}/${GUARD_NAME}-guard.timer" "${WRAPPER}"
     systemctl daemon-reload
     ;;
   *)
-    echo "Unbekannter Befehl: ${COMMAND} (check, status, install, uninstall)" >&2
+    echo "Unbekannter Befehl: ${COMMAND} (check, status, dns, netbird, netbird-api, exit, install, uninstall)" >&2
     exit 2
     ;;
 esac

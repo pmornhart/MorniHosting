@@ -358,7 +358,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerDdosRoutes(app, ddos);
   registerQuotaRoutes(app, createQuotaService(ctx, servers));
   registerPreloadRoutes(app, createPreloadService(ctx, servers));
-  registerWebSocket(app, ctx, servers);
+  registerWebSocket(app, ctx, servers, alerts);
 
   // In motor mode another app is the front: no web interface, no start page – only the API.
   const hasWeb = !config.headless && fs.existsSync(path.join(config.webDir, 'index.html'));

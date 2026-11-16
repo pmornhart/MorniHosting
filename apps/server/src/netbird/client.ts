@@ -75,6 +75,8 @@ const peerSchema = z.object({
 const serviceSchema = z.object({
   id: z.string(),
   domain: z.string(),
+  /** http, tcp, udp (or tls): NetBird keeps one service per outside port and protocol. */
+  mode: z.string().catch(''),
   listen_port: z.number().int().nullable().optional(),
   targets: z
     .array(z.object({ target_id: z.string().catch('') }).loose())
@@ -89,13 +91,27 @@ const resourceSchema = z.object({
   name: z.string().catch(''),
   address: z.string().catch(''),
 });
+/** All internet traffic: a route for it makes its routing machine an exit node. */
+export const EVERYTHING_V4 = '0.0.0.0/0';
+/** Exit routes win against nothing else here; the lowest priority is fine. */
+const EXIT_METRIC = 9999;
 const routeSchema = z.object({
   id: z.string(),
   network_id: z.string().catch(''),
   network: z.string().catch(''),
+  /** One routing machine – or none ("") when the route uses machine groups instead. */
   peer: z.string().nullable().catch(null),
+  peer_groups: z.array(z.string()).nullable().catch(null),
+  /** Distribution groups: the machines that use this route. */
   groups: z.array(z.string()).nullable().catch([]),
   enabled: z.boolean().catch(true),
+  description: z.string().catch(''),
+  metric: z.number().int().catch(EXIT_METRIC),
+  masquerade: z.boolean().catch(true),
+  keep_route: z.boolean().catch(false),
+  domains: z.array(z.string()).nullable().catch(null),
+  access_control_groups: z.array(z.string()).nullable().catch(null),
+  skip_auto_apply: z.boolean().nullable().catch(null),
 });
 const routerSchema = z.object({ id: z.string(), peer: z.string().nullable().catch(null) });
 /** NetBird is written in Go and sends an empty list as `null`; both mean "nothing there". */
@@ -117,6 +133,9 @@ export interface NetbirdExitRouteRequest {
   readonly name: string;
   readonly peerId: string;
   readonly groupId: string;
+  /** Groups of others that use this route too (another panel on the same exit): they stay in it. */
+  readonly extraGroups?: readonly string[];
+  readonly description?: string;
 }
 export type NetbirdResource = z.infer<typeof resourceSchema>;
 
@@ -125,6 +144,7 @@ export interface NetbirdResourceRequest {
   readonly name: string;
   readonly address: string;
   readonly groupId: string;
+  readonly description?: string;
 }
 
 export interface NetbirdServiceRequest {
@@ -156,6 +176,8 @@ export interface NetbirdClient {
   readonly routes: () => Promise<NetbirdRoute[]>;
   readonly createRoute: (request: NetbirdExitRouteRequest) => Promise<NetbirdRoute>;
   readonly updateRoute: (id: string, request: NetbirdExitRouteRequest) => Promise<NetbirdRoute>;
+  /** Saves a route read from NetBird again with other distribution groups, everything else as it was. */
+  readonly setRouteGroups: (route: NetbirdRoute, groups: readonly string[]) => Promise<NetbirdRoute>;
   /** Deleting a route that is already gone counts as done. */
   readonly deleteRoute: (id: string) => Promise<void>;
   readonly networks: () => Promise<NetbirdNamed[]>;
@@ -178,18 +200,15 @@ export type NetbirdClientFactory = (apiUrl: string, token: string) => NetbirdCli
 /** NetBird's default priority for a route; only one router per network here, so the value hardly matters. */
 const ROUTER_METRIC = 9999;
 
-/** All IPv4 addresses: a route for it makes the routing peer an exit node. */
-const EVERYTHING_V4 = '0.0.0.0/0';
-/** Exit routes win against nothing else here; the lowest priority is fine. */
-const EXIT_METRIC = 9999;
+const DEFAULT_DESCRIPTION = 'Angelegt von MorniHosting';
 
 function exitRouteBody(request: NetbirdExitRouteRequest): Record<string, unknown> {
   return {
-    description: 'Angelegt von MorniHosting: Internet über diesen Rechner',
+    description: request.description ?? `${DEFAULT_DESCRIPTION}: Internet über diesen Rechner`,
     network_id: request.name,
     network: EVERYTHING_V4,
     peer: request.peerId,
-    groups: [request.groupId],
+    groups: [...new Set([request.groupId, ...(request.extraGroups ?? [])])],
     metric: EXIT_METRIC,
     masquerade: true,
     enabled: true,
@@ -199,10 +218,33 @@ function exitRouteBody(request: NetbirdExitRouteRequest): Record<string, unknown
   };
 }
 
+/**
+ * A route as read from NetBird, as a request to save it again with other distribution groups. NetBird answers with
+ * fields it refuses in a request (both "network" and "domains", "peer" next to "peer_groups"), so only one of each pair
+ * goes back; everything else stays as the route's owner set it.
+ */
+function routeRequestFrom(route: NetbirdRoute, groups: readonly string[]): Record<string, unknown> {
+  const domains = route.domains ?? [];
+  const peerGroups = route.peer_groups ?? [];
+  return {
+    description: route.description,
+    network_id: route.network_id,
+    enabled: route.enabled,
+    masquerade: route.masquerade,
+    metric: route.metric,
+    keep_route: route.keep_route,
+    groups: [...new Set(groups)],
+    ...(domains.length ? { domains } : { network: route.network }),
+    ...(peerGroups.length ? { peer_groups: peerGroups } : { peer: route.peer ?? '' }),
+    ...(route.access_control_groups?.length ? { access_control_groups: route.access_control_groups } : {}),
+    ...(route.skip_auto_apply === null ? {} : { skip_auto_apply: route.skip_auto_apply }),
+  };
+}
+
 function resourceBody(request: NetbirdResourceRequest): Record<string, unknown> {
   return {
     name: request.name,
-    description: 'Angelegt von MorniHosting',
+    description: request.description ?? DEFAULT_DESCRIPTION,
     address: request.address,
     enabled: true,
     groups: [request.groupId],
@@ -304,6 +346,8 @@ export const createNetbirdClient: NetbirdClientFactory = (apiUrl, token) => {
     createRoute: (request) => json(routeSchema, 'POST', '/routes', exitRouteBody(request)),
     updateRoute: (id, request) =>
       json(routeSchema, 'PUT', `/routes/${encodeURIComponent(id)}`, exitRouteBody(request)),
+    setRouteGroups: (route, groups) =>
+      json(routeSchema, 'PUT', `/routes/${encodeURIComponent(route.id)}`, routeRequestFrom(route, groups)),
     deleteRoute: async (id) => {
       const response = await call('DELETE', `/routes/${encodeURIComponent(id)}`);
       if (!response.ok && response.status !== HTTP_NOT_FOUND) throw await rejection(response, host);

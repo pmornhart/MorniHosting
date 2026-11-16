@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Link2, Network, PlugZap, Save, Unplug } from 'lucide-react';
+import { ExternalLink, Gamepad2, Link2, Network, PlugZap, Save, Unplug } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -15,11 +15,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { api, ApiError } from '@/lib/api';
 import { errorText } from '@/lib/query';
 import { NetbirdNameInput } from '@/features/netbird/NetbirdNameInput';
-import { netbirdStatusQuery } from '@/features/netbird/netbird';
+import { brandOf, netbirdStatusQuery } from '@/features/netbird/netbird';
+import { serversQuery } from '@/features/servers/live';
 import { NetbirdExitCard } from './NetbirdExitCard';
 
 const PANEL_NAME = 'panel';
 const DEFAULT_PANEL_PORT = 8080;
+/** Select value for "no server on the domain". */
+const NO_SERVER = '-';
 
 /** First choice: the domain already in use, else a confirmed own domain, else whatever NetBird has. */
 function preferredDomain(found: NetbirdDiscovery, current: string | null): string {
@@ -87,7 +90,11 @@ function ConnectForm({
           {t('netbirdAuto.ownServer')}
         </summary>
         <div className="mt-3">
-          <Field id="nb-api" label={t('netbirdAuto.apiUrl')} hint={t('netbirdAuto.apiUrlHint')}>
+          <Field
+            id="nb-api"
+            label={t('netbirdAuto.apiUrl')}
+            hint={t('netbirdAuto.apiUrlHint', brandOf(status))}
+          >
             <Input
               id="nb-api"
               value={apiUrl}
@@ -139,7 +146,7 @@ function ConnectForm({
             </span>
           </label>
           <label className="grid gap-2 text-sm font-semibold">
-            {t('netbirdAuto.machine')}
+            {t('netbirdAuto.machine', brandOf(status))}
             <Select value={peerId} onValueChange={setPeerId}>
               <SelectTrigger>
                 <SelectValue />
@@ -153,7 +160,7 @@ function ConnectForm({
               </SelectContent>
             </Select>
             <span className="text-[13px] font-normal text-muted-foreground">
-              {t('netbirdAuto.machineHint')}
+              {t('netbirdAuto.machineHint', brandOf(status))}
             </span>
           </label>
           <div className="flex justify-end sm:col-span-2">
@@ -179,10 +186,14 @@ function PanelAddress({
   status,
   domain,
   panelDomain,
+  panelName,
+  panelPort,
 }: {
   status: NetbirdStatus;
   domain: string;
   panelDomain: string;
+  panelName: string | undefined;
+  panelPort: number | undefined;
 }): ReactElement {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -192,9 +203,9 @@ function PanelAddress({
     (panelDomain === domain || panelDomain.endsWith(`.${domain}`) ? panelDomain : null);
   // The panel on the domain itself (mornihosting.de) has no name in front.
   const [name, setName] = useState(
-    known === domain ? '' : (known?.slice(0, -(domain.length + 1)) ?? PANEL_NAME),
+    known === domain ? '' : (known?.slice(0, -(domain.length + 1)) ?? panelName ?? PANEL_NAME),
   );
-  const [port, setPort] = useState(String(Number(window.location.port) || DEFAULT_PANEL_PORT));
+  const [port, setPort] = useState(String(panelPort ?? (Number(window.location.port) || DEFAULT_PANEL_PORT)));
   const setup = useMutation({
     mutationFn: () =>
       api<NetbirdStatus>('/api/netbird/panel', {
@@ -213,7 +224,7 @@ function PanelAddress({
         <Link2 className="size-4 text-primary" aria-hidden />
         {t('netbirdAuto.panelTitle')}
       </b>
-      <p className="text-[13px] text-muted-foreground">{t('netbirdAuto.panelText')}</p>
+      <p className="text-[13px] text-muted-foreground">{t('netbirdAuto.panelText', brandOf(status))}</p>
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px_auto] sm:items-end">
         <Field
           id="nb-panel"
@@ -257,6 +268,84 @@ function PanelAddress({
   );
 }
 
+/**
+ * The server players reach on the domain itself (e.g. a network's proxy on "morni.net"): they type only the domain.
+ * The website or panel may sit on the same name – NetBird forwards Minecraft by port, whatever name was typed.
+ */
+function DomainGame({ status, domain }: { status: NetbirdStatus; domain: string }): ReactElement {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { data: servers } = useQuery(serversQuery);
+  const [picked, setPicked] = useState(status.domainServer?.id ?? NO_SERVER);
+  const choose = useMutation({
+    mutationFn: (serverId: string | null) =>
+      api<NetbirdStatus>('/api/netbird/domain-server', { method: 'PUT', body: { serverId } }),
+    onSuccess: async (next) => {
+      toast.success(
+        next.domainServer
+          ? t('netbirdAuto.domainGame.done', { server: next.domainServer.name, domain })
+          : t('netbirdAuto.domainGame.off'),
+      );
+      queryClient.setQueryData(netbirdStatusQuery.queryKey, next);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['server'] }),
+        queryClient.invalidateQueries({ queryKey: serversQuery.queryKey }),
+      ]);
+    },
+  });
+  const current = status.domainServer?.id ?? NO_SERVER;
+  return (
+    <div className="grid gap-3 rounded-[12px] border border-border p-3 sm:p-4">
+      <b className="flex items-center gap-2 text-sm font-semibold">
+        <Gamepad2 className="size-4 text-primary" aria-hidden />
+        {t('netbirdAuto.domainGame.title', { domain })}
+      </b>
+      <p className="text-[13px] text-muted-foreground">{t('netbirdAuto.domainGame.text', { domain })}</p>
+      {status.domainServer ? (
+        <p className="rounded-[10px] bg-secondary px-3 py-2 text-sm">
+          <Trans
+            i18nKey="netbirdAuto.domainGame.current"
+            values={{ domain, server: status.domainServer.name }}
+            components={{ b: <b className="font-semibold" /> }}
+          />
+        </p>
+      ) : null}
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+        <Field id="nb-domain-game" label={t('netbirdAuto.domainGame.label')}>
+          <Select value={picked} onValueChange={setPicked}>
+            <SelectTrigger id="nb-domain-game">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_SERVER}>{t('netbirdAuto.domainGame.none')}</SelectItem>
+              {(servers ?? []).map((server) => (
+                <SelectItem key={server.id} value={server.id}>
+                  {server.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={choose.isPending || picked === current}
+          onClick={() => choose.mutate(picked === NO_SERVER ? null : picked)}
+        >
+          <Save />
+          {t('netbirdAuto.domainGame.button')}
+        </Button>
+      </div>
+      {status.domainServer && !status.customPorts ? (
+        <p className="text-[13px] text-muted-foreground">{t('netbirdAuto.domainGame.cloud')}</p>
+      ) : null}
+      {choose.error ? (
+        <p className="rounded-[10px] bg-destructive-soft px-3 py-2 text-sm">{errorText(choose.error)}</p>
+      ) : null}
+    </div>
+  );
+}
+
 /** Run once on the NetBird server: opens the Minecraft port ranges on its proxy and firewall. */
 const PORTS_SCRIPT =
   'curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/main/scripts/netbird-proxy-ports.sh | sudo bash';
@@ -273,7 +362,11 @@ function SelfHostedPorts({ status }: { status: NetbirdStatus }): ReactElement {
         <span className="ml-1 font-normal text-muted-foreground">{t('netbirdAuto.selfHosted.once')}</span>
       </summary>
       <div className="mt-2.5 grid min-w-0 gap-2.5">
-        <p>{status.customPorts ? t('netbirdAuto.selfHosted.fixed') : t('netbirdAuto.selfHosted.random')}</p>
+        <p>
+          {status.customPorts
+            ? t('netbirdAuto.selfHosted.fixed')
+            : t('netbirdAuto.selfHosted.random', brandOf(status))}
+        </p>
         {status.openPorts.length ? (
           <>
             <ul className="grid gap-1">
@@ -297,8 +390,19 @@ function SelfHostedPorts({ status }: { status: NetbirdStatus }): ReactElement {
   );
 }
 
-/** Admin area: connect NetBird once, then every server only needs a name to get its address. */
-export function NetbirdAutomationCard({ panelDomain }: { panelDomain: string }): ReactElement | null {
+/**
+ * Admin area: connect NetBird once, then every server only needs a name to get its address. Embedded in another app
+ * (see embed.ts), `panelName`/`panelPort` preset the address of that app's website (e.g. "" and 8080: the domain itself).
+ */
+export function NetbirdAutomationCard({
+  panelDomain,
+  panelName,
+  panelPort,
+}: {
+  panelDomain: string;
+  panelName?: string;
+  panelPort?: number;
+}): ReactElement | null {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: status } = useQuery(netbirdStatusQuery);
@@ -333,7 +437,7 @@ export function NetbirdAutomationCard({ panelDomain }: { panelDomain: string }):
           )}
         </CardTitle>
       </CardHeader>
-      <CardDescription>{t('netbirdAuto.text')}</CardDescription>
+      <CardDescription>{t('netbirdAuto.text', brandOf(status))}</CardDescription>
       {status.configured && !editing ? (
         <>
           <p className="rounded-[12px] bg-secondary px-3 py-2.5 text-sm">
@@ -346,13 +450,20 @@ export function NetbirdAutomationCard({ panelDomain }: { panelDomain: string }):
           <p className="text-[13px] text-muted-foreground">
             {status.customPorts
               ? t('netbirdAuto.portNoteFixed', { domain })
-              : t('netbirdAuto.portNote', { domain })}
+              : t('netbirdAuto.portNote', { domain, ...brandOf(status) })}
           </p>
           {status.customPorts || status.apiUrl !== NETBIRD_DEFAULT_API ? (
             <SelfHostedPorts status={status} />
           ) : null}
-          <PanelAddress status={status} domain={domain} panelDomain={panelDomain} />
-          <NetbirdExitCard apiUrl={status.apiUrl} />
+          <PanelAddress
+            status={status}
+            domain={domain}
+            panelDomain={panelDomain}
+            panelName={panelName}
+            panelPort={panelPort}
+          />
+          <DomainGame status={status} domain={domain} />
+          <NetbirdExitCard apiUrl={status.apiUrl} brand={status.brand} />
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={() => setEditing(true)}>
               {t('netbirdAuto.change')}
@@ -371,7 +482,7 @@ export function NetbirdAutomationCard({ panelDomain }: { panelDomain: string }):
             open={confirm}
             onOpenChange={setConfirm}
             title={t('netbirdAuto.disconnectTitle')}
-            description={t('netbirdAuto.disconnectText')}
+            description={t('netbirdAuto.disconnectText', brandOf(status))}
             confirmLabel={t('netbirdAuto.disconnect')}
             destructive
             onConfirm={() => disconnect.mutate()}

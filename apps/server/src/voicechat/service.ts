@@ -71,9 +71,10 @@ export function createVoiceChatService(
     const proxy = row.software === 'velocity';
     const file = path.join(dir, proxy ? PROXY_CONFIG_FILE : CONFIG_FILE);
     const text = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-    // Inside the container Velocity listens on another port than the published one: tell the players the outside one.
+    // Inside the container Velocity listens on another port than the published one: tell the players the outside one
+    // (NetBird's UDP port for voice – on a self-hosted proxy the same number as the Java port).
     const updates = proxy
-      ? { port: PROXY_SAME_PORT, voice_host: String(row.publicPort ?? row.port) }
+      ? { port: PROXY_SAME_PORT, voice_host: String(row.voicePublicPort ?? row.publicPort ?? row.port) }
       : { port: String(PORT_VOICE_CHAT), voice_host: servers.voiceHost(serverId) };
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(file, serialiseProperties(parseProperties(text), updates));

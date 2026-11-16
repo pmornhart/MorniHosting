@@ -256,6 +256,7 @@ z. B. mit `[guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')`.
 | `TZ`                | nein    | Zeitzone für Zeitpläne, Standard `Europe/Berlin`.                                                        |
 | `MH_TRUST_PROXY`    | nein    | `true`, wenn das Panel hinter einem Reverse-Proxy mit HTTPS läuft (Nginx Proxy Manager, Traefik, Caddy). |
 | `MH_IMAGE_TAG`      | nein    | Bestimmte Panel-Version statt `latest`, z. B. `1.0.0`.                                                   |
+| `MH_BRAND`          | nein    | Name vor allem, was das Panel in NetBird anlegt, und in Meldungen. Standard `MorniHosting`.              |
 
 </details>
 

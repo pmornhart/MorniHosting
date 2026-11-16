@@ -33,7 +33,8 @@ void i18n.use(initReactI18next).init({
   // No advertising line from i18next in the browser console.
   showSupportNotice: false,
   fallbackLng: 'de',
-  interpolation: { escapeValue: false },
+  // Texts name the product as {{brand}}: an app that embeds these pages passes its own name (NetBird status).
+  interpolation: { escapeValue: false, defaultVariables: { brand: 'MorniHosting', machine: 'mornihosting' } },
   returnNull: false,
   // Option values such as "minecraft:flat" contain colons; there is only one namespace.
   nsSeparator: false,

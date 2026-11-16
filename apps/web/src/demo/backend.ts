@@ -1,5 +1,6 @@
 /* eslint-disable ts-patterns/no-magic-numbers -- demo timings, made-up live values and HTTP status codes */
 import {
+  toNetbirdName,
   GAMES,
   demoBootLines,
   demoGameCommand,
@@ -23,6 +24,7 @@ import {
   type DdosStatus,
   type InstalledContent,
   type NetbirdServiceInfo,
+  type NetbirdExitStatus,
   type DnsStatus,
   type HttpsStatus,
   type NetbirdStatus,
@@ -717,6 +719,8 @@ const DEMO_DOMAIN = 'moinmornhart.de';
 const DEMO_PEER = { id: 'peer-mh', name: 'mornihosting', ip: '100.92.14.7', connected: true };
 const NOT_CONNECTED: NetbirdStatus = {
   configured: false,
+  brand: 'MorniHosting',
+  machineHint: 'mornihosting',
   apiUrl: NETBIRD_DEFAULT_API,
   domain: null,
   peerId: null,
@@ -725,7 +729,43 @@ const NOT_CONNECTED: NetbirdStatus = {
   customPorts: false,
   openPorts: [],
   router: { java: true, bedrock: true },
+  domainServer: null,
 };
+/** No port another service holds in the demo. */
+const FREE = { wanted: null, heldBy: null } as const;
+/** "Hausanschluss verstecken": the pretend NetBird server at a hoster as the only exit to choose. */
+const DEMO_EXIT = { id: 'peer-exit', name: 'netbird-server', connected: true, publicIp: '203.0.113.80' };
+const exit = { enabled: false };
+function exitStatus(): NetbirdExitStatus {
+  return {
+    enabled: exit.enabled,
+    exitPeerId: exit.enabled ? DEMO_EXIT.id : null,
+    exitPeerName: exit.enabled ? DEMO_EXIT.name : null,
+    exitIp: exit.enabled ? DEMO_EXIT.publicIp : null,
+    hidden: exit.enabled ? true : null,
+    leaks: [],
+    dnsAutomation: false,
+    candidates: [DEMO_EXIT],
+    sharedWith: null,
+    checkedAt: exit.enabled ? nowIso() : null,
+    error: null,
+  };
+}
+
+/** The server players reach on the domain itself: its address is the domain, without the usual port. */
+function setDomainServer(id: string | null): void {
+  const domain = netbird.status.domain ?? DEMO_DOMAIN;
+  Array.from(state.servers.values()).forEach((server) => {
+    if (!server.netbird) return;
+    const onDomain = server.id === id;
+    changeServer(server.id, {
+      netbird: { ...server.netbird, onDomain },
+      ...(onDomain ? { domain, address: domain } : {}),
+    });
+  });
+  const chosen = id ? state.servers.get(id) : undefined;
+  netbird.status = { ...netbird.status, domainServer: chosen ? { id: chosen.id, name: chosen.name } : null };
+}
 const netbird = { status: NOT_CONNECTED, nextPort: 31000 };
 
 /* ---------- Own domain (mornihosting.de at INWX, with HTTPS) ---------- */
@@ -767,13 +807,14 @@ function setDomainName(server: ServerDetail, name: string | null): ServerDetail 
   return changeServer(server.id, {
     netbird: {
       name,
+      onDomain: false,
       services: [
-        { purpose: 'main', domain: host, port: server.port },
+        { purpose: 'main', domain: host, port: server.port, ...FREE },
         ...(server.geyser && server.geyserPort
-          ? [{ purpose: 'geyser', domain: host, port: server.geyserPort } as const]
+          ? [{ purpose: 'geyser', domain: host, port: server.geyserPort, ...FREE } as const]
           : []),
         ...(server.voiceChat && server.voicePort
-          ? [{ purpose: 'voice', domain: host, port: server.voicePort } as const]
+          ? [{ purpose: 'voice', domain: host, port: server.voicePort, ...FREE } as const]
           : []),
       ],
       routed: { java: false, bedrock: false },
@@ -801,19 +842,32 @@ function setNetbirdName(id: string, name: string | null): ServerDetail | undefin
     server.netbird?.services.find((s) => s.purpose === purpose)?.port ?? null;
   const portFor = (purpose: string): number => known(purpose) ?? netbird.nextPort++;
   const services: NetbirdServiceInfo[] = [
-    { purpose: 'main', domain: `${name}.${domain}`, port: portFor('main') },
+    { purpose: 'main', domain: `${name}.${domain}`, port: portFor('main'), ...FREE },
     ...(server.geyser
-      ? [{ purpose: 'geyser', domain: `${name}-bedrock.${domain}`, port: portFor('geyser') } as const]
+      ? [
+          {
+            purpose: 'geyser',
+            domain: `${name}-bedrock.${domain}`,
+            port: portFor('geyser'),
+            ...FREE,
+          } as const,
+        ]
       : []),
     ...(server.voiceChat
-      ? [{ purpose: 'voice', domain: `${name}-voice.${domain}`, port: portFor('voice') } as const]
+      ? [{ purpose: 'voice', domain: `${name}-voice.${domain}`, port: portFor('voice'), ...FREE } as const]
       : []),
   ];
   const port = (purpose: string): number | null => services.find((s) => s.purpose === purpose)?.port ?? null;
   // Like a self-hosted NetBird with the address router: Java and Bedrock by the name alone.
   const java = server.edition === 'java';
   return changeServer(id, {
-    netbird: { name, services, routed: { java, bedrock: java && server.geyser }, error: null },
+    netbird: {
+      name,
+      onDomain: false,
+      services,
+      routed: { java, bedrock: java && server.geyser },
+      error: null,
+    },
     domain: `${name}.${domain}`,
     publicPort: java ? JAVA_STANDARD_PORT : port('main'),
     address: java ? `${name}.${domain}` : `${name}.${domain}:${port('main')}`,
@@ -1526,6 +1580,26 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
     () => {
       Array.from(state.servers.keys()).forEach((id) => setNetbirdName(id, null));
       netbird.status = { ...NOT_CONNECTED, panelAddress: netbird.status.panelAddress };
+      return ok(netbird.status);
+    },
+  ],
+  ['GET', '/api/netbird/exit', () => ok(exitStatus())],
+  [
+    'PUT',
+    '/api/netbird/exit',
+    ({ body }) => {
+      exit.enabled = body['enabled'] === true;
+      return ok(exitStatus());
+    },
+  ],
+  [
+    'PUT',
+    '/api/netbird/domain-server',
+    ({ body }) => {
+      const id = typeof body['serverId'] === 'string' ? body['serverId'] : null;
+      if (id && !state.servers.get(id)?.netbird)
+        setNetbirdName(id, toNetbirdName(state.servers.get(id)?.name ?? ''));
+      setDomainServer(id);
       return ok(netbird.status);
     },
   ],

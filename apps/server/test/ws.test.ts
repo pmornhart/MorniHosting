@@ -1,7 +1,7 @@
 import type { WebSocket } from 'ws';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import type { WsClientMessage, WsServerMessage } from '@mornihosting/shared';
-import { createTestApp, setupAdmin, type Session, type TestApp } from './helpers.js';
+import { createTestApp, login, setupAdmin, type Session, type TestApp } from './helpers.js';
 
 const POLICY_VIOLATION = 1008;
 
@@ -103,5 +103,70 @@ describe('live connection (WebSocket)', () => {
     expect(await nextMessage(live)).toEqual({ type: 'pong' });
     live.terminate();
     await expect(withKey(await make(['servers:read']))).rejects.toThrow();
+  });
+
+  test('alerts go live to an app that runs the panel as its motor – with what it missed while it was away', async () => {
+    const token = (
+      await t.app.inject({
+        method: 'POST',
+        url: '/api/tokens',
+        headers: { cookie: s.cookie, 'x-csrf-token': s.csrf },
+        payload: { name: 'morni.net', scopes: ['events'] },
+      })
+    ).json<{ token: string }>().token;
+    const withKey = () =>
+      t.app.injectWS('/api/ws', {
+        headers: { authorization: `Bearer ${token}` },
+        connection: socket,
+        socket,
+      } as never);
+    const alertOf = (message: WsServerMessage) => (message.type === 'alert' ? message.alert : null);
+    // A game server that does not come back by itself – while the app is not connected.
+    t.ctx.events.emit('server.revive', { serverId: 'abc', tries: 1, reason: 'Port belegt' });
+
+    const first = await withKey();
+    const backlog = nextMessage(first);
+    say(first, { type: 'subscribe', channel: 'alerts', after: 'nie-gesehen' });
+    const missed = alertOf(await backlog);
+    expect(missed).toMatchObject({
+      key: 'server:abc',
+      kind: 'server-restart',
+      status: 'fixing',
+      source: 'panel',
+      action: null,
+    });
+    expect(missed?.what).toContain('Port belegt');
+    // From then on live, also the all-clear.
+    const cleared = nextMessage(first);
+    t.ctx.events.emit('server.revive', { serverId: 'abc', tries: 0, reason: null });
+    expect(alertOf(await cleared)).toMatchObject({ key: 'server:abc', status: 'ok' });
+    first.terminate();
+
+    // Coming back with the last one seen: only what came after it.
+    const again = await withKey();
+    const next = nextMessage(again);
+    say(again, { type: 'subscribe', channel: 'alerts', after: missed?.id ?? '' });
+    expect(alertOf(await next)).toMatchObject({ key: 'server:abc', status: 'ok' });
+    say(again, { type: 'ping' });
+    expect(await nextMessage(again)).toEqual({ type: 'pong' });
+    again.terminate();
+  });
+
+  test('only admins may listen for alerts', async () => {
+    await t.app.inject({
+      method: 'POST',
+      url: '/api/users',
+      headers: { cookie: s.cookie, 'x-csrf-token': s.csrf },
+      payload: { username: 'lena', password: 'lena-passwort-1', displayName: 'Lena' },
+    });
+    const lena = await login(t, 'lena', 'lena-passwort-1');
+    const socket = await t.app.injectWS('/api/ws', {
+      headers: { cookie: lena.cookie, host: 'localhost', origin: 'http://localhost' },
+      connection: { remoteAddress: '127.0.0.1' },
+      socket: { remoteAddress: '127.0.0.1' },
+    } as never);
+    say(socket, { type: 'subscribe', channel: 'alerts' });
+    expect(await nextMessage(socket)).toEqual({ type: 'error', code: 'forbidden' });
+    socket.terminate();
   });
 });

@@ -32,7 +32,48 @@ export const netbirdConfigSchema = z.object({
 });
 export type NetbirdConfigInput = z.infer<typeof netbirdConfigSchema>;
 
+const NAME_FROM_TEXT_MAX = 40;
+const FALLBACK_NAME = 'minecraft';
+const UMLAUTS: Readonly<Record<string, string>> = { ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss' };
+// German umlauts and ß, written out before the rest is cleaned: "Bärenhöhle" → "baerenhoehle".
+// https://regex101.com/?flavor=javascript&regex=%5B%C3%A4%C3%B6%C3%BC%C3%9F%5D&flags=g&testString=b%C3%A4renh%C3%B6hle%20stra%C3%9Fe
+const UMLAUT = /[äöüß]/g;
+// Everything that is not a letter or digit becomes a dash: "survival mit freunden!" → "survival-mit-freunden-".
+// https://regex101.com/?flavor=javascript&regex=%5B%5Ea-z0-9%5D%2B&flags=g&testString=survival%20mit%20freunden!
+const NOT_NAME = /[^a-z0-9]+/g;
+// Dashes at the start or end: "-survival-" loses both, "sur-vival" keeps its dash.
+// https://regex101.com/?flavor=javascript&regex=%5E-%2B%7C-%2B%24&flags=g&testString=-survival-%0Asur-vival
+const EDGE_DASHES = /^-+|-+$/g;
+
+/** A server name as an address part: "Survival mit Freunden!" → "survival-mit-freunden". */
+export function toNetbirdName(text: string, fallback = FALLBACK_NAME): string {
+  const name = text
+    .toLowerCase()
+    .replace(UMLAUT, (c) => UMLAUTS[c] ?? '')
+    .replace(NOT_NAME, '-')
+    .slice(0, NAME_FROM_TEXT_MAX)
+    .replace(EDGE_DASHES, '');
+  return name || fallback;
+}
+
+/**
+ * The brand as a technical name for machines, files and services: "MorniHosting" → "mornihosting",
+ * "morni.net" → "morninet".
+ */
+export function brandSlug(brand: string): string {
+  return brand.toLowerCase().replace(NOT_NAME, '');
+}
+
 export const netbirdServerSchema = z.object({ name: netbirdNameSchema.nullable() });
+
+/**
+ * The server players reach on the domain itself ("morni.net" instead of "spiel.morni.net"); null = none.
+ * Its NetBird services keep their own names (NetBird allows one service per name, the website already has the domain),
+ * but ask for the ports games use when none is typed – NetBird forwards TCP and UDP by port, whatever name was typed.
+ */
+export const netbirdDomainServerSchema = z.object({
+  serverId: z.string().trim().min(1).max(ID_MAX).nullable(),
+});
 
 /** An empty name puts the panel on the domain itself. */
 export const netbirdPanelSchema = z.object({
@@ -51,6 +92,10 @@ export const ROUTER_PUBLIC_PORTS = { java: 25565, bedrock: 19132 } as const;
 
 export interface NetbirdStatus {
   readonly configured: boolean;
+  /** Name in front of everything the panel makes in NetBird (network, group, resources, exit): "MorniHosting". */
+  readonly brand: string;
+  /** Machines whose name contains this are taken for the panel's own machine, e.g. "mornihosting". */
+  readonly machineHint: string;
   readonly apiUrl: string;
   readonly domain: string | null;
   readonly peerId: string | null;
@@ -63,6 +108,8 @@ export interface NetbirdStatus {
   readonly openPorts: readonly NetbirdOpenPort[];
   /** The address router is in place: Java on 25565, Bedrock on 19132, every server by its name alone. */
   readonly router: { readonly java: boolean; readonly bedrock: boolean };
+  /** The server on the domain itself (see netbirdDomainServerSchema). */
+  readonly domainServer: { readonly id: string; readonly name: string } | null;
 }
 
 export interface NetbirdOpenPort {
@@ -96,11 +143,17 @@ export interface NetbirdServiceInfo {
   readonly domain: string;
   /** Port friends use from outside; NetBird Cloud assigns it. */
   readonly port: number | null;
+  /** The outside port this service asked for but did not get, because another service has it; else null. */
+  readonly wanted: number | null;
+  /** NetBird name of the service that holds the wanted port (e.g. one of another panel in the same account). */
+  readonly heldBy: string | null;
 }
 
 /** NetBird state of one server, shown on its pages. */
 export interface NetbirdServerInfo {
   readonly name: string;
+  /** Players reach this server on the domain itself (no name in front). */
+  readonly onDomain: boolean;
   readonly services: readonly NetbirdServiceInfo[];
   /** Players join by the name alone (no port): Java through the router, Bedrock through the router (Geyser on). */
   readonly routed: { readonly java: boolean; readonly bedrock: boolean };
@@ -143,6 +196,11 @@ export interface NetbirdExitStatus {
   /** The own-domain DNS automation would publish the home IP. */
   readonly dnsAutomation: boolean;
   readonly candidates: readonly NetbirdExitCandidate[];
+  /**
+   * Name of the route this panel shares with another panel on the same exit machine (NetBird allows only one route
+   * for all internet traffic per exit machine there): the panel's group sits in that route. Null with an own route.
+   */
+  readonly sharedWith: string | null;
   readonly checkedAt: string | null;
   readonly error: {
     readonly code: string;

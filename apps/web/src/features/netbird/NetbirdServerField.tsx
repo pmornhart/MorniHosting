@@ -1,17 +1,40 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Globe, Save, Trash2 } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Globe, Save, Trash2, TriangleAlert } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import type { NetbirdPurpose, NetbirdServerInfo, ServerDetail } from '@mornihosting/shared';
+import {
+  clientPort,
+  PORT_BEDROCK,
+  type NetbirdPurpose,
+  type NetbirdServerInfo,
+  type NetbirdServiceInfo,
+  type ServerDetail,
+} from '@mornihosting/shared';
 import { CopyButton } from '@/components/copy-button';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/label';
+import { Pill } from '@/components/ui/pill';
 import { api } from '@/lib/api';
 import { errorText } from '@/lib/query';
 import { NetbirdNameInput } from './NetbirdNameInput';
+import { brandOf, netbirdStatusQuery } from './netbird';
 
 const ORDER: readonly NetbirdPurpose[] = ['main', 'geyser', 'voice'];
+/** The TCP half of Geyser has the same address as the UDP half: not listed on its own. */
+const HIDDEN: readonly NetbirdPurpose[] = ['geyser-signal'];
+
+/**
+ * What players type for one service. On the domain itself that is the domain (the port decides where they land),
+ * without the port games use anyway; otherwise the service's own name and port.
+ */
+function playerAddress(service: NetbirdServiceInfo, server: ServerDetail, domain: string): string {
+  if (!server.netbird?.onDomain) return service.port ? `${service.domain}:${service.port}` : service.domain;
+  const usual = service.purpose === 'main' ? clientPort(server.software) : PORT_BEDROCK;
+  return service.port && (service.purpose === 'voice' || service.port !== usual)
+    ? `${domain}:${service.port}`
+    : domain;
+}
 
 /** The server's name in NetBird: typing "survival" is all it takes, the panel sets up the rest. */
 export function NetbirdServerField({
@@ -23,6 +46,7 @@ export function NetbirdServerField({
 }): ReactElement {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { data: status } = useQuery(netbirdStatusQuery);
   const [draft, setDraft] = useState(server.netbird?.name ?? '');
   const save = useMutation({
     mutationFn: (name: string | null) =>
@@ -41,20 +65,21 @@ export function NetbirdServerField({
   });
   const name = draft.trim();
   const submit = (): void => save.mutate(name || null);
-  const services = [...(server.netbird?.services ?? [])].sort(
-    (a, b) => ORDER.indexOf(a.purpose) - ORDER.indexOf(b.purpose),
-  );
+  const services = [...(server.netbird?.services ?? [])]
+    .filter((s) => !HIDDEN.includes(s.purpose))
+    .sort((a, b) => ORDER.indexOf(a.purpose) - ORDER.indexOf(b.purpose));
   const failure = save.error ? errorText(save.error) : null;
   const lastError = server.netbird?.error
     ? t(`errors.${server.netbird.error.code}`, server.netbird.error.params)
     : null;
+  const java = server.edition === 'java';
 
   return (
     <div className="grid gap-2 md:col-span-2">
       <Field
         id={`nb-name-${server.id}`}
         label={t('netbirdAuto.fieldLabel')}
-        hint={t('netbirdAuto.fieldHint')}
+        hint={t('netbirdAuto.fieldHint', brandOf(status))}
       >
         <div className="flex flex-wrap gap-2">
           <NetbirdNameInput
@@ -81,16 +106,42 @@ export function NetbirdServerField({
           ) : null}
         </div>
       </Field>
+      {server.netbird?.onDomain ? (
+        <span>
+          <Pill tone="ok">{t('netbirdAuto.onDomain', { domain })}</Pill>
+        </span>
+      ) : null}
       {services.length ? (
         <ul className="grid gap-1.5 rounded-[12px] bg-secondary px-3 py-2 text-[13px]">
           {services.map((s) => {
-            const address = s.port ? `${s.domain}:${s.port}` : s.domain;
+            const address = playerAddress(s, server, domain);
             return (
-              <li key={s.purpose} className="flex flex-wrap items-center gap-2">
-                <Globe className="size-4 text-primary" aria-hidden />
-                <span className="text-muted-foreground">{t(`netbirdAuto.purpose.${s.purpose}`)}</span>
-                <code className="font-mono font-semibold">{address}</code>
-                <CopyButton text={address} className="size-7" />
+              <li key={s.purpose} className="grid gap-1">
+                <span className="flex flex-wrap items-center gap-2">
+                  <Globe className="size-4 text-primary" aria-hidden />
+                  <span className="text-muted-foreground">{t(`netbirdAuto.purpose.${s.purpose}`)}</span>
+                  <code className="font-mono font-semibold">{address}</code>
+                  <CopyButton text={address} className="size-7" />
+                </span>
+                {s.wanted ? (
+                  <span className="flex items-start gap-2 text-warning">
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                    <span>
+                      {t('netbirdAuto.portTaken', {
+                        wanted: s.wanted,
+                        holder: s.heldBy ?? t('netbirdAuto.portTakenSomeone'),
+                        address,
+                      })}
+                      {java && s.purpose === 'main' && s.port
+                        ? ` ${t('netbirdAuto.srvHint', {
+                            name: `_minecraft._tcp.${domain}`,
+                            target: s.domain,
+                            port: s.port,
+                          })}`
+                        : ''}
+                    </span>
+                  </span>
+                ) : null}
               </li>
             );
           })}

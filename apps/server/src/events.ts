@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import type { CrashInfo, ServerLive, ServerState } from '@mornihosting/shared';
+import type { AlertEvent, CrashInfo, ServerLive, ServerState } from '@mornihosting/shared';
 
 export interface PanelEvents {
   'server.state': { serverId: string; state: ServerState; previous: ServerState };
@@ -27,6 +27,8 @@ export interface PanelEvents {
   'approvals.changed': { userId: number | null };
   /** A mail could not be handed to the mail server (unreachable, login refused …). */
   'mail.failed': { error: string };
+  /** A problem or its all-clear was reported to the admins (also for an app that runs the panel as its motor). */
+  alert: AlertEvent;
   /** Always-on could not start a server that should run (tries counts up; 0 = it runs again). */
   /** The outside address of a server changed (NetBird, own domain): voice chat writes its address again. */
   'server.address': { serverId: string };
