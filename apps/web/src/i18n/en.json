@@ -609,6 +609,7 @@
     "netbird_not_configured": "NetBird is not connected yet (admin area → NetBird).",
     "netbird_token_missing": "Please enter the NetBird API key.",
     "netbird_name_taken": "Another server already uses the name {{name}}.",
+    "netbird_domain_server_behind_proxy": "“{{server}}” sits behind the proxy “{{proxy}}” and can't be reached from outside. Pick the proxy – players get into the network from there (first onto the start server, usually the lobby).",
     "netbird_failed": "NetBird could not be set up.",
     "minecraft_taken": "{{name}} is already linked to another account in the panel.",
     "netbird_token_unknown": "{{host}} does not know this key. It is well-formed but was created on another NetBird server – or has been deleted since. If you run NetBird yourself, enter its address under “Your own NetBird server?” (the address where you open the NetBird dashboard).",
@@ -2020,6 +2021,9 @@
       "done": "“{{server}}” is now reachable at {{domain}} itself",
       "off": "No server on the domain itself any more",
       "current": "Players type {{domain}} and land on <b>{{server}}</b>.",
+      "behindProxy": "“{{server}}” sits behind the proxy “{{proxy}}” and can't be reached from outside – nobody gets in this way. Pick the proxy: players get into the network from there (first onto the start server, usually the lobby).",
+      "takeProxy": "Use proxy “{{proxy}}”",
+      "behindItem": "{{server}} (behind the proxy “{{proxy}}”)",
       "cloud": "NetBird Cloud assigns the ports itself – players then need the port number shown on the server page."
     },
     "onDomain": "Players type just {{domain}}",

@@ -5,6 +5,7 @@ import {
   ROUTER_PUBLIC_PORTS,
   SOFTWARE,
   toNetbirdName,
+  type NetbirdBehindProxy,
   type NetbirdConfigInput,
   type NetbirdDiscovery,
   type NetbirdPurpose,
@@ -14,7 +15,7 @@ import {
 } from '@mornihosting/shared';
 import type { Actor } from '../audit/service.js';
 import type { AppContext } from '../context.js';
-import { netbirdServices, servers as serverTable } from '../db/schema.js';
+import { netbirdServices, networkMembers, networks, servers as serverTable } from '../db/schema.js';
 import { AppError, badRequest, conflict, notFound } from '../lib/errors.js';
 import { createKeyedLock } from '../lib/locks.js';
 import { GEYSER_PURPOSE, VOICE_PURPOSE, type ServerService, type TunnelAddress } from '../servers/service.js';
@@ -45,6 +46,8 @@ const PORT_SEARCH = 50;
 /** A server that goes on the domain without a name gets one from its own name, numbered when taken. */
 const NAME_ROOM = 36;
 const NAME_TRIES = 50;
+/** The first taken name gets "-2" ("reich-2"): the bare name counts as the first. */
+const FIRST_NUMBER = 2;
 // NetBird's refusal for a taken outside port, e.g. "tcp port 25565 is already in use by service abc on cluster
 // netbird.example.org" → 25565; "domain already in use" does not match.
 // https://regex101.com/?flavor=javascript&regex=port%20(%5Cd%2B)%20is%20already%20in%20use&flags=i&testString=tcp%20port%2025565%20is%20already%20in%20use%20by%20service%20abc%20on%20cluster%20netbird.example.org%0Adomain%20already%20in%20use
@@ -283,7 +286,8 @@ export function createNetbirdAutomation(
     const geyserPort = row.geyser ? hostPort(GEYSER_PURPOSE) : undefined;
     // A proxy's voice chat rides on the proxy's own port (UDP next to TCP); other servers have a port of their own.
     const proxyVoice = row.voiceChat && SOFTWARE[row.software].proxy;
-    const voicePort = row.voiceChat ? (proxyVoice ? row.port : hostPort(VOICE_PURPOSE)) : undefined;
+    const ownVoicePort = proxyVoice ? row.port : hostPort(VOICE_PURPOSE);
+    const voicePort = row.voiceChat ? ownVoicePort : undefined;
     const routed = routerKinds(cfg);
     // With the router, 25565/19132 (TCP) belong to it; a server's own address moves to another port.
     const avoid: number[] = routed.map((kind) => ROUTER_PUBLIC_PORTS[kind]);
@@ -551,11 +555,9 @@ export function createNetbirdAutomation(
     const avoided = (port: number | null | undefined): boolean =>
       port !== null && port !== undefined && (want.avoid ?? []).includes(port);
     // A port the router needs: keep the service's current one if that is fine, else start looking one higher.
-    const fixedPort = avoided(asked)
-      ? avoided(existing?.listenPort)
-        ? (asked ?? 0) + 1
-        : (existing?.listenPort ?? (asked ?? 0) + 1)
-      : asked;
+    const oneHigher = (asked ?? 0) + 1;
+    const instead = avoided(existing?.listenPort) ? oneHigher : (existing?.listenPort ?? oneHigher);
+    const fixedPort = avoided(asked) ? instead : asked;
     const same =
       existing?.domain === want.domain &&
       existing.targetPort === want.port &&
@@ -760,9 +762,25 @@ export function createNetbirdAutomation(
     // Room for "-2" … behind it within the 40 characters of a name.
     const base = toNetbirdName(toNetbirdName(row.name).slice(0, NAME_ROOM));
     const taken = new Set(namedServers().map((r) => r.netbirdName));
-    const candidates = [base, ...Array.from({ length: NAME_TRIES }, (_, i) => `${base}-${i + 2}`)];
+    const candidates = [base, ...Array.from({ length: NAME_TRIES }, (_, i) => `${base}-${i + FIRST_NUMBER}`)];
     return candidates.find((n) => !taken.has(n)) ?? row.id;
   };
+
+  /**
+   * Servers behind a network's proxy (lobby, game modes): no ports of their own outside and no direct logins, so
+   * players who reach them on the domain would not get in. Their proxy goes on the domain instead.
+   */
+  const behindProxy = (): NetbirdBehindProxy[] =>
+    ctx.db
+      .select({ serverId: networkMembers.serverId, proxyId: networks.proxyServerId })
+      .from(networkMembers)
+      .innerJoin(networks, eq(networkMembers.networkId, networks.id))
+      .all()
+      .flatMap(({ serverId, proxyId }) => {
+        const row = serverRow(serverId);
+        const proxy = serverRow(proxyId);
+        return row && proxy ? [{ id: row.id, name: row.name, proxyId: proxy.id, proxyName: proxy.name }] : [];
+      });
 
   const domainServerOf = (cfg: StoredConfig | null): NetbirdStatus['domainServer'] => {
     const row = cfg?.domainServerId ? serverRow(cfg.domainServerId) : undefined;
@@ -784,6 +802,7 @@ export function createNetbirdAutomation(
       openPorts: openPorts(),
       router: routerLive(),
       domainServer: domainServerOf(cfg),
+      behindProxy: behindProxy(),
     };
   };
 
@@ -1047,6 +1066,13 @@ export function createNetbirdAutomation(
       const cfg = requireConfig();
       const row = serverId ? serverRow(serverId) : undefined;
       if (serverId && !row) throw notFound();
+      // Behind a proxy nobody gets in from outside (no ports, no direct logins): the proxy is the way in.
+      const hidden = behindProxy().find((b) => b.id === row?.id);
+      if (hidden)
+        throw badRequest('netbird_domain_server_behind_proxy', {
+          server: hidden.name,
+          proxy: hidden.proxyName,
+        });
       if (row && !row.netbirdName) servers.setTunnelAddress(row.id, { netbirdName: freeName(row) });
       const before = cfg.domainServerId ?? null;
       saveConfig({ domainServerId: serverId });

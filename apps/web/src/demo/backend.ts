@@ -730,6 +730,7 @@ const NOT_CONNECTED: NetbirdStatus = {
   openPorts: [],
   router: { java: true, bedrock: true },
   domainServer: null,
+  behindProxy: [],
 };
 /** No port another service holds in the demo. */
 const FREE = { wanted: null, heldBy: null } as const;

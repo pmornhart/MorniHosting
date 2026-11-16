@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { hostnameSchema, netbirdNameSchema, portSchema } from './api.js';
+import { PORT_BEDROCK, PORT_JAVA } from './software.js';
 
 /**
  * NetBird automation: the panel creates reverse-proxy services in the admin's NetBird account, so a
@@ -88,7 +89,7 @@ export type NetbirdPurpose =
   'main' | 'geyser' | 'geyser-signal' | 'voice' | 'panel' | 'router-java' | 'router-bedrock';
 
 /** Outside ports of the address router: the ports Java and Bedrock use when no port is typed. */
-export const ROUTER_PUBLIC_PORTS = { java: 25565, bedrock: 19132 } as const;
+export const ROUTER_PUBLIC_PORTS = { java: PORT_JAVA, bedrock: PORT_BEDROCK } as const;
 
 export interface NetbirdStatus {
   readonly configured: boolean;
@@ -110,6 +111,19 @@ export interface NetbirdStatus {
   readonly router: { readonly java: boolean; readonly bedrock: boolean };
   /** The server on the domain itself (see netbirdDomainServerSchema). */
   readonly domainServer: { readonly id: string; readonly name: string } | null;
+  /**
+   * Servers behind a network's proxy (lobby, game modes): no ports of their own outside and no direct logins, so they
+   * cannot sit on the domain – their proxy can.
+   */
+  readonly behindProxy: readonly NetbirdBehindProxy[];
+}
+
+/** A server that players only reach through its network's proxy. */
+export interface NetbirdBehindProxy {
+  readonly id: string;
+  readonly name: string;
+  readonly proxyId: string;
+  readonly proxyName: string;
 }
 
 export interface NetbirdOpenPort {

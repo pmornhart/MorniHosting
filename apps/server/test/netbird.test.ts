@@ -1139,6 +1139,61 @@ describe('NetBird automation', () => {
     }
   });
 
+  test("a server behind a network's proxy cannot go on the domain; an older such choice names the proxy to take", async () => {
+    netbird = createFakeNetbird({ secondPanel: true, customPorts: true });
+    const second = await secondPanel({ MH_LAN_IP: '198.51.100.30' });
+    try {
+      const proxyId = await proxyWithEverything(second.send);
+      const lobby = (
+        await second.send('POST', '/api/servers', {
+          edition: 'java',
+          software: 'paper',
+          version: '1.21.4',
+          memoryMb: 2048,
+          port: 25570,
+          eula: true,
+          startNow: false,
+          name: 'Lobby',
+        })
+      ).json<{ id: string }>().id;
+      const network = (
+        await second.send('POST', '/api/networks', { name: 'MoinMorni', proxyServerId: proxyId })
+      ).json<{ id: string }>();
+      await second.send('POST', `/api/networks/${network.id}/members`, { serverId: lobby, name: 'lobby' });
+      const behind = { id: lobby, name: 'Lobby', proxyId, proxyName: 'MoinMorni Proxy' };
+      expect((await second.send('GET', '/api/netbird')).json<NetbirdStatus>().behindProxy).toEqual([behind]);
+
+      // The lobby has no ports outside and takes no direct logins: nobody would get in on the domain.
+      const refused = await second.send('PUT', '/api/netbird/domain-server', { serverId: lobby });
+      expect(refused.statusCode).toBe(400);
+      expect(refused.json()).toEqual({
+        error: 'netbird_domain_server_behind_proxy',
+        params: { server: 'Lobby', proxy: 'MoinMorni Proxy' },
+      });
+      expect((await second.send('GET', '/api/netbird')).json<NetbirdStatus>().domainServer).toBeNull();
+      expect((await second.send('GET', `/api/servers/${lobby}`)).json<ServerDetail>().netbird).toBeNull();
+      expect([...netbird.services.values()].some((svc) => svc.domain.startsWith('lobby'))).toBe(false);
+
+      // Chosen before the lobby joined the network: the status shows it with its proxy (the card offers to switch).
+      const stored = second.app.ctx.settings.getValue<Record<string, unknown>>('netbird') ?? {};
+      second.app.ctx.settings.setValue('netbird', { ...stored, domainServerId: lobby });
+      const old = (await second.send('GET', '/api/netbird')).json<NetbirdStatus>();
+      expect(old.domainServer).toEqual({ id: lobby, name: 'Lobby' });
+      expect(old.behindProxy).toEqual([behind]);
+      // „Proxy nehmen“: the proxy goes on the domain, on the ports players use without typing one.
+      const fixed = (
+        await second.send('PUT', '/api/netbird/domain-server', { serverId: proxyId })
+      ).json<NetbirdStatus>();
+      expect(fixed.domainServer).toEqual({ id: proxyId, name: 'MoinMorni Proxy' });
+      expect(netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`)).toMatchObject({
+        mode: 'tcp',
+        listen_port: 25565,
+      });
+    } finally {
+      await second.app.cleanup();
+    }
+  });
+
   test.each([
     ['a self-hosted NetBird: on its old port', true],
     ['NetBird Cloud: on a port NetBird picks', false],

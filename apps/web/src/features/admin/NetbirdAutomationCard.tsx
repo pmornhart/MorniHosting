@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ExternalLink, Gamepad2, Link2, Network, PlugZap, Save, Unplug } from 'lucide-react';
+import { ExternalLink, Gamepad2, Link2, Network, PlugZap, Save, TriangleAlert, Unplug } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -285,7 +285,12 @@ function DomainGame({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: servers } = useQuery(serversQuery);
-  const [picked, setPicked] = useState(status.domainServer?.id ?? suggested ?? NO_SERVER);
+  // Servers behind a network's proxy: nobody reaches them from outside, so they are not offered.
+  const hidden = new Map(status.behindProxy.map((b) => [b.id, b]));
+  // Until the admin picks one: the saved server, else the suggestion (e.g. the proxy) – also when it comes later.
+  const [choice, setChoice] = useState<string | null>(null);
+  const offered = suggested && !hidden.has(suggested) ? suggested : NO_SERVER;
+  const picked = choice ?? status.domainServer?.id ?? offered;
   const choose = useMutation({
     mutationFn: (serverId: string | null) =>
       api<NetbirdStatus>('/api/netbird/domain-server', { method: 'PUT', body: { serverId } }),
@@ -295,6 +300,7 @@ function DomainGame({
           ? t('netbirdAuto.domainGame.done', { server: next.domainServer.name, domain })
           : t('netbirdAuto.domainGame.off'),
       );
+      setChoice(null);
       queryClient.setQueryData(netbirdStatusQuery.queryKey, next);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['server'] }),
@@ -303,6 +309,8 @@ function DomainGame({
     },
   });
   const current = status.domainServer?.id ?? NO_SERVER;
+  // A choice from before that sits behind a proxy: nobody gets in that way.
+  const stuck = status.domainServer ? hidden.get(status.domainServer.id) : undefined;
   // What players type for the chosen server (ports, and who holds the usual ones if someone else does).
   const chosen = useQuery({
     ...serverQuery(status.domainServer?.id ?? NO_SERVER),
@@ -315,7 +323,7 @@ function DomainGame({
         {t('netbirdAuto.domainGame.title', { domain })}
       </b>
       <p className="text-[13px] text-muted-foreground">{t('netbirdAuto.domainGame.text', { domain })}</p>
-      {status.domainServer ? (
+      {status.domainServer && !stuck ? (
         <p className="rounded-[10px] bg-secondary px-3 py-2 text-sm">
           <Trans
             i18nKey="netbirdAuto.domainGame.current"
@@ -324,20 +332,49 @@ function DomainGame({
           />
         </p>
       ) : null}
-      {status.domainServer && chosen.data ? <NetbirdAddresses server={chosen.data} domain={domain} /> : null}
+      {stuck ? (
+        <div className="grid gap-2.5 rounded-[12px] bg-warning-soft px-3 py-2.5 text-sm text-warning">
+          <span className="flex items-start gap-2">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            {t('netbirdAuto.domainGame.behindProxy', { server: stuck.name, proxy: stuck.proxyName })}
+          </span>
+          <span>
+            <Button
+              type="button"
+              size="sm"
+              disabled={choose.isPending}
+              onClick={() => choose.mutate(stuck.proxyId)}
+            >
+              <Network />
+              {t('netbirdAuto.domainGame.takeProxy', { proxy: stuck.proxyName })}
+            </Button>
+          </span>
+        </div>
+      ) : null}
+      {status.domainServer && !stuck && chosen.data ? (
+        <NetbirdAddresses server={chosen.data} domain={domain} />
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <Field id="nb-domain-game" label={t('netbirdAuto.domainGame.label')}>
-          <Select value={picked} onValueChange={setPicked}>
+          <Select value={picked} onValueChange={setChoice}>
             <SelectTrigger id="nb-domain-game">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={NO_SERVER}>{t('netbirdAuto.domainGame.none')}</SelectItem>
-              {(servers ?? []).map((server) => (
-                <SelectItem key={server.id} value={server.id}>
-                  {server.name}
-                </SelectItem>
-              ))}
+              {(servers ?? []).map((server) => {
+                const behind = hidden.get(server.id);
+                return (
+                  <SelectItem key={server.id} value={server.id} disabled={Boolean(behind)}>
+                    {behind
+                      ? t('netbirdAuto.domainGame.behindItem', {
+                          server: server.name,
+                          proxy: behind.proxyName,
+                        })
+                      : server.name}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </Field>
