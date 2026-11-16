@@ -17,23 +17,60 @@
 #
 # Befehle: (ohne) einrichten · status · guard (läuft per Timer) · hostguard (nur Host-Teil) · uninstall
 # Anderer Container: CTID=105 bash -c "$(curl …)"
+# Ein anderes Produkt mit MorniHosting als Motor (z. B. morni.net, auch auf demselben Host): eigener Name, eigene
+# Konfiguration und eigene Einheiten je Container –
+#   MH_GUARD_NAME=morninet MH_BRAND=morni.net MH_INSTALL_DIR=/opt/morninet MH_CT_GUARD=/usr/local/sbin/morninet-guard \
+#   MH_DATA_VOLUME=morninet-motor-data CTID=105 bash dauerbetrieb.sh hostguard
+# Die Werte landen in /etc/<Name>-host-guard.conf; das Skript liegt als /usr/local/sbin/<Name>-host-guard bereit und
+# erkennt sein Produkt am eigenen Namen.
 # Host ohne Internet? Über den Container holen:
 #   pct exec 100 -- curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/main/proxmox/dauerbetrieb.sh > /root/dauerbetrieb.sh && bash /root/dauerbetrieb.sh
 set -euo pipefail
 
 COMMAND="${1:-setup}"
 REPO_RAW="https://raw.githubusercontent.com/pmornhart/MorniHosting/main"
-HOST_GUARD="/usr/local/sbin/mornihosting-host-guard"
-UNIT_DIR="/etc/systemd/system"
-CONF_FILE="${MH_HOST_GUARD_CONF:-/etc/mornihosting-host-guard.conf}"
-STATE_DIR="${MH_HOST_GUARD_STATE_DIR:-/var/lib/mornihosting-host-guard}"
-LOG_FILE="${MH_HOST_GUARD_LOG:-/var/log/mornihosting-host-guard.log}"
+# Welches Produkt: aus der Umgebung, sonst aus dem eigenen Namen (/usr/local/sbin/<Name>-host-guard), sonst MorniHosting.
+SELF_NAME="$(basename "${BASH_SOURCE[0]:-dauerbetrieb.sh}")"
+DEFAULT_NAME="mornihosting"
+[[ "${SELF_NAME}" == *-host-guard ]] && DEFAULT_NAME="${SELF_NAME%-host-guard}"
+GUARD_NAME="${MH_GUARD_NAME:-${DEFAULT_NAME}}"
+# Der Name steckt in Pfaden und Einheiten: nur "mornihosting", "morninet" und Ähnliches.
+[[ "${GUARD_NAME}" =~ ^[a-z0-9][a-z0-9-]*$ ]] || {
+  printf 'Ungültiger Name für den Wächter: %s (nur a-z, 0-9 und -)\n' "${GUARD_NAME}" >&2
+  exit 2
+}
+HOST_GUARD="${MH_WRAPPER_DIR:-/usr/local/sbin}/${GUARD_NAME}-host-guard"
+UNIT_DIR="${MH_UNIT_DIR:-/etc/systemd/system}"
+CONF_FILE="${MH_HOST_GUARD_CONF:-/etc/${GUARD_NAME}-host-guard.conf}"
+# Einstellungen des Produkts, die "hostguard" in die Konfiguration schreibt (die Umgebung geht vor).
+PRODUCT_SETTINGS=(MH_BRAND MH_INSTALL_DIR MH_CT_GUARD MH_DATA_VOLUME)
+# Erlaubt: Namen und Pfade wie "morni.net" oder "/usr/local/sbin/morninet-guard" (keine Leerzeichen, Anführungszeichen, $).
+SAFE_VALUE='^[A-Za-z0-9._/+-]+$'
+load_product_settings() {
+  [[ -f "${CONF_FILE}" ]] || return 0
+  local key value
+  while IFS='=' read -r key value; do
+    [[ " ${PRODUCT_SETTINGS[*]} " == *" ${key} "* && "${value}" =~ ${SAFE_VALUE} ]] || continue
+    [[ -n "${!key:-}" ]] || printf -v "${key}" '%s' "${value}"
+  done <"${CONF_FILE}"
+}
+load_product_settings
+BRAND="${MH_BRAND:-MorniHosting}"
+STATE_DIR="${MH_HOST_GUARD_STATE_DIR:-/var/lib/${GUARD_NAME}-host-guard}"
+LOG_FILE="${MH_HOST_GUARD_LOG:-/var/log/${GUARD_NAME}-host-guard.log}"
 LOG_KEEP_LINES=500
 PVE_TASK_DIR="${MH_PVE_TASK_DIR:-/var/log/pve/tasks}"
 TASK_FILES=("${PVE_TASK_DIR}/active" "${PVE_TASK_DIR}/index")
 # Läuft eine Proxmox-Aufgabe für den Container (Neustart, Start, Stopp …), wartet der Wächter so lange auf sie.
 TASK_GRACE_SECONDS=600
-INSTALL_DIR="/opt/mornihosting"
+INSTALL_DIR="${MH_INSTALL_DIR:-/opt/${GUARD_NAME}}"
+DATA_VOLUME="${MH_DATA_VOLUME:-${GUARD_NAME}-data}"
+# Der Wächter im Container: das Startskript des Produkts (legt "guard.sh install" mit seinen Werten an), sonst guard.sh.
+if [[ -n "${MH_CT_GUARD:-}" ]]; then
+  CT_GUARD=("${MH_CT_GUARD}")
+else
+  CT_GUARD=(bash "${INSTALL_DIR}/scripts/guard.sh")
+fi
 MAX_MEMORY_MB=32768
 SWAP_MB=4096
 HUNG_RESTART_AFTER=3
@@ -73,22 +110,17 @@ need_root_on_proxmox() {
   }
 }
 
-# Der MorniHosting-Container: CTID aus der Umgebung, sonst der mit dem Namen "mornihosting", sonst 100.
+# Der Container des Produkts: CTID aus der Umgebung, sonst aus der Konfiguration, sonst der mit dem Namen des
+# Produkts ("mornihosting", "morninet"), sonst 100.
 find_ctid() {
   if [[ -n "${CTID:-}" ]]; then
     echo "${CTID}"
     return
   fi
-  if [[ -f "${CONF_FILE}" ]]; then
-    # shellcheck disable=SC1090 # eigene Konfigurationsdatei
-    source "${CONF_FILE}"
-    [[ -n "${CTID:-}" ]] && {
-      echo "${CTID}"
-      return
-    }
-  fi
-  local found
-  found="$(pct list 2>/dev/null | awk 'NR > 1 && $NF ~ /^mornihosting/ { print $1; exit }')"
+  local found=""
+  [[ -f "${CONF_FILE}" ]] && found="$(awk -F= '$1 == "CTID" && $2 ~ /^[0-9]+$/ { print $2; exit }' "${CONF_FILE}")"
+  [[ -n "${found}" ]] ||
+    found="$(pct list 2>/dev/null | awk -v name="${GUARD_NAME}" 'NR > 1 && index($NF, name) == 1 { print $1; exit }')"
   echo "${found:-100}"
 }
 
@@ -110,7 +142,7 @@ send_host_events() {
   while IFS= read -r line; do
     [[ -n "${line}" ]] || continue
     eval "args=(${line})"
-    if ! timeout "${EXEC_TIMEOUT_SECONDS}" pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" event host "${args[@]}" >/dev/null 2>&1; then
+    if ! timeout "${EXEC_TIMEOUT_SECONDS}" pct exec "${ctid}" -- "${CT_GUARD[@]}" event host "${args[@]}" >/dev/null 2>&1; then
       rest+="${line}"$'\n'
     fi
   done <"${file}"
@@ -178,7 +210,7 @@ host_drop_dead_exit() {
     log "Host ohne Internet über NetBird-Ausgang ${id} – Ausgang auf dem Host abgewählt"
     host_event "$(find_ctid)" host-exit action "Proxmox-Host war offline" \
       "Der Proxmox-Host ging über den NetBird-Ausgang ${id} ins Internet, der nicht antwortet. Der Host-Wächter hat ihn auf dem Host abgewählt – der Host hat wieder Internet." \
-      "Der Host gehört nicht in die Gruppe dieses Ausgangs. Im Panel unter Admin → NetBird als Rechner den MorniHosting-Container (nicht den Host) wählen."
+      "Der Host gehört nicht in die Gruppe dieses Ausgangs. Im Panel bei NetBird als Rechner den ${BRAND}-Container (nicht den Host) wählen."
   done <<<"${ids}"
 }
 
@@ -245,7 +277,7 @@ trim_paths() {
 # Gibt gelöschten Platz im Hintergrund zurück (eigene systemd-Einheit, niedrigste Priorität): Der Wächter prüft
 # währenddessen weiter, und ein Neustart des Containers ist nie gesperrt.
 trim_in_background() {
-  local ctid="$1" unit="mornihosting-fstrim-$1" paths=()
+  local ctid="$1" unit="${GUARD_NAME}-fstrim-$1" paths=()
   systemctl is-active --quiet "${unit}" 2>/dev/null && return 0
   mapfile -t paths < <(trim_paths "${ctid}")
   ((${#paths[@]} > 0)) || return 1
@@ -291,7 +323,7 @@ keep_storage() {
     host_event "${ctid}" storage action "Proxmox-Speicher fast voll" \
       "Der Speicher ${storage} auf dem Proxmox-Host ist zu ${used} % belegt. Läuft er voll, bleiben alle Container stehen." \
       "Alte Backups und Server im Panel löschen. Was im Container Platz braucht, zeigt dieser Befehl auf dem Proxmox-Host:" \
-      "pct exec ${ctid} -- bash -c 'du -xh --max-depth=1 /var/lib/docker/volumes/mornihosting-data/_data | sort -h | tail -8'"
+      "pct exec ${ctid} -- bash -c 'du -xh --max-depth=1 /var/lib/docker/volumes/${DATA_VOLUME}/_data | sort -h | tail -8'"
   elif ((used < STORAGE_WARN_PERCENT - STORAGE_CLEAR_MARGIN)) && [[ -f "${warned}" ]]; then
     rm -f "${warned}"
     host_event "${ctid}" storage ok "Proxmox-Speicher wieder in Ordnung" "Der Speicher ${storage} ist nur noch zu ${used} % belegt."
@@ -318,10 +350,10 @@ guard() {
     if out="$(pct start "${ctid}" 2>&1)"; then
       if [[ -f "${failed_file}" ]]; then
         rm -f "${failed_file}"
-        host_event "${ctid}" container ok "MorniHosting-Container läuft wieder" \
+        host_event "${ctid}" container ok "${BRAND}-Container läuft wieder" \
           "Container ${ctid} ließ sich eine Weile nicht starten und läuft jetzt wieder."
       else
-        host_event "${ctid}" container fixed "MorniHosting-Container neu gestartet" \
+        host_event "${ctid}" container fixed "${BRAND}-Container neu gestartet" \
           "Container ${ctid} war aus, ohne dass ihn jemand gestoppt hat. Der Host-Wächter hat ihn sofort wieder gestartet."
       fi
     else
@@ -331,8 +363,8 @@ guard() {
       # Einmal pro Ausfall melden, nicht jede Minute.
       if [[ ! -f "${failed_file}" ]]; then
         touch "${failed_file}"
-        host_event "${ctid}" container action "MorniHosting-Container startet nicht" \
-          "Container ${ctid} ist aus und lässt sich nicht starten (Proxmox sagt: ${reason:-nichts}). Panel und alle Server sind offline. Der Host-Wächter versucht es jede Minute weiter." \
+        host_event "${ctid}" container action "${BRAND}-Container startet nicht" \
+          "Container ${ctid} ist aus und lässt sich nicht starten (Proxmox sagt: ${reason:-nichts}). ${BRAND} und alle Server sind offline. Der Host-Wächter versucht es jede Minute weiter." \
           "In der Proxmox-Shell nachsehen, warum:" "pct start ${ctid} --debug"
       fi
     fi
@@ -349,7 +381,7 @@ guard() {
     echo "${n}" >"${hung_file}"
     if ((n >= HUNG_RESTART_AFTER)); then
       log "Container ${ctid} hängt seit ${n} Minuten – starte ihn neu"
-      host_event "${ctid}" container fixed "MorniHosting-Container hing" \
+      host_event "${ctid}" container fixed "${BRAND}-Container hing" \
         "Container ${ctid} antwortete ${n} Minuten nicht mehr und wurde neu gestartet. Server mit Automatisch starten laufen gleich wieder."
       echo 0 >"${hung_file}"
       timeout 120 pct reboot "${ctid}" >/dev/null 2>&1 || {
@@ -363,10 +395,10 @@ guard() {
   send_host_events "${ctid}"
   keep_storage "${ctid}"
   # Der Wächter im Container muss laufen; fehlt er (alte Installation), wird er eingerichtet.
-  if ! pct exec "${ctid}" -- systemctl is-active --quiet mornihosting-guard.timer 2>/dev/null; then
-    if pct exec "${ctid}" -- test -f "${INSTALL_DIR}/scripts/guard.sh" 2>/dev/null; then
+  if ! pct exec "${ctid}" -- systemctl is-active --quiet "${GUARD_NAME}-guard.timer" 2>/dev/null; then
+    if pct exec "${ctid}" -- test -f "${CT_GUARD[${#CT_GUARD[@]} - 1]}" 2>/dev/null; then
       log "Wächter im Container ${ctid} lief nicht – eingerichtet"
-      pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" install >/dev/null 2>&1 || true
+      pct exec "${ctid}" -- "${CT_GUARD[@]}" install >/dev/null 2>&1 || true
     fi
   fi
 }
@@ -382,19 +414,21 @@ install_host_guard() {
     install -m 755 "${HOST_GUARD}.new" "${HOST_GUARD}"
   fi
   rm -f "${HOST_GUARD}.new"
-  printf 'CTID=%s\n' "${ctid}" >"${CONF_FILE}"
-  cat >"${UNIT_DIR}/mornihosting-host-guard.service" <<UNIT
+  write_conf "${ctid}"
+  mkdir -p "${UNIT_DIR}"
+  cat >"${UNIT_DIR}/${GUARD_NAME}-host-guard.service" <<UNIT
 [Unit]
-Description=MorniHosting: Container ${ctid} am Laufen halten
+Description=${BRAND}: Container ${ctid} am Laufen halten
 After=pve-guests.service
 
 [Service]
 Type=oneshot
+Environment=MH_GUARD_NAME=${GUARD_NAME}
 ExecStart=${HOST_GUARD} guard
 UNIT
-  cat >"${UNIT_DIR}/mornihosting-host-guard.timer" <<UNIT
+  cat >"${UNIT_DIR}/${GUARD_NAME}-host-guard.timer" <<UNIT
 [Unit]
-Description=MorniHosting Host-Wächter jede Minute
+Description=${BRAND} Host-Wächter jede Minute
 
 [Timer]
 OnBootSec=2min
@@ -405,7 +439,24 @@ AccuracySec=10s
 WantedBy=timers.target
 UNIT
   systemctl daemon-reload
-  systemctl enable --now mornihosting-host-guard.timer >/dev/null
+  systemctl enable --now "${GUARD_NAME}-host-guard.timer" >/dev/null
+}
+
+# Konfiguration des Host-Wächters: der Container und – für ein anderes Produkt – dessen Werte.
+write_conf() {
+  local ctid="$1" key lines
+  lines="CTID=${ctid}"$'\n'
+  for key in "${PRODUCT_SETTINGS[@]}"; do
+    [[ -n "${!key:-}" ]] || continue
+    [[ "${!key}" =~ ${SAFE_VALUE} ]] || {
+      msg_error "${key} enthält Zeichen, die hier nicht gehen: ${!key}"
+      exit 1
+    }
+    lines+="${key}=${!key}"$'\n'
+  done
+  mkdir -p "$(dirname "${CONF_FILE}")"
+  printf '%s' "${lines}" >"${CONF_FILE}.tmp"
+  mv "${CONF_FILE}.tmp" "${CONF_FILE}"
 }
 
 raise_resources() {
@@ -435,7 +486,7 @@ setup() {
     msg_error "Container ${ctid} gibt es nicht. Mit anderer Nummer: CTID=<Nummer> bash -c \"\$(curl …)\""
     exit 1
   }
-  printf '\n %sMorniHosting Dauerbetrieb%s für Container %s\n\n' "${GN}" "${CL}" "${ctid}"
+  printf '\n %s%s Dauerbetrieb%s für Container %s\n\n' "${GN}" "${BRAND}" "${CL}" "${ctid}"
   host_drop_dead_exit
   if host_internet_ok; then
     msg_ok "Host hat Internet"
@@ -455,13 +506,13 @@ setup() {
   }
 
   msg_info "Panel wird aktualisiert und der Wächter im Container eingerichtet (dauert ein paar Minuten) …"
-  if pct exec "${ctid}" -- bash -c "cd ${INSTALL_DIR} && bash update.sh" >/tmp/mornihosting-update.log 2>&1; then
+  if pct exec "${ctid}" -- bash -c "cd ${INSTALL_DIR} && bash update.sh" >"/tmp/${GUARD_NAME}-update.log" 2>&1; then
     msg_ok "Panel aktuell, Wächter im Container läuft"
   else
-    msg_error "Update im Container hat nicht geklappt (Protokoll: /tmp/mornihosting-update.log) – der Wächter wird trotzdem eingerichtet"
-    pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" install >/dev/null 2>&1 || true
+    msg_error "Update im Container hat nicht geklappt (Protokoll: /tmp/${GUARD_NAME}-update.log) – der Wächter wird trotzdem eingerichtet"
+    pct exec "${ctid}" -- "${CT_GUARD[@]}" install >/dev/null 2>&1 || true
   fi
-  pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" check >/dev/null 2>&1 || true
+  pct exec "${ctid}" -- "${CT_GUARD[@]}" check >/dev/null 2>&1 || true
 
   install_host_guard "${ctid}"
   msg_ok "Host-Wächter läuft (jede Minute)"
@@ -478,11 +529,11 @@ setup() {
 status_report() {
   local ctid="$1"
   printf ' Container %s:  %s\n' "${ctid}" "$(pct status "${ctid}" 2>/dev/null | cut -d' ' -f2)"
-  printf ' Host-Wächter:  %s\n' "$(systemctl is-active mornihosting-host-guard.timer 2>/dev/null || echo aus)"
+  printf ' Host-Wächter:  %s\n' "$(systemctl is-active "${GUARD_NAME}-host-guard.timer" 2>/dev/null || echo aus)"
   printf ' Mit Host starten: %s\n' "$(pct config "${ctid}" | awk '/^onboot:/ { print ($2 == 1 ? "ja" : "nein") }')"
   if ct_running "${ctid}"; then
     printf '\n Im Container:\n'
-    timeout "${EXEC_TIMEOUT_SECONDS}" pct exec "${ctid}" -- bash "${INSTALL_DIR}/scripts/guard.sh" status 2>/dev/null |
+    timeout "${EXEC_TIMEOUT_SECONDS}" pct exec "${ctid}" -- "${CT_GUARD[@]}" status 2>/dev/null |
       sed 's/^/   /' || true
   fi
   if [[ -f "${LOG_FILE}" ]]; then
@@ -509,8 +560,8 @@ case "${COMMAND}" in
     status_report "$(find_ctid)"
     ;;
   uninstall)
-    systemctl disable --now mornihosting-host-guard.timer >/dev/null 2>&1 || true
-    rm -f "${UNIT_DIR}/mornihosting-host-guard.service" "${UNIT_DIR}/mornihosting-host-guard.timer" "${HOST_GUARD}"
+    systemctl disable --now "${GUARD_NAME}-host-guard.timer" >/dev/null 2>&1 || true
+    rm -f "${UNIT_DIR}/${GUARD_NAME}-host-guard.service" "${UNIT_DIR}/${GUARD_NAME}-host-guard.timer" "${HOST_GUARD}"
     systemctl daemon-reload
     msg_ok "Host-Wächter entfernt"
     ;;

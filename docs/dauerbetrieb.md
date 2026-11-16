@@ -43,6 +43,31 @@ pct exec 100 -- tail /var/log/mornihosting-guard.log   # Eingriffe im Container
 
 Entfernen: `mornihosting-host-guard uninstall` (Host) bzw. `bash /opt/mornihosting/scripts/guard.sh uninstall` (Container).
 
+## Ein zweites Produkt auf demselben Host (z. B. morni.net)
+
+Ein Produkt, das MorniHosting als Motor einbaut, bekommt seinen eigenen Host-Wächter – mit eigenem Namen, eigener
+Konfiguration und eigenen Einheiten. Der von MorniHosting bleibt, wie er ist. morni.net richtet ihn beim
+Proxmox-Einzeiler selbst ein; von Hand auf dem Proxmox-Host:
+
+```bash
+MH_GUARD_NAME=morninet MH_BRAND=morni.net MH_INSTALL_DIR=/opt/morninet \
+  MH_CT_GUARD=/usr/local/sbin/morninet-guard MH_DATA_VOLUME=morninet-motor-data CTID=105 \
+  bash dauerbetrieb.sh hostguard
+```
+
+| Variable         | Vorgabe                             | Wofür                                                 |
+| ---------------- | ----------------------------------- | ----------------------------------------------------- |
+| `MH_GUARD_NAME`  | `mornihosting`                      | Name: Skript, Einheiten, Konfiguration, Protokoll     |
+| `MH_BRAND`       | `MorniHosting`                      | Name in den Meldungen („morni.net-Container hing“)    |
+| `MH_INSTALL_DIR` | `/opt/<Name>`                       | Ordner im Container (für `update.sh`)                 |
+| `MH_CT_GUARD`    | `bash /opt/<Name>/scripts/guard.sh` | Wächter im Container (Startskript des Produkts)       |
+| `MH_DATA_VOLUME` | `<Name>-data`                       | Docker-Volume im Hinweis, wenn der Speicher voll wird |
+| `CTID`           | Container mit dem Namen, sonst 100  | welcher Container                                     |
+
+Daraus werden `/usr/local/sbin/<Name>-host-guard` (erkennt sein Produkt am eigenen Namen),
+`/etc/<Name>-host-guard.conf`, `<Name>-host-guard.timer` und `/var/log/<Name>-host-guard.log`. Status:
+`morninet-host-guard status`, entfernen: `morninet-host-guard uninstall`.
+
 ## Meldungen an dich (Discord + Mail)
 
 Alles, was schiefgeht, kommt sofort als Discord-Nachricht an die Admins (und per Mail, wenn unter

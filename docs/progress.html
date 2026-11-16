@@ -593,7 +593,7 @@ footer { color: var(--muted); font-size: 13px; }
     {
       "title": "NetBird für morni.net: Marke, gemeinsamer Ausgang, Spiel auf der Domain",
       "status": "fertig",
-      "detail": "MH_BRAND benennt alles in NetBird (Netzwerk, Gruppe, Resources, Ausgang) – so teilen sich MorniHosting und morni.net ein NetBird-Konto und denselben IONOS-Ausgang, ohne sich anzufassen. Ein Server kann direkt auf der Domain liegen (Spieler tippen nur morni.net), Voice-Chat am Velocity-Proxy jetzt auch über NetBird, Meldungen live über /api/ws, die NetBird-Karten einbettbar, Wächter für ein anderes Produkt einrichtbar. 444 Tests + 5 Playwright-Abläufe, NetBird nur nachgebaut."
+      "detail": "MH_BRAND benennt alles in NetBird (Netzwerk, Gruppe, Resources, Ausgang) – so teilen sich MorniHosting und morni.net ein NetBird-Konto und denselben IONOS-Ausgang, ohne sich anzufassen. Ein Server kann direkt auf der Domain liegen (Spieler tippen nur morni.net), Voice-Chat am Velocity-Proxy jetzt auch über NetBird, Meldungen live über /api/ws, die NetBird-Karten einbettbar, Wächter für ein anderes Produkt einrichtbar – im Container und auf dem Proxmox-Host (eigener Host-Wächter je Produkt), UDP auf den Java-Ports im Port-Skript für selbst betriebenes NetBird. 453 Tests + 5 Playwright-Abläufe, NetBird nur nachgebaut."
     }
   ],
   "shots": [
@@ -770,7 +770,7 @@ footer { color: var(--muted); font-size: 13px; }
     },
     {
       "tag": "geändert",
-      "path": "apps/server/src/netbird/ (client, exit, service, routes, exit-watch), alerts/service.ts, ws.ts, gateway/service.ts, config.ts (MH_BRAND), scripts/guard.sh, NetBird-Karten + embed.ts, Texte de/en, docs/netbird.md"
+      "path": "apps/server/src/netbird/ (client, exit, service, routes, exit-watch), alerts/service.ts, ws.ts, gateway/service.ts, config.ts (MH_BRAND), scripts/guard.sh, scripts/netbird-proxy-ports.sh, proxmox/dauerbetrieb.sh, NetBird-Karten + embed.ts, Texte de/en, docs/netbird.md, docs/dauerbetrieb.md"
     }
   ],
   "eta": null,
