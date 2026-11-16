@@ -272,11 +272,19 @@ function PanelAddress({
  * The server players reach on the domain itself (e.g. a network's proxy on "morni.net"): they type only the domain.
  * The website or panel may sit on the same name – NetBird forwards Minecraft by port, whatever name was typed.
  */
-function DomainGame({ status, domain }: { status: NetbirdStatus; domain: string }): ReactElement {
+function DomainGame({
+  status,
+  domain,
+  suggested,
+}: {
+  status: NetbirdStatus;
+  domain: string;
+  suggested: string | undefined;
+}): ReactElement {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data: servers } = useQuery(serversQuery);
-  const [picked, setPicked] = useState(status.domainServer?.id ?? NO_SERVER);
+  const [picked, setPicked] = useState(status.domainServer?.id ?? suggested ?? NO_SERVER);
   const choose = useMutation({
     mutationFn: (serverId: string | null) =>
       api<NetbirdStatus>('/api/netbird/domain-server', { method: 'PUT', body: { serverId } }),
@@ -392,16 +400,19 @@ function SelfHostedPorts({ status }: { status: NetbirdStatus }): ReactElement {
 
 /**
  * Admin area: connect NetBird once, then every server only needs a name to get its address. Embedded in another app
- * (see embed.ts), `panelName`/`panelPort` preset the address of that app's website (e.g. "" and 8080: the domain itself).
+ * (see embed.ts), `panelName`/`panelPort` preset the address of that app's website (e.g. "" and 8080: the domain
+ * itself) and `suggestedDomainServer` the server offered for the domain itself (e.g. the network's proxy).
  */
 export function NetbirdAutomationCard({
   panelDomain,
   panelName,
   panelPort,
+  suggestedDomainServer,
 }: {
   panelDomain: string;
   panelName?: string;
   panelPort?: number;
+  suggestedDomainServer?: string;
 }): ReactElement | null {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -462,7 +473,7 @@ export function NetbirdAutomationCard({
             panelName={panelName}
             panelPort={panelPort}
           />
-          <DomainGame status={status} domain={domain} />
+          <DomainGame status={status} domain={domain} suggested={suggestedDomainServer} />
           <NetbirdExitCard apiUrl={status.apiUrl} brand={status.brand} />
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="secondary" onClick={() => setEditing(true)}>

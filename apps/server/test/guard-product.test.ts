@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const run = promisify(execFile);
 const SCRIPT = path.resolve(import.meta.dirname, '../../../scripts/guard.sh');
+const NETBIRD_ENV = path.resolve(import.meta.dirname, '../../../scripts/netbird-env.sh');
 /** The fake programs must be runnable. */
 const EXECUTABLE = 0o755;
 
@@ -34,6 +35,10 @@ if [[ "$1 $2" == "networks ls" ]]; then
   exit 0
 fi
 if [[ "$1 $2" == "networks select" ]]; then echo "$3 $4" >>"$FAKE_DIR/selected"; exit 0; fi
+if [[ "$1 $2" == "status --json" ]]; then
+  echo '{"management": {"url": "https://netbird.example.de:443", "connected": true}}'
+  exit 0
+fi
 exit 0
 `;
 const FAKE_OK = '#!/usr/bin/env bash\nexit 0\n';
@@ -113,6 +118,15 @@ describe('guard.sh for another product (morni.net runs MorniHosting as its motor
     expect(fs.existsSync(file('volumes/mornihosting-data'))).toBe(false);
     await guard(['event', 'container', 'dns', 'fixed', 'DNS repariert', 'Wieder da.']);
     expect(read('volumes/mornihosting-data/guard/events.jsonl')).toContain('"what":"Wieder da."');
+  });
+
+  it("the NetBird server's address lands in the product's own .env", async () => {
+    fs.writeFileSync(file('product.env'), 'MM_DOMAIN=morni.net\n');
+    const { stdout } = await run('bash', [NETBIRD_ENV], {
+      env: { ...env, MH_ENV_FILE: file('product.env') },
+    });
+    expect(stdout.trim()).toBe('https://netbird.example.de');
+    expect(read('product.env')).toContain('MH_NETBIRD_API=https://netbird.example.de');
   });
 
   it("only its own exit is switched on again, not the other product's", async () => {
