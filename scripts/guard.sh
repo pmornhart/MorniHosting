@@ -12,7 +12,7 @@
 # Docker läuft mit "live-restore": startet Docker neu, laufen die Spielserver weiter.
 # Jeder Eingriff steht in /var/log/mornihosting-guard.log.
 #
-# Befehle: check (Standard) · status · dns (nur DNS prüfen) · netbird-api (nur NetBird-API prüfen) · install · uninstall
+# Befehle: check (Standard) · status · dns (nur DNS prüfen) · netbird (nur NetBird prüfen) · netbird-api (nur NetBird-API prüfen) · install · uninstall
 set -euo pipefail
 
 COMMAND="${1:-check}"
@@ -36,6 +36,10 @@ PANEL_UID=1000
 EVENTS_MAX_BYTES=1048576
 # So oft hintereinander darf NetBird scheitern, bevor du eine Meldung "du musst etwas tun" bekommst.
 NETBIRD_GIVE_UP_AFTER=10
+# Danach startet der Wächter NetBird nur noch alle so viele Minuten neu: NetBird versucht es selbst weiter, und jeder
+# Neustart reißt seinen eigenen Versuch ab (Philip, 16.11.: 443 Neustarts in 7 Stunden, keiner half).
+NETBIRD_SLOW_RESTART_EVERY=10
+NETBIRD_LOGIN_SENT="${STATE_DIR}/netbird-login-sent"
 # shellcheck disable=SC2016 # der Befehl wird so, wie er ist, in die Meldung geschrieben
 EXIT_FIX_COMMAND='bash -c "$(curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/main/scripts/netbird-exit-node.sh)"'
 EXIT_SETTLE_SECONDS=8
@@ -138,11 +142,25 @@ web_ok() {
   return 1
 }
 
+netbird_status_text() { timeout "${CHECK_TIMEOUT_SECONDS}" netbird status 2>/dev/null || true; }
 netbird_connected() {
   local out
-  out="$(timeout "${CHECK_TIMEOUT_SECONDS}" netbird status 2>/dev/null || true)"
+  out="$(netbird_status_text)"
   grep -q '^Management: Connected' <<<"${out}" && grep -q '^Signal: Connected' <<<"${out}"
 }
+# Warum NetBird getrennt ist, in einer Zeile – so wie NetBird es selbst sagt ("Management: Disconnected, reason: …").
+netbird_reason() {
+  local out line
+  out="$(netbird_status_text)"
+  line="$(grep -m1 -E '^Daemon status:' <<<"${out}" || true)"
+  [[ -n "${line}" ]] || line="$(grep -m1 -E '^Management:' <<<"${out}" || true)"
+  [[ -n "${line}" ]] || line="NetBird antwortet nicht"
+  printf '%s' "${line}" | cut -c1-300
+}
+# NetBirds eigener DNS-Server steht drin, NetBird ist aber getrennt: Der kann gerade gar nicht antworten.
+netbird_dns_dead() { [[ "$1" == "NetBird" ]] && command -v netbird >/dev/null 2>&1 && ! netbird_connected; }
+# Abgelaufene Anmeldung: Dann wartet "netbird up" ohne Schlüssel auf eine Anmeldung im Browser und hängt.
+netbird_needs_login() { grep -qE 'NeedsLogin|LoginFailed|SessionExpired' <<<"$1"; }
 
 # Die DNS-Server, die gerade eingetragen sind (durch Leerzeichen getrennt).
 resolv_servers() { awk '/^nameserver/ { print $2 }' "${RESOLV_CONF}" 2>/dev/null | paste -sd' ' - || true; }
@@ -176,6 +194,14 @@ once_in_a_while() {
   touch "${stamp}"
 }
 
+write_fixed_dns() {
+  touch "${PVE_IGNORE_RESOLV}" 2>/dev/null || true
+  {
+    printf '# MorniHosting NetBird-Wächter: feste DNS-Server (Proxmox überschreibt sie nicht mehr)\n'
+    printf 'nameserver %s\n' "${FALLBACK_DNS[@]}"
+  } >"${RESOLV_CONF}"
+}
+
 fix_dns() {
   mkdir -p "${STATE_DIR}"
   if dns_ok; then
@@ -188,13 +214,14 @@ fix_dns() {
   fi
   local failures before writer
   failures="$(count_up "${DNS_FAIL_FILE}")"
-  # Einmal keine Antwort ist noch kein Ausfall (Netz kurz weg, Ausgang wechselt gerade).
-  if ((failures < DNS_FIX_AFTER)); then
+  before="$(resolv_servers)"
+  writer="$(resolv_writer "${before}")"
+  # Einmal keine Antwort ist noch kein Ausfall (Netz kurz weg, Ausgang wechselt gerade). Steht aber NetBirds
+  # DNS-Server drin und NetBird ist getrennt, kann der gar nicht antworten – dann sofort.
+  if ((failures < DNS_FIX_AFTER)) && ! netbird_dns_dead "${writer}"; then
     log "DNS antwortet gerade nicht – warte noch eine Prüfung ab"
     return 0
   fi
-  before="$(resolv_servers)"
-  writer="$(resolv_writer "${before}")"
   if [[ "${before}" == "${FALLBACK_DNS[*]}" ]]; then
     # Die festen Server stehen schon drin: neu schreiben ändert nichts, also auch nicht "repariert" melden.
     log "DNS geht seit ${failures} Prüfungen nicht, obwohl ${FALLBACK_DNS[*]} eingetragen sind"
@@ -206,11 +233,7 @@ fix_dns() {
     return 0
   fi
   log "DNS geht nicht (eingetragen war: ${before:-nichts}, von ${writer}) – trage ${FALLBACK_DNS[*]} fest ein"
-  touch "${PVE_IGNORE_RESOLV}" 2>/dev/null || true
-  {
-    printf '# MorniHosting NetBird-Wächter: feste DNS-Server (Proxmox überschreibt sie nicht mehr)\n'
-    printf 'nameserver %s\n' "${FALLBACK_DNS[@]}"
-  } >"${RESOLV_CONF}"
+  write_fixed_dns
   if ! dns_ok; then
     log "DNS geht auch mit ${FALLBACK_DNS[*]} nicht"
     if [[ ! -f "${DNS_DOWN_SENT}" ]]; then
@@ -400,7 +423,7 @@ ensure_netbird_service() {
 }
 
 reconnect() {
-  local failures=0
+  local failures=0 status reason
   mkdir -p "${STATE_DIR}"
   [[ -f "${FAIL_FILE}" ]] && failures="$(cat "${FAIL_FILE}")"
   if netbird_connected; then
@@ -411,28 +434,58 @@ reconnect() {
       fi
     fi
     echo 0 >"${FAIL_FILE}"
+    rm -f "${NETBIRD_LOGIN_SENT}"
     return 0
   fi
   failures=$((failures + 1))
   echo "${failures}" >"${FAIL_FILE}"
   ((failures < RESTART_AFTER)) && return 0
-  log "NetBird seit ${failures} Prüfungen getrennt – starte den Dienst neu und verbinde"
-  if ((failures >= NETBIRD_GIVE_UP_AFTER)); then
+  status="$(netbird_status_text)"
+  reason="$(netbird_reason)"
+  # Anmeldung abgelaufen: Neustarten hilft nicht, "netbird up" würde nur auf eine Anmeldung im Browser warten.
+  if netbird_needs_login "${status}"; then
+    log "NetBird ist abgemeldet (${reason}) – braucht einen neuen Setup-Key"
+    if [[ ! -f "${NETBIRD_LOGIN_SENT}" ]]; then
+      touch "${NETBIRD_LOGIN_SENT}"
+      event container netbird action "NetBird ist abgemeldet" \
+        "NetBird im MorniHosting-Container ist abgemeldet (${reason}). Neustarten hilft hier nicht. Deine Server sind über die Domain gerade nicht erreichbar (im Heimnetz schon)." \
+        "Im NetBird-Dashboard einen Setup-Key erstellen (am besten ohne Ablauf) und im Container (pct enter <ID>) einfügen. Beim Rechner im Dashboard die Option Login expiration ausschalten, dann passiert das nicht wieder:" \
+        "netbird up --setup-key <DEIN-SETUP-KEY>"
+    fi
+    return 0
+  fi
+  # Nach den ersten Versuchen nur noch alle paar Minuten: NetBird versucht es zwischendurch selbst.
+  if ((failures > NETBIRD_GIVE_UP_AFTER)) && ((failures % NETBIRD_SLOW_RESTART_EVERY != 0)); then
+    return 0
+  fi
+  log "NetBird seit ${failures} Prüfungen getrennt (${reason}) – starte den Dienst neu und verbinde"
+  if ((failures == NETBIRD_GIVE_UP_AFTER)); then
     event container netbird action "NetBird verbindet sich nicht" \
-      "NetBird ist seit ${failures} Minuten getrennt, Neustarts helfen nicht. Deine Server sind über die Domain gerade nicht erreichbar (im Heimnetz schon)." \
-      "Prüfe im NetBird-Dashboard, ob der Rechner noch da ist. Wurde er gelöscht: neuen Setup-Key erstellen und im Container (pct enter <ID>) einfügen:" \
+      "NetBird ist seit ${failures} Minuten getrennt, Neustarts helfen nicht. NetBird sagt: ${reason}. Deine Server sind über die Domain gerade nicht erreichbar (im Heimnetz schon). Der Wächter versucht es alle ${NETBIRD_SLOW_RESTART_EVERY} Minuten weiter." \
+      "Prüfe, ob dein NetBird-Server läuft (Dashboard im Browser öffnen) und ob der Rechner dort noch da ist. Wurde er gelöscht: neuen Setup-Key erstellen und im Container (pct enter <ID>) einfügen:" \
       "netbird up --setup-key <DEIN-SETUP-KEY>"
   elif ((failures == RESTART_AFTER)); then
-    event container netbird fixing "NetBird getrennt" "NetBird ist seit ${failures} Minuten getrennt. Der Wächter startet NetBird neu und verbindet es wieder."
+    event container netbird fixing "NetBird getrennt" "NetBird ist seit ${failures} Minuten getrennt (${reason}). Der Wächter startet NetBird neu und verbindet es wieder."
   fi
   ensure_netbird_service
   systemctl restart netbird >/dev/null 2>&1 || true
   sleep 3
-  timeout "${UP_TIMEOUT_SECONDS}" netbird up >/dev/null 2>&1 || log "netbird up hat nicht geantwortet – nächster Versuch in einer Minute"
+  timeout "${UP_TIMEOUT_SECONDS}" netbird up >/dev/null 2>&1 || log "netbird up hat nicht geantwortet – nächster Versuch später"
   if netbird_connected; then
     log "NetBird ist wieder verbunden"
     echo 0 >"${FAIL_FILE}"
+    return 0
   fi
+  # Beim Neustart schreibt NetBird manchmal seinen eigenen DNS-Server zurück – der antwortet nicht, solange NetBird
+  # getrennt ist, und NetBird findet dann seinen eigenen Server nicht mehr (Kreislauf). Das hat der Wächter selbst
+  # ausgelöst, also still wieder gerade rücken (keine "DNS repariert"-Meldung).
+  local servers
+  servers="$(resolv_servers)"
+  if [[ "$(resolv_writer "${servers}")" == "NetBird" ]] && ! dns_ok; then
+    log "NetBird hat beim Neustart seinen DNS-Server (${servers}) zurückgeschrieben – trage ${FALLBACK_DNS[*]} wieder ein"
+    write_fixed_dns
+  fi
+  return 0
 }
 
 count_up() {
@@ -558,7 +611,7 @@ status() {
   local api
   api="$(netbird_api_url)"
   [[ -n "${api}" ]] && printf 'NetBird-API: %s (%s)\n' "$(netbird_api_ok "${api}" && echo ok || echo 'nicht erreichbar')" "$(url_host "${api}")"
-  printf 'NetBird:  %s\n' "$(command -v netbird >/dev/null 2>&1 && { netbird_connected && echo verbunden || echo getrennt; } || echo 'nicht installiert')"
+  printf 'NetBird:  %s\n' "$(command -v netbird >/dev/null 2>&1 && { netbird_connected && echo verbunden || echo "getrennt ($(netbird_reason))"; } || echo 'nicht installiert')"
   printf 'Docker:   %s\n' "$(docker_ok && echo ok || echo 'antwortet nicht')"
   printf 'Panel:    %s\n' "$(container_ok mornihosting && echo läuft || echo aus)"
   printf 'Platz:    %s MB frei\n' "$(free_disk_mb)"
@@ -609,6 +662,11 @@ case "${COMMAND}" in
     check
     ;;
   status) status ;;
+  netbird)
+    # Nur NetBird prüfen (Tests, oder von Hand).
+    [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
+    reconnect
+    ;;
   netbird-api)
     [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
     keep_netbird_api
