@@ -15,8 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { api, ApiError } from '@/lib/api';
 import { errorText } from '@/lib/query';
 import { NetbirdNameInput } from '@/features/netbird/NetbirdNameInput';
+import { NetbirdAddresses } from '@/features/netbird/NetbirdServerField';
 import { brandOf, netbirdStatusQuery } from '@/features/netbird/netbird';
-import { serversQuery } from '@/features/servers/live';
+import { serverQuery, serversQuery } from '@/features/servers/live';
 import { NetbirdExitCard } from './NetbirdExitCard';
 
 const PANEL_NAME = 'panel';
@@ -302,6 +303,11 @@ function DomainGame({
     },
   });
   const current = status.domainServer?.id ?? NO_SERVER;
+  // What players type for the chosen server (ports, and who holds the usual ones if someone else does).
+  const chosen = useQuery({
+    ...serverQuery(status.domainServer?.id ?? NO_SERVER),
+    enabled: Boolean(status.domainServer),
+  });
   return (
     <div className="grid gap-3 rounded-[12px] border border-border p-3 sm:p-4">
       <b className="flex items-center gap-2 text-sm font-semibold">
@@ -318,6 +324,7 @@ function DomainGame({
           />
         </p>
       ) : null}
+      {status.domainServer && chosen.data ? <NetbirdAddresses server={chosen.data} domain={domain} /> : null}
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <Field id="nb-domain-game" label={t('netbirdAuto.domainGame.label')}>
           <Select value={picked} onValueChange={setPicked}>
