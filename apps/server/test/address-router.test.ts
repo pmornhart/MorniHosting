@@ -140,15 +140,19 @@ describe('address router', () => {
         settings: { getValue: (key: string) => stored.get(key) },
         log: { warn: (...args: unknown[]) => warnings.push(args) },
       } as unknown as AppContext;
-      const answers: (() => PortTarget)[] = [
-        () => {
-          throw new AppError(502, 'netbird_unreachable_timeout', { host: 'netbird.example.org' });
-        },
-        () => ({ found: true, host: '10.20.30.40', port: 25565, service: 'moinmorni-proxy.moinmorni.net' }),
-      ];
+      // First NetBird does not answer, then it does.
+      const unreachable = (): PortTarget => {
+        throw new AppError(502, 'netbird_unreachable_timeout', { host: 'netbird.example.org' });
+      };
+      const found = (): PortTarget => ({
+        found: true,
+        host: '10.20.30.40',
+        port: 25565,
+        service: 'moinmorni-proxy.moinmorni.net',
+      });
       const asked = { count: 0 };
       const netbird = {
-        portTarget: async () => (answers[Math.min(asked.count++, 1)] ?? answers[1])(),
+        portTarget: async () => (asked.count++ === 0 ? unreachable() : found()),
       } as unknown as NetbirdAutomation;
       const forwards = createRouterForwards(ctx, netbird, () => null);
 
