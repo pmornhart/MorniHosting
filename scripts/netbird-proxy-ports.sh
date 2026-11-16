@@ -7,7 +7,7 @@
 # docker-compose.yml eine Ergänzung mit den Port-Bereichen an (die Datei selbst bleibt unverändert), öffnet die
 # Ports in ufw oder firewalld, falls aktiv, und startet nur den Proxy neu.
 # Andere Bereiche: MC_TCP=25565-25600 MC_UDP=19132-19150 MC_VOICE=24454-24470 … | sudo -E bash
-# MC_JAVA_UDP (Vorgabe wie MC_TCP): UDP auf den Java-Ports – der Voice-Chat am Velocity-Proxy hört dort (morni.net).
+# MC_JAVA_UDP (Vorgabe wie MC_TCP): UDP auf den Java-Ports – der Voice-Chat am Velocity-Proxy hört dort (MoinMorni).
 # Ein zweiter Lauf ergänzt neue Bereiche, die bisherigen bleiben frei.
 #
 # Verfasst mit Claude 🤖

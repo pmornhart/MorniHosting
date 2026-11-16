@@ -2,7 +2,7 @@
 # Trägt die Adresse des NetBird-Servers, mit dem dieser Rechner verbunden ist, als MH_NETBIRD_API in die .env ein.
 # Das Panel nimmt sie als Vorgabe für die NetBird-Automatik – wichtig, wenn du NetBird selbst betreibst.
 # Ohne NetBird passiert nichts. Wird von install.sh, update.sh und dem Proxmox-Skript aufgerufen.
-# Ein anderes Produkt, das MorniHosting als Motor einbaut (morni.net), nennt seine .env mit MH_ENV_FILE.
+# Ein anderes Produkt, das MorniHosting als Motor einbaut (MoinMorni), nennt seine .env mit MH_ENV_FILE.
 #
 # Verfasst mit Claude 🤖
 

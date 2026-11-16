@@ -270,7 +270,7 @@ function PanelAddress({
 }
 
 /**
- * The server players reach on the domain itself (e.g. a network's proxy on "morni.net"): they type only the domain.
+ * The server players reach on the domain itself (e.g. a network's proxy on "moinmorni.net"): they type only the domain.
  * The website or panel may sit on the same name – NetBird forwards Minecraft by port, whatever name was typed.
  */
 function DomainGame({

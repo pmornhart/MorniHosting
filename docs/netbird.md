@@ -119,13 +119,13 @@ Bedrock mit 19132).
 
 Alles, was das Panel in NetBird anlegt, trägt seinen Namen: das Netzwerk „MorniHosting“, die Gruppe, die Resources
 „MorniHosting <Server>“ und „MorniHosting Panel“, der Ausgang „MorniHosting Ausgang“. Ein anderes Produkt, das
-MorniHosting als unsichtbaren Motor einbaut (morni.net), setzt `MH_BRAND=morni.net` – dann heißt alles „morni.net …“,
+MorniHosting als unsichtbaren Motor einbaut (MoinMorni), setzt `MH_BRAND=MoinMorni` – dann heißt alles „MoinMorni …“,
 auch in den Meldungen und in den eingebetteten Karten (`apps/web/src/embed.ts`). Aus der Marke wird auch der Name des
-eigenen Rechners in NetBird abgeleitet („mornihosting“, „morninet“): Der Rechner, dessen Name ihn enthält, gilt als
+eigenen Rechners in NetBird abgeleitet („mornihosting“, „moinmorni“): Der Rechner, dessen Name ihn enthält, gilt als
 der eigene (Vorschlag beim Verbinden, Ausgang, Selbstheilung).
 
 So kommen sich zwei Panels in einem Konto nicht in die Quere. Jedes braucht aber **seine eigene Domain** in NetBird
-(z. B. `mornihosting.de` und `morni.net`): Dienste unter der eigenen Domain, die das Panel nicht kennt, hält es für
+(z. B. `mornihosting.de` und `moinmorni.net`): Dienste unter der eigenen Domain, die das Panel nicht kennt, hält es für
 eigene Reste und räumt sie weg, wenn sie einen Port blockieren.
 
 ## Von Hand
@@ -306,7 +306,7 @@ Ziel: Weder Besucher noch Dienste, die MorniHosting aufruft (Modrinth, Mojang, M
 
 Die Heim-IP merkt sich das Panel einmal verschlüsselt, nur für diese Prüfung. Angezeigt oder verschickt wird sie nie. Am Router zu Hause sind danach keine Portfreigaben mehr nötig.
 
-**Zwei Produkte über denselben Ausgang** (z. B. MorniHosting und morni.net über den IONOS-Server): Jedes legt seine
+**Zwei Produkte über denselben Ausgang** (z. B. MorniHosting und MoinMorni über den IONOS-Server): Jedes legt seine
 eigene Gruppe „<Marke> Ausgang“ (nur sein Rechner) und seine eigene Route `0.0.0.0/0` über den Ausgang an. NetBird
 nimmt mehrere solche Routen über einen Rechner an – seine Prüfung („… already has this route“) schaut seit vielen
 Versionen (geprüft v0.25 bis heute) nur auf Rechner-Gruppen, nicht auf einzelne Rechner. Sollte ein NetBird das
@@ -329,18 +329,18 @@ Status und letzte Eingriffe: `sudo /opt/mornihosting/scripts/guard.sh status`
 
 **Für ein anderes Produkt** (das MorniHosting als Motor einbaut) kommt alles aus der Umgebung beim `install`:
 
-| Variable              | Vorgabe                      | Beispiel morni.net                              |
-| --------------------- | ---------------------------- | ----------------------------------------------- |
-| `MH_BRAND`            | `MorniHosting`               | `morni.net` (Meldungen, „morni.net Ausgang“)    |
-| `MH_GUARD_NAME`       | `mornihosting`               | `morninet` (Timer, Protokoll, Zustand)          |
-| `MH_INSTALL_DIR`      | `/opt/<Name>`                | `/opt/morninet` (docker-compose.yml)            |
-| `MH_ENV_FILE`         | `<Installationsordner>/.env` | – (liest `MH_NETBIRD_API`)                      |
-| `MH_DATA_VOLUME`      | `<Name>-data`                | `morninet-motor-data` (Meldungen an den Motor)  |
-| `MH_GUARD_CONTAINERS` | `<Name> <Name>-socket-proxy` | `morninet morninet-motor morninet-socket-proxy` |
-| `MH_UPDATE_LOCK`      | `/run/<Name>-update.lock`    | – (legt das Update an, solange es läuft)        |
+| Variable              | Vorgabe                      | Beispiel MoinMorni                                 |
+| --------------------- | ---------------------------- | -------------------------------------------------- |
+| `MH_BRAND`            | `MorniHosting`               | `MoinMorni` (Meldungen, „MoinMorni Ausgang“)       |
+| `MH_GUARD_NAME`       | `mornihosting`               | `moinmorni` (Timer, Protokoll, Zustand)            |
+| `MH_INSTALL_DIR`      | `/opt/<Name>`                | `/opt/moinmorni` (docker-compose.yml)              |
+| `MH_ENV_FILE`         | `<Installationsordner>/.env` | – (liest `MH_NETBIRD_API`)                         |
+| `MH_DATA_VOLUME`      | `<Name>-data`                | `moinmorni-motor-data` (Meldungen an den Motor)    |
+| `MH_GUARD_CONTAINERS` | `<Name> <Name>-socket-proxy` | `moinmorni moinmorni-motor moinmorni-socket-proxy` |
+| `MH_UPDATE_LOCK`      | `/run/<Name>-update.lock`    | – (legt das Update an, solange es läuft)           |
 
 `install` schreibt die gesetzten Werte in ein eigenes Startskript `/usr/local/sbin/<Name>-guard`, das auch der Timer
-`<Name>-guard.timer` aufruft. Status dann mit `sudo morninet-guard status`.
+`<Name>-guard.timer` aufruft. Status dann mit `sudo moinmorni-guard status`.
 
 ## Meldungen für ein Produkt mit Motor
 
@@ -349,4 +349,4 @@ nicht …), geht zusätzlich live über `/api/ws` raus: nach `{"type":"subscribe
 kommt jede Meldung als `{"type":"alert","alert":{…}}` (Schlüssel, Art, Status `fixed|fixing|action|ok`, Titel, was los
 ist, was zu tun ist, Befehl). Nur Admins bzw. Schlüssel mit dem Bereich `events`. Mit `after` kommen zuerst die
 Meldungen, die seitdem kamen (die letzten 100 hebt das Panel auf) – so verpasst ein Produkt ohne eigenes Discord oder
-eigene Mail (morni.net zeigt sie im Team-Log) nichts, wenn seine Verbindung kurz weg war.
+eigene Mail (MoinMorni zeigt sie im Team-Log) nichts, wenn seine Verbindung kurz weg war.

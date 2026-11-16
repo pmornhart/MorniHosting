@@ -17,10 +17,10 @@
 #
 # Befehle: (ohne) einrichten · status · guard (läuft per Timer) · hostguard (nur Host-Teil) · uninstall
 # Anderer Container: CTID=105 bash -c "$(curl …)"
-# Ein anderes Produkt mit MorniHosting als Motor (z. B. morni.net, auch auf demselben Host): eigener Name, eigene
+# Ein anderes Produkt mit MorniHosting als Motor (z. B. MoinMorni, auch auf demselben Host): eigener Name, eigene
 # Konfiguration und eigene Einheiten je Container –
-#   MH_GUARD_NAME=morninet MH_BRAND=morni.net MH_INSTALL_DIR=/opt/morninet MH_CT_GUARD=/usr/local/sbin/morninet-guard \
-#   MH_DATA_VOLUME=morninet-motor-data CTID=105 bash dauerbetrieb.sh hostguard
+#   MH_GUARD_NAME=moinmorni MH_BRAND=MoinMorni MH_INSTALL_DIR=/opt/moinmorni MH_CT_GUARD=/usr/local/sbin/moinmorni-guard \
+#   MH_DATA_VOLUME=moinmorni-motor-data CTID=105 bash dauerbetrieb.sh hostguard
 # Die Werte landen in /etc/<Name>-host-guard.conf; das Skript liegt als /usr/local/sbin/<Name>-host-guard bereit und
 # erkennt sein Produkt am eigenen Namen.
 # Host ohne Internet? Über den Container holen:
@@ -34,7 +34,7 @@ SELF_NAME="$(basename "${BASH_SOURCE[0]:-dauerbetrieb.sh}")"
 DEFAULT_NAME="mornihosting"
 [[ "${SELF_NAME}" == *-host-guard ]] && DEFAULT_NAME="${SELF_NAME%-host-guard}"
 GUARD_NAME="${MH_GUARD_NAME:-${DEFAULT_NAME}}"
-# Der Name steckt in Pfaden und Einheiten: nur "mornihosting", "morninet" und Ähnliches.
+# Der Name steckt in Pfaden und Einheiten: nur "mornihosting", "moinmorni" und Ähnliches.
 [[ "${GUARD_NAME}" =~ ^[a-z0-9][a-z0-9-]*$ ]] || {
   printf 'Ungültiger Name für den Wächter: %s (nur a-z, 0-9 und -)\n' "${GUARD_NAME}" >&2
   exit 2
@@ -44,7 +44,7 @@ UNIT_DIR="${MH_UNIT_DIR:-/etc/systemd/system}"
 CONF_FILE="${MH_HOST_GUARD_CONF:-/etc/${GUARD_NAME}-host-guard.conf}"
 # Einstellungen des Produkts, die "hostguard" in die Konfiguration schreibt (die Umgebung geht vor).
 PRODUCT_SETTINGS=(MH_BRAND MH_INSTALL_DIR MH_CT_GUARD MH_DATA_VOLUME)
-# Erlaubt: Namen und Pfade wie "morni.net" oder "/usr/local/sbin/morninet-guard" (keine Leerzeichen, Anführungszeichen, $).
+# Erlaubt: Namen und Pfade wie "MoinMorni" oder "/usr/local/sbin/moinmorni-guard" (keine Leerzeichen, Anführungszeichen, $).
 SAFE_VALUE='^[A-Za-z0-9._/+-]+$'
 load_product_settings() {
   [[ -f "${CONF_FILE}" ]] || return 0
@@ -111,7 +111,7 @@ need_root_on_proxmox() {
 }
 
 # Der Container des Produkts: CTID aus der Umgebung, sonst aus der Konfiguration, sonst der mit dem Namen des
-# Produkts ("mornihosting", "morninet"), sonst 100.
+# Produkts ("mornihosting", "moinmorni"), sonst 100.
 find_ctid() {
   if [[ -n "${CTID:-}" ]]; then
     echo "${CTID}"

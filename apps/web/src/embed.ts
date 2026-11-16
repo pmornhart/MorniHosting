@@ -17,7 +17,7 @@
  *    `panelPort` of the app's own web port put it on the domain itself; a game server on the domain itself –
  *    `suggestedDomainServer` offers one, e.g. the network's proxy; "Hausanschluss verstecken" inside), or
  *    `NetbirdExitCard` alone. Their texts name the product as the motor's
- *    MH_BRAND says (e.g. "morni.net"), so NetBird objects and texts carry the app's name, not "MorniHosting".
+ *    MH_BRAND says (e.g. "MoinMorni"), so NetBird objects and texts carry the app's name, not "MorniHosting".
  *
  * Everything the pages fetch, upload, open live or show as a picture goes through `apiUrl`, so step 2 is all it
  * takes to point them at the motor.

@@ -48,7 +48,7 @@ const envSchema = z.object({
   MH_NETBIRD_API: netbirdApiUrlSchema.optional().catch(undefined),
   /**
    * Name in front of everything the panel makes in NetBird (network, group, resources, "<name> Ausgang") and in its
-   * messages. Another app running the panel as its motor sets its own (e.g. "morni.net"), so two of them can share
+   * messages. Another app running the panel as its motor sets its own (e.g. "MoinMorni"), so two of them can share
    * one NetBird account without touching each other's things.
    */
   MH_BRAND: z.string().trim().max(BRAND_MAX).optional(),
@@ -88,10 +88,10 @@ export interface Config {
   readonly updateBranch: string;
   /** Default NetBird API address: the server this machine is connected to, else NetBird Cloud. */
   readonly netbirdApi: string;
-  /** Name in front of the NetBird objects and in messages, e.g. "MorniHosting" or "morni.net". */
+  /** Name in front of the NetBird objects and in messages, e.g. "MorniHosting" or "MoinMorni". */
   readonly brand: string;
   /**
-   * The brand as a machine name ("mornihosting", "morninet"): the NetBird machine whose name contains it is taken for
+   * The brand as a machine name ("mornihosting", "moinmorni"): the NetBird machine whose name contains it is taken for
    * the panel's own one (the Proxmox scripts call the container so).
    */
   readonly machineHint: string;

@@ -111,7 +111,7 @@ describe('live connection (WebSocket)', () => {
         method: 'POST',
         url: '/api/tokens',
         headers: { cookie: s.cookie, 'x-csrf-token': s.csrf },
-        payload: { name: 'morni.net', scopes: ['events'] },
+        payload: { name: 'MoinMorni', scopes: ['events'] },
       })
     ).json<{ token: string }>().token;
     const withKey = () =>

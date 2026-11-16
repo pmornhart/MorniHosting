@@ -30,7 +30,7 @@ import { createNetbirdClient, type NetbirdClient, type NetbirdClientFactory } fr
  * A self-hosted proxy that allows its own ports gets the server's port instead (survival.<domain>:25565),
  * so the admin opens one fixed range on the proxy once instead of a random port per server.
  *
- * One server can sit on the domain itself (players type only "morni.net"). NetBird allows one service per name and the
+ * One server can sit on the domain itself (players type only "moinmorni.net"). NetBird allows one service per name and the
  * website already has the domain, so its services keep their own names – but they ask for the ports games use when
  * none is typed (25565, 19132): NetBird's proxy forwards TCP and UDP by port, whatever name was typed. A port that
  * another service holds (e.g. another panel in the same NetBird account) is not taken away: the server gets the next

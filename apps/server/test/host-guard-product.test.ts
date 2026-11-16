@@ -9,12 +9,12 @@ const run = promisify(execFile);
 const SCRIPT = path.resolve(import.meta.dirname, '../../../proxmox/dauerbetrieb.sh');
 /** The fake programs must be runnable. */
 const EXECUTABLE = 0o755;
-const MORNINET_CT = '105';
+const MOINMORNI_CT = '105';
 
 /**
- * pct with two containers (100 "mornihosting", 105 "morninet"); their state in "status-<id>" (default running).
+ * pct with two containers (100 "mornihosting", 105 "moinmorni"); their state in "status-<id>" (default running).
  * Every call goes to "calls", every command run in a container to "exec-<id>". In the container, the guard's timer
- * is not running and only morni.net's start script exists.
+ * is not running and only MoinMorni's start script exists.
  */
 const FAKE_PCT = `#!/usr/bin/env bash
 echo "pct $*" >>"$FAKE_DIR/calls"
@@ -22,7 +22,7 @@ cmd="$1"
 shift
 state() { cat "$FAKE_DIR/status-$1" 2>/dev/null || echo running; }
 case "$cmd" in
-  list) printf 'VMID       Status     Lock         Name\\n100        running                 mornihosting\\n105        running                 morninet\\n' ;;
+  list) printf 'VMID       Status     Lock         Name\\n100        running                 mornihosting\\n105        running                 moinmorni\\n' ;;
   status) echo "status: $(state "$1")" ;;
   config) echo "rootfs: local-lvm:vm-$1-disk-0,size=100G" ;;
   start) echo running >"$FAKE_DIR/status-$1" ;;
@@ -35,7 +35,7 @@ case "$cmd" in
     echo "$*" >>"$FAKE_DIR/exec-$id"
     case "$1" in
       systemctl) exit 3 ;;
-      test) [[ "$3" == /usr/local/sbin/morninet-guard ]] ;;
+      test) [[ "$3" == /usr/local/sbin/moinmorni-guard ]] ;;
       *) exit 0 ;;
     esac ;;
 esac
@@ -49,16 +49,16 @@ const FAKE_RECORD = (name: string) => `#!/usr/bin/env bash\necho "${name} $*" >>
 const FAKE_PVESM =
   '#!/usr/bin/env bash\nprintf "Name Type Status Total Used Available %%\\nlocal-lvm lvmthin active 1 1 1 20.00%%\\n"\n';
 
-/** What morni.net's Proxmox one-liner hands the host guard for its container. */
-const MORNINET = {
-  MH_GUARD_NAME: 'morninet',
-  MH_BRAND: 'morni.net',
-  MH_INSTALL_DIR: '/opt/morninet',
-  MH_CT_GUARD: '/usr/local/sbin/morninet-guard',
-  MH_DATA_VOLUME: 'morninet-motor-data',
+/** What MoinMorni's Proxmox one-liner hands the host guard for its container. */
+const MOINMORNI = {
+  MH_GUARD_NAME: 'moinmorni',
+  MH_BRAND: 'MoinMorni',
+  MH_INSTALL_DIR: '/opt/moinmorni',
+  MH_CT_GUARD: '/usr/local/sbin/moinmorni-guard',
+  MH_DATA_VOLUME: 'moinmorni-motor-data',
 };
 
-describe('dauerbetrieb.sh for a second product on the same Proxmox host (morni.net next to MorniHosting)', () => {
+describe('dauerbetrieb.sh for a second product on the same Proxmox host (MoinMorni next to MorniHosting)', () => {
   let root: string;
   let env: NodeJS.ProcessEnv;
   const file = (name: string) => path.join(root, name);
@@ -68,15 +68,15 @@ describe('dauerbetrieb.sh for a second product on the same Proxmox host (morni.n
     run('bash', [SCRIPT, 'hostguard'], {
       env: {
         ...env,
-        ...MORNINET,
-        CTID: MORNINET_CT,
-        MH_HOST_GUARD_CONF: file('etc/morninet-host-guard.conf'),
+        ...MOINMORNI,
+        CTID: MOINMORNI_CT,
+        MH_HOST_GUARD_CONF: file('etc/moinmorni-host-guard.conf'),
       },
     });
   /** The installed copy, run like its timer does – without any product settings in the environment. */
   const installed = (command: string) =>
-    run(file('sbin/morninet-host-guard'), [command], {
-      env: { ...env, MH_HOST_GUARD_CONF: file('etc/morninet-host-guard.conf') },
+    run(file('sbin/moinmorni-host-guard'), [command], {
+      env: { ...env, MH_HOST_GUARD_CONF: file('etc/moinmorni-host-guard.conf') },
     });
 
   beforeEach(() => {
@@ -113,61 +113,61 @@ describe('dauerbetrieb.sh for a second product on the same Proxmox host (morni.n
 
   it('hostguard: own units, own configuration and its own copy of the script – MorniHosting keeps its own', async () => {
     await hostguard();
-    const service = read('units/morninet-host-guard.service');
-    expect(service).toContain(`Description=morni.net: Container ${MORNINET_CT} am Laufen halten`);
-    expect(service).toContain('Environment=MH_GUARD_NAME=morninet');
-    expect(service).toContain(`ExecStart=${file('sbin/morninet-host-guard')} guard`);
-    expect(read('units/morninet-host-guard.timer')).toContain(
-      'Description=morni.net Host-Wächter jede Minute',
+    const service = read('units/moinmorni-host-guard.service');
+    expect(service).toContain(`Description=MoinMorni: Container ${MOINMORNI_CT} am Laufen halten`);
+    expect(service).toContain('Environment=MH_GUARD_NAME=moinmorni');
+    expect(service).toContain(`ExecStart=${file('sbin/moinmorni-host-guard')} guard`);
+    expect(read('units/moinmorni-host-guard.timer')).toContain(
+      'Description=MoinMorni Host-Wächter jede Minute',
     );
-    expect(lines('etc/morninet-host-guard.conf')).toEqual([
-      `CTID=${MORNINET_CT}`,
-      'MH_BRAND=morni.net',
-      'MH_INSTALL_DIR=/opt/morninet',
-      'MH_CT_GUARD=/usr/local/sbin/morninet-guard',
-      'MH_DATA_VOLUME=morninet-motor-data',
+    expect(lines('etc/moinmorni-host-guard.conf')).toEqual([
+      `CTID=${MOINMORNI_CT}`,
+      'MH_BRAND=MoinMorni',
+      'MH_INSTALL_DIR=/opt/moinmorni',
+      'MH_CT_GUARD=/usr/local/sbin/moinmorni-guard',
+      'MH_DATA_VOLUME=moinmorni-motor-data',
     ]);
-    expect(fs.statSync(file('sbin/morninet-host-guard')).mode & EXECUTABLE).toBe(EXECUTABLE);
-    expect(read('calls')).toContain(`pct set ${MORNINET_CT} --onboot 1 --startup order=1,up=30`);
-    expect(read('calls')).toContain('systemctl enable --now morninet-host-guard.timer');
+    expect(fs.statSync(file('sbin/moinmorni-host-guard')).mode & EXECUTABLE).toBe(EXECUTABLE);
+    expect(read('calls')).toContain(`pct set ${MOINMORNI_CT} --onboot 1 --startup order=1,up=30`);
+    expect(read('calls')).toContain('systemctl enable --now moinmorni-host-guard.timer');
     // MorniHosting's host guard is untouched.
     expect(read('units/mornihosting-host-guard.service')).toBe('MorniHosting\n');
     expect(read('etc/mornihosting-host-guard.conf')).toBe('CTID=100\n');
     expect(read('calls')).not.toContain('mornihosting-host-guard');
   });
 
-  it("the installed copy knows its product: starts morni.net's container and reports through morni.net's guard", async () => {
+  it("the installed copy knows its product: starts MoinMorni's container and reports through MoinMorni's guard", async () => {
     await hostguard();
-    fs.writeFileSync(file(`status-${MORNINET_CT}`), 'stopped');
+    fs.writeFileSync(file(`status-${MOINMORNI_CT}`), 'stopped');
     await installed('guard');
-    expect(read(`status-${MORNINET_CT}`).trim()).toBe('running');
+    expect(read(`status-${MOINMORNI_CT}`).trim()).toBe('running');
     expect(read('calls')).not.toContain('pct start 100');
-    const reported = lines(`exec-${MORNINET_CT}`).find((l) => l.includes(' event host '));
+    const reported = lines(`exec-${MOINMORNI_CT}`).find((l) => l.includes(' event host '));
     expect(reported).toContain(
-      '/usr/local/sbin/morninet-guard event host container fixed morni.net-Container',
+      '/usr/local/sbin/moinmorni-guard event host container fixed MoinMorni-Container',
     );
-    // Next minute it runs: the container's guard is not running, so it is set up with morni.net's start script.
+    // Next minute it runs: the container's guard is not running, so it is set up with MoinMorni's start script.
     await installed('guard');
-    expect(lines(`exec-${MORNINET_CT}`)).toEqual(
+    expect(lines(`exec-${MOINMORNI_CT}`)).toEqual(
       expect.arrayContaining([
-        'systemctl is-active --quiet morninet-guard.timer',
-        'test -f /usr/local/sbin/morninet-guard',
-        '/usr/local/sbin/morninet-guard install',
+        'systemctl is-active --quiet moinmorni-guard.timer',
+        'test -f /usr/local/sbin/moinmorni-guard',
+        '/usr/local/sbin/moinmorni-guard install',
       ]),
     );
-    expect(read('calls')).toContain('systemd-run --unit=morninet-fstrim-105');
+    expect(read('calls')).toContain('systemd-run --unit=moinmorni-fstrim-105');
     expect(fs.existsSync(file('exec-100'))).toBe(false);
   });
 
   it("finds its container by the product's name, and uninstall removes only its own", async () => {
     const { stdout } = await run('bash', [SCRIPT, 'status'], {
-      env: { ...env, MH_GUARD_NAME: 'morninet', MH_HOST_GUARD_CONF: file('etc/none.conf') },
+      env: { ...env, MH_GUARD_NAME: 'moinmorni', MH_HOST_GUARD_CONF: file('etc/none.conf') },
     });
-    expect(stdout).toContain(`Container ${MORNINET_CT}:  running`);
+    expect(stdout).toContain(`Container ${MOINMORNI_CT}:  running`);
     await hostguard();
     await installed('uninstall');
-    expect(fs.existsSync(file('units/morninet-host-guard.service'))).toBe(false);
-    expect(fs.existsSync(file('sbin/morninet-host-guard'))).toBe(false);
+    expect(fs.existsSync(file('units/moinmorni-host-guard.service'))).toBe(false);
+    expect(fs.existsSync(file('sbin/moinmorni-host-guard'))).toBe(false);
     expect(read('units/mornihosting-host-guard.service')).toBe('MorniHosting\n');
   });
 

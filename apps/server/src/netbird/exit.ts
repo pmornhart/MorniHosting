@@ -111,7 +111,7 @@ export function createNetbirdExit(
 
   /**
    * Only the machine the panel runs on goes out through the exit: found by its name (the brand as machine name,
-   * "mornihosting" or "morninet") – also when the machine chosen for the addresses is another one (e.g. the Proxmox
+   * "mornihosting" or "moinmorni") – also when the machine chosen for the addresses is another one (e.g. the Proxmox
    * host routing into the LAN). The host itself must never be in this group, or it loses its internet whenever the
    * exit is down.
    */

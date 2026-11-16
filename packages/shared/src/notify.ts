@@ -86,7 +86,7 @@ export type AlertStatus = 'fixed' | 'fixing' | 'action';
 /**
  * A problem – or its all-clear ("ok") – as the admins are told about it. It also goes live over /api/ws (channel
  * "alerts", admins and keys with the area "events"): an app that runs the panel as its motor without Discord or mail of
- * its own (morni.net) shows it in its own team log.
+ * its own (MoinMorni) shows it in its own team log.
  */
 export interface AlertEvent {
   /** "<run>-<number>": unique, in order within one run of the panel; give the last one seen to get what came after. */

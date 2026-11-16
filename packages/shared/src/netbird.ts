@@ -58,7 +58,7 @@ export function toNetbirdName(text: string, fallback = FALLBACK_NAME): string {
 
 /**
  * The brand as a technical name for machines, files and services: "MorniHosting" → "mornihosting",
- * "morni.net" → "morninet".
+ * "MoinMorni" → "moinmorni".
  */
 export function brandSlug(brand: string): string {
   return brand.toLowerCase().replace(NOT_NAME, '');
@@ -67,7 +67,7 @@ export function brandSlug(brand: string): string {
 export const netbirdServerSchema = z.object({ name: netbirdNameSchema.nullable() });
 
 /**
- * The server players reach on the domain itself ("morni.net" instead of "spiel.morni.net"); null = none.
+ * The server players reach on the domain itself ("moinmorni.net" instead of "spiel.moinmorni.net"); null = none.
  * Its NetBird services keep their own names (NetBird allows one service per name, the website already has the domain),
  * but ask for the ports games use when none is typed – NetBird forwards TCP and UDP by port, whatever name was typed.
  */

@@ -31,7 +31,7 @@ const FAKE_NETBIRD = `#!/usr/bin/env bash
 if [[ "$1 $2" == "networks ls" ]]; then
   printf 'Available Networks:\\n\\n'
   printf '  - ID: MorniHosting Ausgang\\n    Network: 0.0.0.0/0\\n    Status: Not Selected\\n'
-  printf '  - ID: morni.net Ausgang\\n    Network: 0.0.0.0/0\\n    Status: Not Selected\\n'
+  printf '  - ID: MoinMorni Ausgang\\n    Network: 0.0.0.0/0\\n    Status: Not Selected\\n'
   exit 0
 fi
 if [[ "$1 $2" == "networks select" ]]; then echo "$3 $4" >>"$FAKE_DIR/selected"; exit 0; fi
@@ -43,15 +43,15 @@ exit 0
 `;
 const FAKE_OK = '#!/usr/bin/env bash\nexit 0\n';
 
-/** What another product (morni.net, MorniHosting as its motor) sets for its guard. */
-const MORNINET = {
-  MH_BRAND: 'morni.net',
-  MH_GUARD_NAME: 'morninet',
-  MH_DATA_VOLUME: 'morninet-motor-data',
-  MH_GUARD_CONTAINERS: 'morninet morninet-motor morninet-socket-proxy',
+/** What another product (MoinMorni, MorniHosting as its motor) sets for its guard. */
+const MOINMORNI = {
+  MH_BRAND: 'MoinMorni',
+  MH_GUARD_NAME: 'moinmorni',
+  MH_DATA_VOLUME: 'moinmorni-motor-data',
+  MH_GUARD_CONTAINERS: 'moinmorni moinmorni-motor moinmorni-socket-proxy',
 };
 
-describe('guard.sh for another product (morni.net runs MorniHosting as its motor)', () => {
+describe('guard.sh for another product (MoinMorni runs MorniHosting as its motor)', () => {
   let root: string;
   let env: NodeJS.ProcessEnv;
   const file = (name: string) => path.join(root, name);
@@ -81,25 +81,30 @@ describe('guard.sh for another product (morni.net runs MorniHosting as its motor
       MH_UNIT_DIR: file('units'),
       MH_WRAPPER_DIR: file('sbin'),
       MH_DOCKER_DAEMON_JSON: file('daemon.json'),
+      // The events file belongs to the panel's user; here to whoever runs the test (CI is not root).
+      MH_PANEL_UID: String(process.getuid?.() ?? 0),
+      MH_PANEL_GID: String(process.getgid?.() ?? 0),
     };
   });
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
   it('install: own timer and an own start script that brings the settings along', async () => {
-    const { stdout } = await guard(['install'], { ...MORNINET, MH_INSTALL_DIR: '/opt/morninet' });
-    const wrapper = read('sbin/morninet-guard');
-    expect(wrapper).toContain('export MH_BRAND=morni.net');
-    expect(wrapper).toContain('export MH_DATA_VOLUME=morninet-motor-data');
+    const { stdout } = await guard(['install'], { ...MOINMORNI, MH_INSTALL_DIR: '/opt/moinmorni' });
+    const wrapper = read('sbin/moinmorni-guard');
+    expect(wrapper).toContain('export MH_BRAND=MoinMorni');
+    expect(wrapper).toContain('export MH_DATA_VOLUME=moinmorni-motor-data');
     expect(wrapper).toContain(`exec bash ${SCRIPT} "$@"`);
-    expect(fs.statSync(file('sbin/morninet-guard')).mode & EXECUTABLE).toBe(EXECUTABLE);
-    expect(read('units/morninet-guard.service')).toContain(`ExecStart=${file('sbin/morninet-guard')} check`);
-    expect(read('units/morninet-guard.service')).toContain('Description=morni.net:');
-    expect(read('units/morninet-guard.timer')).toContain('morni.net-Wächter');
+    expect(fs.statSync(file('sbin/moinmorni-guard')).mode & EXECUTABLE).toBe(EXECUTABLE);
+    expect(read('units/moinmorni-guard.service')).toContain(
+      `ExecStart=${file('sbin/moinmorni-guard')} check`,
+    );
+    expect(read('units/moinmorni-guard.service')).toContain('Description=MoinMorni:');
+    expect(read('units/moinmorni-guard.timer')).toContain('MoinMorni-Wächter');
     expect(fs.existsSync(file('units/mornihosting-guard.service'))).toBe(false);
-    expect(read('systemctl')).toContain('enable --now morninet-guard.timer');
+    expect(read('systemctl')).toContain('enable --now moinmorni-guard.timer');
     // MorniHosting's own old units belong to MorniHosting: left alone.
     expect(read('systemctl')).not.toContain('mornihosting-netbird');
-    expect(stdout).toContain(`Status: ${file('sbin/morninet-guard')} status`);
+    expect(stdout).toContain(`Status: ${file('sbin/moinmorni-guard')} status`);
   });
 
   it('install without settings stays MorniHosting as before: no start script, the script itself in the timer', async () => {
@@ -112,16 +117,16 @@ describe('guard.sh for another product (morni.net runs MorniHosting as its motor
   it("messages land in the data volume of the product's motor", async () => {
     await guard(
       ['event', 'container', 'dns', 'fixed', 'DNS repariert', 'Feste DNS-Server eingetragen.'],
-      MORNINET,
+      MOINMORNI,
     );
-    expect(read('volumes/morninet-motor-data/guard/events.jsonl')).toContain('"title":"DNS repariert"');
+    expect(read('volumes/moinmorni-motor-data/guard/events.jsonl')).toContain('"title":"DNS repariert"');
     expect(fs.existsSync(file('volumes/mornihosting-data'))).toBe(false);
     await guard(['event', 'container', 'dns', 'fixed', 'DNS repariert', 'Wieder da.']);
     expect(read('volumes/mornihosting-data/guard/events.jsonl')).toContain('"what":"Wieder da."');
   });
 
   it("the NetBird server's address lands in the product's own .env", async () => {
-    fs.writeFileSync(file('product.env'), 'MM_DOMAIN=morni.net\n');
+    fs.writeFileSync(file('product.env'), 'MM_DOMAIN=moinmorni.net\n');
     const { stdout } = await run('bash', [NETBIRD_ENV], {
       env: { ...env, MH_ENV_FILE: file('product.env') },
     });
@@ -130,8 +135,8 @@ describe('guard.sh for another product (morni.net runs MorniHosting as its motor
   });
 
   it("only its own exit is switched on again, not the other product's", async () => {
-    await guard(['exit'], MORNINET);
-    expect(read('selected').trim()).toBe('morni.net Ausgang');
+    await guard(['exit'], MOINMORNI);
+    expect(read('selected').trim()).toBe('MoinMorni Ausgang');
     fs.rmSync(file('selected'));
     fs.rmSync(file('state'), { recursive: true, force: true });
     await guard(['exit']);

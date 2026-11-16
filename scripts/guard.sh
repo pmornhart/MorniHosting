@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015 # "a && b || c" ist hier gewollt: nur für die Anzeige im Status
 # MorniHosting-Wächter: hält diesen Rechner (den MorniHosting-Container) am Laufen.
-# Auch für ein anderes Produkt, das MorniHosting als Motor einbaut (z. B. morni.net): Marke, Namen, Ordner und
+# Auch für ein anderes Produkt, das MorniHosting als Motor einbaut (z. B. MoinMorni): Marke, Namen, Ordner und
 # Container kommen dann aus der Umgebung (MH_BRAND, MH_GUARD_NAME, MH_INSTALL_DIR, MH_ENV_FILE, MH_DATA_VOLUME,
 # MH_GUARD_CONTAINERS, MH_UPDATE_LOCK). "install" schreibt sie in ein eigenes Startskript /usr/local/sbin/<name>-guard,
 # das auch der Timer aufruft – Status dann mit "<name>-guard status".
@@ -52,7 +52,9 @@ EXIT_RETRY_MINUTES=5
 # Meldungen ans Panel (Discord + Mail): erst hier gesammelt, dann ins Datenvolume des Panels (bzw. des Motors).
 PENDING_EVENTS="${STATE_DIR}/events-pending.jsonl"
 VOLUME_NAME="${MH_DATA_VOLUME:-${GUARD_NAME}-data}"
-PANEL_UID=1000
+# Benutzer, unter dem das Panel im Container läuft (liest die Meldungen); in Tests der eigene.
+PANEL_UID="${MH_PANEL_UID:-1000}"
+PANEL_GID="${MH_PANEL_GID:-${PANEL_UID}}"
 EVENTS_MAX_BYTES=1048576
 # So oft hintereinander darf NetBird scheitern, bevor du eine Meldung "du musst etwas tun" bekommst.
 NETBIRD_GIVE_UP_AFTER=10
@@ -138,12 +140,12 @@ flush_events() {
   file="${dir}/events.jsonl"
   [[ -L "${dir}" || -L "${file}" ]] && return 0
   mkdir -p "${dir}"
-  chown "${PANEL_UID}:${PANEL_UID}" "${dir}"
+  chown "${PANEL_UID}:${PANEL_GID}" "${dir}"
   if [[ -f "${file}" ]] && (($(stat -c %s "${file}") > EVENTS_MAX_BYTES)); then
     : >"${file}"
   fi
   cat "${PENDING_EVENTS}" >>"${file}"
-  chown "${PANEL_UID}:${PANEL_UID}" "${file}"
+  chown "${PANEL_UID}:${PANEL_GID}" "${file}"
   : >"${PENDING_EVENTS}"
 }
 

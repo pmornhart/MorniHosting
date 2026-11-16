@@ -78,7 +78,7 @@ test('every watchdog key belongs to a kind one can switch off', () => {
 
 test('in another product (MH_BRAND) the watchdog speaks of its container, and every alert goes out as an event', async () => {
   await t.cleanup();
-  t = await createTestApp({ MH_BRAND: 'morni.net' });
+  t = await createTestApp({ MH_BRAND: 'MoinMorni' });
   await setupAdmin(t);
   const events: AlertEvent[] = [];
   t.ctx.events.on('alert', (event) => events.push(event));
@@ -90,14 +90,14 @@ test('in another product (MH_BRAND) the watchdog speaks of its container, and ev
     `${JSON.stringify({ source: 'container', key: 'docker', status: 'fixed', title: 'Docker neu gestartet', what: 'Docker hing.' })}\n`,
   );
   alerts.readEvents();
-  expect(sent[0]?.discord.text).toContain('(morni.net-Container)');
+  expect(sent[0]?.discord.text).toContain('(MoinMorni-Container)');
   expect(events).toEqual([
     expect.objectContaining({
       key: 'docker',
       kind: 'docker',
       status: 'fixed',
       source: 'container',
-      what: 'Docker hing. (morni.net-Container)',
+      what: 'Docker hing. (MoinMorni-Container)',
     }),
   ]);
   // Kept for a connection that comes back: everything after the one it saw.

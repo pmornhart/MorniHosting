@@ -60,7 +60,7 @@ export function registerNetbirdRoutes(
     return netbird.setupPanel(request.body, actorOf(request));
   });
 
-  // The server players reach on the domain itself (e.g. a network's proxy on "morni.net").
+  // The server players reach on the domain itself (e.g. a network's proxy on "moinmorni.net").
   app.put('/api/netbird/domain-server', { schema: { body: netbirdDomainServerSchema } }, async (request) => {
     requireAdmin(request);
     return netbird.setDomainServer(request.body.serverId, actorOf(request));
