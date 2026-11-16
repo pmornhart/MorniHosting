@@ -252,6 +252,9 @@ function createFakeNetbird(
     }
     if (url.pathname === '/api/reverse-proxies/services' && method === 'GET')
       return Response.json([...services.values()]);
+    // Like NetBird: changing a service it does not know (deleted in the dashboard) answers 404 before anything else.
+    if (method === 'PUT' && url.pathname.startsWith('/api/reverse-proxies/services/') && !services.has(id))
+      return Response.json({ message: `service ${id} not found`, code: 404 }, { status: 404 });
     // Like NetBird: a service may only point at a resource that exists.
     const missing = (body?.targets ?? []).find(
       (target) => target.target_type === 'host' && !resources.has(String(target.target_id)),
@@ -1130,6 +1133,34 @@ describe('NetBird automation', () => {
       expect((await second.send('GET', `/api/servers/${id}`)).json<ServerDetail>()).toMatchObject({
         address: `moinmorni-proxy.${SECOND_DOMAIN}`,
         netbird: { onDomain: false },
+      });
+    } finally {
+      await second.app.cleanup();
+    }
+  });
+
+  test.each([
+    ['a self-hosted NetBird: on its old port', true],
+    ['NetBird Cloud: on a port NetBird picks', false],
+  ])('a service deleted by hand in NetBird is made again instead of failing – %s', async (_, customPorts) => {
+    netbird = createFakeNetbird({ secondPanel: true, customPorts });
+    const second = await secondPanel({ MH_LAN_IP: '198.51.100.30' });
+    try {
+      const id = await proxyWithEverything(second.send);
+      await second.send('PUT', '/api/netbird/domain-server', { serverId: id });
+      const before = netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`);
+      expect(before).toMatchObject({ mode: 'tcp' });
+      // Someone tidies up in the NetBird dashboard: NetBird now answers "service … not found" for it.
+      netbird.services.delete(String(before?.id));
+
+      const answer = await second.send('PUT', '/api/netbird/domain-server', { serverId: id });
+      expect(answer.statusCode, answer.body).toBe(200);
+      const again = netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`);
+      expect(again).toMatchObject({ mode: 'tcp' });
+      expect(again?.id).not.toBe(before?.id);
+      if (customPorts) expect(again?.listen_port).toBe(before?.listen_port);
+      expect((await second.send('GET', `/api/servers/${id}`)).json<ServerDetail>()).toMatchObject({
+        netbird: { onDomain: true, error: null },
       });
     } finally {
       await second.app.cleanup();

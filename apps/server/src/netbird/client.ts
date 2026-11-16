@@ -166,7 +166,8 @@ export interface NetbirdClient {
   readonly peers: () => Promise<NetbirdPeer[]>;
   readonly services: () => Promise<NetbirdService[]>;
   readonly createService: (request: NetbirdServiceRequest) => Promise<NetbirdService>;
-  readonly updateService: (id: string, request: NetbirdServiceRequest) => Promise<NetbirdService>;
+  /** null: NetBird no longer knows the service (deleted there by hand) – make a new one instead. */
+  readonly updateService: (id: string, request: NetbirdServiceRequest) => Promise<NetbirdService | null>;
   /** Deleting a service that is already gone counts as done. */
   readonly deleteService: (id: string) => Promise<void>;
   readonly groups: () => Promise<NetbirdNamed[]>;
@@ -311,8 +312,12 @@ export const createNetbirdClient: NetbirdClientFactory = (apiUrl, token) => {
       throw new AppError(HTTP_BAD_GATEWAY, code, { host: where }, { cause: err });
     }
   };
-  const json = async <TValue>(schema: z.ZodType<TValue>, method: string, path: string, body?: unknown) => {
-    const response = await call(method, path, body);
+  const read = async <TValue>(
+    schema: z.ZodType<TValue>,
+    method: string,
+    path: string,
+    response: Response,
+  ): Promise<TValue> => {
     if (!response.ok) throw await rejection(response, host);
     const parsed = schema.safeParse(await response.json().catch(() => undefined));
     if (!parsed.success)
@@ -321,14 +326,23 @@ export const createNetbirdClient: NetbirdClientFactory = (apiUrl, token) => {
       });
     return parsed.data;
   };
+  const json = async <TValue>(schema: z.ZodType<TValue>, method: string, path: string, body?: unknown) =>
+    read(schema, method, path, await call(method, path, body));
   return {
     domains: () => json(listOf(domainSchema), 'GET', '/reverse-proxies/domains'),
     peers: () => json(listOf(peerSchema), 'GET', '/peers'),
     services: () => json(listOf(serviceSchema), 'GET', '/reverse-proxies/services'),
     createService: (request) =>
       json(serviceSchema, 'POST', '/reverse-proxies/services', serviceBody(request)),
-    updateService: (id, request) =>
-      json(serviceSchema, 'PUT', `/reverse-proxies/services/${encodeURIComponent(id)}`, serviceBody(request)),
+    updateService: async (id, request) => {
+      const path = `/reverse-proxies/services/${encodeURIComponent(id)}`;
+      const response = await call('PUT', path, serviceBody(request));
+      if (response.status !== HTTP_NOT_FOUND) return read(serviceSchema, 'PUT', path, response);
+      // "service … not found": deleted in NetBird. An unknown key also answers 404 – that stays an error.
+      const err = await rejection(response, host);
+      if (err.code === 'netbird_token_unknown') throw err;
+      return null;
+    },
     deleteService: async (id) => {
       const response = await call('DELETE', `/reverse-proxies/services/${encodeURIComponent(id)}`);
       if (!response.ok && response.status !== HTTP_NOT_FOUND) throw await rejection(response, host);

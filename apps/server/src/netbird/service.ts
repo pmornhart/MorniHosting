@@ -561,6 +561,8 @@ export function createNetbirdAutomation(
       existing.targetPort === want.port &&
       (fixedPort === null || existing.listenPort === fixedPort);
     if (existing && existing.mode === want.mode && same && !force) return existing;
+    // Deleted in NetBird (by hand there): made again below, on the outside port it had, so addresses stay.
+    let gonePort: number | null = null;
     if (existing && existing.mode === want.mode) {
       const updated = await withFreeListenPort(
         client,
@@ -570,16 +572,25 @@ export function createNetbirdAutomation(
         existing,
         (listenPort) => client.updateService(existing.id, { ...request, listenPort }),
       );
-      return remember(serverId, want, existing.id, updated.listen_port ?? fixedPort ?? existing.listenPort);
-    }
-    if (existing) {
+      if (updated)
+        return remember(serverId, want, existing.id, updated.listen_port ?? fixedPort ?? existing.listenPort);
+      ctx.log.info({ service: want.domain }, 'NetBird service was deleted there, making it again');
+      // NetBird Cloud hands out ports itself and refuses a chosen one.
+      gonePort = cfg.customPorts ? existing.listenPort : null;
+      forget(existing.id);
+    } else if (existing) {
       await client.deleteService(existing.id);
       forget(existing.id);
     }
-    const created = await withFreeListenPort(client, cfg, fixedPort, want, undefined, (listenPort) =>
-      client.createService({ ...request, listenPort }),
+    const created = await withFreeListenPort(
+      client,
+      cfg,
+      fixedPort ?? gonePort,
+      want,
+      undefined,
+      (listenPort) => client.createService({ ...request, listenPort }),
     );
-    return remember(serverId, want, created.id, created.listen_port ?? fixedPort);
+    return remember(serverId, want, created.id, created.listen_port ?? fixedPort ?? gonePort);
   };
 
   /** Setups saved before the panel knew about fixed ports learn it once from NetBird. */
@@ -1019,9 +1030,8 @@ export function createNetbirdAutomation(
       // A service for this address made by hand in NetBird is taken over, with "Pass Host Header" on.
       const byHand = (await client.services()).find((s) => s.domain === want.domain);
       const done = await lock(PANEL_KEY, async () => {
-        const result = byHand
-          ? await client.updateService(byHand.id, request)
-          : await client.createService(request);
+        const updated = byHand ? await client.updateService(byHand.id, request) : null;
+        const result = updated ?? (await client.createService(request));
         return remember(null, want, result.id, null);
       });
       if (ours && ours.id !== done.id) {
