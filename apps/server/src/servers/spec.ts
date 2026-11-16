@@ -13,6 +13,7 @@ import type { servers } from '../db/schema.js';
 import type { CommandChannel, ContainerSpec } from '../docker/driver.js';
 import { badRequest } from '../lib/errors.js';
 import { BYTES_PER_MB } from '../lib/units.js';
+import { idleMemoryEnv } from './idle-memory.js';
 
 export type ServerRow = typeof servers.$inferSelect;
 
@@ -58,8 +59,9 @@ function javaEnv(row: ServerRow, timezone: string): Record<string, string> {
     EULA: 'TRUE',
     TYPE: ITZG_TYPE[row.software] ?? 'CUSTOM',
     VERSION: row.version,
-    // The set RAM is the ceiling; Java starts small and takes more only when the server needs it. With the same
-    // start and maximum (and Aikar's AlwaysPreTouch) it would grab the whole amount at once, even when empty.
+    // The set RAM is the ceiling; Java starts with 1 GB and takes more only when the server needs it. With the same
+    // start and maximum (and Aikar's AlwaysPreTouch) it would grab the whole amount at once, even when empty. The
+    // start heap itself stays real memory for good – unless the server releases idle memory (idle-memory.ts).
     INIT_MEMORY: `${Math.min(INIT_MEMORY_MB, row.memoryMb)}M`,
     MAX_MEMORY: `${row.memoryMb}M`,
     ENABLE_RCON: 'true',
@@ -81,7 +83,8 @@ function javaEnv(row: ServerRow, timezone: string): Record<string, string> {
     return {
       TYPE: 'VELOCITY',
       VELOCITY_VERSION: row.version,
-      MEMORY: `${row.memoryMb}M`,
+      // Start = maximum (itzg/mc-proxy) – or, to release idle memory, a small start that grows when needed.
+      ...(row.releaseIdleMemory ? idleMemoryEnv(row) : { MEMORY: `${row.memoryMb}M` }),
       SKIP_CHOWN_DATA: 'true',
       TZ: timezone,
       // Kein UID/GID wie bei den Spielservern: das Startskript von itzg/mc-proxy liest daraus „läuft schon als
@@ -90,7 +93,8 @@ function javaEnv(row: ServerRow, timezone: string): Record<string, string> {
       // („bungeecord“) und wechselt zu ihm.
     };
   }
-  return base;
+  // Release idle memory (per server): a small start heap and Aikar's flags without pre-touch (see idle-memory.ts).
+  return row.releaseIdleMemory ? { ...base, ...idleMemoryEnv(row) } : base;
 }
 
 function bedrockEnv(row: ServerRow, timezone: string): Record<string, string> {

@@ -188,6 +188,11 @@ export const servers = sqliteTable('servers', {
   crash: text('crash', { mode: 'json' }).$type<CrashInfo | null>(),
   /** The state the owner wants: a server that should run is restarted after a panel restart. */
   desiredRunning: integer('desired_running', { mode: 'boolean' }).notNull().default(false),
+  /**
+   * Java servers: small start heap, the garbage collector gives unused memory back and Minecraft pauses the world
+   * while nobody is online (see servers/idle-memory.ts). Off = the classic settings (Aikar's flags with pre-touch).
+   */
+  releaseIdleMemory: integer('release_idle_memory', { mode: 'boolean' }).notNull().default(false),
   createdAt: createdAt(),
   updatedAt: text('updated_at'),
 });

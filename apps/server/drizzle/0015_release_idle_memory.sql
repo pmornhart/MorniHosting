@@ -1,0 +1,1 @@
+ALTER TABLE `servers` ADD `release_idle_memory` integer DEFAULT false NOT NULL;

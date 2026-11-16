@@ -125,6 +125,7 @@ const NEW_SERVER_FIELDS = {
   voiceHost: null,
   gameSettings: null,
   gamePorts: [],
+  releaseIdleMemory: false,
 } as const;
 const failing = new Map(
   Object.entries(recording.fixtures)

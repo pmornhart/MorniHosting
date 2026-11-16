@@ -232,6 +232,8 @@ export const createServerSchema = z.object({
   /** Limits for the server (admins); people with a quota get what is left of it when empty. */
   cpuLimit: cpuLimitSchema.nullable().optional(),
   diskLimitMb: diskLimitSchema.nullable().optional(),
+  /** Java servers: small start heap, unused memory goes back, the world pauses without players (default off). */
+  releaseIdleMemory: z.boolean().optional(),
   /** Add-ons from the order page: set up by the panel one after another, before the first start. */
   addOns: z
     .object({
@@ -264,6 +266,8 @@ export const updateServerSchema = z.object({
   /** Admins only: CPU cores and disk space; null = no limit. */
   cpuLimit: cpuLimitSchema.nullable().optional(),
   diskLimitMb: diskLimitSchema.nullable().optional(),
+  /** Java servers: release idle memory (applies from the next start). */
+  releaseIdleMemory: z.boolean().optional(),
 });
 export type UpdateServerInput = z.infer<typeof updateServerSchema>;
 
@@ -333,6 +337,11 @@ export interface ServerSummary {
   readonly port: number;
   readonly address: string;
   readonly autoStart: boolean;
+  /**
+   * Java servers: start with a small heap, give unused memory back and pause the world while nobody is online –
+   * always online, but little RAM and CPU time when empty. Applies from the next start.
+   */
+  readonly releaseIdleMemory: boolean;
   readonly hasIcon: boolean;
   readonly live: ServerLive;
   readonly crash: CrashInfo | null;

@@ -514,6 +514,10 @@ Eine Sicherheitslücke gefunden? Bitte nicht als öffentliches Issue, sondern ü
 Pro Server: Vanilla oder Paper 2–4 GB, Modpacks 6–10 GB. Dazu etwa 1 GB für System und Panel. Der Assistent
 schlägt dir einen Wert vor und warnt, wenn du mehr verteilst, als frei ist.
 
+Läuft ein Java-Server oft leer, schalte unter **Einstellungen → Allgemein** „Arbeitsspeicher im Leerlauf freigeben“
+ein: Er bleibt online und man kommt sofort hinein, aber ohne Spieler hält Minecraft die Welt an und Java gibt den
+Arbeitsspeicher zurück – ein leerer Paper-Server braucht dann etwa halb so viel.
+
 </details>
 
 <details>

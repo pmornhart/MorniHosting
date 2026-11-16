@@ -45,6 +45,7 @@ import {
 import { missingDependencies } from './mod-deps.js';
 import { pluginPackages } from './plugin-packages.js';
 import { writePropertiesFile } from './properties-file.js';
+import { applyIdlePause, clearIdlePause } from './idle-memory.js';
 import { hostMemoryMb, refreshHostMemory } from '../system/host.js';
 import { analyseCrash } from './crash.js';
 import { createDownloadMeter, type DownloadProgress } from './steam-progress.js';
@@ -496,6 +497,7 @@ export function createServerService(ctx: AppContext): ServerService {
     port: r.port,
     address: addressOf(standInFor(r)),
     autoStart: r.autoStart,
+    releaseIdleMemory: r.releaseIdleMemory,
     hasIcon: fs.existsSync(path.join(serverDir(config, r.id), 'server-icon.png')),
     live: live(r.id),
     crash: r.crash ?? null,
@@ -691,6 +693,13 @@ export function createServerService(ctx: AppContext): ServerService {
     const missing = missingGameFiles(serverDir(config, id), r.software);
     if (missing.length) throw new Error(`Es fehlen Dateien: ${missing.join(', ')}`);
     prepareGameFiles(serverDir(config, id), r);
+    // Release idle memory: Minecraft pauses the world while nobody is online (server.properties). Never in the way of
+    // a start: without it the server only stays awake.
+    try {
+      applyIdlePause(serverDir(config, id), r);
+    } catch (err) {
+      log.warn({ err, serverId: id }, 'pause-when-empty-seconds not written');
+    }
     const built = buildContainerSpec(config, r, settings.get().timezone);
     const extra = await Promise.all(
       [...startEnv].map((provide) =>
@@ -1223,6 +1232,8 @@ export function createServerService(ctx: AppContext): ServerService {
         port,
         javaTag: null,
         autoStart: input.autoStart,
+        // Only Java servers have a heap to give back; other games ignore it.
+        releaseIdleMemory: input.edition === 'java' && input.releaseIdleMemory === true,
       };
       db.insert(servers)
         .values({
@@ -1312,6 +1323,8 @@ export function createServerService(ctx: AppContext): ServerService {
         javaTag: patch.javaTag === undefined ? current.javaTag : patch.javaTag,
         version: patch.version ?? current.version,
         software,
+        releaseIdleMemory:
+          current.edition === 'java' && (patch.releaseIdleMemory ?? current.releaseIdleMemory),
       };
       if (software !== current.software) next.javaTag = null;
       const image = imageFor(config, {
@@ -1330,6 +1343,8 @@ export function createServerService(ctx: AppContext): ServerService {
         Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)),
       );
       if (next.port !== current.port) portsChanged(id);
+      // Switched off: Minecraft no longer pauses the world without players (only our own setting goes).
+      if (current.releaseIdleMemory && !next.releaseIdleMemory) clearIdlePause(serverDir(config, id), next);
       return summaryOf(row(id));
     },
     setGameSettings: (id, input, actor) => {

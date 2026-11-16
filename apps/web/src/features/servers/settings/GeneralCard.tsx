@@ -51,6 +51,7 @@ interface Draft {
   readonly memoryMb: number;
   readonly port: string;
   readonly autoStart: boolean;
+  readonly releaseIdleMemory: boolean;
   readonly domain: string;
   readonly publicPort: string;
   readonly javaTag: JavaTag | typeof AUTO;
@@ -66,6 +67,7 @@ function draftOf(server: ServerDetail): Draft {
     memoryMb: server.memoryMb,
     port: String(server.port),
     autoStart: server.autoStart,
+    releaseIdleMemory: server.releaseIdleMemory,
     domain: server.domain ?? '',
     publicPort: server.publicPort ? String(server.publicPort) : '',
     javaTag: server.javaTag ?? AUTO,
@@ -93,6 +95,9 @@ function patchOf(server: ServerDetail, draft: Draft): UpdateServerInput {
     ...(draft.memoryMb !== server.memoryMb ? { memoryMb: draft.memoryMb } : {}),
     ...(Number(draft.port) !== server.port ? { port: Number(draft.port) } : {}),
     ...(draft.autoStart !== server.autoStart ? { autoStart: draft.autoStart } : {}),
+    ...(draft.releaseIdleMemory !== server.releaseIdleMemory
+      ? { releaseIdleMemory: draft.releaseIdleMemory }
+      : {}),
     ...(own && draft.domain.trim() !== (server.domain ?? '') ? { domain: draft.domain.trim() } : {}),
     ...(own && publicPortOf(draft) !== server.publicPort ? { publicPort: publicPortOf(draft) } : {}),
     ...(javaTag !== server.javaTag ? { javaTag } : {}),
@@ -145,6 +150,8 @@ export function GeneralCard({ server }: { server: ServerDetail }): ReactElement 
     server.memoryMb,
   );
   const java = SOFTWARE[server.software].edition === 'java' && !SOFTWARE[server.software].proxy;
+  // Every Java server has a heap to give back – the proxy too (it has no world to pause).
+  const javaVm = SOFTWARE[server.software].edition === 'java';
   const downgrade = compareMcVersions(draft.version, server.version) < 0;
   const versionList = useMemo(() => {
     const stable = (versions.data ?? []).filter((v) => v.stable).slice(0, MAX_VERSIONS);
@@ -203,6 +210,21 @@ export function GeneralCard({ server }: { server: ServerDetail }): ReactElement 
             })}
             {capped ? ` ${t('order.memoryCap', { ram: formatMemoryMb(memoryCap) })}` : null}
           </p>
+          {javaVm ? (
+            <label className="mt-1 flex items-start gap-3 rounded-[12px] border border-border p-3">
+              <Switch
+                checked={draft.releaseIdleMemory}
+                onCheckedChange={(on) => set('releaseIdleMemory', on)}
+                className="mt-0.5"
+              />
+              <span>
+                <b className="block text-sm font-semibold">{t('settings.general.idleMemory')}</b>
+                <span className="text-[13px] text-muted-foreground">
+                  {java ? t('settings.general.idleMemoryHint') : t('settings.general.idleMemoryHintProxy')}
+                </span>
+              </span>
+            </label>
+          ) : null}
         </div>
 
         {isAdmin ? (
