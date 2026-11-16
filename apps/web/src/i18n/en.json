@@ -1989,6 +1989,7 @@
     "panelName": "Name",
     "panelPort": "Panel port",
     "panelButton": "Set up",
+    "panelWww": "{{www}} leads here too – whoever types it lands on {{domain}}.",
     "panelDone": "The panel is reachable at {{address}}",
     "fieldLabel": "Address on the internet",
     "fieldHint": "Just the name – {{brand}} sets up the rest (via NetBird or your own domain). Removing it takes the address away again.",

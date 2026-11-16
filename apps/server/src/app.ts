@@ -80,6 +80,7 @@ import { createWebhookService } from './webhooks/service.js';
 import { registerWebSocket } from './ws.js';
 import { createNetbirdAutomation, type NetbirdAutomation } from './netbird/service.js';
 import { createAddressGateway, type AddressGateway } from './gateway/service.js';
+import { createWwwRedirect } from './netbird/www-redirect.js';
 import { createNetbirdExit } from './netbird/exit.js';
 import { createExitWatch } from './netbird/exit-watch.js';
 import { createAlertService } from './alerts/service.js';
@@ -299,6 +300,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   });
   await app.register(swaggerUi, { routePrefix: '/api/docs' });
 
+  // www.<panel domain> (NetBird sends it here too) → the panel domain itself, before anything else.
+  app.addHook('onRequest', createWwwRedirect(ctx));
   app.addHook('onRequest', createAuthHook(ctx));
 
   app.setErrorHandler((err: FastifyError, request, reply) => {

@@ -728,6 +728,7 @@ const NOT_CONNECTED: NetbirdStatus = {
   peerId: null,
   peerName: null,
   panelAddress: null,
+  panelWww: null,
   customPorts: false,
   openPorts: [],
   router: { java: true, bedrock: true },
@@ -1646,8 +1647,11 @@ const ROUTES: readonly (readonly [string, string, Handler])[] = [
     'POST',
     '/api/netbird/panel',
     ({ body }) => {
-      const address = `${String(body['name'] ?? 'panel')}.${netbird.status.domain ?? DEMO_DOMAIN}`;
-      netbird.status = { ...netbird.status, panelAddress: address };
+      const domain = netbird.status.domain ?? DEMO_DOMAIN;
+      const name = typeof body['name'] === 'string' ? body['name'] : 'panel';
+      // On the domain itself, www.<domain> leads there too.
+      const address = name ? `${name}.${domain}` : domain;
+      netbird.status = { ...netbird.status, panelAddress: address, panelWww: name ? null : `www.${domain}` };
       state.settings = { ...state.settings, panelDomain: address };
       return ok(netbird.status);
     },

@@ -753,6 +753,77 @@ describe('NetBird automation', () => {
     expect((await call('GET', '/api/netbird')).json<NetbirdStatus>().configured).toBe(false);
   });
 
+  test('the panel on the domain itself: www.<domain> leads there too, follows it and goes away again', async () => {
+    await configure();
+    const on = (await call('POST', '/api/netbird/panel', { name: '', port: 8080 })).json<NetbirdStatus>();
+    expect(on).toMatchObject({ panelAddress: BASE, panelWww: `www.${BASE}` });
+    const www = netbird.byDomain(`www.${BASE}`);
+    expect(www).toMatchObject({
+      mode: 'http',
+      pass_host_header: true,
+      targets: [expect.objectContaining({ target_id: 'peer-mh', protocol: 'http', port: 8080 })],
+    });
+    // The same target as the panel itself.
+    expect(www?.targets).toEqual(netbird.byDomain(BASE)?.targets);
+
+    // The panel moves to another port: www follows (the same service in NetBird).
+    await call('POST', '/api/netbird/panel', { name: '', port: 8081 });
+    expect(netbird.byDomain(`www.${BASE}`)).toMatchObject({
+      id: www?.id,
+      targets: [expect.objectContaining({ port: 8081 })],
+    });
+
+    // Visitors of www land on the domain: same path, same query, any case, with or without port.
+    const moved = await t.app.inject({
+      method: 'GET',
+      url: '/servers/abc?tab=players&x=1',
+      headers: { host: `WWW.${BASE}:443` },
+    });
+    expect(moved.statusCode).toBe(301);
+    expect(moved.headers.location).toBe(`https://${BASE}/servers/abc?tab=players&x=1`);
+    const api = await t.app.inject({
+      method: 'GET',
+      url: '/api/auth/status',
+      headers: { host: `www.${BASE}` },
+    });
+    expect(api.headers.location).toBe(`https://${BASE}/api/auth/status`);
+    // Only exactly that name: the domain itself and other names are left alone.
+    const others = await Promise.all(
+      [BASE, `panel.${BASE}`, `www.panel.${BASE}`, 'www.example.org'].map((host) =>
+        t.app.inject({ method: 'GET', url: '/api/auth/status', headers: { host } }),
+      ),
+    );
+    expect(others.map((r) => r.statusCode)).not.toContain(301);
+
+    // The panel gets its own name: www is no longer needed and goes.
+    const named = (
+      await call('POST', '/api/netbird/panel', { name: 'panel', port: 8081 })
+    ).json<NetbirdStatus>();
+    expect(named).toMatchObject({ panelAddress: `panel.${BASE}`, panelWww: null });
+    expect(netbird.byDomain(`www.${BASE}`)).toBeUndefined();
+
+    // A www service made by hand in NetBird is taken over, not doubled.
+    netbird.services.set('svc-www-hand', {
+      id: 'svc-www-hand',
+      domain: `www.${BASE}`,
+      mode: 'http',
+      listen_port: 0,
+      pass_host_header: false,
+      targets: [],
+    });
+    await call('POST', '/api/netbird/panel', { name: '', port: 8080 });
+    expect(netbird.services.get('svc-www-hand')).toMatchObject({
+      pass_host_header: true,
+      targets: [expect.objectContaining({ port: 8080 })],
+    });
+    expect([...netbird.services.values()].filter((svc) => svc.domain === `www.${BASE}`)).toHaveLength(1);
+
+    // NetBird disconnected: www goes, the panel's own address stays (nobody is locked out).
+    await call('DELETE', '/api/netbird');
+    expect(netbird.byDomain(`www.${BASE}`)).toBeUndefined();
+    expect(netbird.byDomain(BASE)).toBeDefined();
+  });
+
   test('only admins may use NetBird; a name from another user is ignored', async () => {
     await configure();
     await call('POST', '/api/users', {

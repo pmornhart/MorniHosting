@@ -16,7 +16,11 @@ nichts mehr anlegen:
    den Rechner wählen → **Speichern**. Der Schlüssel wird verschlüsselt gespeichert und nie angezeigt.
 3. **Panel-Adresse (optional):** Unter **Adresse fürs Panel** z. B. `panel` eintragen → **Einrichten**. Das Panel
    ist dann unter `https://panel.deine-domain.de` erreichbar, mit „Pass Host Header“. Gibt es den Dienst schon,
-   übernimmt MorniHosting ihn und stellt ihn richtig ein.
+   übernimmt MorniHosting ihn und stellt ihn richtig ein. Bleibt der Name leer, läuft das Panel direkt unter
+   `https://deine-domain.de` – dann legt es zusätzlich `www.deine-domain.de` an (gleiches Ziel, „Pass Host Header“),
+   und wer `www.` tippt, landet per Weiterleitung (301, gleicher Pfad) auf der Domain. Der `www`-Dienst zieht mit,
+   wenn sich die Adresse ändert, und verschwindet, wenn das Panel einen eigenen Namen bekommt oder NetBird getrennt
+   wird. Bei einem Produkt mit Motor (MoinMorni) zeigt `www` auf dessen Webseite; die leitet selbst weiter.
 4. **Server:** Beim Anlegen nur noch den Namen eingeben (wird aus dem Server-Namen vorgeschlagen). Später
    änderst oder entfernst du ihn unter **Einstellungen → Allgemein → Adresse im Internet (NetBird)**.
 

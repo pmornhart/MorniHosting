@@ -263,6 +263,11 @@ function PanelAddress({
           https://{status.panelAddress}
         </a>
       ) : null}
+      {status.panelWww && status.panelAddress ? (
+        <p className="text-[13px] text-muted-foreground">
+          {t('netbirdAuto.panelWww', { www: status.panelWww, domain: status.panelAddress })}
+        </p>
+      ) : null}
       {setup.error ? (
         <p className="rounded-[10px] bg-destructive-soft px-3 py-2 text-sm">{errorText(setup.error)}</p>
       ) : null}

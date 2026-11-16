@@ -27,6 +27,7 @@ import {
   createNetbirdClient,
   type NetbirdClient,
   type NetbirdClientFactory,
+  type NetbirdServiceRequest,
   type NetbirdServiceTarget,
 } from './client.js';
 
@@ -77,6 +78,7 @@ const SUFFIX: Readonly<Record<NetbirdPurpose, string>> = {
   'geyser-signal': '-bedrock-tcp',
   voice: '-voice',
   panel: '',
+  'panel-www': '',
   'router-java': '',
   'router-bedrock': '',
 };
@@ -90,6 +92,8 @@ const ROUTER_PURPOSE: Readonly<Record<RouterKind, NetbirdPurpose>> = {
   bedrock: 'router-bedrock',
 };
 const ROUTER_KINDS: readonly RouterKind[] = ['java', 'bedrock'];
+/** A panel on the domain itself gets this name in front too ("www.moinmorni.net"). */
+const WWW_PREFIX = 'www.';
 
 interface StoredConfig {
   readonly apiUrl: string;
@@ -216,6 +220,7 @@ export function createNetbirdAutomation(
     bedrock: routerMapping('bedrock')?.listenPort === ROUTER_PUBLIC_PORTS.bedrock,
   });
   const panelMapping = (): Mapping | undefined => mappings(null).find((m) => m.purpose === 'panel');
+  const wwwMapping = (): Mapping | undefined => mappings(null).find((m) => m.purpose === 'panel-www');
 
   const saveConfig = (patch: Partial<StoredConfig>): void => {
     const cfg = config();
@@ -812,6 +817,45 @@ export function createNetbirdAutomation(
     return row ? { id: row.id, name: row.name } : null;
   };
 
+  /**
+   * www.<domain> next to a panel (or website) on the domain itself: the same target with "Pass Host Header" – the panel
+   * answers it with a redirect to the domain. It follows the panel's address and goes when that leaves the domain.
+   */
+  const syncWww = async (
+    client: NetbirdClient,
+    cfg: StoredConfig,
+    panel: Wanted,
+    request: NetbirdServiceRequest,
+  ): Promise<void> => {
+    const current = wwwMapping();
+    if (panel.domain !== cfg.domain) {
+      if (current) {
+        await client.deleteService(current.id);
+        forget(current.id);
+      }
+      return;
+    }
+    const want: Wanted = {
+      purpose: 'panel-www',
+      domain: `${WWW_PREFIX}${cfg.domain}`,
+      mode: 'http',
+      port: panel.port,
+    };
+    const named = (await client.services()).find((svc) => svc.domain === want.domain);
+    // A server called "www" has the name already: it keeps it.
+    if (named && named.id !== current?.id && knownIds().has(named.id)) {
+      ctx.log.warn({ domain: want.domain }, 'www name belongs to a server, the panel gets no www address');
+      return;
+    }
+    const body = { ...request, domain: want.domain };
+    // Kept, taken over (made by hand in NetBird) or made new (also when it was deleted there).
+    const existing = named?.id ?? current?.id;
+    const updated = existing ? await client.updateService(existing, body) : null;
+    const result = updated ?? (await client.createService(body));
+    if (current && current.id !== result.id) forget(current.id);
+    remember(null, want, result.id, null);
+  };
+
   const status = (): NetbirdStatus => {
     const cfg = config();
     return {
@@ -823,6 +867,7 @@ export function createNetbirdAutomation(
       peerId: cfg?.peerId ?? null,
       peerName: cfg?.peerName ?? null,
       panelAddress: panelMapping()?.domain ?? null,
+      panelWww: wwwMapping()?.domain ?? null,
       customPorts: cfg?.customPorts ?? false,
       openPorts: openPorts(),
       router: routerLive(),
@@ -1035,8 +1080,10 @@ export function createNetbirdAutomation(
     disconnect: async (actor) => {
       const cfg = config();
       const owned = ctx.db.select().from(netbirdServices).all();
-      // The panel's own service stays in NetBird: removing it could lock the admin out of the panel.
-      const serverServices = owned.filter((m) => m.serverId !== null || isRouterPurpose(m.purpose));
+      // The panel's own service stays in NetBird: removing it could lock the admin out of the panel. Its www name goes.
+      const serverServices = owned.filter(
+        (m) => m.serverId !== null || isRouterPurpose(m.purpose) || m.purpose === 'panel-www',
+      );
       if (cfg) await Promise.allSettled(serverServices.map((m) => clientFor(cfg).deleteService(m.id)));
       const serverResources = Object.keys(storedResources()).filter((key) => key !== PANEL_KEY);
       if (cfg) await Promise.allSettled(serverResources.map((key) => dropResource(clientFor(cfg), cfg, key)));
@@ -1114,6 +1161,10 @@ export function createNetbirdAutomation(
         await client.deleteService(ours.id);
         forget(ours.id);
       }
+      // On the domain itself www.<domain> leads there too; elsewhere it goes. Never in the way of the panel itself.
+      await lock(PANEL_KEY, () => syncWww(client, cfg, want, request)).catch((err: unknown) =>
+        ctx.log.warn({ err }, 'NetBird www address could not be set up'),
+      );
       ctx.settings.update({ panelDomain: want.domain });
       ctx.events.emit('panel.host', { host: want.domain });
       ctx.audit.record(actor, 'netbird.panel', null, { domain: want.domain });

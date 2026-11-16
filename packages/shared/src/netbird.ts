@@ -150,8 +150,9 @@ export const netbirdPanelSchema = z.object({
 /** What a NetBird service is for: the server itself, Bedrock players via Geyser, voice chat, the panel. */
 /** "geyser-signal": the TCP half of Geyser's port (NetherNet finds the server over TCP, plays over UDP). */
 /** "router-java"/"router-bedrock": the panel's address router on 25565/19132 (every server by name, no port). */
+/** "panel-www": www.<domain> next to a panel (or website) on the domain itself – it sends visitors on to the domain. */
 export type NetbirdPurpose =
-  'main' | 'geyser' | 'geyser-signal' | 'voice' | 'panel' | 'router-java' | 'router-bedrock';
+  'main' | 'geyser' | 'geyser-signal' | 'voice' | 'panel' | 'panel-www' | 'router-java' | 'router-bedrock';
 
 /** Outside ports of the address router: the ports Java and Bedrock use when no port is typed. */
 export const ROUTER_PUBLIC_PORTS = { java: PORT_JAVA, bedrock: PORT_BEDROCK } as const;
@@ -168,6 +169,8 @@ export interface NetbirdStatus {
   readonly peerName: string | null;
   /** The panel's own address when the panel created its NetBird service, e.g. "panel.example.de". */
   readonly panelAddress: string | null;
+  /** On the domain itself, www.<domain> leads there too (e.g. "www.moinmorni.net"); null otherwise. */
+  readonly panelWww: string | null;
   /** The proxy uses the servers' own ports outside (self-hosted NetBird); NetBird Cloud picks its own. */
   readonly customPorts: boolean;
   /** Outside ports of the server addresses: on a self-hosted proxy each must be let through. */
