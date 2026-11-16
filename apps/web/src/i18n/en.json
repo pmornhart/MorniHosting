@@ -2033,7 +2033,10 @@
     "onDomain": "Players type just {{domain}}",
     "portTaken": "Port {{wanted}} is taken by {{holder}} right now. Until it is free, players need {{address}} – the panel checks every few minutes whether it is free.",
     "portTakenSomeone": "another service in your NetBird",
-    "srvHint": "Java still works without a port with an SRV record at your DNS provider: name {{name}}, target {{target}}, port {{port}}."
+    "srvHint": "Java still works without a port with an SRV record at your DNS provider: name {{name}}, target {{target}}, port {{port}}.",
+    "routerHint": "The port is held by the address router of another panel on your NetBird server ({{holder}}). Enter {{domain}} there under Admin area → NetBird → “More domains through this router” ({{ports}}) – then players type just {{domain}}, no port at all.",
+    "routerHintJava": "Java port {{port}}",
+    "routerHintBedrock": "Bedrock port {{port}}"
   },
   "minecraftAccount": {
     "title": "Minecraft account",

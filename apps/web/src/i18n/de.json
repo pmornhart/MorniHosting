@@ -2033,7 +2033,10 @@
     "onDomain": "Spieler tippen nur {{domain}}",
     "portTaken": "Port {{wanted}} hat gerade {{holder}}. Bis er frei wird, brauchen Spieler {{address}} – das Panel probiert alle paar Minuten, ob er frei ist.",
     "portTakenSomeone": "einen anderen Dienst in deinem NetBird",
-    "srvHint": "Java geht trotzdem ohne Port, mit einem SRV-Eintrag bei deinem DNS-Anbieter: Name {{name}}, Ziel {{target}}, Port {{port}}."
+    "srvHint": "Java geht trotzdem ohne Port, mit einem SRV-Eintrag bei deinem DNS-Anbieter: Name {{name}}, Ziel {{target}}, Port {{port}}.",
+    "routerHint": "Den Port hält der Adress-Verteiler eines anderen Panels auf deinem NetBird-Server ({{holder}}). Trag dort unter Admin-Bereich → NetBird → „Weitere Domains über diesen Verteiler“ {{domain}} ein ({{ports}}) – dann tippen Spieler nur {{domain}}, ganz ohne Port.",
+    "routerHintJava": "Java-Port {{port}}",
+    "routerHintBedrock": "Bedrock-Port {{port}}"
   },
   "minecraftAccount": {
     "title": "Minecraft-Konto",

@@ -156,6 +156,8 @@ export type NetbirdPurpose =
 
 /** Outside ports of the address router: the ports Java and Bedrock use when no port is typed. */
 export const ROUTER_PUBLIC_PORTS = { java: PORT_JAVA, bedrock: PORT_BEDROCK } as const;
+/** The router's own NetBird names, in front of the panel's domain (players never type them). */
+export const ROUTER_SERVICE_NAMES = { java: 'mh-router-java', bedrock: 'mh-router-bedrock' } as const;
 
 export interface NetbirdStatus {
   readonly configured: boolean;
