@@ -8,7 +8,8 @@ import net from 'node:net';
  * NetherNet): players first reach the server over TCP with plain HTTP ("signaling") and name it in the Host header;
  * the game itself then runs over UDP on the port Geyser hands out (each server keeps its own one). So one TCP port
  * per edition is enough: the router reads the name, opens a connection to that server and from then on only passes
- * bytes through both ways. Nothing is changed, nothing decrypted.
+ * bytes through both ways. Nothing is changed, nothing decrypted. The domain of another product on the same NetBird
+ * server goes to that product the same way (see forwards.ts).
  */
 
 export type RouterKind = 'java' | 'bedrock';
@@ -18,8 +19,18 @@ export interface RouteTarget {
   readonly port: number;
 }
 
-/** Finds the server for a typed address ("reich.mornihosting.de"); null = unknown, the connection is closed. */
-export type RouteLookup = (address: string, kind: RouterKind) => RouteTarget | null;
+/**
+ * Finds the server for a typed address ("reich.mornihosting.de"); null = unknown, the connection is closed. It may
+ * answer later (another product's domain: NetBird is asked where that product's port goes).
+ */
+export type RouteLookup = (
+  address: string,
+  kind: RouterKind,
+) => RouteTarget | null | Promise<RouteTarget | null>;
+
+/** Opens the connection to the target (tests point it at a backend of their own). */
+export type RouteConnect = (target: RouteTarget) => net.Socket;
+const connectTo: RouteConnect = (target) => net.connect({ host: target.host, port: target.port });
 
 /** How long a client may take for its first packet, and how much the router reads before giving up. */
 const FIRST_PACKET_TIMEOUT_MS = 10_000;
@@ -105,9 +116,42 @@ export function startRouter(options: {
   readonly host: string;
   readonly port: number;
   readonly lookup: RouteLookup;
+  readonly connect?: RouteConnect;
   readonly onError?: (err: unknown) => void;
 }): Promise<AddressRouter> {
   const { kind, lookup } = options;
+  const connect = options.connect ?? connectTo;
+  /** Asks where the address lives, then joins both sides; everything read so far goes first, unchanged. */
+  const pass = async (client: net.Socket, buf: Buffer, address: string | null): Promise<void> => {
+    const target =
+      address === null
+        ? null
+        : await Promise.resolve()
+            .then(() => lookup(cleanAddress(address), kind))
+            .catch((err: unknown) => {
+              options.onError?.(err);
+              return null;
+            });
+    // Gone while the lookup ran (or nowhere to go): nothing to join.
+    if (!target || client.destroyed) {
+      client.destroy();
+      return;
+    }
+    const upstream = connect(target);
+    upstream.setNoDelay(true);
+    upstream.setTimeout(CONNECT_TIMEOUT_MS, () => upstream.destroy());
+    upstream.once('connect', () => {
+      upstream.setTimeout(0);
+      client.setTimeout(0);
+      upstream.write(buf);
+      client.pipe(upstream);
+      upstream.pipe(client);
+      client.resume();
+    });
+    upstream.on('error', () => client.destroy());
+    upstream.on('close', () => client.destroy());
+    client.on('close', () => upstream.destroy());
+  };
   const handle = (client: net.Socket): void => {
     client.setNoDelay(true);
     client.setTimeout(FIRST_PACKET_TIMEOUT_MS, () => client.destroy());
@@ -121,26 +165,8 @@ export function startRouter(options: {
       client.off('data', onData);
       client.pause();
       // Bedrock without a Host header still gets a lookup (the gateway may know the only fitting server).
-      const address = typeof found === 'string' ? found : kind === 'bedrock' && buf.length > 0 ? '' : null;
-      const target = address === null ? null : lookup(cleanAddress(address), kind);
-      if (!target) {
-        client.destroy();
-        return;
-      }
-      const upstream = net.connect({ host: target.host, port: target.port });
-      upstream.setNoDelay(true);
-      upstream.setTimeout(CONNECT_TIMEOUT_MS, () => upstream.destroy());
-      upstream.once('connect', () => {
-        upstream.setTimeout(0);
-        client.setTimeout(0);
-        upstream.write(buf);
-        client.pipe(upstream);
-        upstream.pipe(client);
-        client.resume();
-      });
-      upstream.on('error', () => client.destroy());
-      upstream.on('close', () => client.destroy());
-      client.on('close', () => upstream.destroy());
+      const unnamed = kind === 'bedrock' && buf.length > 0 ? '' : null;
+      void pass(client, buf, typeof found === 'string' ? found : unnamed);
     };
     client.on('data', onData);
   };

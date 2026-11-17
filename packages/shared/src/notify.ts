@@ -80,6 +80,32 @@ const ALERT_KEY_KINDS: Readonly<Record<string, NotifyKind>> = {
 };
 export const alertKind = (key: string): NotifyKind => ALERT_KEY_KINDS[key.split(':')[0] ?? ''] ?? 'other';
 
+/** fixed = already repaired by itself, fixing = repairs itself (retrying), action = a person must do something. */
+export type AlertStatus = 'fixed' | 'fixing' | 'action';
+
+/**
+ * A problem – or its all-clear ("ok") – as the admins are told about it. It also goes live over /api/ws (channel
+ * "alerts", admins and keys with the area "events"): an app that runs the panel as its motor without Discord or mail of
+ * its own (MoinMorni) shows it in its own team log.
+ */
+export interface AlertEvent {
+  /** "<run>-<number>": unique, in order within one run of the panel; give the last one seen to get what came after. */
+  readonly id: string;
+  readonly at: string;
+  /** Same key = same problem, e.g. "netbird-exit", "server:<id>", "dns:down". */
+  readonly key: string;
+  readonly kind: NotifyKind;
+  readonly status: AlertStatus | 'ok';
+  readonly title: string;
+  readonly what: string;
+  /** What a person has to do (status "action"). */
+  readonly action: string | null;
+  /** The command to paste for it, if any. */
+  readonly command: string | null;
+  /** Who noticed it: the panel itself, the watchdog in its container or the one on the Proxmox host. */
+  readonly source: 'panel' | 'container' | 'host';
+}
+
 /** Saved per person; anything missing counts as "on", `muted` lists the single kinds switched off. */
 export type NotifyPrefs = Partial<Record<NotifyTopic | NotifyChannel, boolean>> & {
   readonly muted?: readonly NotifyKind[];

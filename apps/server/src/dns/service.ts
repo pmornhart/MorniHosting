@@ -315,13 +315,15 @@ export function createDnsAutomation(
       row.extraPorts.find((p) => p.purpose === purpose)?.port;
     const geyser = row.geyser ? portOf(GEYSER_PURPOSE) : undefined;
     const voice = row.voiceChat ? portOf(VOICE_PURPOSE) : undefined;
+    const free = { wanted: null, heldBy: null };
     return {
       name: row.netbirdName,
+      onDomain: false,
       routed: { java: false, bedrock: false },
       services: [
-        { purpose: 'main', domain, port: row.port },
-        ...(geyser ? [{ purpose: 'geyser' as const, domain, port: geyser }] : []),
-        ...(voice ? [{ purpose: 'voice' as const, domain, port: voice }] : []),
+        { purpose: 'main', domain, port: row.port, ...free },
+        ...(geyser ? [{ purpose: 'geyser' as const, domain, port: geyser, ...free }] : []),
+        ...(voice ? [{ purpose: 'voice' as const, domain, port: voice, ...free }] : []),
       ],
       error: failures.get(row.id) ?? null,
     };

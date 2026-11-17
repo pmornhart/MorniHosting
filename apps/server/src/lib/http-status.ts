@@ -1,5 +1,6 @@
 export const HTTP_ACCEPTED = 202;
 export const HTTP_NO_CONTENT = 204;
+export const HTTP_MOVED_PERMANENTLY = 301;
 export const HTTP_BAD_REQUEST = 400;
 export const HTTP_UNAUTHORIZED = 401;
 export const HTTP_FORBIDDEN = 403;
