@@ -80,6 +80,7 @@ import { createWebhookService } from './webhooks/service.js';
 import { registerWebSocket } from './ws.js';
 import { createNetbirdAutomation, type NetbirdAutomation } from './netbird/service.js';
 import { createAddressGateway, type AddressGateway } from './gateway/service.js';
+import { createWwwRedirect } from './netbird/www-redirect.js';
 import { createNetbirdExit } from './netbird/exit.js';
 import { createExitWatch } from './netbird/exit-watch.js';
 import { createAlertService } from './alerts/service.js';
@@ -215,7 +216,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   const schedules = createScheduleService(ctx, servers, backups);
   const webhooks = createWebhookService(ctx, options.resolver);
   const netbird = createNetbirdAutomation(ctx, servers);
-  const gateway = createAddressGateway(ctx);
+  const gateway = createAddressGateway(ctx, netbird);
   const dns = createDnsAutomation(ctx, servers);
   const https = createHttpsGateway(ctx, () => dns.status().domain);
   proxies.isGateway = https.isGateway;
@@ -299,6 +300,8 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   });
   await app.register(swaggerUi, { routePrefix: '/api/docs' });
 
+  // www.<panel domain> (NetBird sends it here too) → the panel domain itself, before anything else.
+  app.addHook('onRequest', createWwwRedirect(ctx));
   app.addHook('onRequest', createAuthHook(ctx));
 
   app.setErrorHandler((err: FastifyError, request, reply) => {
@@ -330,7 +333,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerNetworkRoutes(app, ctx, networks);
   const netbirdExit = createNetbirdExit(ctx, undefined, options.resolver);
   const exitWatch = createExitWatch(ctx, netbirdExit, alerts, netbird);
-  registerNetbirdRoutes(app, netbird, dns, netbirdExit);
+  registerNetbirdRoutes(app, { netbird, dns, exit: netbirdExit, forwards: gateway.forwards });
   registerDnsRoutes(app, dns);
   registerHttpsRoutes(app, https);
   registerGameArtRoutes(app, ctx);
@@ -358,7 +361,7 @@ export async function buildApp(options: BuildOptions): Promise<BuiltApp> {
   registerDdosRoutes(app, ddos);
   registerQuotaRoutes(app, createQuotaService(ctx, servers));
   registerPreloadRoutes(app, createPreloadService(ctx, servers));
-  registerWebSocket(app, ctx, servers);
+  registerWebSocket(app, ctx, servers, alerts);
 
   // In motor mode another app is the front: no web interface, no start page – only the API.
   const hasWeb = !config.headless && fs.existsSync(path.join(config.webDir, 'index.html'));

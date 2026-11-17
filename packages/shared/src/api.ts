@@ -12,6 +12,7 @@ import {
   type SoftwareId,
 } from './software.js';
 import type { NetbirdServerInfo } from './netbird.js';
+import type { AlertEvent } from './notify.js';
 
 export const LOCALES = ['de', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
@@ -900,6 +901,8 @@ export type WsServerMessage =
   | { readonly type: 'deleted'; readonly serverId: string }
   /** Sign-ups or server requests changed: reload the approvals, own requests and server list. */
   | { readonly type: 'approvals' }
+  /** A problem or its all-clear (channel "alerts", admins only). */
+  | { readonly type: 'alert'; readonly alert: AlertEvent }
   | { readonly type: 'error'; readonly code: string }
   | { readonly type: 'pong' };
 
@@ -908,6 +911,8 @@ export type WsClientMessage =
   | { readonly type: 'hello'; readonly csrf: string }
   | { readonly type: 'subscribe'; readonly channel: 'servers' }
   | { readonly type: 'subscribe'; readonly channel: 'console'; readonly serverId: string }
+  /** Problems as they are reported (admins only); with `after` (an alert id) first the ones that came after it. */
+  | { readonly type: 'subscribe'; readonly channel: 'alerts'; readonly after?: string }
   | { readonly type: 'unsubscribe'; readonly channel: 'console'; readonly serverId: string }
   | { readonly type: 'ping' };
 

@@ -102,7 +102,7 @@ function RankLabel({
   );
 }
 
-export function ChatPreview({
+function ChatPreview({
   rank,
   player,
   badge = false,

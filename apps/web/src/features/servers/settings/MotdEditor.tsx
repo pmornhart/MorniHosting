@@ -8,7 +8,7 @@ import type { SoftwareId } from '@mornihosting/shared';
 
 /** The MOTD is the text under the server name in the multiplayer list. Colours use Minecraft's "§" codes. */
 
-export const MC_COLOURS: Readonly<Record<string, string>> = {
+const MC_COLOURS: Readonly<Record<string, string>> = {
   '0': '#000000',
   '1': '#0000AA',
   '2': '#00AA00',
@@ -89,7 +89,7 @@ function nextStyle(style: Style, code: string): Style {
 }
 
 /** Splits one MOTD line into styled pieces. Colour codes reset bold/italic, as in Minecraft. */
-export function motdSegments(line: string): Segment[] {
+function motdSegments(line: string): Segment[] {
   const first = line.indexOf('§');
   const lead: Segment[] =
     first === 0 ? [] : [{ text: first < 0 ? line : line.slice(0, first), style: PLAIN }];

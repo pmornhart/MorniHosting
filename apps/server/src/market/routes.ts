@@ -18,7 +18,7 @@ import type { MarketService } from './service.js';
 const idParams = z.object({ id: z.string().min(1) });
 const UPDATE_CHECKS_PER_MINUTE = 6;
 
-export interface SourceInfo {
+interface SourceInfo {
   readonly source: MarketSource;
   readonly available: boolean;
   /** Why a source is off: not offered for this software, or the CurseForge key is missing. */

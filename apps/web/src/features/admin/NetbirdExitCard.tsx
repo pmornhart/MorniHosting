@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, EyeOff, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
+import { CheckCircle2, EyeOff, Info, RefreshCw, ShieldAlert, XCircle } from 'lucide-react';
 import { useState, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NetbirdExitStatus } from '@mornihosting/shared';
@@ -25,9 +25,9 @@ const translatedError = (error: NetbirdExitStatus['error']): string | null => {
 /**
  * "Hausanschluss verstecken": all internet traffic of the panel's machine goes out through another NetBird
  * machine (normally the NetBird server). Visitors come in through NetBird anyway, so the home connection's IP
- * appears nowhere.
+ * appears nowhere. `brand` names the product in the texts (an app embedding the card passes its own).
  */
-export function NetbirdExitCard({ apiUrl }: { apiUrl: string }): ReactElement {
+export function NetbirdExitCard({ apiUrl, brand }: { apiUrl: string; brand?: string }): ReactElement {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data } = useQuery({
@@ -37,6 +37,8 @@ export function NetbirdExitCard({ apiUrl }: { apiUrl: string }): ReactElement {
       query.state.data?.enabled && query.state.data.hidden !== true ? RECHECK_MS : false,
   });
   const [picked, setPicked] = useState('');
+  /** The product's name for the texts; without one the default of the app's texts applies ("MorniHosting"). */
+  const named = brand ? { brand } : {};
   const save = useMutation({
     mutationFn: (body: { enabled: boolean; exitPeerId?: string }) =>
       api<NetbirdExitStatus>('/api/netbird/exit', { method: 'PUT', body }),
@@ -58,7 +60,7 @@ export function NetbirdExitCard({ apiUrl }: { apiUrl: string }): ReactElement {
         <EyeOff className="size-4 text-primary" aria-hidden />
         {t('netbirdExit.title')}
       </b>
-      <p className="text-[13px] text-muted-foreground">{t('netbirdExit.text')}</p>
+      <p className="text-[13px] text-muted-foreground">{t('netbirdExit.text', named)}</p>
 
       {data?.enabled ? (
         <div className="grid gap-2.5">
@@ -66,7 +68,11 @@ export function NetbirdExitCard({ apiUrl }: { apiUrl: string }): ReactElement {
             <p className="flex items-start gap-2 rounded-[10px] bg-success-soft px-3 py-2 text-sm">
               <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
               <span>
-                {t('netbirdExit.hidden', { name: data.exitPeerName ?? '…', ip: data.exitIp ?? '…' })}
+                {t('netbirdExit.hidden', {
+                  name: data.exitPeerName ?? '…',
+                  ip: data.exitIp ?? '…',
+                  ...named,
+                })}
               </span>
             </p>
           ) : null}
@@ -76,11 +82,17 @@ export function NetbirdExitCard({ apiUrl }: { apiUrl: string }): ReactElement {
               className="flex items-start gap-2 rounded-[10px] bg-destructive-soft px-3 py-2 text-sm"
             >
               <XCircle className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
-              <span>{t('netbirdExit.notYet', { name: data.exitPeerName ?? '…' })}</span>
+              <span>{t('netbirdExit.notYet', { name: data.exitPeerName ?? '…', ...named })}</span>
             </p>
           ) : null}
           {data.hidden === null && !error ? (
             <p className="text-sm text-muted-foreground">{t('netbirdExit.unknown')}</p>
+          ) : null}
+          {data.sharedWith ? (
+            <p className="flex items-start gap-2 rounded-[10px] bg-secondary px-3 py-2 text-[13px]">
+              <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+              <span>{t('netbirdExit.sharedWith', { route: data.sharedWith, ...named })}</span>
+            </p>
           ) : null}
           {data.leaks.length ? (
             <div role="alert" className="grid gap-1 rounded-[10px] bg-destructive-soft px-3 py-2 text-sm">

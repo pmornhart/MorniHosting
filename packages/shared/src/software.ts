@@ -287,6 +287,15 @@ const JAVA_BY_MIN_VERSION: readonly (readonly [string, JavaTag])[] = [
   [JAVA17_FROM, 'java17'],
 ];
 
+/**
+ * The port a player's game uses when none is typed: the software's own one, but a Java proxy (Velocity, 25577 inside)
+ * is joined like any Java server – on 25565.
+ */
+export function clientPort(software: SoftwareId): number {
+  const info = SOFTWARE[software];
+  return info.proxy ? PORT_JAVA : info.defaultPort;
+}
+
 /** Picks the Java runtime a Minecraft version needs. */
 export function javaTagFor(software: SoftwareId, version: string): JavaTag {
   if (software === 'velocity') return 'java21';

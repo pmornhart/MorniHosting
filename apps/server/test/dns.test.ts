@@ -148,7 +148,7 @@ describe('own domain without NetBird (DNS)', () => {
     const info = await detail(java.id);
     expect(info.domain).toBe('reich.mein-minecraft.de');
     expect(info.netbird?.services).toEqual([
-      { purpose: 'main', domain: 'reich.mein-minecraft.de', port: 25565 },
+      { purpose: 'main', domain: 'reich.mein-minecraft.de', port: 25565, wanted: null, heldBy: null },
     ]);
     // The address card: Java players type just the name, the SRV record carries the port.
     const javaConnection = (await call('GET', `/api/servers/${java.id}/connection`)).json<ConnectionInfo>();

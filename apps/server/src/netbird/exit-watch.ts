@@ -38,6 +38,7 @@ export function createExitWatch(
     stuck: '',
   };
 
+  const brand = ctx.config.brand;
   /** NetBird repairs itself first: new machine id taken over, leftovers of deleted servers removed. */
   const heal = async (): Promise<void> => {
     const healed = await netbird?.heal();
@@ -51,7 +52,7 @@ export function createExitWatch(
         title: 'NetBird: Reste lassen sich nicht löschen',
         what: `NetBird lehnt das Löschen ab: ${healed.stuck.map((s) => `${s.name} (${s.reason})`).join('; ')}. Deine Server laufen trotzdem.`,
         status: 'action',
-        action: 'Im NetBird-Dashboard unter Networks → MorniHosting diese Resources von Hand löschen.',
+        action: `Im NetBird-Dashboard unter Networks → ${brand} diese Resources von Hand löschen.`,
       });
     }
     run.stuck = stuckKey;
@@ -61,7 +62,7 @@ export function createExitWatch(
       title: 'NetBird von selbst repariert',
       what: [
         healed.peerMoved
-          ? `Dein MorniHosting-Rechner hat in NetBird eine neue ID (${healed.peerMoved}). Das Panel hat alle Adressen und den Ausgang auf ihn umgezogen.`
+          ? `Dein ${brand}-Rechner hat in NetBird eine neue ID (${healed.peerMoved}). Das Panel hat alle Adressen und den Ausgang auf ihn umgezogen.`
           : '',
         healed.removed.length ? `Reste gelöschter Server entfernt: ${healed.removed.join(', ')}.` : '',
       ]

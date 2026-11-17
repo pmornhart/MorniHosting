@@ -1,16 +1,22 @@
 /* eslint-disable ts-patterns/no-magic-numbers -- tests compare against literal expected values */
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import net from 'node:net';
+import path from 'node:path';
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type {
   NetbirdDiscovery,
   NetbirdExitStatus,
   NetbirdServerInfo,
   NetbirdStatus,
+  RouterForwardsStatus,
   ServerDetail,
   ServerSummary,
 } from '@mornihosting/shared';
 import { loadConfig } from '../src/config.js';
-import { netbirdServices, settings } from '../src/db/schema.js';
+import { netbirdServices, servers as serverTable, settings } from '../src/db/schema.js';
+import { startRouter, type AddressRouter, type RouteTarget } from '../src/gateway/router.js';
 import {
   authHeaders,
   createTestApp,
@@ -20,6 +26,7 @@ import {
   type Session,
   type TestApp,
 } from './helpers.js';
+import { backend, handshake, talk } from './router-wire.js';
 
 const TOKEN = 'nbp_test_token_1234';
 /** A key from another (self-hosted) NetBird server. */
@@ -36,6 +43,9 @@ const BASE = 'moinmornhart.de';
 const HOME_IP = '198.51.100.7';
 const EXIT_IP = '85.215.54.143';
 const EXIT_PEER = { ...PEER, id: 'peer-exit', name: 'netbird-server', ip: '100.92.0.1', hostname: 'netbird' };
+/** A second panel in the same NetBird account (an app running MorniHosting as its motor, MH_BRAND=MoinMorni). */
+const SECOND_PEER = { ...PEER, id: 'peer-mn', name: 'moinmorni', ip: '100.92.14.9', hostname: 'moinmorni' };
+const SECOND_DOMAIN = 'moinmorni.net';
 /** A self-hosted NetBird that the panel's machine is connected to. */
 const OWN_NETBIRD = 'netbird.moinmornhart.de';
 
@@ -55,17 +65,26 @@ interface FakeResource {
   groups: string[];
 }
 
+/** A route as NetBird stores it (what the panel sent, plus the id). */
+type FakeRoute = Record<string, unknown> & { id: string; groups?: string[]; peer?: string; network?: string };
+
 /**
- * A tiny NetBird management API: domains, peers and reverse-proxy services. Like NetBird Cloud it hands out
- * ports from 31000 up; with `customPorts` (a self-hosted proxy) it listens where it is asked to.
+ * A tiny NetBird management API: domains, peers, groups, routes, networks and reverse-proxy services, with NetBird's
+ * own rules (checked against its source, management/server/route.go, group.go and the service manager): one service
+ * per name; one per outside port and protocol; NetBird Cloud hands out ports from 31000 up and refuses chosen ones,
+ * with `customPorts` (a self-hosted proxy) it listens where it is asked to. Routes come back as NetBird answers them
+ * (both "network" and "domains", "peer" always), a request with both of a pair is refused, a group in a route cannot be
+ * deleted. NetBird accepts several 0.0.0.0/0 routes over one machine; `strictRoutes` plays a NetBird that does not.
  */
-function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } = {}) {
+function createFakeNetbird(
+  options: { customPorts?: boolean; delayMs?: number; strictRoutes?: boolean; secondPanel?: boolean } = {},
+) {
   const services = new Map<string, FakeService>();
   const networks: { id: string; name: string }[] = [];
   const groups: { id: string; name: string; peers?: string[] }[] = [];
   /** The panel's machine; connected again in NetBird it gets a new id. */
   const machine = { id: PEER.id };
-  const routes = new Map<string, Record<string, unknown> & { id: string }>();
+  const routes = new Map<string, FakeRoute>();
   const routers: { network: string; peer: string }[] = [];
   const resources = new Map<string, FakeResource>();
   const calls: { method: string; host: string; path: string; auth: string | null }[] = [];
@@ -91,19 +110,58 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
         { ...PEER, id: machine.id, connection_ip: HOME_IP },
         { ...PEER, id: 'peer-laptop', name: 'laptop' },
         { ...EXIT_PEER, connection_ip: EXIT_IP },
+        ...(options.secondPanel ? [{ ...SECOND_PEER, connection_ip: HOME_IP }] : []),
       ]);
     // Exit routes: /api/routes(/<id>)
     if (net[2] === 'routes') {
       const routeId = net[3] ?? '';
-      if (method === 'GET') return Response.json(routes.size ? [...routes.values()] : null);
-      if (method === 'POST') {
-        const route = { ...(body as unknown as Record<string, unknown>), id: `route-${next.id++}` };
-        routes.set(route.id, route);
-        return Response.json(route);
+      // Like NetBird's answer: "network" and "domains" both, "peer" always, "peer_groups" only when set.
+      const answer = (r: FakeRoute) => ({
+        ...r,
+        network_type: 'IPv4',
+        domains: [],
+        peer: r.peer ?? '',
+        groups: r.groups ?? [],
+      });
+      if (method === 'GET') return Response.json(routes.size ? [...routes.values()].map(answer) : null);
+      const routeBody = body as unknown as FakeRoute | null;
+      if ((method === 'POST' || method === 'PUT') && routeBody) {
+        if (routeBody.network !== undefined && routeBody['domains'] !== undefined)
+          return Response.json(
+            { message: "only one of 'network' or 'domains' should be provided", code: 422 },
+            { status: 422 },
+          );
+        if (routeBody.peer !== undefined && routeBody['peer_groups'] !== undefined)
+          return Response.json(
+            { message: "only one of 'peer' or 'peer_groups' should be provided", code: 422 },
+            { status: 422 },
+          );
+        const unknownGroup = (routeBody.groups ?? []).find((g) => !groups.some((x) => x.id === g));
+        if (!routeBody.groups?.length || unknownGroup)
+          return Response.json(
+            { message: `group ${String(unknownGroup)} not found`, code: 422 },
+            { status: 422 },
+          );
+        const twin = [...routes.values()].find(
+          (r) => r.id !== routeId && r.network === routeBody.network && r.peer === routeBody.peer,
+        );
+        if (options.strictRoutes && twin)
+          return Response.json(
+            {
+              message: `failed to add route with prefix ${String(routeBody.network)} - peer ${String(routeBody.peer)} already has this route`,
+              code: 409,
+            },
+            { status: 409 },
+          );
       }
-      if (method === 'PUT' && routes.has(routeId)) {
-        routes.set(routeId, { ...(body as unknown as Record<string, unknown>), id: routeId });
-        return Response.json(routes.get(routeId));
+      if (method === 'POST' && routeBody) {
+        const route = { ...routeBody, id: `route-${next.id++}` };
+        routes.set(route.id, route);
+        return Response.json(answer(route));
+      }
+      if (method === 'PUT' && routeBody && routes.has(routeId)) {
+        routes.set(routeId, { ...routeBody, id: routeId });
+        return Response.json(answer({ ...routeBody, id: routeId }));
       }
       if (method === 'DELETE') return new Response(null, { status: routes.delete(routeId) ? 200 : 404 });
     }
@@ -114,6 +172,13 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
       group.peers = (body as { peers?: string[] } | null)?.peers ?? [];
       return Response.json(group);
     }
+    // Like NetBird: a group that a route still uses cannot be deleted.
+    const usedBy = [...routes.values()].find((r) => (r.groups ?? []).includes(groupId));
+    if (groupId && method === 'DELETE' && usedBy)
+      return Response.json(
+        { message: `group has been linked to route: ${String(usedBy['network_id'])}` },
+        { status: 400 },
+      );
     if (groupId && method === 'DELETE') {
       const at = groups.findIndex((g) => g.id === groupId);
       if (at >= 0) groups.splice(at, 1);
@@ -129,6 +194,17 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
           supports_custom_ports: options.customPorts,
         },
         { id: 'd2', domain: 'abc.netbird.app', validated: true, type: 'free' },
+        ...(options.secondPanel
+          ? [
+              {
+                id: 'd3',
+                domain: SECOND_DOMAIN,
+                validated: true,
+                type: 'custom',
+                supports_custom_ports: options.customPorts,
+              },
+            ]
+          : []),
       ]);
     }
     // Networks, groups, routing peers and resources: /api/networks/<net>/(routers|resources)/<id>
@@ -180,6 +256,9 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
     }
     if (url.pathname === '/api/reverse-proxies/services' && method === 'GET')
       return Response.json([...services.values()]);
+    // Like NetBird: changing a service it does not know (deleted in the dashboard) answers 404 before anything else.
+    if (method === 'PUT' && url.pathname.startsWith('/api/reverse-proxies/services/') && !services.has(id))
+      return Response.json({ message: `service ${id} not found`, code: 404 }, { status: 404 });
     // Like NetBird: a service may only point at a resource that exists.
     const missing = (body?.targets ?? []).find(
       (target) => target.target_type === 'host' && !resources.has(String(target.target_id)),
@@ -187,6 +266,14 @@ function createFakeNetbird(options: { customPorts?: boolean; delayMs?: number } 
     if (missing && (method === 'POST' || method === 'PUT'))
       return Response.json(
         { message: `resource target "${String(missing.target_id)}" not found in account`, code: 422 },
+        { status: 422 },
+      );
+    // Like NetBird Cloud: it hands out the outside port itself, a chosen one is refused (also changing it later).
+    const chosen = body?.mode !== 'http' && Boolean(body?.listen_port);
+    const changed = method === 'PUT' && chosen && services.get(id)?.listen_port !== body?.listen_port;
+    if (!options.customPorts && ((method === 'POST' && chosen) || changed))
+      return Response.json(
+        { message: 'custom ports not supported on cluster eu.proxy.netbird.io' },
         { status: 422 },
       );
     // Like a self-hosted NetBird: one outside port per protocol.
@@ -489,7 +576,8 @@ describe('NetBird automation', () => {
     expect(shown.address).toBe(`survival.${BASE}:31000`);
     expect(shown.netbird).toEqual<NetbirdServerInfo>({
       name: 'survival',
-      services: [{ purpose: 'main', domain: `survival.${BASE}`, port: 31000 }],
+      onDomain: false,
+      services: [{ purpose: 'main', domain: `survival.${BASE}`, port: 31000, wanted: null, heldBy: null }],
       routed: { java: false, bedrock: false },
       error: null,
     });
@@ -517,12 +605,13 @@ describe('NetBird automation', () => {
       mode: 'udp',
       targets: [expect.objectContaining({ port: 19132 })],
     });
-    // Bedrock 26.60+ (NetherNet) finds the server over TCP on the same outside port.
+    // Bedrock 26.60+ (NetherNet) finds the server over TCP. NetBird Cloud hands out every port itself (a chosen one
+    // is refused), so the TCP half gets its own; the same number for both needs a self-hosted proxy (test below).
     expect(netbird.byDomain(`survival-bedrock-tcp.${BASE}`)).toMatchObject({
       mode: 'tcp',
       targets: [expect.objectContaining({ port: 19132 })],
-      listen_port: netbird.byDomain(`survival-bedrock.${BASE}`)?.listen_port,
     });
+    expect((await detail(server.id)).netbird?.error).toBeNull();
     expect(netbird.byDomain(`survival-voice.${BASE}`)).toMatchObject({
       mode: 'udp',
       targets: [expect.objectContaining({ port: 24454 })],
@@ -662,6 +751,77 @@ describe('NetBird automation', () => {
     expect((await call('DELETE', '/api/netbird')).statusCode).toBe(200);
     expect([...netbird.services.keys()]).toEqual(['svc-hand']);
     expect((await call('GET', '/api/netbird')).json<NetbirdStatus>().configured).toBe(false);
+  });
+
+  test('the panel on the domain itself: www.<domain> leads there too, follows it and goes away again', async () => {
+    await configure();
+    const on = (await call('POST', '/api/netbird/panel', { name: '', port: 8080 })).json<NetbirdStatus>();
+    expect(on).toMatchObject({ panelAddress: BASE, panelWww: `www.${BASE}` });
+    const www = netbird.byDomain(`www.${BASE}`);
+    expect(www).toMatchObject({
+      mode: 'http',
+      pass_host_header: true,
+      targets: [expect.objectContaining({ target_id: 'peer-mh', protocol: 'http', port: 8080 })],
+    });
+    // The same target as the panel itself.
+    expect(www?.targets).toEqual(netbird.byDomain(BASE)?.targets);
+
+    // The panel moves to another port: www follows (the same service in NetBird).
+    await call('POST', '/api/netbird/panel', { name: '', port: 8081 });
+    expect(netbird.byDomain(`www.${BASE}`)).toMatchObject({
+      id: www?.id,
+      targets: [expect.objectContaining({ port: 8081 })],
+    });
+
+    // Visitors of www land on the domain: same path, same query, any case, with or without port.
+    const moved = await t.app.inject({
+      method: 'GET',
+      url: '/servers/abc?tab=players&x=1',
+      headers: { host: `WWW.${BASE}:443` },
+    });
+    expect(moved.statusCode).toBe(301);
+    expect(moved.headers.location).toBe(`https://${BASE}/servers/abc?tab=players&x=1`);
+    const api = await t.app.inject({
+      method: 'GET',
+      url: '/api/auth/status',
+      headers: { host: `www.${BASE}` },
+    });
+    expect(api.headers.location).toBe(`https://${BASE}/api/auth/status`);
+    // Only exactly that name: the domain itself and other names are left alone.
+    const others = await Promise.all(
+      [BASE, `panel.${BASE}`, `www.panel.${BASE}`, 'www.example.org'].map((host) =>
+        t.app.inject({ method: 'GET', url: '/api/auth/status', headers: { host } }),
+      ),
+    );
+    expect(others.map((r) => r.statusCode)).not.toContain(301);
+
+    // The panel gets its own name: www is no longer needed and goes.
+    const named = (
+      await call('POST', '/api/netbird/panel', { name: 'panel', port: 8081 })
+    ).json<NetbirdStatus>();
+    expect(named).toMatchObject({ panelAddress: `panel.${BASE}`, panelWww: null });
+    expect(netbird.byDomain(`www.${BASE}`)).toBeUndefined();
+
+    // A www service made by hand in NetBird is taken over, not doubled.
+    netbird.services.set('svc-www-hand', {
+      id: 'svc-www-hand',
+      domain: `www.${BASE}`,
+      mode: 'http',
+      listen_port: 0,
+      pass_host_header: false,
+      targets: [],
+    });
+    await call('POST', '/api/netbird/panel', { name: '', port: 8080 });
+    expect(netbird.services.get('svc-www-hand')).toMatchObject({
+      pass_host_header: true,
+      targets: [expect.objectContaining({ port: 8080 })],
+    });
+    expect([...netbird.services.values()].filter((svc) => svc.domain === `www.${BASE}`)).toHaveLength(1);
+
+    // NetBird disconnected: www goes, the panel's own address stays (nobody is locked out).
+    await call('DELETE', '/api/netbird');
+    expect(netbird.byDomain(`www.${BASE}`)).toBeUndefined();
+    expect(netbird.byDomain(BASE)).toBeDefined();
   });
 
   test('only admins may use NetBird; a name from another user is ignored', async () => {
@@ -861,6 +1021,598 @@ describe('NetBird automation', () => {
     expect(netbird.byDomain(`survival.${BASE}`)).toBeDefined();
     expect(await t.netbird.heal()).toBeNull();
   });
+  /** A second panel (MH_BRAND=MoinMorni) in the same NetBird account, with its own machine and domain. */
+  const secondPanel = async (env: Record<string, string> = {}) => {
+    const app = await createTestApp({ MH_BRAND: 'MoinMorni', ...env });
+    const admin = await setupAdmin(app);
+    const send = (method: 'GET' | 'PUT' | 'PATCH' | 'POST' | 'DELETE', url: string, payload?: object) =>
+      app.app.inject({ method, url, payload, headers: authHeaders(admin) });
+    await send('PUT', '/api/netbird', {
+      apiUrl: 'https://api.netbird.io',
+      token: TOKEN,
+      domain: SECOND_DOMAIN,
+      peerId: SECOND_PEER.id,
+    });
+    return { app, send };
+  };
+  const exitGroup = (brand: string) => netbird.groups.find((g) => g.name === `${brand} Ausgang`);
+
+  test('two panels in one NetBird account: own names, own exit route over the same machine, neither touches the other', async () => {
+    await t.cleanup();
+    netbird = createFakeNetbird({ secondPanel: true });
+    t = await createTestApp({ MH_LAN_IP: '198.51.100.20' });
+    s = await setupAdmin(t);
+    await configure();
+    const second = await secondPanel({ MH_LAN_IP: '198.51.100.30' });
+    try {
+      const status = (await second.send('GET', '/api/netbird')).json<NetbirdStatus>();
+      expect(status).toMatchObject({ brand: 'MoinMorni', machineHint: 'moinmorni', domain: SECOND_DOMAIN });
+      // The machine of the second panel is the one offered for it, not MorniHosting's.
+      const found = (await second.send('POST', '/api/netbird/discover', {})).json<NetbirdDiscovery>();
+      expect(found.suggestedPeerId).toBe(SECOND_PEER.id);
+      // Website on the domain itself: network, group and resource carry the second panel's name.
+      await second.send('POST', '/api/netbird/panel', { name: '', port: 8080 });
+      expect(netbird.networks.map((n) => n.name)).toEqual(['MorniHosting', 'MoinMorni']);
+      expect(netbird.groups.map((g) => g.name)).toEqual(['MorniHosting', 'MoinMorni']);
+      expect([...netbird.resources.values()].map((r) => r.name)).toEqual(['MoinMorni Panel']);
+
+      expect(
+        (await call('PUT', '/api/netbird/exit', { enabled: true, exitPeerId: 'peer-exit' })).statusCode,
+      ).toBe(200);
+      const on = await second.send('PUT', '/api/netbird/exit', { enabled: true, exitPeerId: 'peer-exit' });
+      expect(on.json<NetbirdExitStatus>()).toMatchObject({ enabled: true, sharedWith: null });
+      // NetBird takes two routes for all traffic over the same exit machine, each for its own group.
+      expect([...netbird.routes.values()].map((r) => [r['network_id'], r.peer, r.groups])).toEqual([
+        ['MorniHosting Ausgang', 'peer-exit', [exitGroup('MorniHosting')?.id]],
+        ['MoinMorni Ausgang', 'peer-exit', [exitGroup('MoinMorni')?.id]],
+      ]);
+      expect(exitGroup('MorniHosting')?.peers).toEqual(['peer-mh']);
+      expect(exitGroup('MoinMorni')?.peers).toEqual([SECOND_PEER.id]);
+
+      // Switching it off on one side leaves the other one alone.
+      await second.send('PUT', '/api/netbird/exit', { enabled: false });
+      expect([...netbird.routes.values()].map((r) => r['network_id'])).toEqual(['MorniHosting Ausgang']);
+      expect(exitGroup('MoinMorni')).toBeUndefined();
+      expect(exitGroup('MorniHosting')?.peers).toEqual(['peer-mh']);
+    } finally {
+      await second.app.cleanup();
+    }
+  });
+
+  test('a NetBird that allows one exit route per machine: the second panel joins it, and only ever takes its own group out', async () => {
+    netbird = createFakeNetbird({ secondPanel: true, strictRoutes: true });
+    await configure();
+    const second = await secondPanel();
+    try {
+      await call('PUT', '/api/netbird/exit', { enabled: true, exitPeerId: 'peer-exit' });
+      const joined = await second.send('PUT', '/api/netbird/exit', {
+        enabled: true,
+        exitPeerId: 'peer-exit',
+      });
+      expect(joined.json<NetbirdExitStatus>()).toMatchObject({
+        enabled: true,
+        sharedWith: 'MorniHosting Ausgang',
+      });
+      const mh = exitGroup('MorniHosting')?.id;
+      const mn = exitGroup('MoinMorni')?.id;
+      const only = () => [...netbird.routes.values()];
+      expect(only()).toHaveLength(1);
+      expect(only()[0]).toMatchObject({
+        network_id: 'MorniHosting Ausgang',
+        peer: 'peer-exit',
+        groups: [mh, mn],
+        masquerade: true,
+      });
+      // MorniHosting repairs its route (e.g. after its machine got a new id): the other group stays in it.
+      await call('PUT', '/api/netbird/exit', { enabled: true, exitPeerId: 'peer-exit' });
+      expect(only()[0]?.groups).toEqual([mh, mn]);
+      // The second panel switching on again stays in the shared route.
+      await second.send('PUT', '/api/netbird/exit', { enabled: true, exitPeerId: 'peer-exit' });
+      expect(only()).toHaveLength(1);
+      expect(only()[0]?.groups).toEqual([mh, mn]);
+
+      // MorniHosting switches off: its group goes, the route stays for the second panel.
+      await call('PUT', '/api/netbird/exit', { enabled: false });
+      expect(only()).toHaveLength(1);
+      expect(only()[0]?.groups).toEqual([mn]);
+      expect(exitGroup('MorniHosting')).toBeUndefined();
+      // The last one out removes the route.
+      await second.send('PUT', '/api/netbird/exit', { enabled: false });
+      expect(only()).toHaveLength(0);
+      expect(exitGroup('MoinMorni')).toBeUndefined();
+    } finally {
+      await second.app.cleanup();
+    }
+  });
+
+  /** A Velocity proxy with Geyser and voice chat (set straight in the database: the plugins do not matter here). */
+  type Send = (
+    method: 'GET' | 'PUT' | 'PATCH' | 'POST' | 'DELETE',
+    url: string,
+    payload?: object,
+  ) => ReturnType<typeof call>;
+  const proxyWithEverything = async (send: Send = call): Promise<string> => {
+    const created = await send('POST', '/api/servers', {
+      edition: 'java',
+      software: 'velocity',
+      version: '3.4.0',
+      memoryMb: 1024,
+      port: 25565,
+      eula: true,
+      startNow: false,
+      name: 'MoinMorni Proxy',
+    });
+    return created.json<{ id: string }>().id;
+  };
+  const switchOnGeyserAndVoice = (app: TestApp, id: string): void => {
+    app.ctx.db
+      .update(serverTable)
+      .set({
+        geyser: true,
+        voiceChat: true,
+        extraPorts: [{ port: 19132, containerPort: 19132, protocol: 'udp', purpose: 'geyser' }],
+      })
+      .where(eq(serverTable.id, id))
+      .run();
+  };
+
+  test('the network proxy on the domain itself: website on moinmorni.net, players type only moinmorni.net (Java, Bedrock, voice)', async () => {
+    netbird = createFakeNetbird({ secondPanel: true, customPorts: true });
+    const second = await secondPanel({ MH_LAN_IP: '198.51.100.30' });
+    try {
+      const id = await proxyWithEverything(second.send);
+      switchOnGeyserAndVoice(second.app, id);
+      await second.send('POST', '/api/netbird/panel', { name: '', port: 8080 });
+      const status = (
+        await second.send('PUT', '/api/netbird/domain-server', { serverId: id })
+      ).json<NetbirdStatus>();
+      expect(status.domainServer).toEqual({ id, name: 'MoinMorni Proxy' });
+      // NetBird keeps one service per name: the website has the domain, the game services their own names – on the
+      // ports games use without one typed. NetBird forwards TCP and UDP by port, whatever name the player typed.
+      expect(netbird.byDomain(SECOND_DOMAIN)).toMatchObject({ mode: 'http', pass_host_header: true });
+      expect(netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`)).toMatchObject({
+        mode: 'tcp',
+        listen_port: 25565,
+      });
+      expect(netbird.byDomain(`moinmorni-proxy-voice.${SECOND_DOMAIN}`)).toMatchObject({
+        mode: 'udp',
+        listen_port: 25565,
+        targets: [expect.objectContaining({ port: 25565, protocol: 'udp' })],
+      });
+      expect(netbird.byDomain(`moinmorni-proxy-bedrock.${SECOND_DOMAIN}`)).toMatchObject({
+        mode: 'udp',
+        listen_port: 19132,
+      });
+      expect(netbird.byDomain(`moinmorni-proxy-bedrock-tcp.${SECOND_DOMAIN}`)).toMatchObject({
+        mode: 'tcp',
+        listen_port: 19132,
+      });
+      const shown = (await second.send('GET', `/api/servers/${id}`)).json<ServerDetail>();
+      expect(shown).toMatchObject({
+        address: SECOND_DOMAIN,
+        geyserPublicPort: 19132,
+        voicePublicPort: 25565,
+      });
+      expect(shown.voiceHost).toBe(`${SECOND_DOMAIN}:25565`);
+      expect(shown.netbird).toMatchObject({ onDomain: true, error: null });
+      expect(shown.netbird?.services.every((x) => x.wanted === null)).toBe(true);
+      // The proxy's voice chat tells the players the UDP port NetBird has.
+      const props = fs.readFileSync(
+        path.join(second.app.dataDir, 'servers', id, 'plugins/voicechat/voicechat-proxy.properties'),
+        'utf8',
+      );
+      expect(props).toContain('voice_host=25565');
+
+      // Off the domain again: back to the server's own name.
+      await second.send('PUT', '/api/netbird/domain-server', { serverId: null });
+      expect((await second.send('GET', `/api/servers/${id}`)).json<ServerDetail>()).toMatchObject({
+        address: `moinmorni-proxy.${SECOND_DOMAIN}`,
+        netbird: { onDomain: false },
+      });
+    } finally {
+      await second.app.cleanup();
+    }
+  });
+
+  test("a server behind a network's proxy cannot go on the domain; an older such choice names the proxy to take", async () => {
+    netbird = createFakeNetbird({ secondPanel: true, customPorts: true });
+    const second = await secondPanel({ MH_LAN_IP: '198.51.100.30' });
+    try {
+      const proxyId = await proxyWithEverything(second.send);
+      const lobby = (
+        await second.send('POST', '/api/servers', {
+          edition: 'java',
+          software: 'paper',
+          version: '1.21.4',
+          memoryMb: 2048,
+          port: 25570,
+          eula: true,
+          startNow: false,
+          name: 'Lobby',
+        })
+      ).json<{ id: string }>().id;
+      const network = (
+        await second.send('POST', '/api/networks', { name: 'MoinMorni', proxyServerId: proxyId })
+      ).json<{ id: string }>();
+      await second.send('POST', `/api/networks/${network.id}/members`, { serverId: lobby, name: 'lobby' });
+      const behind = { id: lobby, name: 'Lobby', proxyId, proxyName: 'MoinMorni Proxy' };
+      expect((await second.send('GET', '/api/netbird')).json<NetbirdStatus>().behindProxy).toEqual([behind]);
+
+      // The lobby has no ports outside and takes no direct logins: nobody would get in on the domain.
+      const refused = await second.send('PUT', '/api/netbird/domain-server', { serverId: lobby });
+      expect(refused.statusCode).toBe(400);
+      expect(refused.json()).toEqual({
+        error: 'netbird_domain_server_behind_proxy',
+        params: { server: 'Lobby', proxy: 'MoinMorni Proxy' },
+      });
+      expect((await second.send('GET', '/api/netbird')).json<NetbirdStatus>().domainServer).toBeNull();
+      expect((await second.send('GET', `/api/servers/${lobby}`)).json<ServerDetail>().netbird).toBeNull();
+      expect([...netbird.services.values()].some((svc) => svc.domain.startsWith('lobby'))).toBe(false);
+
+      // Chosen before the lobby joined the network: the status shows it with its proxy (the card offers to switch).
+      const stored = second.app.ctx.settings.getValue<Record<string, unknown>>('netbird') ?? {};
+      second.app.ctx.settings.setValue('netbird', { ...stored, domainServerId: lobby });
+      const old = (await second.send('GET', '/api/netbird')).json<NetbirdStatus>();
+      expect(old.domainServer).toEqual({ id: lobby, name: 'Lobby' });
+      expect(old.behindProxy).toEqual([behind]);
+      // „Proxy nehmen“: the proxy goes on the domain, on the ports players use without typing one.
+      const fixed = (
+        await second.send('PUT', '/api/netbird/domain-server', { serverId: proxyId })
+      ).json<NetbirdStatus>();
+      expect(fixed.domainServer).toEqual({ id: proxyId, name: 'MoinMorni Proxy' });
+      expect(netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`)).toMatchObject({
+        mode: 'tcp',
+        listen_port: 25565,
+      });
+    } finally {
+      await second.app.cleanup();
+    }
+  });
+
+  test.each([
+    ['a self-hosted NetBird: on its old port', true],
+    ['NetBird Cloud: on a port NetBird picks', false],
+  ])('a service deleted by hand in NetBird is made again instead of failing – %s', async (_, customPorts) => {
+    netbird = createFakeNetbird({ secondPanel: true, customPorts });
+    const second = await secondPanel({ MH_LAN_IP: '198.51.100.30' });
+    try {
+      const id = await proxyWithEverything(second.send);
+      await second.send('PUT', '/api/netbird/domain-server', { serverId: id });
+      const before = netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`);
+      expect(before).toMatchObject({ mode: 'tcp' });
+      // Someone tidies up in the NetBird dashboard: NetBird now answers "service … not found" for it.
+      netbird.services.delete(String(before?.id));
+
+      const answer = await second.send('PUT', '/api/netbird/domain-server', { serverId: id });
+      expect(answer.statusCode, answer.body).toBe(200);
+      const again = netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`);
+      expect(again).toMatchObject({ mode: 'tcp' });
+      expect(again?.id).not.toBe(before?.id);
+      if (customPorts) expect(again?.listen_port).toBe(before?.listen_port);
+      expect((await second.send('GET', `/api/servers/${id}`)).json<ServerDetail>()).toMatchObject({
+        netbird: { onDomain: true, error: null },
+      });
+    } finally {
+      await second.app.cleanup();
+    }
+  });
+
+  test("the domain's ports belong to another panel: the next free pair, a note who has them, and the default port once free", async () => {
+    netbird = createFakeNetbird({ secondPanel: true, customPorts: true });
+    // MorniHosting's address router in the same account holds TCP 25565 and 19132 on the proxy.
+    const foreign = (id: string, domain: string, port: number) =>
+      netbird.services.set(id, {
+        id,
+        domain,
+        mode: 'tcp',
+        listen_port: port,
+        pass_host_header: false,
+        targets: [],
+      });
+    foreign('mh-java', `mh-router-java.${BASE}`, 25565);
+    foreign('mh-bedrock', `mh-router-bedrock.${BASE}`, 19132);
+    const second = await secondPanel();
+    try {
+      const id = await proxyWithEverything(second.send);
+      switchOnGeyserAndVoice(second.app, id);
+      await second.send('PUT', '/api/netbird/domain-server', { serverId: id });
+      // Each pair moves together to the first number that is free in both protocols.
+      expect(netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`)?.listen_port).toBe(25566);
+      expect(netbird.byDomain(`moinmorni-proxy-voice.${SECOND_DOMAIN}`)?.listen_port).toBe(25566);
+      expect(netbird.byDomain(`moinmorni-proxy-bedrock.${SECOND_DOMAIN}`)?.listen_port).toBe(19133);
+      expect(netbird.byDomain(`moinmorni-proxy-bedrock-tcp.${SECOND_DOMAIN}`)?.listen_port).toBe(19133);
+      // The other panel's services are not touched.
+      expect(netbird.services.get('mh-java')?.listen_port).toBe(25565);
+      const shown = (await second.send('GET', `/api/servers/${id}`)).json<ServerDetail>();
+      expect(shown.address).toBe(`${SECOND_DOMAIN}:25566`);
+      expect(shown.netbird?.services.find((x) => x.purpose === 'main')).toMatchObject({
+        port: 25566,
+        wanted: 25565,
+        heldBy: `mh-router-java.${BASE}`,
+      });
+      expect(shown.netbird?.services.find((x) => x.purpose === 'geyser')).toMatchObject({
+        wanted: 19132,
+        heldBy: `mh-router-bedrock.${BASE}`,
+      });
+      // Nothing changes in vain while the ports stay taken.
+      const before = netbird.calls.filter((c) => c.method === 'PUT').length;
+      await second.app.netbird.heal();
+      expect(netbird.calls.filter((c) => c.method === 'PUT').length).toBe(before);
+
+      // The other panel lets go (e.g. its router switched off): the next check takes the default ports.
+      netbird.services.delete('mh-java');
+      netbird.services.delete('mh-bedrock');
+      await second.app.netbird.heal();
+      expect(netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`)?.listen_port).toBe(25565);
+      expect(netbird.byDomain(`moinmorni-proxy-voice.${SECOND_DOMAIN}`)?.listen_port).toBe(25565);
+      expect(netbird.byDomain(`moinmorni-proxy-bedrock-tcp.${SECOND_DOMAIN}`)?.listen_port).toBe(19132);
+      const after = (await second.send('GET', `/api/servers/${id}`)).json<ServerDetail>();
+      expect(after.address).toBe(SECOND_DOMAIN);
+      expect(after.netbird?.services.every((x) => x.wanted === null)).toBe(true);
+    } finally {
+      await second.app.cleanup();
+    }
+  });
+
+  test('on the domain with NetBird Cloud: NetBird picks the ports, the address names them', async () => {
+    await configure();
+    const server = await create({ netbirdName: 'survival' });
+    await waitFor(() => netbird.byDomain(`survival.${BASE}`) !== undefined);
+    const status = (
+      await call('PUT', '/api/netbird/domain-server', { serverId: server.id })
+    ).json<NetbirdStatus>();
+    expect(status.domainServer?.id).toBe(server.id);
+    const shown = await detail(server.id);
+    expect(shown.address).toBe(`${BASE}:${netbird.byDomain(`survival.${BASE}`)?.listen_port}`);
+    expect(shown.netbird).toMatchObject({ onDomain: true, error: null });
+    // Deleting the server takes it off the domain.
+    await call('DELETE', `/api/servers/${server.id}`);
+    expect((await call('GET', '/api/netbird')).json<NetbirdStatus>().domainServer).toBeNull();
+  });
+
+  test('on the domain with the address router: the router sends the domain itself to that server', async () => {
+    netbird = createFakeNetbird({ customPorts: true });
+    const routed = await createTestApp({ MH_ROUTER_JAVA_PORT: '24565', MH_ROUTER_BEDROCK_PORT: '19100' });
+    try {
+      const admin = await setupAdmin(routed);
+      const rcall = (method: 'GET' | 'PUT' | 'POST', url: string, payload?: object) =>
+        routed.app.inject({ method, url, payload, headers: authHeaders(admin) });
+      await rcall('PUT', '/api/netbird', {
+        apiUrl: 'https://api.netbird.io',
+        token: TOKEN,
+        domain: BASE,
+        peerId: 'peer-mh',
+      });
+      const server = (
+        await rcall('POST', '/api/servers', {
+          edition: 'java',
+          software: 'paper',
+          version: '1.21.4',
+          memoryMb: 2048,
+          port: 25570,
+          eula: true,
+          startNow: false,
+          name: 'Reich',
+        })
+      ).json<ServerSummary>();
+      // A server without a name gets one from its own name.
+      await rcall('PUT', '/api/netbird/domain-server', { serverId: server.id });
+      expect(netbird.byDomain(`reich.${BASE}`)).toBeDefined();
+      expect(routed.gateway.lookup(BASE, 'java')).toEqual({ host: `mh-${server.id}`, port: 25565 });
+      expect(netbird.byDomain(`mh-router-java.${BASE}`)?.listen_port).toBe(25565);
+      expect((await rcall('GET', `/api/servers/${server.id}`)).json<ServerDetail>().address).toBe(BASE);
+    } finally {
+      await routed.cleanup();
+    }
+  });
+  test('other domains through the router: MoinMorni on the same NetBird server, players type moinmorni.net without a port', async () => {
+    netbird = createFakeNetbird({ secondPanel: true, customPorts: true });
+    // MorniHosting with its address router: NetBird sends TCP 25565 and 19132 to it.
+    const routed = await createTestApp({ MH_ROUTER_JAVA_PORT: '24565', MH_ROUTER_BEDROCK_PORT: '19100' });
+    const admin = await setupAdmin(routed);
+    const rcall = (method: 'GET' | 'PUT' | 'POST' | 'DELETE', url: string, payload?: object) =>
+      routed.app.inject({ method, url, payload, headers: authHeaders(admin) });
+    await rcall('PUT', '/api/netbird', {
+      apiUrl: 'https://api.netbird.io',
+      token: TOKEN,
+      domain: BASE,
+      peerId: 'peer-mh',
+    });
+    // MoinMorni (MorniHosting as its motor) in its own container in the home network, its proxy on its domain:
+    // 25565/19132 are taken, so it gets the next ports.
+    const second = await secondPanel({ MH_LAN_IP: '10.20.30.40' });
+    const backends = { java: await backend(), bedrock: await backend() };
+    const routers: AddressRouter[] = [];
+    try {
+      const proxy = await proxyWithEverything(second.send);
+      switchOnGeyserAndVoice(second.app, proxy);
+      await second.send('PUT', '/api/netbird/domain-server', { serverId: proxy });
+      const javaPort = netbird.byDomain(`moinmorni-proxy.${SECOND_DOMAIN}`)?.listen_port;
+      const bedrockPort = netbird.byDomain(`moinmorni-proxy-bedrock-tcp.${SECOND_DOMAIN}`)?.listen_port;
+      expect([javaPort, bedrockPort]).toEqual([25566, 19133]);
+
+      // The admin types what MoinMorni shows: the domain and its two outside ports.
+      const saved = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: 'MoinMorni.net', javaPort, bedrockPort }],
+      });
+      expect(saved.statusCode, saved.body).toBe(200);
+      expect(saved.json<RouterForwardsStatus>()).toEqual({
+        router: { java: true, bedrock: true },
+        forwards: [
+          {
+            domain: SECOND_DOMAIN,
+            javaPort: 25566,
+            bedrockPort: 19133,
+            java: {
+              target: '10.20.30.40:25565',
+              service: `moinmorni-proxy.${SECOND_DOMAIN}`,
+              problem: null,
+              error: null,
+            },
+            bedrock: {
+              target: '10.20.30.40:19132',
+              service: `moinmorni-proxy-bedrock-tcp.${SECOND_DOMAIN}`,
+              problem: null,
+              error: null,
+            },
+            shadowedBy: null,
+          },
+        ],
+      });
+
+      // Real TCP: the router finds MoinMorni's address in NetBird; the test's connect points it at its backends.
+      const dialled: RouteTarget[] = [];
+      const connect = (to: RouteTarget): net.Socket => {
+        dialled.push(to);
+        const port = to.port === 25565 ? backends.java.port : backends.bedrock.port;
+        return net.connect({ host: '127.0.0.1', port });
+      };
+      const java = await startRouter({
+        kind: 'java',
+        host: '127.0.0.1',
+        port: 0,
+        lookup: routed.gateway.route,
+        connect,
+      });
+      const bedrock = await startRouter({
+        kind: 'bedrock',
+        host: '127.0.0.1',
+        port: 0,
+        lookup: routed.gateway.route,
+        connect,
+      });
+      routers.push(java, bedrock);
+      const serviceReads = () =>
+        netbird.calls.filter((c) => c.method === 'GET' && c.path === '/api/reverse-proxies/services').length;
+      const readsBefore = serviceReads();
+
+      // Java: every byte arrives unchanged, the handshake (with Forge's extra and the port typed) included.
+      const javaJoin = Buffer.concat([handshake('MoinMorni.net.\0FML3\0', 25565), Buffer.from('LOGIN')]);
+      expect(await talk(java.port(), javaJoin)).toBe('hallo');
+      expect(backends.java.got().equals(javaJoin)).toBe(true);
+      // Bedrock: the signaling request (plain HTTP over TCP) with the domain in its Host header.
+      const offer = Buffer.from('POST /ws HTTP/1.1\r\nHost: moinmorni.net:19132\r\n\r\n{"offer":1}');
+      expect(await talk(bedrock.port(), offer)).toBe('hallo');
+      expect(backends.bedrock.got().equals(offer)).toBe(true);
+      expect(dialled).toEqual([
+        { host: '10.20.30.40', port: 25565 },
+        { host: '10.20.30.40', port: 19132 },
+      ]);
+      // NetBird was asked when saving; for players the answer is kept for a minute.
+      expect(serviceReads()).toBe(readsBefore);
+
+      // An unknown domain is closed, nothing is dialled.
+      expect(await talk(java.port(), handshake('fremd.example.org'))).toBe('');
+      expect(dialled).toHaveLength(2);
+
+      // The panel's own servers come first: one named "moinmorni" catches the domain (the list says so).
+      const own = (
+        await rcall('POST', '/api/servers', {
+          edition: 'java',
+          software: 'paper',
+          version: '1.21.4',
+          memoryMb: 2048,
+          port: 25570,
+          eula: true,
+          startNow: false,
+          name: 'Moinmorni Kopie',
+          netbirdName: 'moinmorni',
+        })
+      ).json<ServerSummary>();
+      expect(await routed.gateway.route(SECOND_DOMAIN, 'java')).toEqual({
+        host: `mh-${own.id}`,
+        port: 25565,
+      });
+      const shadowed = (await rcall('GET', '/api/netbird/forwards')).json<RouterForwardsStatus>();
+      expect(shadowed.forwards[0]?.shadowedBy).toBe('Moinmorni Kopie');
+      await rcall('DELETE', `/api/servers/${own.id}`);
+      await waitFor(async () => (await routed.gateway.route(SECOND_DOMAIN, 'java'))?.port === 25565);
+      expect(await routed.gateway.route(SECOND_DOMAIN, 'java')).toEqual({ host: '10.20.30.40', port: 25565 });
+
+      // Never into the internet: MoinMorni's resource now points at a public address.
+      const resource = [...netbird.resources.values()].find((r) => r.address === '10.20.30.40');
+      if (resource) resource.address = '203.0.113.50';
+      const outside = (await rcall('GET', '/api/netbird/forwards?fresh=1')).json<RouterForwardsStatus>();
+      expect(outside.forwards[0]?.java).toMatchObject({
+        target: '203.0.113.50:25565',
+        problem: 'not_private',
+      });
+      const warn = vi.spyOn(routed.ctx.log, 'warn');
+      expect(await talk(java.port(), javaJoin)).toBe('');
+      expect(dialled).toHaveLength(2);
+      // One line in the log says why (and not one per player: at most once a minute per domain).
+      expect(await talk(java.port(), javaJoin)).toBe('');
+      const lines = warn.mock.calls.filter(([, text]) => String(text).includes('no target'));
+      expect(lines).toEqual([
+        [
+          expect.objectContaining({ domain: SECOND_DOMAIN, kind: 'java', problem: 'not_private' }),
+          'address router: no target for this domain, connection closed',
+        ],
+      ]);
+
+      // The router's own ports cannot be a target: they would only lead back to the router.
+      const loop = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: SECOND_DOMAIN, javaPort: 25565, bedrockPort: null }],
+      });
+      expect(loop.json<RouterForwardsStatus>().forwards[0]).toMatchObject({
+        java: { problem: 'own_service', service: `mh-router-java.${BASE}` },
+        bedrock: null,
+      });
+      // Bedrock players of an entered domain never land on one of the panel's own servers.
+      expect(await routed.gateway.route(SECOND_DOMAIN, 'bedrock')).toBeNull();
+
+      // Typing mistakes: a domain twice, the panel's own domain, no port at all.
+      const twice = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [
+          { domain: SECOND_DOMAIN, javaPort: 25566, bedrockPort: null },
+          { domain: SECOND_DOMAIN, javaPort: 25567, bedrockPort: null },
+        ],
+      });
+      expect(twice.json()).toMatchObject({
+        error: 'router_forward_twice',
+        params: { domain: SECOND_DOMAIN },
+      });
+      const ownDomain = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: BASE, javaPort: 25566, bedrockPort: null }],
+      });
+      expect(ownDomain.json()).toMatchObject({ error: 'router_forward_own_domain' });
+      const noPort = await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: SECOND_DOMAIN, javaPort: null, bedrockPort: null }],
+      });
+      expect(noPort.statusCode).toBe(400);
+
+      // NetBird disconnected: players of the domain are turned away, the panel keeps running.
+      await rcall('PUT', '/api/netbird/forwards', {
+        forwards: [{ domain: SECOND_DOMAIN, javaPort: 25566, bedrockPort: 19133 }],
+      });
+      await rcall('DELETE', '/api/netbird');
+      const gone = (await rcall('GET', '/api/netbird/forwards?fresh=1')).json<RouterForwardsStatus>();
+      expect(gone.forwards[0]?.java).toMatchObject({ target: null, problem: 'no_netbird' });
+      expect(await talk(java.port(), javaJoin)).toBe('');
+      expect((await rcall('GET', '/api/netbird')).statusCode).toBe(200);
+      // Only admins see or change the list.
+      await rcall('POST', '/api/users', {
+        username: 'lena',
+        password: 'lena-passwort-1',
+        displayName: 'Lena',
+        canCreateServers: true,
+      });
+      const lena = await login(routed, 'lena', 'lena-passwort-1');
+      const asLena = await routed.app.inject({
+        method: 'GET',
+        url: '/api/netbird/forwards',
+        headers: authHeaders(lena),
+      });
+      expect(asLena.statusCode).toBe(403);
+    } finally {
+      await Promise.all(routers.map((r) => r.close()));
+      backends.java.close();
+      backends.bedrock.close();
+      await second.app.cleanup();
+      await routed.cleanup();
+    }
+  });
+
   test('hiding the home connection: only the MorniHosting container goes out, not the chosen routing machine', async () => {
     // The addresses run over another machine (like the Proxmox host routing into the LAN).
     await call('PUT', '/api/netbird', {

@@ -3,7 +3,7 @@ import { DEFAULT_SERVER_MEMORY_MB, type MyQuota } from '@mornihosting/shared';
 import { useSession } from '@/features/auth/session';
 import { api } from './api';
 
-export const myQuotaQuery = {
+const myQuotaQuery = {
   queryKey: ['quotas', 'mine'],
   queryFn: () => api<MyQuota>('/api/quotas/mine'),
 } as const;

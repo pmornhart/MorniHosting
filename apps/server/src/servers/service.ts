@@ -8,6 +8,7 @@ import {
   gameOf,
   type SetupProgress,
   type GameInfo,
+  clientPort,
   PORT_VOICE_CHAT,
   SOFTWARE,
   SWITCHABLE_SOFTWARE,
@@ -456,13 +457,17 @@ export function createServerService(ctx: AppContext): ServerService {
     const name = r.domain || s.publicAddress;
     // A tunnel's own port only belongs to the public name; at home the server port is right.
     const port = name ? (r.publicPort ?? r.port) : r.port;
-    return displayAddress(name || s.lanIp || 'localhost', port, SOFTWARE[r.software].defaultPort);
+    return displayAddress(name || s.lanIp || 'localhost', port, clientPort(r.software));
   };
 
   const voiceHostOf = (r: ServerRow): string => {
     const name = r.domain || settings.get().publicAddress;
-    const hostPort = r.extraPorts.find((p) => p.purpose === VOICE_PURPOSE)?.port ?? PORT_VOICE_CHAT;
-    const port = r.voicePublicPort ?? hostPort;
+    // A proxy's voice chat rides on its own port (UDP next to TCP); other servers have a voice port of their own.
+    const proxy = SOFTWARE[r.software].proxy;
+    const hostPort = proxy
+      ? r.port
+      : (r.extraPorts.find((p) => p.purpose === VOICE_PURPOSE)?.port ?? PORT_VOICE_CHAT);
+    const port = r.voicePublicPort ?? (proxy && name ? r.publicPort : null) ?? hostPort;
     return name ? `${name}:${port}` : String(port);
   };
 

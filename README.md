@@ -256,6 +256,7 @@ z. B. mit `[guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')`.
 | `TZ`                | nein    | Zeitzone für Zeitpläne, Standard `Europe/Berlin`.                                                        |
 | `MH_TRUST_PROXY`    | nein    | `true`, wenn das Panel hinter einem Reverse-Proxy mit HTTPS läuft (Nginx Proxy Manager, Traefik, Caddy). |
 | `MH_IMAGE_TAG`      | nein    | Bestimmte Panel-Version statt `latest`, z. B. `1.0.0`.                                                   |
+| `MH_BRAND`          | nein    | Name vor allem, was das Panel in NetBird anlegt, und in Meldungen. Standard `MorniHosting`.              |
 
 </details>
 
@@ -385,7 +386,7 @@ NetBird-Dashboards ein. Läuft NetBird auf dem Rechner mit MorniHosting, überni
 `update` selbst. Wichtig: Der Proxy eines selbst betriebenen NetBird lässt nur Port 443 durch. Erlaubt er eigene
 Ports, nimmt MorniHosting nach außen denselben Port wie der Server (`minecraft.deine-domain.de` für 25565). Gib
 die Ports dann einmal beim Dienst `netbird-proxy` in der `docker-compose.yml` deines NetBird-Servers und in dessen
-Firewall frei, z. B. `25565-25575/tcp`, `19132-19140/udp` und `24454-24460/udp` – automatisch mit
+Firewall frei, z. B. `25565-25575/tcp` und `/udp`, `19132-19140/udp` und `24454-24460/udp` – automatisch mit
 `curl -fsSL https://raw.githubusercontent.com/pmornhart/MorniHosting/main/scripts/netbird-proxy-ports.sh | sudo bash` auf dem NetBird-Server. Die genaue Liste steht im Panel
 unter **Admin-Bereich → NetBird**.
 
