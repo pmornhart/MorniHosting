@@ -20,6 +20,10 @@ import org.bukkit.entity.Player;
  * on stream is hidden for them – IP addresses and the server's addresses (chat, bar, /info), coordinates (/getpos,
  * homes), private messages (readable with the mouse) – and the others see "● LIVE" in front of their name in the
  * chat. Each part can be switched off on its own; all of it is only what this player sees.
+ *
+ * <p>In the MoinMorni network the streamer mode is the network's: /streamer works on every server (the proxy answers
+ * it, also here) and the network plugin puts what applies on the player ({@link #NETWORK_META}) – switched on in the
+ * lobby, it is on here at once, and the other way round.
  */
 final class Streamer {
   /** Hide IP and server addresses. */
@@ -51,6 +55,12 @@ final class Streamer {
   private static final Pattern IPV6 = Pattern.compile(
       "(?i)\\b(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\\b|\\b[0-9a-f]{1,4}(?::[0-9a-f]{1,4})*::(?:[0-9a-f]{1,4}(?::[0-9a-f]{1,4})*)?");
 
+  /**
+   * Set by the MoinMorni network plugin on a player in streamer mode: the parts that apply, "ip,coords,msg,live"
+   * (empty when all are off); not there = off.
+   */
+  static final String NETWORK_META = "moinmorni:streamer";
+
   private final MorniCraft plugin;
   /** The server's own names (written by MorniHosting), with any subdomain and port; null when there are none. */
   private volatile Pattern hosts;
@@ -64,8 +74,9 @@ final class Streamer {
   void load() {
     List<String> names = plugin.settings().streamerHide().stream().map(String::trim)
         .filter(n -> !n.isEmpty()).map(n -> n.toLowerCase(Locale.ROOT)).distinct().toList();
-    hosts = names.isEmpty() ? null : Pattern.compile("(?i)(?:[a-z0-9-]+\\.)*(?:"
-        + names.stream().map(Pattern::quote).collect(Collectors.joining("|")) + ")(?::\\d{1,5})?");
+    // "moinmorni.net" also covers "play.moinmorni.net:25566", but not "moinmorni.network" (the name stands alone).
+    hosts = names.isEmpty() ? null : Pattern.compile("(?i)(?<![a-z0-9-])(?:[a-z0-9-]+\\.)*(?:"
+        + names.stream().map(Pattern::quote).collect(Collectors.joining("|")) + ")(?::\\d{1,5})?(?![a-z0-9-])");
   }
 
   private PlayerStore.Data data(Player p) {
@@ -73,14 +84,49 @@ final class Streamer {
   }
 
   boolean on(Player p) {
+    if (plugin.network() != null) return networkParts(p) != null;
     return data(p).streamer;
   }
 
   /** True when this viewer streams and wants that part hidden. */
   boolean hides(Audience viewer, String option) {
     if (!(viewer instanceof Player p)) return false;
+    if (plugin.network() != null) {
+      List<String> parts = networkParts(p);
+      return parts != null && parts.contains(option);
+    }
     PlayerStore.Data d = data(p);
     return d.streamer && !d.streamerOff.contains(option);
+  }
+
+  /** In the network: the parts that apply to this player (null = not in streamer mode). */
+  static List<String> networkParts(Player p) {
+    if (!p.hasMetadata(NETWORK_META)) return null;
+    List<org.bukkit.metadata.MetadataValue> values = p.getMetadata(NETWORK_META);
+    if (values.isEmpty()) return null;
+    String raw = values.get(0).asString();
+    return raw.isEmpty() ? List.of() : List.of(raw.split(","));
+  }
+
+  /** In the network: what was last seen of each player's streamer mode (to repaint names when it changes). */
+  private final Map<java.util.UUID, String> seen = new java.util.concurrent.ConcurrentHashMap<>();
+
+  /**
+   * Every second in the network: has someone switched the streamer mode (on any server, the hub sends it here)? Then
+   * the names (● LIVE) and the bar follow.
+   */
+  void watchNetwork() {
+    boolean changed = false;
+    for (Player p : Bukkit.getOnlinePlayers()) {
+      List<String> parts = networkParts(p);
+      String now = parts == null ? "" : "on:" + String.join(",", parts);
+      String before = seen.put(p.getUniqueId(), now);
+      if (!now.equals(before == null ? "" : before)) changed = true;
+    }
+    seen.keySet().removeIf(id -> Bukkit.getPlayer(id) == null);
+    if (!changed) return;
+    plugin.ranks().paintAll();
+    plugin.sidebar().update();
   }
 
   /** The others see "● LIVE" in front of this player's name. */
@@ -108,6 +154,11 @@ final class Streamer {
   // ---------------------------------------------------------------- /streamer
 
   void command(Player p, String[] args) {
+    if (plugin.network() != null) {
+      // Reached only as /mornicraft:streamer (the proxy answers /streamer): the network's command counts.
+      p.sendMessage(plugin.ui().note("ℹ", Ui.ACCENT_2, "net.command", Ui.v("usage", "/streamer")));
+      return;
+    }
     PlayerStore.Data d = data(p);
     if (args.length > 0) {
       String word = args[0].toLowerCase(Locale.ROOT);

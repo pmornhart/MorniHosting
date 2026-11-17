@@ -369,8 +369,9 @@ final class Commands implements TabExecutor {
   /** The personal page of this player, or null without a panel domain. */
   String pageOf(CommandSender who) {
     if (s().net() != null) {
-      // In the network: the player's public profile on the website (stats of all modes).
-      return "https://" + s().net().address() + "/spieler/" + URLEncoder.encode(who.getName(), StandardCharsets.UTF_8);
+      // In the network: MorniCraft's command page on the website, for this player (homes, rank …).
+      return "https://" + s().net().address() + "/befehle/mornicraft?spieler="
+          + URLEncoder.encode(who.getName(), StandardCharsets.UTF_8);
     }
     String link = s().link();
     if (link == null || link.isBlank()) return null;

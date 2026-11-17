@@ -183,7 +183,7 @@ final class Texts {
       Map.entry("home.gui.deletedOf", new String[] {"Zuhause <hl><name></hl> von <hl><player></hl> gelöscht", "Home <hl><name></hl> of <hl><player></hl> deleted"}),
       Map.entry("mod.noperm", new String[] {"Das darf nur das Team", "Only the team may do that"}),
       Map.entry("mod.self", new String[] {"Das geht nicht bei dir selbst", "You can't do that to yourself"}),
-      Map.entry("mod.protected", new String[] {"<hl><name></hl> ist OP – das darf nur ein OP", "<hl><name></hl> is an operator – only operators may"}),
+      Map.entry("mod.higher", new String[] {"Bei <hl><name></hl> geht das nicht – gleicher oder höherer Rang", "You can't do that to <hl><name></hl> – same or higher rank"}),
       Map.entry("mod.title", new String[] {"Team · <name>", "Team · <name>"}),
       Map.entry("mod.go", new String[] {"Zu ihm teleportieren", "Teleport to them"}),
       Map.entry("mod.go.hint", new String[] {"Sofort, ohne Wartezeit", "Right away, no waiting"}),
@@ -429,8 +429,8 @@ final class Texts {
       Map.entry("net.command", new String[] {
           "Das macht auf MoinMorni das Netzwerk – tippe <hl><usage></hl>",
           "On MoinMorni the network does that – type <hl><usage></hl>"}),
-      Map.entry("net.page", new String[] {"➜ Dein Profil auf moinmorni.net", "➜ Your profile on moinmorni.net"}),
-      Map.entry("net.page.hover", new String[] {"Öffnet dein Profil mit Statistiken", "Opens your profile with stats"}),
+      Map.entry("net.page", new String[] {"➜ Alle Befehle auf einer Seite", "➜ All commands on one page"}),
+      Map.entry("net.page.hover", new String[] {"Öffnet deine Befehls-Seite für MorniCraft auf moinmorni.net", "Opens your MorniCraft command page on moinmorni.net"}),
       Map.entry("net.welcome", new String[] {
           "Du bist auf <hl>MorniCraft</hl> im Netzwerk <hl>MoinMorni</hl> – zurück in die Lobby mit <hl>/lobby</hl>",
           "You're on <hl>MorniCraft</hl> in the <hl>MoinMorni</hl> network – back to the lobby with <hl>/lobby</hl>"}),

@@ -10,6 +10,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
@@ -21,6 +22,10 @@ import org.bukkit.plugin.RegisteredServiceProvider;
  * compiled in: its service ({@code de.moinmorni.api.MoinMorni}) is found by name and called by reflection. Without
  * the plugin (or with {@code network: off} in config.yml) MorniCraft stays exactly as it is alone or under
  * MorniHosting.
+ *
+ * <p>Since version 2 the interface also knows {@code playing} ("is in the middle of a game": then "/lobby" asks
+ * first). An older network plugin doesn't have it: then it's simply missing here (null) and MorniCraft runs as
+ * before.
  */
 final class Network {
   private static final String SERVICE = "de.moinmorni.api.MoinMorni";
@@ -37,6 +42,8 @@ final class Network {
   private final Method language;
   private final Method serverName;
   private final Method online;
+  /** Since interface version 2 – null with an older network plugin. */
+  private final Method playing;
 
   private Network(Object api, Class<?> type) throws NoSuchMethodException {
     this.api = api;
@@ -45,6 +52,16 @@ final class Network {
     this.language = type.getMethod("language", UUID.class);
     this.serverName = type.getMethod("serverName");
     this.online = type.getMethod("online");
+    this.playing = optional(type, "playing", Player.class, boolean.class);
+  }
+
+  /** A method the network plugin may not have yet (older interface): null then. */
+  private static Method optional(Class<?> type, String name, Class<?>... params) {
+    try {
+      return type.getMethod(name, params);
+    } catch (NoSuchMethodException | LinkageError | RuntimeException e) {
+      return null;
+    }
   }
 
   /** The network, when its plugin runs here and config.yml doesn't say "network: off"; else null. */
@@ -85,6 +102,14 @@ final class Network {
   boolean hasRight(UUID player, String right) {
     Object v = call(hasRight, player, right);
     return v instanceof Boolean b && b;
+  }
+
+  /**
+   * Is the player in the middle of something they would lose by leaving (a fight)? Then the network asks before
+   * "/lobby". Older network plugin: nothing happens.
+   */
+  void playing(Player player, boolean playing) {
+    if (this.playing != null) call(this.playing, player, playing);
   }
 
   /** The player's rank in the network (everyone without one: "player"). */
