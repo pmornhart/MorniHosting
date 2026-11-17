@@ -990,6 +990,25 @@ export function createNetbirdAutomation(
     return host ? { found: true, host, port: target.port, service: service.domain } : missing('no_address');
   };
 
+  /** www.<domain> fehlt, obwohl das Panel (die Webseite) direkt auf der Domain liegt: so anlegen wie beim Einrichten. */
+  const ensureWww = async (client: NetbirdClient, cfg: StoredConfig): Promise<void> => {
+    const panel = panelMapping();
+    if (!panel || panel.domain !== cfg.domain || wwwMapping()) return;
+    const resource = (await ensureResource(client, cfg, PANEL_KEY, panelResource))?.resource;
+    const want: Wanted = { purpose: 'panel', domain: panel.domain, mode: 'http', port: panel.targetPort };
+    const request = {
+      domain: want.domain,
+      mode: want.mode,
+      peerId: cfg.peerId,
+      resourceId: resource?.id ?? null,
+      resourceAddress: resource?.address ?? null,
+      port: want.port,
+      passHostHeader: true,
+    };
+    await lock(PANEL_KEY, () => syncWww(client, cfg, want, request));
+    if (wwwMapping()) ctx.log.info({ domain: `${WWW_PREFIX}${cfg.domain}` }, 'NetBird www address set up');
+  };
+
   const heal: NetbirdAutomation['heal'] = async () => {
     const cfg = config();
     if (!cfg) return null;
@@ -1013,6 +1032,10 @@ export function createNetbirdAutomation(
     // The server on the domain waits for a port another service had: maybe it is free now.
     const waiting = current.domainServerId;
     if (waiting && portNotes.get(waiting)?.size) await syncQuietly(waiting);
+    // Webseite/Panel direkt auf der Domain, aber noch kein www-Dienst (z. B. Adresse von vor dieser Funktion): nachholen.
+    await ensureWww(client, current).catch((err: unknown) =>
+      ctx.log.warn({ err }, 'NetBird www address could not be set up'),
+    );
     const outcomes = current.networkId ? await removeLeftovers(client, current.networkId) : [];
     const removed = outcomes.filter((o) => o.reason === null).map((o) => o.name);
     const stuck = outcomes.flatMap((o) => (o.reason === null ? [] : [{ name: o.name, reason: o.reason }]));

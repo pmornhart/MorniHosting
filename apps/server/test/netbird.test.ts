@@ -824,6 +824,27 @@ describe('NetBird automation', () => {
     expect(netbird.byDomain(BASE)).toBeDefined();
   });
 
+  test('a website on the domain set up before www existed gets www.<domain> by itself (heal)', async () => {
+    await configure();
+    await call('POST', '/api/netbird/panel', { name: '', port: 8080 });
+    // As on an installation from before: the www service and its note in the panel are missing.
+    const www = netbird.byDomain(`www.${BASE}`);
+    expect(www).toBeDefined();
+    netbird.services.delete(www?.id ?? '');
+    t.ctx.db.delete(netbirdServices).where(eq(netbirdServices.purpose, 'panel-www')).run();
+    expect((await call('GET', '/api/netbird')).json<NetbirdStatus>().panelWww).toBeNull();
+
+    await t.netbird.heal();
+    expect(netbird.byDomain(`www.${BASE}`)).toMatchObject({
+      pass_host_header: true,
+      targets: [expect.objectContaining({ port: 8080 })],
+    });
+    expect((await call('GET', '/api/netbird')).json<NetbirdStatus>().panelWww).toBe(`www.${BASE}`);
+    // Nothing doubled on the next round.
+    await t.netbird.heal();
+    expect([...netbird.services.values()].filter((svc) => svc.domain === `www.${BASE}`)).toHaveLength(1);
+  });
+
   test('only admins may use NetBird; a name from another user is ignored', async () => {
     await configure();
     await call('POST', '/api/users', {
