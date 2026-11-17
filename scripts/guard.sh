@@ -30,6 +30,7 @@ WRAPPER="${MH_WRAPPER_DIR:-/usr/local/sbin}/${GUARD_NAME}-guard"
 STATE_DIR="${MH_GUARD_STATE_DIR:-/var/lib/${GUARD_NAME}}"
 FAIL_FILE="${STATE_DIR}/netbird-failures"
 PANEL_FAIL_FILE="${STATE_DIR}/panel-failures"
+PANEL_RESTARTS_FILE="${STATE_DIR}/panel-restarts"
 INSTALL_DIR="${MH_INSTALL_DIR:-/opt/${GUARD_NAME}}"
 # Container, die laufen müssen – der erste ist das Panel (bzw. die Webseite des Produkts).
 read -r -a CONTAINERS <<<"${MH_GUARD_CONTAINERS:-${GUARD_NAME} ${GUARD_NAME}-socket-proxy}"
@@ -45,6 +46,11 @@ STATUS_COMMAND="bash ${SCRIPT_PATH} status"
 DOCKER_DAEMON_JSON="${MH_DOCKER_DAEMON_JSON:-/etc/docker/daemon.json}"
 # So oft hintereinander darf das Panel nicht antworten, bevor es neu startet.
 PANEL_RESTART_AFTER=3
+# So viele Neustarts in einer Stunde heißen: der Fehler kommt wieder (eigene Meldung statt „behoben“).
+PANEL_FLAPPING_AFTER=3
+PANEL_RESTART_WINDOW_S=3600
+# So lang darf der Grund der Gesundheitsprüfung im Protokoll und in der Meldung sein.
+REASON_MAX_CHARS=160
 # Unter so viel freiem Platz (MB) wird aufgeräumt.
 DISK_CLEAN_BELOW_MB=3072
 # So oft wird ein abgewählter NetBird-Ausgang wieder probiert, und so lange darf er sich einrichten.
@@ -535,11 +541,12 @@ keep_docker() {
   fi
 }
 
-# Läuft der Container und meldet Docker ihn nicht als krank?
+# Läuft der Container und meldet Docker ihn nicht als krank? Ein Container ohne Gesundheitsprüfung (z. B. der
+# Socket-Proxy) zählt, sobald er läuft – früher las die Prüfung dort „true “ mit Leerzeichen und hielt ihn für krank.
 container_ok() {
   local state
-  state="$(docker inspect -f '{{.State.Running}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$1" 2>/dev/null || true)"
-  [[ "${state}" == "true" || "${state}" == "true healthy" || "${state}" == "true starting" ]]
+  state="$(container_state "$1")"
+  [[ "${state}" == "läuft" || "${state}" == "startet" ]]
 }
 
 all_containers_ok() {
@@ -548,6 +555,41 @@ all_containers_ok() {
     container_ok "${name}" || return 1
   done
 }
+# Zustand eines Containers in Worten: läuft, startet, krank, aus (<Status>) oder fehlt.
+container_state() {
+  local info status health
+  info="$(docker inspect -f '{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$1" 2>/dev/null || true)"
+  [[ -z "${info}" ]] && { echo "fehlt"; return 0; }
+  status="${info%%|*}"
+  health="${info#*|}"
+  if [[ "${status}" != "running" ]]; then
+    echo "aus (${status})"
+  elif [[ "${health}" == "unhealthy" ]]; then
+    echo "krank"
+  elif [[ "${health}" == "starting" ]]; then
+    echo "startet"
+  else
+    echo "läuft"
+  fi
+}
+
+# Letzte Antwort der Gesundheitsprüfung (eine Zeile, gekürzt) – damit im Protokoll steht, warum Docker „krank“ sagt.
+health_reason() {
+  docker inspect -f '{{if .State.Health}}{{range .State.Health.Log}}{{.Output}}{{"\n"}}{{end}}{{end}}' "$1" 2>/dev/null |
+    grep -v '^[[:space:]]*$' | tail -n 1 | tr -s '[:space:]' ' ' | cut -c1-"${REASON_MAX_CHARS}" || true
+}
+
+# Neustarts der letzten Stunde (eine Zeile je Neustart: Sekunden seit 1970).
+recent_panel_restarts() {
+  local now cutoff
+  now="$(date +%s)"
+  cutoff=$((now - PANEL_RESTART_WINDOW_S))
+  [[ -f "${PANEL_RESTARTS_FILE}" ]] || { echo 0; return 0; }
+  awk -v c="${cutoff}" '$1 >= c' "${PANEL_RESTARTS_FILE}" >"${PANEL_RESTARTS_FILE}.tmp"
+  mv "${PANEL_RESTARTS_FILE}.tmp" "${PANEL_RESTARTS_FILE}"
+  wc -l <"${PANEL_RESTARTS_FILE}" | tr -d ' '
+}
+
 keep_panel() {
   command -v docker >/dev/null 2>&1 || return 0
   [[ -f "${INSTALL_DIR}/docker-compose.yml" ]] || return 0
@@ -564,13 +606,55 @@ keep_panel() {
   local failures
   failures="$(count_up "${PANEL_FAIL_FILE}")"
   ((failures < PANEL_RESTART_AFTER)) && return 0
+
+  # Wer ist es – und warum? Nur die Kranken bekommen einen Neustart, nicht einfach der erste Container.
+  local name state reason sick=() before=() missing=0
+  for name in "${CONTAINERS[@]}"; do
+    container_ok "${name}" && continue
+    state="$(container_state "${name}")"
+    reason="$(health_reason "${name}")"
+    sick+=("${name}")
+    before+=("${name}: ${state}${reason:+ – ${reason}}")
+    [[ "${state}" == "fehlt" ]] && missing=1
+  done
+  log "Panel seit ${failures} Prüfungen nicht in Ordnung: $(printf '%s; ' "${before[@]}")– starte neu"
+
   # Reste eines abgebrochenen Neustarts blockieren Compose ("name … is already in use").
   docker ps -a --format '{{.Names}}' | grep -E "^[0-9a-f]{12}_${GUARD_NAME}(-[a-z-]+)?\$" | xargs -r docker rm -f >/dev/null 2>&1 || true
-  log "Panel seit ${failures} Prüfungen aus oder krank – starte es neu"
-  (cd "${INSTALL_DIR}" && timeout 300 docker compose up -d >/dev/null 2>&1) || true
-  container_ok "${CONTAINERS[0]}" || docker restart "${CONTAINERS[0]}" >/dev/null 2>&1 || true
+  if ((missing)); then
+    (cd "${INSTALL_DIR}" && timeout 300 docker compose up -d >/dev/null 2>&1) || true
+  fi
+  for name in "${sick[@]}"; do
+    # Hat Compose ihn schon zurückgeholt (oder fehlt er weiter), braucht er keinen Neustart.
+    container_ok "${name}" && continue
+    [[ "$(container_state "${name}")" == "fehlt" ]] && continue
+    timeout 120 docker restart "${name}" >/dev/null 2>&1 || true
+  done
   echo 0 >"${PANEL_FAIL_FILE}"
-  event container panel fixed "Panel neu gestartet" "Das Panel war ${failures} Minuten aus oder antwortete nicht und wurde neu gestartet."
+  date +%s >>"${PANEL_RESTARTS_FILE}"
+
+  local what restarts
+  what="$(printf '%s; ' "${before[@]}")"
+  what="${what%; }"
+  if ! all_containers_ok; then
+    local after=()
+    for name in "${sick[@]}"; do after+=("${name}: $(container_state "${name}")"); done
+    log "Nach dem Neustart weiter nicht in Ordnung: $(printf '%s; ' "${after[@]}")"
+    event container panel action "Panel startet nicht richtig" \
+      "Nicht in Ordnung war: ${what}. Ein Neustart hat nicht geholfen." \
+      "Bitte im Container nachsehen, was er meldet (pct enter <ID>):" "docker logs --tail 80 ${sick[0]}"
+    return 0
+  fi
+  restarts="$(recent_panel_restarts)"
+  if ((restarts >= PANEL_FLAPPING_AFTER)); then
+    log "${sick[0]} musste in einer Stunde ${restarts}-mal neu starten – der Fehler kommt wieder"
+    event container panel:wiederholt action "${sick[0]} wird immer wieder krank" \
+      "Nicht in Ordnung war: ${what}. Ein Neustart hilft jeweils nur kurz – das war der ${restarts}. in einer Stunde." \
+      "Bitte die letzten Zeilen schicken (pct enter <ID>):" "docker logs --tail 80 ${sick[0]}"
+    return 0
+  fi
+  event container panel fixed "Panel neu gestartet" \
+    "Nicht in Ordnung war: ${what}. Der Wächter hat genau das neu gestartet, jetzt läuft es wieder."
 }
 
 free_disk_mb() { df -Pm "${INSTALL_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }'; }
@@ -641,7 +725,11 @@ status() {
   [[ -n "${api}" ]] && printf 'NetBird-API: %s (%s)\n' "$(netbird_api_ok "${api}" && echo ok || echo 'nicht erreichbar')" "$(url_host "${api}")"
   printf 'NetBird:  %s\n' "$(command -v netbird >/dev/null 2>&1 && { netbird_connected && echo verbunden || echo "getrennt ($(netbird_reason))"; } || echo 'nicht installiert')"
   printf 'Docker:   %s\n' "$(docker_ok && echo ok || echo 'antwortet nicht')"
-  printf 'Panel:    %s\n' "$(all_containers_ok && echo läuft || echo aus) (${CONTAINERS[*]})"
+  printf 'Panel:    %s\n' "$(all_containers_ok && echo läuft || echo 'nicht in Ordnung')"
+  local name
+  for name in "${CONTAINERS[@]}"; do
+    printf '          %s: %s\n' "${name}" "$(container_state "${name}")"
+  done
   printf 'Platz:    %s MB frei\n' "$(free_disk_mb)"
   printf 'Wächter:  %s\n' "$(systemctl is-active "${GUARD_NAME}-guard.timer" 2>/dev/null || echo aus)"
   [[ -f "${LOG_FILE}" ]] && {
@@ -725,6 +813,11 @@ case "${COMMAND}" in
     [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
     reconnect
     ;;
+  panel)
+    # Nur die Container des Panels prüfen (Tests, oder von Hand).
+    [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
+    keep_panel
+    ;;
   netbird-api)
     [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
     keep_netbird_api
@@ -759,7 +852,7 @@ case "${COMMAND}" in
     systemctl daemon-reload
     ;;
   *)
-    echo "Unbekannter Befehl: ${COMMAND} (check, status, dns, netbird, netbird-api, exit, install, uninstall)" >&2
+    echo "Unbekannter Befehl: ${COMMAND} (check, status, panel, dns, netbird, netbird-api, exit, install, uninstall)" >&2
     exit 2
     ;;
 esac
