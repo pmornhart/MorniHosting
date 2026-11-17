@@ -107,7 +107,7 @@ const TOML_STRING = {
 // https://regex101.com/?flavor=javascript&regex=%5E%5Cs*(%3F%3Amandatory%5Cs*%3D%5Cs*true%7Ctype%5Cs*%3D%5Cs*%5B%22'%5Drequired%5B%22'%5D)&flags=im&testString=mandatory%3Dtrue%0Atype%3D%22required%22%0Amandatory%3Dfalse
 const TOML_REQUIRED = /^\s*(?:mandatory\s*=\s*true|type\s*=\s*["']required["'])/im;
 
-export interface JarDescription {
+interface JarDescription {
   /** Names a dependency can refer to: plugin name, mod id, "provides". Lower case. */
   readonly ids: readonly string[];
   readonly name: string;

@@ -13,21 +13,25 @@ import { AppShell } from '@/features/shell/AppShell';
 import { appRoutes } from './routes';
 import { lazyPage } from '@/lib/lazy-page';
 
-const PublicStatsPage = lazyPage(async () => ({
-  default: (await import('@/features/public/PublicStatsPage')).PublicStatsPage,
-}));
+const PublicStatsPage = lazyPage(async () => {
+  const { PublicStatsPage: page } = await import('@/features/public/PublicStatsPage');
+  return { default: page };
+});
 
-const PlayerCommandsPage = lazyPage(async () => ({
-  default: (await import('@/features/public/PlayerCommandsPage')).PlayerCommandsPage,
-}));
+const PlayerCommandsPage = lazyPage(async () => {
+  const { PlayerCommandsPage: page } = await import('@/features/public/PlayerCommandsPage');
+  return { default: page };
+});
 
-const TeamDashboardPage = lazyPage(async () => ({
-  default: (await import('@/features/public/team/TeamDashboardPage')).TeamDashboardPage,
-}));
+const TeamDashboardPage = lazyPage(async () => {
+  const { TeamDashboardPage: page } = await import('@/features/public/team/TeamDashboardPage');
+  return { default: page };
+});
 
-const ImpressumPage = lazyPage(async () => ({
-  default: (await import('@/features/public/ImpressumPage')).ImpressumPage,
-}));
+const ImpressumPage = lazyPage(async () => {
+  const { ImpressumPage: page } = await import('@/features/public/ImpressumPage');
+  return { default: page };
+});
 
 /** The demo runs inside a frame where the address bar cannot change, so it keeps its route in memory. */
 const createRouter = import.meta.env.MODE === 'demo' ? createMemoryRouter : createBrowserRouter;
