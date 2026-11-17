@@ -23,7 +23,8 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 
 /**
- * MorniCraft in the MoinMorni network: every second the network's ranks and the clan tags (for the network chat),
+ * MorniCraft in the MoinMorni network: every second the network's ranks, the streamer mode and the clan tags (for the
+ * network chat),
  * and while something happens to a player (join, click, move, sneak …) MorniCraft speaks the player's language.
  * Only registered when the network plugin runs here.
  */
@@ -44,6 +45,8 @@ final class NetworkMode implements Listener {
 
   private void tick() {
     plugin.ranks().watchNetwork();
+    // The streamer mode is the network's (switched on any server): ● LIVE and the bar follow here.
+    plugin.streamer().watchNetwork();
     for (Player p : Bukkit.getOnlinePlayers()) tag(p);
     if (++ticks % SUMMARY_EVERY == 0) {
       for (Player p : Bukkit.getOnlinePlayers()) summary(p.getUniqueId(), true);

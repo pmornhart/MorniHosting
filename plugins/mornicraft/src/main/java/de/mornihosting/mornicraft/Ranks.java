@@ -381,6 +381,49 @@ final class Ranks implements Listener {
     return configured != null ? configured : fallbackRank();
   }
 
+  // ---------------------------------------------------------------- who stands above whom (team tools)
+
+  /** The console stands above everyone. */
+  static final int CONSOLE = Integer.MIN_VALUE;
+  /** Without any rank (should not happen): below everyone. */
+  private static final int NOBODY = Integer.MAX_VALUE / 2;
+
+  /**
+   * Where someone stands for the team tools – smaller is higher. In the MoinMorni network the network's position (an
+   * operator counts nothing extra there: the network decides); alone the rank's place in the list (the first is the
+   * highest), operators count as the highest rank.
+   */
+  int level(UUID id, String name, boolean op) {
+    if (plugin.network() != null) {
+      Network.Rank n = netRanks.get(id);
+      if (n == null) n = plugin.network().rank(id);
+      return n == null ? NOBODY : n.position();
+    }
+    List<Rank> list = ranks;
+    Rank r = null;
+    String own = given.get(id);
+    if (own != null) r = own.isEmpty() ? fallbackRank() : byId(own);
+    if (r == null) r = configured(id, name);
+    if (r == null) r = fallbackRank();
+    int at = r == null ? -1 : list.indexOf(r);
+    int place = at < 0 ? NOBODY : at;
+    return op ? Math.min(place, 0) : place;
+  }
+
+  int level(org.bukkit.command.CommandSender s) {
+    if (!(s instanceof Player p)) return CONSOLE;
+    return level(p.getUniqueId(), p.getName(), p.isOp());
+  }
+
+  /**
+   * May {@code by} use the team tools on {@code target} (jail, mute, freeze, team window, inventory …)? Only on lower
+   * ranks – nobody puts an owner or an admin in jail, not even one of the same rank. The console may always.
+   */
+  boolean outranks(org.bukkit.command.CommandSender by, UUID target, String targetName, boolean targetOp) {
+    int own = level(by);
+    return own == CONSOLE || own < level(target, targetName, targetOp);
+  }
+
   /** The rank the config lists this player in (not the default one). */
   private Rank configured(UUID id, String name) {
     for (Rank r : ranks) {

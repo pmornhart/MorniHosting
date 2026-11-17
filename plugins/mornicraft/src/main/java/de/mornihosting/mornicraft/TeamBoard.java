@@ -309,6 +309,15 @@ final class TeamBoard {
     long minutes = Math.max(1, Math.min(MAX_MINUTES, parseLong(a.get("minutes"), 10)));
     Moderation mod = plugin.moderation();
     plugin.getLogger().info("Team dashboard: " + by + " → " + what + " " + a.getOrDefault("target", ""));
+    if (PUNISHING.contains(what) && !below(by, staff, a.getOrDefault("target", ""))) {
+      // Only downwards, as in the game: nobody jails, mutes, freezes, kicks or bans the same or a higher rank.
+      plugin.getLogger().info("Team dashboard: " + by + " may not " + what + " " + a.getOrDefault("target", "")
+          + " (same or higher rank)");
+      if (staff != null) {
+        staff.sendMessage(plugin.ui().fail("mod.higher", Ui.v("name", a.getOrDefault("target", ""))));
+      }
+      return;
+    }
     switch (what) {
       case "jail" -> {
         if (target != null) mod.jail(sender, target, minutes * 60_000L, reason);
@@ -340,6 +349,26 @@ final class TeamBoard {
       }
       default -> plugin.getLogger().warning("Team dashboard: unknown action " + what);
     }
+  }
+
+  /** What the page may ask for only against lower ranks. */
+  private static final java.util.Set<String> PUNISHING = java.util.Set.of("jail", "mute", "freeze", "kick", "ban");
+
+  /** Is the target (online or not) below the person who asked on the page (online or not)? */
+  private boolean below(String by, Player staff, String targetName) {
+    Ranks ranks = plugin.ranks();
+    int own = staff != null ? ranks.level(staff) : levelOf(by);
+    return own < levelOf(targetName);
+  }
+
+  private int levelOf(String name) {
+    Player online = Bukkit.getPlayerExact(name);
+    if (online != null) return plugin.ranks().level(online);
+    UUID id = offlineId(name);
+    if (id == null) id = UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes(StandardCharsets.UTF_8));
+    UUID known = id;
+    boolean op = Bukkit.getOperators().stream().anyMatch(o -> known.equals(o.getUniqueId()));
+    return plugin.ranks().level(known, name, op);
   }
 
   // ---------------------------------------------------------------- bans

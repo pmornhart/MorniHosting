@@ -105,7 +105,17 @@ final class Combat implements Listener {
       p.sendActionBar(ui().fail("combat.start", Ui.v("name", other.getName()), Ui.v("sec", plugin.settings().combatSeconds())));
       plugin.teleporter().cancel(p);
       plugin.elytra().landNow(p);
+      tellNetwork(p, true);
     }
+  }
+
+  /**
+   * MoinMorni network: while someone fights, "/lobby" asks first – leaving in combat costs your life. Nothing else is
+   * kept for later: whoever comes back lands where they were anyway.
+   */
+  private void tellNetwork(Player p, boolean fighting) {
+    Network n = plugin.network();
+    if (n != null) n.playing(p, fighting);
   }
 
   /** Every quarter second: the bars count down; time up = out of combat. */
@@ -129,6 +139,7 @@ final class Combat implements Listener {
           until.remove(id);
           opponent.remove(id);
           p.sendActionBar(ui().ok("combat.over"));
+          tellNetwork(p, false);
         }
         if (bar != null) {
           p.hideBossBar(bar);
@@ -177,10 +188,11 @@ final class Combat implements Listener {
   }
 
   private void clear(Player p) {
-    until.remove(p.getUniqueId());
+    boolean fighting = until.remove(p.getUniqueId()) != null;
     opponent.remove(p.getUniqueId());
     BossBar bar = bars.remove(p.getUniqueId());
     if (bar != null) p.hideBossBar(bar);
+    if (fighting && p.isOnline()) tellNetwork(p, false);
   }
 
   /** Kicked by the team or the server: that's not running away. */

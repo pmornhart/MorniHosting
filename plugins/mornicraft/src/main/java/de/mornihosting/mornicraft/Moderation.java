@@ -162,14 +162,18 @@ final class Moderation implements Listener {
     return s.isOp() || s.hasPermission(PERMISSION);
   }
 
-  /** The team may not use this on operators (only operators may), nor on themselves. */
-  private boolean mayTouch(CommandSender by, Player target) {
+  /**
+   * The team tools only go downwards: not on oneself, and only on players with a lower rank (the rank order in
+   * MorniCraft, in the network the network's; operators count as the highest rank when alone). Nobody jails, mutes,
+   * freezes or looks into the inventory of an owner or admin – nor of someone with the same rank.
+   */
+  boolean mayTouch(CommandSender by, Player target) {
     if (by instanceof Player p && p.equals(target)) {
       by.sendMessage(ui().fail("mod.self"));
       return false;
     }
-    if (target.isOp() && !by.isOp()) {
-      by.sendMessage(ui().fail("mod.protected", Ui.v("name", target.getName())));
+    if (!plugin.ranks().outranks(by, target.getUniqueId(), target.getName(), target.isOp())) {
+      by.sendMessage(ui().fail("mod.higher", Ui.v("name", target.getName())));
       return false;
     }
     return true;
@@ -608,6 +612,8 @@ final class Moderation implements Listener {
   private static final int BACK = 22;
 
   void open(Player p, Player target) {
+    // The window (homes, inventory, ender chest, heal, freeze …) only for lower ranks.
+    if (!mayTouch(p, target)) return;
     Window w = new Window(Kind.PLAYER, target.getUniqueId());
     Inventory inv = Bukkit.createInventory(w, 5 * ROW, Component.text(ui().flat("mod.title", Ui.v("name", target.getName())), NamedTextColor.DARK_RED));
     w.inventory = inv;
@@ -732,6 +738,13 @@ final class Moderation implements Listener {
     if (target == null) {
       later(p, p::closeInventory);
       p.sendMessage(ui().fail("player.offline", Ui.v("name", "?")));
+      return;
+    }
+    // Ranks can change while the window is open: every click checks again.
+    if (slot >= 0 && slot < e.getInventory().getSize() && slot >= ROW && !plugin.ranks().outranks(p,
+        target.getUniqueId(), target.getName(), target.isOp())) {
+      later(p, p::closeInventory);
+      p.sendMessage(ui().fail("mod.higher", Ui.v("name", target.getName())));
       return;
     }
     if (w.kind != Kind.PLAYER) {
