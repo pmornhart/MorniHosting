@@ -514,10 +514,30 @@ keep_docker() {
 }
 
 # Läuft der Container und meldet Docker ihn nicht als krank?
+# Ein Container ohne Gesundheitsprüfung (der Socket-Proxy) zählt, sobald er läuft – früher las die Prüfung dort
+# „true “ mit Leerzeichen und hielt ihn für krank (falsches „Panel neu gestartet“ alle paar Minuten).
 container_ok() {
   local state
-  state="$(docker inspect -f '{{.State.Running}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$1" 2>/dev/null || true)"
-  [[ "${state}" == "true" || "${state}" == "true healthy" || "${state}" == "true starting" ]]
+  state="$(docker inspect -f '{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$1" 2>/dev/null || true)"
+  [[ "${state}" == "running|" || "${state}" == "running|healthy" || "${state}" == "running|starting" ]]
+}
+
+# Zustand in Worten für Protokoll und Meldung: läuft, krank, startet, aus (<Status>) oder fehlt.
+container_state() {
+  local info status health
+  info="$(docker inspect -f '{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$1" 2>/dev/null || true)"
+  [[ -z "${info}" ]] && { echo "fehlt"; return 0; }
+  status="${info%%|*}"
+  health="${info#*|}"
+  if [[ "${status}" != "running" ]]; then
+    echo "aus (${status})"
+  elif [[ "${health}" == "unhealthy" ]]; then
+    echo "krank"
+  elif [[ "${health}" == "starting" ]]; then
+    echo "startet"
+  else
+    echo "läuft"
+  fi
 }
 
 keep_panel() {
@@ -538,11 +558,27 @@ keep_panel() {
   ((failures < PANEL_RESTART_AFTER)) && return 0
   # Reste eines abgebrochenen Neustarts blockieren Compose ("name … is already in use").
   docker ps -a --format '{{.Names}}' | grep -E '^[0-9a-f]{12}_mornihosting(-[a-z-]+)?$' | xargs -r docker rm -f >/dev/null 2>&1 || true
-  log "Panel seit ${failures} Prüfungen aus oder krank – starte es neu"
+  local name before=()
+  for name in mornihosting mornihosting-socket-proxy; do
+    container_ok "${name}" || before+=("${name}: $(container_state "${name}")")
+  done
+  log "Panel seit ${failures} Prüfungen nicht in Ordnung ($(printf '%s; ' "${before[@]}")) – starte neu"
   (cd "${INSTALL_DIR}" && timeout 300 docker compose up -d >/dev/null 2>&1) || true
-  container_ok mornihosting || docker restart mornihosting >/dev/null 2>&1 || true
+  # Genau die Kranken neu starten, nicht nur das Panel.
+  for name in mornihosting mornihosting-socket-proxy; do
+    container_ok "${name}" || timeout 120 docker restart "${name}" >/dev/null 2>&1 || true
+  done
   echo 0 >"${PANEL_FAIL_FILE}"
-  event container panel fixed "Panel neu gestartet" "Das Panel war ${failures} Minuten aus oder antwortete nicht und wurde neu gestartet."
+  local what
+  what="$(printf '%s; ' "${before[@]}")"
+  what="${what%; }"
+  if container_ok mornihosting && container_ok mornihosting-socket-proxy; then
+    event container panel fixed "Panel neu gestartet" "Nicht in Ordnung war: ${what}. Jetzt läuft es wieder."
+  else
+    log "Nach dem Neustart weiter nicht in Ordnung"
+    event container panel action "Panel startet nicht richtig" "Nicht in Ordnung war: ${what}. Ein Neustart hat nicht geholfen." \
+      "Bitte im Container nachsehen, was er meldet (pct enter <ID>):" "docker logs --tail 80 ${before[0]%%:*}"
+  fi
 }
 
 free_disk_mb() { df -Pm "${INSTALL_DIR}" 2>/dev/null | awk 'NR==2 { print $4 }'; }
@@ -662,6 +698,11 @@ case "${COMMAND}" in
     check
     ;;
   status) status ;;
+  panel)
+    # Nur das Panel prüfen (Tests, oder von Hand).
+    [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
+    keep_panel
+    ;;
   netbird)
     # Nur NetBird prüfen (Tests, oder von Hand).
     [[ ${EUID} -eq 0 || -n "${MH_GUARD_STATE_DIR:-}" ]] || { echo "Bitte als root ausführen." >&2; exit 1; }
@@ -693,7 +734,7 @@ case "${COMMAND}" in
     systemctl daemon-reload
     ;;
   *)
-    echo "Unbekannter Befehl: ${COMMAND} (check, status, install, uninstall)" >&2
+    echo "Unbekannter Befehl: ${COMMAND} (check, status, panel, install, uninstall)" >&2
     exit 2
     ;;
 esac
