@@ -66,8 +66,10 @@ describe('guard.sh keeps the panel running – and says honestly what happened',
   let env: NodeJS.ProcessEnv;
   const file = (name: string) => path.join(root, name);
   const read = (name: string) => (fs.existsSync(file(name)) ? fs.readFileSync(file(name), 'utf8') : '');
-  const setState = (name: string, state: string) => fs.writeFileSync(path.join(root, 'c', name), `${state}\n`);
-  const afterRestart = (name: string, state: string) => fs.writeFileSync(path.join(root, 'after', name), `${state}\n`);
+  const setState = (name: string, state: string) =>
+    fs.writeFileSync(path.join(root, 'c', name), `${state}\n`);
+  const afterRestart = (name: string, state: string) =>
+    fs.writeFileSync(path.join(root, 'after', name), `${state}\n`);
   const check = () => run('bash', [SCRIPT, 'panel'], { env });
   const checks = async (times: number) => {
     for (let i = 0; i < times; i += 1) await check();
@@ -141,7 +143,11 @@ describe('guard.sh keeps the panel running – and says honestly what happened',
     afterRestart('moinmorni', 'exited|');
     await checks(CHECKS_UNTIL_RESTART);
     const [event] = events();
-    expect(event).toMatchObject({ key: 'panel', status: 'action', command: 'docker logs --tail 80 moinmorni' });
+    expect(event).toMatchObject({
+      key: 'panel',
+      status: 'action',
+      command: 'docker logs --tail 80 moinmorni',
+    });
     expect(event?.what).toContain('moinmorni: aus (exited)');
   });
 
