@@ -21,7 +21,7 @@ import { errorText } from '@/lib/query';
 
 const REFRESH_MS = 10_000;
 
-export const networksQuery = {
+const networksQuery = {
   queryKey: ['networks'],
   queryFn: () => api<NetworkView[]>('/api/networks'),
   refetchInterval: REFRESH_MS,
@@ -37,7 +37,7 @@ const NOT_ALLOWED = /[^a-z0-9]+/g;
 const EDGE_DASHES = /^-+|-+$/g;
 
 /** Suggested name in the proxy for a server (lower case, digits, dashes). */
-export function memberNameFor(serverName: string): string {
+function memberNameFor(serverName: string): string {
   return serverName
     .toLowerCase()
     .replaceAll('ä', 'ae')
@@ -377,5 +377,3 @@ export function NetworksPage(): ReactElement {
     </div>
   );
 }
-
-export default NetworksPage;

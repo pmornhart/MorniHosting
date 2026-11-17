@@ -50,7 +50,7 @@ function isErrorBody(value: unknown): value is ApiErrorBody {
   );
 }
 
-export async function toApiError(response: Response): Promise<ApiError> {
+async function toApiError(response: Response): Promise<ApiError> {
   const body: unknown = await response.json().catch(() => null); // eslint-disable-line ts-patterns/prefer-await-to-then -- a body that is not JSON is the same as no body
   if (response.status === HTTP_UNAUTHORIZED) unauthorizedListeners.forEach((l) => l());
   return isErrorBody(body)

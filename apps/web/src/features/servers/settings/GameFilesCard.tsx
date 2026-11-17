@@ -19,7 +19,7 @@ function nameOf(file: string): string {
 }
 
 /** Which of the game's required files are uploaded already (they all live in one folder). */
-export function useRequiredFiles(server: ServerDetail): { missing: string[]; folder: string } | null {
+function useRequiredFiles(server: ServerDetail): { missing: string[]; folder: string } | null {
   const required = isGameId(server.software) ? (GAMES[server.software].requiredFiles ?? []) : [];
   const folder = folderOf(required[0] ?? '');
   const { data } = useQuery({
