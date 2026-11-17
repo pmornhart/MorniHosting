@@ -1,5 +1,6 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
+import os from 'node:os';
 import { badRequest } from './errors.js';
 
 /**
@@ -69,6 +70,47 @@ export function isHomeNetworkAddress(address: string): boolean {
   const v4 = lower.startsWith(IPV4_MAPPED) ? lower.slice(IPV4_MAPPED.length) : lower;
   if (net.isIPv4(v4)) return homeList.check(v4, 'ipv4');
   return net.isIPv6(lower) && homeList.check(lower, 'ipv6');
+}
+
+/* eslint-disable ts-patterns/no-magic-numbers -- network prefixes and their lengths */
+/** Where the address router may send players: the home network and NetBird machines (100.64.0.0/10), nothing else. */
+const FORWARD_V4: readonly (readonly [string, number])[] = [...HOME_V4, ['100.64.0.0', 10]];
+/* eslint-enable ts-patterns/no-magic-numbers */
+const forwardList = new net.BlockList();
+FORWARD_V4.forEach(([address, prefix]) => forwardList.addSubnet(address, prefix, 'ipv4'));
+const CIDR_SEPARATOR = '/';
+const SINGLE_HOST_V4 = '32';
+
+/** The one IPv4 address in a NetBird address ("10.0.0.5" or "10.0.0.5/32"); null for subnets, names and IPv6. */
+export function singleIpv4(address: string | null | undefined): string | null {
+  const [ip, prefix] = (address ?? '').trim().split(CIDR_SEPARATOR);
+  return ip && net.isIPv4(ip) && (prefix === undefined || prefix === SINGLE_HOST_V4) ? ip : null;
+}
+
+/** The panel's own networks (inside Docker: its internal networks, e.g. the one with the Docker API proxy). */
+export function ownNetworks(): string[] {
+  return Object.values(os.networkInterfaces())
+    .flatMap((addresses) => addresses ?? [])
+    .filter((a) => a.family === 'IPv4' && !a.internal && a.cidr !== null)
+    .map((a) => a.cidr ?? '');
+}
+
+/**
+ * Why the address router must not send players to this address, or null when it may: only the home network and
+ * NetBird machines – never the internet (no open relay) and never the panel's own internal networks (inside Docker
+ * they hold the Docker API proxy, which nobody from outside may reach).
+ */
+export function forwardTargetProblem(
+  address: string,
+  own: readonly string[],
+): 'not_private' | 'own_network' | null {
+  if (!net.isIPv4(address) || !forwardList.check(address, 'ipv4')) return 'not_private';
+  const inside = new net.BlockList();
+  own.forEach((cidr) => {
+    const [base, bits] = cidr.split(CIDR_SEPARATOR);
+    if (base && net.isIPv4(base)) inside.addSubnet(base, Number(bits), 'ipv4');
+  });
+  return inside.check(address, 'ipv4') ? 'own_network' : null;
 }
 
 export type Resolver = (hostname: string) => Promise<readonly string[]>;

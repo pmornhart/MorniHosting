@@ -2,23 +2,33 @@ import { z } from 'zod';
 import {
   netbirdConfigSchema,
   netbirdDiscoverSchema,
+  netbirdDomainServerSchema,
   netbirdExitSchema,
   netbirdPanelSchema,
   netbirdServerSchema,
+  routerForwardsSchema,
 } from '@mornihosting/shared';
 import { actorOf, requireAdmin } from '../auth/context.js';
 import type { Api } from '../context.js';
 import type { DnsAutomation } from '../dns/service.js';
+import type { RouterForwards } from '../gateway/forwards.js';
 import type { NetbirdExit } from './exit.js';
 import type { NetbirdAutomation } from './service.js';
+
+/** The list asks NetBird (at most once a minute per port, or now with "Neu prüfen"): plenty for one admin page. */
+const FORWARD_CHECKS_PER_MINUTE = 30;
 
 /** NetBird automation (admins only): it acts with the admin's NetBird token, so nobody else may use it. */
 export function registerNetbirdRoutes(
   app: Api,
-  netbird: NetbirdAutomation,
-  dns: DnsAutomation,
-  exit: NetbirdExit,
+  parts: {
+    readonly netbird: NetbirdAutomation;
+    readonly dns: DnsAutomation;
+    readonly exit: NetbirdExit;
+    readonly forwards: RouterForwards;
+  },
 ): void {
+  const { netbird, dns, exit, forwards } = parts;
   app.get('/api/netbird', async (request) => {
     requireAdmin(request);
     return netbird.status();
@@ -57,6 +67,30 @@ export function registerNetbirdRoutes(
   app.post('/api/netbird/panel', { schema: { body: netbirdPanelSchema } }, async (request) => {
     requireAdmin(request);
     return netbird.setupPanel(request.body, actorOf(request));
+  });
+
+  // The server players reach on the domain itself (e.g. a network's proxy on "moinmorni.net").
+  app.put('/api/netbird/domain-server', { schema: { body: netbirdDomainServerSchema } }, async (request) => {
+    requireAdmin(request);
+    return netbird.setDomainServer(request.body.serverId, actorOf(request));
+  });
+
+  // Other products' domains through the address router ("Weitere Domains über diesen Verteiler").
+  app.get(
+    '/api/netbird/forwards',
+    {
+      schema: { querystring: z.object({ fresh: z.enum(['1']).optional() }) },
+      config: { rateLimit: { max: FORWARD_CHECKS_PER_MINUTE, timeWindow: '1 minute' } },
+    },
+    async (request) => {
+      requireAdmin(request);
+      return forwards.status(request.query.fresh === '1');
+    },
+  );
+
+  app.put('/api/netbird/forwards', { schema: { body: routerForwardsSchema } }, async (request) => {
+    requireAdmin(request);
+    return forwards.save(request.body.forwards, actorOf(request));
   });
 
   app.put(
